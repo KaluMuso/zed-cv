@@ -1,0 +1,794 @@
+openapi: 3.1.0
+info:
+  title: Zed CV API
+  description: AI-powered job matching platform for Zambia
+  version: 0.1.0
+  contact:
+    email: convergeozambia@gmail.com
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+  - url: https://api.zedcv.com/api/v1
+    description: Production
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token
+
+  schemas:
+    # ─── Error ───
+    ProblemDetail:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+
+    # ─── Auth ───
+    OTPRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+          pattern: '^\+260[0-9]{9}$'
+          example: "+260971234567"
+
+    OTPVerify:
+      type: object
+      required: [phone, code]
+      properties:
+        phone:
+          type: string
+          pattern: '^\+260[0-9]{9}$'
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+
+    AuthTokens:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+
+    # ─── User Profile ───
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        phone:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        location:
+          type: string
+        years_experience:
+          type: integer
+          minimum: 0
+        skills:
+          type: array
+          items:
+            type: string
+        subscription_tier:
+          type: string
+          enum: [mwana, mwezi, bwino]
+        created_at:
+          type: string
+          format: date-time
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        location:
+          type: string
+        years_experience:
+          type: integer
+          minimum: 0
+
+    # ─── CV ───
+    CVUploadResponse:
+      type: object
+      properties:
+        cv_id:
+          type: string
+          format: uuid
+        parsed_skills:
+          type: array
+          items:
+            type: string
+        experience_summary:
+          type: string
+        parsing_confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    CVGenerateRequest:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        style:
+          type: string
+          enum: [professional, modern, simple]
+          default: professional
+
+    CVGenerateResponse:
+      type: object
+      properties:
+        cv_url:
+          type: string
+          format: uri
+        preview_html:
+          type: string
+
+    # ─── Jobs ───
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: string
+        description:
+          type: string
+        requirements:
+          type: array
+          items:
+            type: string
+        skills_required:
+          type: array
+          items:
+            type: string
+        salary_min:
+          type: integer
+          description: Minimum salary in ZMW ngwee
+        salary_max:
+          type: integer
+          description: Maximum salary in ZMW ngwee
+        apply_url:
+          type: string
+          format: uri
+        apply_email:
+          type: string
+          format: email
+        source:
+          type: string
+          enum: [manual, scraper, ocr, partner]
+        quality_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        closing_date:
+          type: string
+          format: date
+        posted_at:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+
+    JobCreate:
+      type: object
+      required: [title, description, source]
+      properties:
+        title:
+          type: string
+          minLength: 5
+        company:
+          type: string
+        location:
+          type: string
+        description:
+          type: string
+          minLength: 20
+        requirements:
+          type: array
+          items:
+            type: string
+        skills_required:
+          type: array
+          items:
+            type: string
+        salary_min:
+          type: integer
+        salary_max:
+          type: integer
+        apply_url:
+          type: string
+          format: uri
+        apply_email:
+          type: string
+          format: email
+        source:
+          type: string
+          enum: [manual, scraper, ocr, partner]
+        closing_date:
+          type: string
+          format: date
+
+    JobList:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+        total:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+
+    # ─── Matching ───
+    MatchResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        job:
+          $ref: '#/components/schemas/Job'
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+        vector_score:
+          type: number
+        skill_score:
+          type: number
+        bonus_score:
+          type: number
+        matched_skills:
+          type: array
+          items:
+            type: string
+        missing_skills:
+          type: array
+          items:
+            type: string
+        explanation:
+          type: string
+          description: LLM-generated explanation (only for score > 70)
+        created_at:
+          type: string
+          format: date-time
+
+    MatchList:
+      type: object
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchResult'
+        remaining_quota:
+          type: integer
+          description: Matches remaining this month
+
+    # ─── Subscriptions ───
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tier:
+          type: string
+          enum: [mwana, mwezi, bwino]
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+        current_period_start:
+          type: string
+          format: date-time
+        current_period_end:
+          type: string
+          format: date-time
+        matches_used:
+          type: integer
+        matches_limit:
+          type: integer
+
+    PaymentInitiate:
+      type: object
+      required: [tier, payment_method]
+      properties:
+        tier:
+          type: string
+          enum: [mwezi, bwino]
+        payment_method:
+          type: string
+          enum: [mtn_money, airtel_money]
+        phone:
+          type: string
+          pattern: '^\+260[0-9]{9}$'
+
+    PaymentInitiateResponse:
+      type: object
+      properties:
+        transaction_token:
+          type: string
+        payment_url:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [pending, redirect]
+
+    # ─── Cover Letter ───
+    CoverLetterRequest:
+      type: object
+      required: [job_id]
+      properties:
+        job_id:
+          type: string
+          format: uuid
+        tone:
+          type: string
+          enum: [formal, friendly, confident]
+          default: formal
+
+    CoverLetterResponse:
+      type: object
+      properties:
+        content:
+          type: string
+        word_count:
+          type: integer
+
+    # ─── WhatsApp Webhook ───
+    WhatsAppWebhook:
+      type: object
+      properties:
+        event:
+          type: string
+        session:
+          type: string
+        payload:
+          type: object
+
+    # ─── Health ───
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        supabase:
+          type: boolean
+        waha:
+          type: boolean
+
+paths:
+  # ─── Health ───
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [System]
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+
+  # ─── Auth ───
+  /auth/otp/request:
+    post:
+      operationId: requestOTP
+      summary: Request OTP via WhatsApp
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPRequest'
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '429':
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /auth/otp/verify:
+    post:
+      operationId: verifyOTP
+      summary: Verify OTP and get tokens
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPVerify'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          description: Invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  # ─── Profile ───
+  /profile:
+    get:
+      operationId: getProfile
+      summary: Get current user profile
+      tags: [Profile]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+    patch:
+      operationId: updateProfile
+      summary: Update user profile
+      tags: [Profile]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdate'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  # ─── CV ───
+  /cv/upload:
+    post:
+      operationId: uploadCV
+      summary: Upload and parse a CV
+      tags: [CV]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF, DOCX, or image file
+      responses:
+        '200':
+          description: CV parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CVUploadResponse'
+        '422':
+          description: Unparseable file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  /cv/generate:
+    post:
+      operationId: generateCV
+      summary: Generate a tailored CV for a specific job
+      tags: [CV]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CVGenerateRequest'
+      responses:
+        '200':
+          description: Generated CV
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CVGenerateResponse'
+        '403':
+          description: Tier not sufficient
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  # ─── Jobs ───
+  /jobs:
+    get:
+      operationId: listJobs
+      summary: List active jobs
+      tags: [Jobs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job listings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+
+    post:
+      operationId: createJob
+      summary: Ingest a new job listing
+      tags: [Jobs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+
+  /jobs/{job_id}:
+    get:
+      operationId: getJob
+      summary: Get job details
+      tags: [Jobs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  # ─── Matching ───
+  /matches:
+    get:
+      operationId: getMatches
+      summary: Get job matches for current user
+      tags: [Matching]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: min_score
+          in: query
+          schema:
+            type: number
+            default: 50
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+      responses:
+        '200':
+          description: Matching results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchList'
+
+  /matches/trigger:
+    post:
+      operationId: triggerMatching
+      summary: Trigger matching for current user (or re-match after CV update)
+      tags: [Matching]
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Matching queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  estimated_seconds:
+                    type: integer
+
+  # ─── Cover Letter ───
+  /cover-letter/generate:
+    post:
+      operationId: generateCoverLetter
+      summary: Generate a cover letter for a matched job
+      tags: [Cover Letter]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverLetterRequest'
+      responses:
+        '200':
+          description: Generated cover letter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverLetterResponse'
+        '403':
+          description: Bwino tier required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+
+  # ─── Subscription & Payments ───
+  /subscription:
+    get:
+      operationId: getSubscription
+      summary: Get current subscription status
+      tags: [Subscription]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  /subscription/pay:
+    post:
+      operationId: initiatePayment
+      summary: Initiate mobile money payment for subscription
+      tags: [Subscription]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiate'
+      responses:
+        '200':
+          description: Payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentInitiateResponse'
+
+  # ─── Webhooks (no auth — verified by signature) ───
+  /webhooks/dpo:
+    post:
+      operationId: dpoWebhook
+      summary: DPO Pay payment webhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Webhook processed
+
+  /webhooks/whatsapp:
+    post:
+      operationId: whatsappWebhook
+      summary: WAHA WhatsApp webhook
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhatsAppWebhook'
+      responses:
+        '200':
+          description: Webhook processed

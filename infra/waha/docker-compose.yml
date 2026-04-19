@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: zedcv-waha
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # API key for authentication
+      WHATSAPP_API_KEY: ${WAHA_API_KEY}
+      # Webhook URL — points to FastAPI
+      WHATSAPP_HOOK_URL: ${FASTAPI_URL}/api/v1/webhooks/whatsapp
+      WHATSAPP_HOOK_EVENTS: "message,message.ack,session.status"
+      # Session management
+      WHATSAPP_DEFAULT_ENGINE: WEBJS
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"
+      # Storage for session data (persists QR login)
+      WHATSAPP_FILES_LIFETIME: 0
+    volumes:
+      - waha_data:/app/.waha
+    networks:
+      - zedcv
+
+  # Optional: n8n alongside WAHA on same Oracle Cloud instance
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: zedcv-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      FASTAPI_URL: http://host.docker.internal:8000
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - zedcv
+
+volumes:
+  waha_data:
+  n8n_data:
+
+networks:
+  zedcv:
+    driver: bridge
