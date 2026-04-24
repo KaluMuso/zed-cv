@@ -19,6 +19,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://zedcv.vercel.app",
+        "https://zed-cv.vercel.app",
         "https://www.zedcv.com",
         "https://zedcv.com",
     ],
