@@ -10,7 +10,7 @@ async def send_whatsapp_message(phone: str, text: str) -> dict:
         response = await client.post(
             f"{settings.waha_api_url}/api/sendText",
             json={"chatId": chat_id, "text": text, "session": "default"},
-            headers={"Authorization": f"Bearer {settings.waha_api_key}"},
+            headers={"X-Api-Key": settings.waha_api_key},
             timeout=10.0,
         )
         response.raise_for_status()
@@ -48,7 +48,7 @@ async def check_waha_health() -> bool:
         async with httpx.AsyncClient() as client:
             r = await client.get(
                 f"{settings.waha_api_url}/api/sessions",
-                headers={"Authorization": f"Bearer {settings.waha_api_key}"},
+                headers={"X-Api-Key": settings.waha_api_key},
                 timeout=5.0,
             )
             return r.status_code == 200
