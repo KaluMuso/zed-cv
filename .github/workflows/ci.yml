@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run tests
+        run: |
+          pytest tests/
+        env:
+          SUPABASE_URL: https://fake.supabase.co
+          SUPABASE_KEY: fake-key
+          GEMINI_API_KEY: fake-key
+          OPENROUTER_API_KEY: fake-key
+          JWT_SECRET: test-secret
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.zedcv.com/api/v1
+          NEXT_PUBLIC_SUPABASE_URL: https://chnesgmcuxyhwhzomdov.supabase.co
+          # These can be fake for build time if not used in getStaticProps/getServerSideProps
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: fake-key
+
+  backend-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: |
+          cd apps/backend
+          docker build -t zed-cv-backend:latest .
