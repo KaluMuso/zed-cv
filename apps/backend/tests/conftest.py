@@ -10,32 +10,29 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-# ── Fake env vars so Settings() doesn't blow up ────────────────────────
-os.environ.setdefault("SUPABASE_URL", "https://fake.supabase.co")
-os.environ.setdefault("SUPABASE_KEY", "fake-service-key")
-os.environ.setdefault("GEMINI_API_KEY", "fake-gemini-key")
-os.environ.setdefault("OPENROUTER_API_KEY", "fake-openrouter-key")
-os.environ.setdefault("JWT_SECRET", "test-secret-key-for-testing-only")
+# -- Fake env vars so Settings() doesn't blow up -------------------------
+os.environ["SUPABASE_URL"] = "https://fake.supabase.co"
+os.environ["SUPABASE_ANON_KEY"] = "fake-anon-key"
+os.environ["SUPABASE_SERVICE_KEY"] = "fake-service-key"
+os.environ["OPENAI_API_KEY"] = "sk-fake"
+os.environ["JWT_SECRET"] = "test-secret-key-for-testing-only"
 
 # Ensure the app package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-# ── Mock Supabase client ────────────────────────────────────────────────
+# -- Mock Supabase client -------------------------------------------------
 class FakeSupabaseQuery:
     """Chainable mock that mimics supabase.table(...).select(...).eq(...) etc."""
 
     def __init__(self, data=None, count=None):
         self._data = data or []
         self._count = count
-        self._single = False
 
     def select(self, *a, **kw):
         return self
 
     def insert(self, data):
-        # If pre-set data exists (from set_table), return that instead
-        # This lets tests control exactly what the DB "returns"
         if self._data:
             return self
         if isinstance(data, dict) and "id" not in data:
@@ -55,13 +52,13 @@ class FakeSupabaseQuery:
     def eq(self, *a):
         return self
 
+    def neq(self, *a):
+        return self
+
     def gte(self, *a):
         return self
 
-    def lt(self, *a):
-        return self
-
-    def in_(self, *a):
+    def lte(self, *a):
         return self
 
     def ilike(self, *a):
@@ -80,19 +77,11 @@ class FakeSupabaseQuery:
         return self
 
     def single(self):
-        self._single = True
         return self
 
     def execute(self):
         result = MagicMock()
-        if self._single:
-            # Real supabase-py returns the first row as a dict (or None) on .single()
-            if isinstance(self._data, list):
-                result.data = self._data[0] if self._data else None
-            else:
-                result.data = self._data
-        else:
-            result.data = self._data
+        result.data = self._data
         result.count = self._count
         return result
 
@@ -108,7 +97,7 @@ class FakeSupabase:
     def table(self, name):
         return self._tables.get(name, FakeSupabaseQuery())
 
-    def set_table(self, name, query: FakeSupabaseQuery):
+    def set_table(self, name, query: "FakeSupabaseQuery"):
         self._tables[name] = query
 
     def rpc(self, *a, **kw):
@@ -120,16 +109,21 @@ def fake_supabase():
     return FakeSupabase()
 
 
-# ── JWT helper ──────────────────────────────────────────────────────────
+# -- JWT helper ------------------------------------------------------------
 @pytest.fixture
 def auth_token():
     """Return a valid JWT for user_id='test-user-id'."""
     from jose import jwt
+
     now = datetime.now(timezone.utc)
     return jwt.encode(
-        {"sub": "test-user-id", "phone": "+260971234567",
-         "exp": now + timedelta(hours=24), "iat": now},
-        "test-secret-key-for-testing-only",
+        {
+            "sub": "test-user-id",
+            "phone": "+260971234567",
+            "exp": now + timedelta(hours=24),
+            "iat": now,
+        },
+        os.environ["JWT_SECRET"],
         algorithm="HS256",
     )
 
@@ -139,19 +133,52 @@ def auth_headers(auth_token):
     return {"Authorization": f"Bearer {auth_token}"}
 
 
-# ── App client with mocked deps ────────────────────────────────────────
+@pytest.fixture
+def admin_token():
+    """Return a valid JWT for admin user."""
+    from jose import jwt
+
+    now = datetime.now(timezone.utc)
+    return jwt.encode(
+        {
+            "sub": "admin-user-id",
+            "phone": "+260971111111",
+            "exp": now + timedelta(hours=24),
+            "iat": now,
+        },
+        os.environ["JWT_SECRET"],
+        algorithm="HS256",
+    )
+
+
+@pytest.fixture
+def admin_headers(admin_token):
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
+# -- App client with mocked deps ------------------------------------------
 @pytest.fixture
 def client(fake_supabase):
     """TestClient with Supabase and external services mocked out."""
+    from app.core.config import get_settings
     from app.core.deps import get_supabase
-    from app.core.rate_limit import limiter
     from main import app
 
-    # Disable rate limiting in tests
-    limiter.enabled = False
+    # Clear any cached settings so test env vars take effect
+    get_settings.cache_clear()
+
     app.dependency_overrides[get_supabase] = lambda: fake_supabase
+
+    # Also override rate limiter if it exists
+    try:
+        from app.core.rate_limit import limiter
+
+        limiter.enabled = False
+    except (ImportError, AttributeError):
+        pass
 
     with TestClient(app) as c:
         yield c
 
     app.dependency_overrides.clear()
+    get_settings.cache_clear()
