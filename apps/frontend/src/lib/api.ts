@@ -227,6 +227,67 @@ export interface AdminPaymentList {
   total_completed_ngwee: number;
 }
 
+export interface AdminMatchRow {
+  id: string;
+  user_id: string;
+  user_phone: string | null;
+  job_id: string;
+  job_title: string;
+  job_company: string | null;
+  score: number;
+  status: string | null;
+  created_at: string | null;
+}
+
+export interface AdminMatchList {
+  matches: AdminMatchRow[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface AdminTierBreakdown {
+  free: number;
+  starter: number;
+  professional: number;
+  total_active: number;
+}
+
+export interface AdminSubscriptionRow {
+  user_id: string;
+  user_phone: string | null;
+  full_name: string | null;
+  tier: "free" | "starter" | "professional";
+  status: string;
+  matches_used: number;
+  matches_limit: number;
+  current_period_end: string | null;
+  created_at: string | null;
+}
+
+export interface AdminSubscriptionList {
+  breakdown: AdminTierBreakdown;
+  subscriptions: AdminSubscriptionRow[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface AdminJobCreate {
+  title: string;
+  company?: string;
+  location?: string;
+  description: string;
+  source: "manual" | "scraper" | "ocr" | "partner";
+  apply_url?: string;
+  apply_email?: string;
+  closing_date?: string;
+  salary_min?: number;
+  salary_max?: number;
+}
+
 export const admin = {
   stats: (token: string) => apiFetch<AdminStats>("/admin/stats", { token }),
   users: (
@@ -270,6 +331,61 @@ export const admin = {
     if (params?.status) q.set("status", params.status);
     return apiFetch<AdminPaymentList>(`/admin/payments?${q}`, { token });
   },
+  matches: (
+    token: string,
+    params?: { page?: number; per_page?: number; min_score?: number }
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.min_score !== undefined) q.set("min_score", String(params.min_score));
+    return apiFetch<AdminMatchList>(`/admin/matches?${q}`, { token });
+  },
+  subscriptions: (
+    token: string,
+    params?: { page?: number; per_page?: number; tier?: string; status?: string }
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.tier) q.set("tier", params.tier);
+    if (params?.status) q.set("status", params.status);
+    return apiFetch<AdminSubscriptionList>(`/admin/subscriptions?${q}`, { token });
+  },
+  updateSubscription: (
+    token: string,
+    userId: string,
+    tier: "free" | "starter" | "professional"
+  ) =>
+    apiFetch<AdminSubscriptionRow>(
+      `/admin/subscriptions/${encodeURIComponent(userId)}`,
+      {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ tier }),
+      }
+    ),
+  createJob: (token: string, data: AdminJobCreate) =>
+    apiFetch<AdminJobRow>("/admin/jobs", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+  updateJob: (
+    token: string,
+    jobId: string,
+    data: Partial<AdminJobCreate> & { is_active?: boolean }
+  ) =>
+    apiFetch<AdminJobRow>(`/admin/jobs/${encodeURIComponent(jobId)}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(data),
+    }),
+  deleteJob: (token: string, jobId: string) =>
+    apiFetch<{ deleted: boolean; id: string }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}`,
+      { method: "DELETE", token }
+    ),
 };
 
 // ── CV ──
@@ -277,6 +393,24 @@ export interface CVUploadResult {
   id: string;
   skills_extracted: string[];
   message: string;
+}
+
+export interface CVAnalysis {
+  overall: number;
+  skills: number;
+  format: number;
+  impact: number;
+  strengths: string[];
+  improvements: string[];
+  cached: boolean;
+}
+
+export interface CVGenerateResult {
+  cv_generation_id: string;
+  content: string;
+  word_count: number;
+  job_title: string;
+  company: string | null;
 }
 
 export const cv = {
@@ -297,6 +431,17 @@ export const cv = {
     }
     return res.json() as Promise<CVUploadResult>;
   },
+  analyze: (token: string) =>
+    apiFetch<CVAnalysis>("/cv/analyze", { method: "POST", token, body: "{}" }),
+  generate: (
+    token: string,
+    data: { job_title: string; company?: string; job_description?: string; job_id?: string }
+  ) =>
+    apiFetch<CVGenerateResult>("/cv/generate", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
 };
 
 // ── Jobs ──

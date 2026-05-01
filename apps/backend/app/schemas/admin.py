@@ -87,3 +87,55 @@ class AdminPaymentList(BaseModel):
     per_page: int
     pages: int
     total_completed_ngwee: int = 0
+
+
+class AdminMatchRow(BaseModel):
+    id: str
+    user_id: str
+    user_phone: Optional[str] = None
+    job_id: str
+    job_title: str
+    job_company: Optional[str] = None
+    score: float
+    status: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class AdminMatchList(BaseModel):
+    matches: list[AdminMatchRow]
+    total: int
+    page: int
+    per_page: int
+    pages: int
+
+
+class AdminTierBreakdown(BaseModel):
+    free: int = 0
+    starter: int = 0
+    professional: int = 0
+    total_active: int = 0
+
+
+class AdminSubscriptionRow(BaseModel):
+    user_id: str
+    user_phone: Optional[str] = None
+    full_name: Optional[str] = None
+    tier: str
+    status: str
+    matches_used: int = 0
+    matches_limit: int = 0
+    current_period_end: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+
+class AdminSubscriptionList(BaseModel):
+    breakdown: AdminTierBreakdown
+    subscriptions: list[AdminSubscriptionRow]
+    total: int
+    page: int
+    per_page: int
+    pages: int
+
+
+class AdminSubscriptionUpdate(BaseModel):
+    tier: str = Field(..., pattern="^(free|starter|professional)$")

@@ -16,7 +16,17 @@ from app.schemas.admin import (
     BulkDeactivateResponse,
     AdminPaymentRow,
     AdminPaymentList,
+    AdminMatchRow,
+    AdminMatchList,
+    AdminTierBreakdown,
+    AdminSubscriptionRow,
+    AdminSubscriptionList,
+    AdminSubscriptionUpdate,
 )
+
+# Default match quotas per tier — kept here so tier changes update the cap
+# in lockstep without a separate config indirection.
+TIER_MATCH_LIMITS = {"free": 5, "starter": 25, "professional": 125}
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
@@ -256,3 +266,171 @@ async def delete_admin_job(job_id: str, supabase=Depends(get_supabase)):
     if not res.data:
         raise HTTPException(status_code=404, detail="Job not found")
     return {"deleted": True, "id": job_id}
+
+
+@router.get("/matches", response_model=AdminMatchList)
+async def list_matches(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    min_score: float | None = Query(None, ge=0, le=100),
+    supabase=Depends(get_supabase),
+):
+    query = supabase.table("matches").select(
+        "id, user_id, job_id, score, status, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if min_score is not None:
+        query = query.gte("score", min_score)
+
+    offset = (page - 1) * per_page
+    result = query.range(offset, offset + per_page - 1).execute()
+    total = result.count or 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+
+    user_ids = list({m["user_id"] for m in (result.data or [])})
+    job_ids = list({m["job_id"] for m in (result.data or [])})
+
+    phone_map: dict[str, str] = {}
+    if user_ids:
+        users = supabase.table("users").select("id, phone").in_("id", user_ids).execute()
+        phone_map = {u["id"]: u["phone"] for u in (users.data or [])}
+
+    job_map: dict[str, dict] = {}
+    if job_ids:
+        jobs = supabase.table("jobs").select("id, title, company").in_("id", job_ids).execute()
+        job_map = {j["id"]: j for j in (jobs.data or [])}
+
+    rows = [
+        AdminMatchRow(
+            id=m["id"],
+            user_id=m["user_id"],
+            user_phone=phone_map.get(m["user_id"]),
+            job_id=m["job_id"],
+            job_title=(job_map.get(m["job_id"], {}).get("title") or "—"),
+            job_company=job_map.get(m["job_id"], {}).get("company"),
+            score=float(m.get("score") or 0),
+            status=m.get("status"),
+            created_at=m.get("created_at"),
+        )
+        for m in (result.data or [])
+    ]
+    return AdminMatchList(matches=rows, total=total, page=page, per_page=per_page, pages=pages)
+
+
+@router.get("/subscriptions", response_model=AdminSubscriptionList)
+async def list_subscriptions(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    tier: str | None = Query(None, pattern="^(free|starter|professional)$"),
+    status: str | None = Query(None, pattern="^(active|expired|cancelled|past_due)$"),
+    supabase=Depends(get_supabase),
+):
+    # Tier breakdown over active subs — small enough to do in a single round trip.
+    breakdown_res = (
+        supabase.table("subscriptions")
+        .select("tier")
+        .eq("status", "active")
+        .execute()
+    )
+    counts = {"free": 0, "starter": 0, "professional": 0}
+    for row in breakdown_res.data or []:
+        t = row.get("tier")
+        if t in counts:
+            counts[t] += 1
+    breakdown = AdminTierBreakdown(
+        free=counts["free"],
+        starter=counts["starter"],
+        professional=counts["professional"],
+        total_active=sum(counts.values()),
+    )
+
+    query = supabase.table("subscriptions").select(
+        "user_id, tier, status, matches_used, matches_limit, current_period_end, created_at",
+        count="exact",
+    ).order("created_at", desc=True)
+    if tier:
+        query = query.eq("tier", tier)
+    if status:
+        query = query.eq("status", status)
+
+    offset = (page - 1) * per_page
+    result = query.range(offset, offset + per_page - 1).execute()
+    total = result.count or 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+
+    user_ids = list({s["user_id"] for s in (result.data or [])})
+    user_map: dict[str, dict] = {}
+    if user_ids:
+        users = (
+            supabase.table("users")
+            .select("id, phone, full_name")
+            .in_("id", user_ids)
+            .execute()
+        )
+        user_map = {u["id"]: u for u in (users.data or [])}
+
+    rows = [
+        AdminSubscriptionRow(
+            user_id=s["user_id"],
+            user_phone=user_map.get(s["user_id"], {}).get("phone"),
+            full_name=user_map.get(s["user_id"], {}).get("full_name"),
+            tier=s.get("tier", "free"),
+            status=s.get("status", "active"),
+            matches_used=s.get("matches_used", 0),
+            matches_limit=s.get("matches_limit", 0),
+            current_period_end=s.get("current_period_end"),
+            created_at=s.get("created_at"),
+        )
+        for s in (result.data or [])
+    ]
+
+    return AdminSubscriptionList(
+        breakdown=breakdown,
+        subscriptions=rows,
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=pages,
+    )
+
+
+@router.patch("/subscriptions/{user_id}", response_model=AdminSubscriptionRow)
+async def update_subscription(
+    user_id: str,
+    body: AdminSubscriptionUpdate,
+    supabase=Depends(get_supabase),
+):
+    """Set a user's tier. Resets matches_limit to the tier default; matches_used preserved."""
+    new_limit = TIER_MATCH_LIMITS.get(body.tier, 5)
+    res = (
+        supabase.table("subscriptions")
+        .update({"tier": body.tier, "matches_limit": new_limit, "status": "active"})
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    # Mirror the tier on users.subscription_tier so the existing UI stays in sync.
+    supabase.table("users").update({"subscription_tier": body.tier}).eq("id", user_id).execute()
+
+    user = (
+        supabase.table("users")
+        .select("phone, full_name")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    user_row = (user.data or [{}])[0]
+    sub = res.data[0]
+    return AdminSubscriptionRow(
+        user_id=user_id,
+        user_phone=user_row.get("phone"),
+        full_name=user_row.get("full_name"),
+        tier=sub.get("tier", body.tier),
+        status=sub.get("status", "active"),
+        matches_used=sub.get("matches_used", 0),
+        matches_limit=sub.get("matches_limit", new_limit),
+        current_period_end=sub.get("current_period_end"),
+        created_at=sub.get("created_at"),
+    )

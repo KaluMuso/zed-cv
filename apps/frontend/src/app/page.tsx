@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Counter } from "@/components/ui/Counter";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { ChevronMotif } from "@/components/ui/ChevronMotif";
+import { useAuth } from "@/lib/auth";
 
 const stats = [
   { value: 542, suffix: "+", label: "Jobs matched" },
@@ -56,6 +57,10 @@ const testimonials = [
 ];
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuth();
+  const ctaHref = isAuthenticated ? "/matches" : "/auth";
+  const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Get Started Free";
+
   return (
     <div>
       {/* ─── Hero ─── */}
@@ -101,8 +106,8 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-8">
-              <Link href="/auth" className="btn btn-primary btn-lg">
-                Get Started Free <Icon name="arrowRight" size={16} />
+              <Link href={ctaHref} className="btn btn-primary btn-lg">
+                {ctaLabel} <Icon name="arrowRight" size={16} />
               </Link>
               <Link href="/pricing" className="btn btn-ghost btn-lg">
                 View Plans
@@ -287,8 +292,8 @@ export default function HomePage() {
                 relevance, skills overlap, location fit — so you can see where
                 you shine and where to grow.
               </p>
-              <Link href="/auth" className="btn btn-primary">
-                Try it free <Icon name="arrowRight" size={14} />
+              <Link href={ctaHref} className="btn btn-primary">
+                {isAuthenticated ? "Open dashboard" : "Try it free"} <Icon name="arrowRight" size={14} />
               </Link>
             </div>
 
@@ -467,7 +472,7 @@ export default function HomePage() {
                 jobs, faster.
               </p>
               <Link
-                href="/auth"
+                href={ctaHref}
                 className="btn btn-lg"
                 style={{
                   background: "#faf7f2",
@@ -475,7 +480,7 @@ export default function HomePage() {
                   fontWeight: 600,
                 }}
               >
-                Get Started Free <Icon name="arrowRight" size={16} />
+                {ctaLabel} <Icon name="arrowRight" size={16} />
               </Link>
             </div>
           </div>

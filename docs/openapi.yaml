@@ -230,12 +230,93 @@ components:
         experience_summary: { type: string }
         parsing_confidence: { type: number, minimum: 0, maximum: 1 }
 
+    CVAnalysisResponse:
+      type: object
+      properties:
+        overall: { type: integer, minimum: 0, maximum: 100 }
+        skills: { type: integer, minimum: 0, maximum: 100 }
+        format: { type: integer, minimum: 0, maximum: 100 }
+        impact: { type: integer, minimum: 0, maximum: 100 }
+        strengths: { type: array, items: { type: string } }
+        improvements: { type: array, items: { type: string } }
+        cached: { type: boolean }
+
     CVGenerateRequest:
       type: object
-      required: [job_id]
+      description: Provide either job_id (lookup target from jobs table) OR job_title (free-form).
       properties:
         job_id: { type: string, format: uuid }
-        style: { type: string, enum: [professional, modern, simple], default: professional }
+        job_title: { type: string, maxLength: 500 }
+        company: { type: string, maxLength: 255 }
+        job_description: { type: string, maxLength: 10000 }
+
+    CVGenerateResponse:
+      type: object
+      properties:
+        cv_generation_id: { type: string, format: uuid }
+        content: { type: string }
+        word_count: { type: integer }
+        job_title: { type: string }
+        company: { type: string }
+
+    AdminMatchRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        user_phone: { type: string }
+        job_id: { type: string, format: uuid }
+        job_title: { type: string }
+        job_company: { type: string }
+        score: { type: number }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    AdminMatchList:
+      type: object
+      properties:
+        matches: { type: array, items: { $ref: '#/components/schemas/AdminMatchRow' } }
+        total: { type: integer }
+        page: { type: integer }
+        per_page: { type: integer }
+        pages: { type: integer }
+
+    AdminTierBreakdown:
+      type: object
+      properties:
+        free: { type: integer }
+        starter: { type: integer }
+        professional: { type: integer }
+        total_active: { type: integer }
+
+    AdminSubscriptionRow:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        user_phone: { type: string }
+        full_name: { type: string }
+        tier: { type: string, enum: [free, starter, professional] }
+        status: { type: string, enum: [active, expired, cancelled, past_due] }
+        matches_used: { type: integer }
+        matches_limit: { type: integer }
+        current_period_end: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    AdminSubscriptionList:
+      type: object
+      properties:
+        breakdown: { $ref: '#/components/schemas/AdminTierBreakdown' }
+        subscriptions: { type: array, items: { $ref: '#/components/schemas/AdminSubscriptionRow' } }
+        total: { type: integer }
+        page: { type: integer }
+        per_page: { type: integer }
+        pages: { type: integer }
+
+    AdminSubscriptionUpdate:
+      type: object
+      required: [tier]
+      properties:
+        tier: { type: string, enum: [free, starter, professional] }
 
     Job:
       type: object
@@ -569,6 +650,58 @@ paths:
               schema: { $ref: '#/components/schemas/BulkDeactivateResponse' }
         '403': { description: Superadmin only }
 
+  /admin/matches:
+    get:
+      operationId: adminListMatches
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 25 } }
+        - { name: min_score, in: query, schema: { type: number, minimum: 0, maximum: 100 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminMatchList' }
+        '403': { description: Superadmin only }
+
+  /admin/subscriptions:
+    get:
+      operationId: adminListSubscriptions
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 25 } }
+        - { name: tier, in: query, schema: { type: string, enum: [free, starter, professional] } }
+        - { name: status, in: query, schema: { type: string, enum: [active, expired, cancelled, past_due] } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSubscriptionList' }
+        '403': { description: Superadmin only }
+
+  /admin/subscriptions/{user_id}:
+    parameters:
+      - { in: path, name: user_id, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: adminUpdateSubscription
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminSubscriptionUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSubscriptionRow' }
+        '403': { description: Superadmin only }
+        '404': { description: Subscription not found }
+
   /admin/payments:
     get:
       operationId: adminListPayments
@@ -604,6 +737,19 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CVUploadResponse' }
 
+  /cv/analyze:
+    post:
+      operationId: analyzeCV
+      summary: Score the user's primary CV and surface strengths/improvements
+      tags: [CV]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CVAnalysisResponse' }
+        '422': { description: No CV uploaded }
+
   /cv/generate:
     post:
       operationId: generateCV
@@ -614,7 +760,10 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CVGenerateRequest' }
       responses:
-        '200': { description: Generated CV }
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CVGenerateResponse' }
         '403': { description: Tier not sufficient }
 
   /jobs:

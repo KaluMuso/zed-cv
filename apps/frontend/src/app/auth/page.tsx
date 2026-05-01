@@ -17,7 +17,7 @@ const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 export default function AuthPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
   const [phoneDigits, setPhoneDigits] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
@@ -27,6 +27,15 @@ export default function AuthPage() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const fullPhone = `+260${phoneDigits.replace(/\s/g, "")}`;
+
+  // If the visitor is already signed in, send them to /matches.
+  // The flicker check (step !== "success") avoids stomping on the
+  // post-login welcome screen rendered just before this hook re-runs.
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && step !== "success") {
+      router.replace("/matches");
+    }
+  }, [authLoading, isAuthenticated, step, router]);
 
   // Resend countdown
   useEffect(() => {
@@ -292,11 +301,11 @@ export default function AuthPage() {
                 style={{ color: "var(--muted)" }}
               >
                 By continuing, you agree to our{" "}
-                <a href="#" style={{ color: "var(--ink-2)" }}>
+                <a href="/terms" style={{ color: "var(--ink-2)" }}>
                   Terms
                 </a>{" "}
                 and{" "}
-                <a href="#" style={{ color: "var(--ink-2)" }}>
+                <a href="/privacy" style={{ color: "var(--ink-2)" }}>
                   Privacy Policy
                 </a>
                 .
