@@ -8,7 +8,12 @@
       "Bash(python -m pytest apps/backend/tests/test_admin.py apps/backend/tests/test_profile.py)",
       "Bash(python -m pytest apps/backend/tests/)",
       "Bash(python -m pytest apps/backend/tests/test_cv.py::TestCVUpload::test_upload_rejects_unauthenticated -v)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git mv *)",
+      "Bash(git push *)",
+      "mcp__claude_ai_Vercel__list_deployments"
     ]
   }
 }

@@ -17,7 +17,9 @@ const columns = [
     title: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Contact", href: "mailto:convergeozambia@gmail.com" },
+      { label: "Blog", href: "/blog" },
+      { label: "Careers", href: "/careers" },
+      { label: "Contact", href: "/contact" },
     ],
   },
   {
@@ -25,6 +27,7 @@ const columns = [
     links: [
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
+      { label: "Cookie Policy", href: "/cookies" },
     ],
   },
 ];
