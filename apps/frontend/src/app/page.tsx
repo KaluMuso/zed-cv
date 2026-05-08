@@ -17,44 +17,62 @@ const stats = [
 
 const howItWorks = [
   {
+    n: "01",
     icon: "upload",
     title: "Upload your CV",
     description:
-      "Drop your CV in PDF, Word, or even snap a photo. Our AI extracts your skills, experience, and career trajectory.",
+      "PDF, DOC, or photo. Our AI parses your skills, education and experience in seconds.",
   },
   {
-    icon: "target",
-    title: "Get scored matches",
+    n: "02",
+    icon: "sparkle",
+    title: "AI scores every job",
     description:
-      "We score every Zambian job listing against your profile. See exactly why each role fits — and where the gaps are.",
+      "6 boards. 542+ open roles. Each scored on relevance, skills overlap, and bonus signals.",
   },
   {
+    n: "03",
     icon: "whatsapp",
-    title: "Receive on WhatsApp",
+    title: "Get pinged on WhatsApp",
     description:
-      "Top matches land in your WhatsApp every morning. Reply to get a tailored CV or cover letter on the spot.",
+      "Daily summary of your top 3 matches, plus apply links. No spam. Cancel anytime.",
   },
+];
+
+const scienceBullets: [string, string][] = [
+  ["Relevance", "Career trajectory & seniority"],
+  ["Skills overlap", "Matched vs missing competencies"],
+  ["Local fit", "Location, salary band, work permit"],
 ];
 
 const testimonials = [
   {
+    name: "Mwila K.",
+    role: "Junior Accountant, Lusaka",
     quote:
-      "I uploaded my CV at 8 PM and by 9 AM I had three interviews lined up. The matching is genuinely smart.",
-    name: "Chanda Mwape",
-    role: "Accountant, Lusaka",
+      "Three matches in week one. Got a callback from ZANACO before the weekend.",
+    accent: "green",
   },
   {
+    name: "Bwalya M.",
+    role: "Software Developer, Ndola",
     quote:
-      "The tailored CVs are a game-changer. Each one highlights exactly what the employer is looking for.",
-    name: "Bwalya Mutale",
-    role: "Software Developer, Kitwe",
+      "I was applying blind on Facebook groups. Now WhatsApp pings me every morning with curated roles.",
+    accent: "copper",
   },
   {
+    name: "Natasha P.",
+    role: "Marketing, Kitwe",
     quote:
-      "WhatsApp delivery means I never miss a deadline. It feels like having a personal career assistant.",
-    name: "Mwila Banda",
-    role: "Nurse, Ndola",
+      "The skill gap explanation showed me exactly what was missing from my CV. Updated it, scores went up.",
+    accent: "green",
   },
+];
+
+const heroMatches: [string, string, number][] = [
+  ["Senior Accountant", "ZANACO", 92],
+  ["Software Developer", "MTN Zambia", 88],
+  ["Logistics Coordinator", "Zambia Sugar", 68],
 ];
 
 export default function HomePage() {
@@ -64,287 +82,474 @@ export default function HomePage() {
   return (
     <div>
       {/* ─── Hero ─── */}
-      <section
-        className="relative overflow-hidden"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, var(--green-100) 0%, var(--bg) 70%)",
-        }}
-      >
-        <div className="grain" style={{ position: "absolute", inset: 0, opacity: 0.4 }} />
+      <section className="grain relative overflow-hidden">
         <div
-          className="absolute -top-20 -right-20 opacity-20 hidden lg:block"
-          style={{ zIndex: 0 }}
-        >
-          <ChevronMotif w={500} h={350} />
-        </div>
-
-        <div className="relative z-10 max-w-[1280px] mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28">
-          <div className="max-w-3xl fade-up">
-            <div className="eyebrow mb-4">AI-powered job matching</div>
-            <h1
-              className="font-display leading-[0.95] tracking-tight"
-              style={{
-                fontSize: "clamp(44px, 7vw, 88px)",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              Find your perfect
-              <br />
-              <span className="italic" style={{ color: "var(--copper-500)" }}>
-                match
-              </span>{" "}
-              in Zambia.
-            </h1>
-            <p
-              className="mt-6 text-base md:text-lg leading-relaxed max-w-xl"
-              style={{ color: "var(--muted)" }}
-            >
-              Upload your CV and let AI score you against every open role in
-              Zambia. Get matches on WhatsApp, tailored CVs per job, and land
-              interviews faster.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 mt-8">
-              {isAuthenticated ? (
-                <Link href="/matches" className="btn btn-primary btn-lg">
-                  Go to Dashboard <Icon name="arrowRight" size={16} />
-                </Link>
-              ) : (
-                <Link href="/auth" className="btn btn-primary btn-lg">
-                  Get Started Free <Icon name="arrowRight" size={16} />
-                </Link>
-              )}
-              <Link href="/pricing" className="btn btn-ghost btn-lg">
-                View Plans
-              </Link>
-            </div>
-          </div>
-
-          {/* Hero visual — stacked cards */}
-          <div className="hidden lg:block absolute right-12 top-1/2 -translate-y-1/2">
-            <div className="relative">
-              {/* CV preview card */}
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(80% 50% at 80% 0%, color-mix(in oklab, var(--copper-100) 60%, transparent) 0%, transparent 60%), radial-gradient(60% 40% at 0% 100%, color-mix(in oklab, var(--green-100) 70%, transparent) 0%, transparent 60%)",
+          }}
+        />
+        <div className="relative max-w-[1280px] mx-auto px-6 pt-16 pb-24 md:pt-20">
+          <div className="grid gap-12 lg:gap-16 lg:grid-cols-[1.1fr_1fr] items-center">
+            {/* LEFT — copy */}
+            <div className="fade-up">
               <div
-                className="card p-6 w-[280px] rotate-2"
-                style={{ boxShadow: "var(--shadow-lg)" }}
+                className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full"
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
+                }}
               >
-                <div className="eyebrow mb-3">Your CV</div>
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{
+                    background: "var(--green-500)",
+                    boxShadow:
+                      "0 0 0 4px color-mix(in oklab, var(--green-500) 25%, transparent)",
+                  }}
+                />
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: "var(--ink-2)" }}
+                >
+                  Live across Lusaka, Kitwe, Solwezi & 6 more
+                </span>
+              </div>
+
+              <h1
+                className="font-display mt-7 leading-none"
+                style={{
+                  fontSize: "clamp(48px, 8vw, 96px)",
+                  letterSpacing: "-0.025em",
+                  color: "var(--ink)",
+                }}
+              >
+                Your next job,
+                <br />
+                <span
+                  className="italic"
+                  style={{ color: "var(--copper-600)" }}
+                >
+                  matched
+                </span>{" "}
+                by AI —
+                <br />
+                delivered on
+                <span className="relative inline-block ml-3.5">
+                  <span
+                    className="absolute"
                     style={{
-                      background:
-                        "linear-gradient(135deg, var(--green-600), var(--copper-500))",
+                      inset: "0.05em -0.15em",
+                      background: "var(--green-100)",
+                      transform: "rotate(-1deg)",
+                      borderRadius: 4,
+                      zIndex: -1,
                     }}
+                  />
+                  <span> WhatsApp.</span>
+                </span>
+              </h1>
+
+              <p
+                className="mt-7 text-lg leading-relaxed max-w-[540px]"
+                style={{ color: "var(--ink-2)" }}
+              >
+                Upload your CV. We scrape every Zambian job board, score the
+                matches against your skills, and ping the best ones to your
+                phone. K0 to start.
+              </p>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                {isAuthenticated ? (
+                  <Link href="/matches" className="btn btn-primary btn-lg">
+                    Go to Dashboard <Icon name="arrowRight" size={16} />
+                  </Link>
+                ) : (
+                  <Link href="/auth" className="btn btn-primary btn-lg">
+                    Start matching — 30 seconds <Icon name="arrowRight" size={16} />
+                  </Link>
+                )}
+                <Link href="/jobs" className="btn btn-ghost btn-lg">
+                  Browse jobs first
+                </Link>
+              </div>
+
+              <div
+                className="mt-7 flex items-center gap-3.5 text-sm"
+                style={{ color: "var(--muted)" }}
+              >
+                <Icon name="whatsapp" size={16} />
+                <span>WhatsApp OTP. No email. No password.</span>
+              </div>
+            </div>
+
+            {/* RIGHT — stacked CV + WhatsApp card */}
+            <div className="hidden lg:block relative h-[560px]">
+              {/* Background dotted card */}
+              <div
+                className="dot-bg absolute"
+                style={{
+                  inset: "40px 0 40px 40px",
+                  borderRadius: 24,
+                  border: "1px solid var(--line)",
+                }}
+              />
+
+              {/* CV preview card (back, rotated) */}
+              <div
+                className="card absolute"
+                style={{
+                  top: 24,
+                  left: 0,
+                  width: "70%",
+                  padding: 24,
+                  transform: "rotate(-2deg)",
+                  boxShadow: "var(--shadow-lg)",
+                }}
+              >
+                <div className="flex items-center gap-2.5 mb-4">
+                  <span style={{ color: "var(--copper-500)" }}>
+                    <Icon name="file" size={16} />
+                  </span>
+                  <span
+                    className="mono text-[11px]"
+                    style={{ color: "var(--muted)" }}
                   >
-                    CM
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Chanda Mwape</div>
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>
-                      Senior Accountant
-                    </div>
-                  </div>
+                    chanda_mwape_cv.pdf
+                  </span>
+                </div>
+                <div
+                  className="font-display"
+                  style={{ fontSize: 26, lineHeight: 1.1, marginBottom: 6 }}
+                >
+                  Chanda Mwape
+                </div>
+                <div
+                  className="text-[13px] mb-[18px]"
+                  style={{ color: "var(--muted)" }}
+                >
+                  Financial Analyst &middot; Lusaka
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {["Excel", "SAP", "IFRS", "Tax"].map((s) => (
-                    <span key={s} className="tag tag-mono tag-green">
-                      <Icon name="check" size={10} /> {s}
+                  {["Python", "SQL", "Excel", "Modeling", "IFRS"].map((s) => (
+                    <span key={s} className="tag tag-mono">
+                      {s}
                     </span>
+                  ))}
+                </div>
+                <div
+                  className="mt-[18px] h-1 rounded overflow-hidden"
+                  style={{ background: "var(--bg-2)" }}
+                >
+                  <div
+                    className="h-full"
+                    style={{
+                      width: "78%",
+                      background:
+                        "linear-gradient(90deg, var(--green-500), var(--copper-500))",
+                    }}
+                  />
+                </div>
+                <div
+                  className="mt-2 text-[11px] mono"
+                  style={{ color: "var(--muted)" }}
+                >
+                  Profile 78% complete
+                </div>
+              </div>
+
+              {/* WhatsApp match notification card (front) */}
+              <div
+                className="card absolute"
+                style={{
+                  bottom: 0,
+                  right: 0,
+                  width: "78%",
+                  padding: 22,
+                  transform: "rotate(1.5deg)",
+                  boxShadow: "var(--shadow-lg)",
+                  zIndex: 2,
+                  background: "var(--surface)",
+                }}
+              >
+                <div className="flex items-center gap-2.5 mb-3.5">
+                  <div
+                    className="rounded-lg flex items-center justify-center"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      background: "#25D366",
+                      color: "#fff",
+                    }}
+                  >
+                    <Icon name="whatsapp" size={14} />
+                  </div>
+                  <div className="text-xs" style={{ color: "var(--muted)" }}>
+                    WhatsApp &middot; just now
+                  </div>
+                </div>
+                <div
+                  className="font-display"
+                  style={{
+                    fontSize: 22,
+                    lineHeight: 1.25,
+                    color: "var(--ink)",
+                  }}
+                >
+                  3 new matches for you, Chanda.
+                </div>
+                <div className="mt-4 flex flex-col gap-2.5">
+                  {heroMatches.map(([t, c, sc]) => (
+                    <div
+                      key={t}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-[10px]"
+                      style={{ background: "var(--bg-2)" }}
+                    >
+                      <div className="flex-1">
+                        <div className="text-[13px] font-semibold">{t}</div>
+                        <div
+                          className="text-[11px]"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          {c}
+                        </div>
+                      </div>
+                      <span
+                        className="mono text-xs font-semibold px-2 py-1 rounded"
+                        style={{
+                          background:
+                            sc >= 85
+                              ? "var(--green-100)"
+                              : "var(--copper-100)",
+                          color:
+                            sc >= 85
+                              ? "var(--green-700)"
+                              : "var(--copper-600)",
+                        }}
+                      >
+                        {sc}
+                      </span>
+                    </div>
                   ))}
                 </div>
               </div>
 
-              {/* WhatsApp notification card */}
-              <div
-                className="card p-4 w-[240px] absolute -bottom-12 -left-16 -rotate-3"
-                style={{ boxShadow: "var(--shadow-lg)" }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon
-                    name="whatsapp"
-                    size={16}
-                    className="text-green-600"
-                  />
-                  <span className="text-xs font-medium" style={{ color: "var(--green-700)" }}>
-                    WhatsApp
-                  </span>
-                </div>
-                <p className="text-xs" style={{ color: "var(--ink-2)" }}>
-                  New match: <strong>ZANACO Sr. Accountant</strong> — 92%
-                  match score
-                </p>
+              {/* Floating chevron accent */}
+              <div className="absolute top-0 right-0 opacity-50">
+                <ChevronMotif w={120} h={80} />
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ─── Stats Strip ─── */}
-      <section
-        className="py-10 md:py-14"
-        style={{
-          background: "var(--bg-2)",
-          borderTop: "1px solid var(--line)",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div className="max-w-[1280px] mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {stats.map((stat) => (
-            <div key={stat.label}>
-              <div
-                className="font-display text-4xl md:text-5xl"
-                style={{ color: "var(--green-700)" }}
-              >
-                <Counter to={stat.value} suffix={stat.suffix} />
-              </div>
-              <div
-                className="mt-1 text-sm"
-                style={{ color: "var(--muted)" }}
-              >
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── How It Works ─── */}
-      <section className="py-16 md:py-24">
-        <div className="max-w-[1280px] mx-auto px-6">
-          <div className="text-center mb-12">
-            <div className="eyebrow mb-3">How it works</div>
-            <h2
-              className="font-display"
-              style={{
-                fontSize: "clamp(32px, 4vw, 52px)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Three steps to your{" "}
-              <span className="italic" style={{ color: "var(--copper-500)" }}>
-                next role
-              </span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {howItWorks.map((step, i) => (
-              <div key={step.title} className="card card-hover p-8 reveal" style={{ transitionDelay: `${i * 100}ms` }}>
+          {/* Stats strip */}
+          <div
+            className="mt-20 py-7 grid grid-cols-2 md:grid-cols-4 gap-4"
+            style={{
+              borderTop: "1px solid var(--line)",
+              borderBottom: "1px solid var(--line)",
+            }}
+          >
+            {stats.map((s) => (
+              <div key={s.label}>
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  className="font-display leading-none"
                   style={{
-                    background: "var(--green-100)",
-                    color: "var(--green-700)",
+                    fontSize: "clamp(36px, 5vw, 56px)",
+                    color: "var(--ink)",
                   }}
                 >
-                  <Icon name={step.icon} size={22} />
+                  <Counter to={s.value} suffix={s.suffix} />
                 </div>
-                <div
-                  className="font-mono text-xs mb-2"
-                  style={{ color: "var(--muted)" }}
-                >
-                  0{i + 1}
-                </div>
-                <h3
-                  className="font-display text-2xl mb-3"
-                  style={{ letterSpacing: "-0.01em" }}
-                >
-                  {step.title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{ color: "var(--muted)" }}
-                >
-                  {step.description}
-                </p>
+                <div className="eyebrow mt-2">{s.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* ─── How It Works ─── */}
+      <section className="max-w-[1280px] mx-auto px-6 py-20 md:py-24">
+        <div className="flex flex-wrap items-baseline justify-between gap-4">
+          <div>
+            <div className="eyebrow">§ 01 / How it works</div>
+            <h2
+              className="font-display mt-2"
+              style={{
+                fontSize: "clamp(36px, 5vw, 64px)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Three steps,{" "}
+              <span className="italic" style={{ color: "var(--copper-600)" }}>
+                thirty seconds
+              </span>
+              .
+            </h2>
+          </div>
+          <div className="hidden md:block">
+            <ChevronMotif w={180} h={56} />
+          </div>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {howItWorks.map((step, i) => (
+            <div
+              key={step.n}
+              className="card card-hover p-7 reveal"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <div className="flex items-start justify-between">
+                <div
+                  className="w-12 h-12 rounded-xl inline-flex items-center justify-center"
+                  style={{
+                    background: "var(--green-100)",
+                    color: "var(--green-700)",
+                  }}
+                >
+                  <Icon name={step.icon} size={20} />
+                </div>
+                <span
+                  className="mono text-xs"
+                  style={{ color: "var(--copper-500)" }}
+                >
+                  {step.n}
+                </span>
+              </div>
+              <h3
+                className="font-display mt-6 mb-2"
+                style={{ fontSize: 28, letterSpacing: "-0.01em" }}
+              >
+                {step.title}
+              </h3>
+              <p
+                className="text-sm leading-relaxed m-0"
+                style={{ color: "var(--muted)" }}
+              >
+                {step.description}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ─── Score Breakdown Showcase ─── */}
       <section
-        className="py-16 md:py-24"
-        style={{ background: "var(--bg-2)" }}
+        style={{
+          background: "var(--bg-2)",
+          borderTop: "1px solid var(--line)",
+          borderBottom: "1px solid var(--line)",
+        }}
       >
-        <div className="max-w-[1280px] mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-[1280px] mx-auto px-6 py-20 md:py-24">
+          <div className="grid gap-12 lg:gap-16 lg:grid-cols-2 items-center">
             <div>
-              <div className="eyebrow mb-3">Transparent matching</div>
+              <div className="eyebrow">§ 02 / The science</div>
               <h2
-                className="font-display mb-4"
+                className="font-display mt-2 mb-6"
                 style={{
-                  fontSize: "clamp(32px, 4vw, 48px)",
+                  fontSize: "clamp(36px, 5vw, 64px)",
                   letterSpacing: "-0.02em",
                 }}
               >
-                See exactly{" "}
+                Not a keyword filter.{" "}
                 <span
                   className="italic"
-                  style={{ color: "var(--copper-500)" }}
+                  style={{ color: "var(--copper-600)" }}
                 >
-                  why
-                </span>{" "}
-                each job fits
+                  A score.
+                </span>
               </h2>
               <p
-                className="text-base leading-relaxed mb-8"
-                style={{ color: "var(--muted)" }}
+                className="text-base leading-relaxed max-w-[500px]"
+                style={{ color: "var(--ink-2)" }}
               >
-                No black boxes. Every match comes with a full breakdown —
-                relevance, skills overlap, location fit — so you can see where
-                you shine and where to grow.
+                Every job is rated on three axes: how relevant the role is to
+                your career history, how well your skills overlap, and bonus
+                signals like location and salary fit. Transparent, explainable,
+                and tuned for the Zambian market.
               </p>
-              <Link href={isAuthenticated ? "/matches" : "/auth"} className="btn btn-primary">
-                {isAuthenticated ? "View your matches" : "Try it free"} <Icon name="arrowRight" size={14} />
-              </Link>
+              <ul className="mt-7 list-none p-0 flex flex-col gap-3.5">
+                {scienceBullets.map(([k, v]) => (
+                  <li key={k} className="flex items-start gap-3.5">
+                    <div
+                      className="rounded-full inline-flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{
+                        width: 24,
+                        height: 24,
+                        background: "var(--green-100)",
+                        color: "var(--green-700)",
+                      }}
+                    >
+                      <Icon name="check" size={14} />
+                    </div>
+                    <div>
+                      <div className="font-semibold">{k}</div>
+                      <div
+                        className="text-sm"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        {v}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* Score card mockup */}
-            <div className="card p-8" style={{ boxShadow: "var(--shadow-md)" }}>
-              <div className="flex items-center gap-6 mb-6">
-                <ScoreRing score={92} size={100} stroke={8} />
+            <div
+              className="card p-8"
+              style={{ boxShadow: "var(--shadow-md)" }}
+            >
+              <div className="flex items-start justify-between mb-5">
                 <div>
-                  <div className="font-display text-2xl">
+                  <div
+                    className="font-display"
+                    style={{ fontSize: 24, lineHeight: 1.1 }}
+                  >
                     Senior Accountant
                   </div>
                   <div
-                    className="text-sm"
+                    className="text-[13px] mt-0.5"
                     style={{ color: "var(--muted)" }}
                   >
                     ZANACO &middot; Lusaka
                   </div>
                 </div>
+                <ScoreRing score={92} size={84} stroke={7} />
               </div>
-              <div className="space-y-4">
+              <div className="flex flex-col gap-3.5 mt-2">
                 {[
-                  { label: "Relevance", value: 95, tone: "green" },
-                  { label: "Skills overlap", value: 88, tone: "copper" },
-                  { label: "Local fit", value: 92, tone: "green" },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <div className="flex justify-between mb-1.5">
-                      <span className="text-sm font-medium">{item.label}</span>
+                  ["Relevance", 95, "green"] as const,
+                  ["Skills overlap", 88, "copper"] as const,
+                  ["Local fit", 92, "green"] as const,
+                ].map(([k, v, tone]) => (
+                  <div key={k}>
+                    <div className="flex justify-between items-baseline mb-1.5">
                       <span
-                        className="font-mono text-xs"
+                        className="text-[13px]"
+                        style={{ color: "var(--ink-2)" }}
+                      >
+                        {k}
+                      </span>
+                      <span
+                        className="mono text-xs"
                         style={{ color: "var(--muted)" }}
                       >
-                        {item.value}/100
+                        {v}/100
                       </span>
                     </div>
                     <div
-                      className="h-1.5 rounded-full overflow-hidden"
-                      style={{ background: "var(--bg)" }}
+                      className="rounded-[3px] overflow-hidden"
+                      style={{ height: 6, background: "var(--bg-2)" }}
                     >
                       <div
-                        className="h-full rounded-full transition-all duration-1000"
+                        className="h-full rounded-[3px] transition-[width] duration-1000"
                         style={{
-                          width: `${item.value}%`,
+                          width: `${v}%`,
                           background:
-                            item.tone === "green"
+                            tone === "green"
                               ? "var(--green-500)"
                               : "var(--copper-500)",
                         }}
@@ -353,130 +558,136 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
+              <div
+                className="mt-5 p-4 rounded-[10px]"
+                style={{
+                  background: "var(--green-50)",
+                  border: "1px dashed var(--green-300)",
+                }}
+              >
+                <div
+                  className="eyebrow mb-1.5"
+                  style={{ color: "var(--green-700)" }}
+                >
+                  Why this match
+                </div>
+                <div
+                  className="text-[13px] leading-relaxed"
+                  style={{ color: "var(--green-800)" }}
+                >
+                  Strong overlap on IFRS reporting and Excel modeling. Lusaka
+                  location matches your profile. One missing skill: SAP — minor
+                  for this role.
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ─── Testimonials ─── */}
-      <section className="py-16 md:py-24">
-        <div className="max-w-[1280px] mx-auto px-6">
-          <div className="text-center mb-12">
-            <div className="eyebrow mb-3">What people say</div>
-            <h2
-              className="font-display"
-              style={{
-                fontSize: "clamp(32px, 4vw, 48px)",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Trusted by{" "}
-              <span className="italic" style={{ color: "var(--copper-500)" }}>
-                Zambian professionals
-              </span>
-            </h2>
-          </div>
+      <section className="max-w-[1280px] mx-auto px-6 py-20 md:py-24">
+        <div className="eyebrow">§ 03 / Voices</div>
+        <h2
+          className="font-display mt-2 mb-12 max-w-[800px]"
+          style={{
+            fontSize: "clamp(36px, 5vw, 64px)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          From CV upload to first interview, in{" "}
+          <span className="italic" style={{ color: "var(--copper-600)" }}>
+            11 days.
+          </span>
+        </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <div key={t.name} className="card p-6 reveal" style={{ transitionDelay: `${i * 100}ms` }}>
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Icon
-                      key={s}
-                      name="star"
-                      size={14}
-                      className="fill-current"
-                      strokeWidth={0}
-                    />
-                  ))}
-                </div>
-                <p
-                  className="text-sm leading-relaxed mb-6"
-                  style={{ color: "var(--ink-2)" }}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {testimonials.map((t, i) => (
+            <div
+              key={t.name}
+              className="card p-7 flex flex-col reveal"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <span style={{ color: "var(--copper-500)" }}>
+                <Icon name="star" size={18} />
+              </span>
+              <p
+                className="font-display my-5"
+                style={{
+                  fontSize: 22,
+                  lineHeight: 1.4,
+                  color: "var(--ink)",
+                }}
+              >
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <div className="flex items-center gap-3 mt-auto">
+                <div
+                  className="rounded-full inline-flex items-center justify-center text-white font-semibold"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    fontSize: 14,
+                    background: `linear-gradient(135deg, ${t.accent === "copper" ? "var(--copper-500)" : "var(--green-700)"} 0%, var(--copper-500) 120%)`,
+                  }}
                 >
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div className="flex items-center gap-3">
+                  {t.name
+                    .split(" ")
+                    .map((w) => w[0])
+                    .join("")}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold">{t.name}</div>
                   <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, var(--green-600), var(--copper-500))",
-                    }}
+                    className="text-[13px]"
+                    style={{ color: "var(--muted)" }}
                   >
-                    {t.name
-                      .split(" ")
-                      .map((w) => w[0])
-                      .join("")}
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{t.name}</div>
-                    <div
-                      className="text-xs"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      {t.role}
-                    </div>
+                    {t.role}
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ─── Final CTA ─── */}
-      <section className="py-16 md:py-24">
-        <div className="max-w-[1280px] mx-auto px-6">
+      <section className="max-w-[1280px] mx-auto px-6 pb-24">
+        <div
+          className="grain relative overflow-hidden rounded-3xl"
+          style={{
+            padding: "64px 48px",
+            background:
+              "linear-gradient(135deg, var(--green-800) 0%, var(--green-700) 60%, var(--copper-600) 130%)",
+            color: "#faf7f2",
+          }}
+        >
           <div
-            className="relative overflow-hidden rounded-2xl p-10 md:p-16 text-center"
-            style={{
-              background:
-                "linear-gradient(165deg, var(--green-800) 0%, var(--green-700) 60%, var(--copper-700) 130%)",
-              color: "#faf7f2",
-            }}
+            className="absolute hidden md:block"
+            style={{ right: -40, top: -40, opacity: 0.18 }}
           >
+            <ChevronMotif w={420} h={400} />
+          </div>
+          <div className="relative">
             <div
-              className="grain"
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0.5,
-              }}
-            />
-            <div
-              className="absolute -top-10 -right-10 opacity-20 hidden md:block"
+              className="eyebrow"
+              style={{ color: "rgba(255,255,255,0.7)" }}
             >
-              <ChevronMotif w={300} h={200} />
+              § Final note
             </div>
-
-            <div className="relative z-10">
-              <div
-                className="eyebrow mb-3"
-                style={{ color: "rgba(255,255,255,0.6)" }}
-              >
-                Ready?
-              </div>
-              <h2
-                className="font-display mb-4"
-                style={{
-                  fontSize: "clamp(32px, 5vw, 56px)",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Your next career move{" "}
-                <span className="italic" style={{ color: "var(--copper-300)" }}>
-                  starts here
-                </span>
-              </h2>
-              <p
-                className="text-base md:text-lg mb-8 max-w-lg mx-auto"
-                style={{ opacity: 0.85 }}
-              >
-                Join thousands of Zambian professionals using AI to land better
-                jobs, faster.
-              </p>
+            <h2
+              className="font-display mt-3 max-w-[800px]"
+              style={{
+                fontSize: "clamp(40px, 6vw, 80px)",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              Stop scrolling Facebook groups.{" "}
+              <span className="italic" style={{ color: "var(--copper-300)" }}>
+                Start matching.
+              </span>
+            </h2>
+            <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href={isAuthenticated ? "/matches" : "/auth"}
                 className="btn btn-lg"
@@ -486,7 +697,21 @@ export default function HomePage() {
                   fontWeight: 600,
                 }}
               >
-                {isAuthenticated ? "Go to Dashboard" : "Get Started Free"} <Icon name="arrowRight" size={16} />
+                {isAuthenticated
+                  ? "Go to Dashboard"
+                  : "Get started — K0 forever"}{" "}
+                <Icon name="arrowRight" size={16} />
+              </Link>
+              <Link
+                href="/pricing"
+                className="btn btn-lg"
+                style={{
+                  background: "transparent",
+                  color: "#faf7f2",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                See pricing
               </Link>
             </div>
           </div>

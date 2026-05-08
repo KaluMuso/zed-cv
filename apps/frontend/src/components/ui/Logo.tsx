@@ -22,7 +22,7 @@ export function Logo({ size = 28 }: LogoProps) {
         className="font-display tracking-tight"
         style={{ fontSize: size * 0.75, letterSpacing: "-0.02em" }}
       >
-        Zed<span style={{ color: "var(--copper-500)" }}>CV</span>
+        Zed<span style={{ color: "var(--copper-500)" }}>Apply</span>
       </span>
     </div>
   );

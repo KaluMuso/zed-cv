@@ -199,7 +199,7 @@ export default function AuthPage() {
           className="relative z-10 text-xs font-mono"
           style={{ opacity: 0.6 }}
         >
-          ZED CV &middot; VERGEO &middot; LUSAKA &middot; 2026
+          ZED APPLY &middot; VERGEO &middot; LUSAKA &middot; 2026
         </div>
       </aside>
 

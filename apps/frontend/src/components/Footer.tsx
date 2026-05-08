@@ -98,7 +98,7 @@ export function Footer() {
             className="text-xs font-mono"
             style={{ color: "var(--muted)" }}
           >
-            ZED CV &middot; VERGEO &middot; LUSAKA &middot; 2026
+            ZED APPLY &middot; VERGEO &middot; LUSAKA &middot; 2026
           </p>
           <p
             className="text-xs"

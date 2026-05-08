@@ -1,5 +1,5 @@
 const rawSite =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL) || "https://www.zedcv.com";
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_SITE_URL) || "https://www.zedapply.com";
 
 export const SITE_URL = rawSite.replace(/\/$/, "");
 
