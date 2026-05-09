@@ -41,7 +41,7 @@ async def generate(
             .single()
             .execute()
         )
-        if not sub.data or sub.data["tier"] != "professional":
+        if not sub.data or sub.data["tier"] not in ("professional", "super_standard"):
             raise HTTPException(
                 status_code=403,
                 detail="Cover letter generation requires the Professional plan (K250/mo). "
