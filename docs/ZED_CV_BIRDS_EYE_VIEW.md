@@ -8,13 +8,17 @@
 
 ## 1. What Is Zed CV?
 
-Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users upload their CV, the system parses it with AI, generates vector embeddings, and matches them against scraped/posted jobs using cosine similarity + skill overlap + location bonuses. Notifications go out via WhatsApp (primary) and email (secondary). Payment is via MTN MoMo / Airtel Money through DPO Pay (Lenco API pending).
+Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users upload their CV, the system parses it with AI, generates vector embeddings, and matches them against scraped/posted jobs using cosine similarity + skill overlap + location bonuses. Notifications go out via WhatsApp (primary) and email (secondary). Payment is via MTN MoMo / Airtel Money through DPO Pay (Lenco initiation live, webhook handler still missing).
 
 **Live URLs:**
 - Frontend: https://www.zedapply.com (Vercel, project: prj_Hp6wJwdSO7XVGjy5n1UGJBnrsAmr) - Domain recently changed from zedcv.vergeo.company
 - Backend API: https://zedcv-api.vergeo.company (OCI free-tier Ubuntu, Docker)
 - Supabase project: chnesgmcuxyhwhzomdov
 - WhatsApp number: +260761359005 (WAHA)
+
+### Production state as of 2026-05-09
+
+The platform is **deployed but not yet in active use**. Verified via Supabase: **1 user, 1 CV uploaded, 12 jobs ingested, 0 matches ever generated**. Treat the "What Has Been Built" inventory in §8 as code-shipped, not as user-validated. The matching pipeline, payment flow, and WhatsApp bot have not been exercised against real-world load — surfaces flagged in §10 (DPO webhook hardening, Lenco webhook handler, `payment_method` CHECK constraint, tier-limit drift) will likely fail the moment a paying user appears.
 
 ---
 
@@ -36,12 +40,12 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
                     ┌─────────────────────────┤
                     ▼                         ▼
              ┌─────────────┐          ┌──────────────┐
-             │  Resend      │          │  OpenAI       │
+             │  Resend      │          │  Gemini       │
              │  (Email)     │          │  (Embeddings) │
              └─────────────┘          └──────────────┘
 
 ┌──────────────────┐
-│  n8n             │──── Job scraping (every 12h) ──▶ POST /api/v1/jobs/ingest
+│  n8n             │──── Job scraping (every 12h) ──▶ POST /api/v1/jobs (auth-gated)
 │  (OCI Docker)    │──── Daily digest workflow
 └──────────────────┘
 ```
@@ -65,8 +69,8 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
 | AI - OCR | Anthropic Claude (fallback for image CVs) | Via anthropic SDK |
 | WhatsApp | WAHA (devlikeapro) | OTP, notifications, bot commands |
 | Email | Resend | Welcome, match digest, job alerts, interview notifications |
-| Payments | DPO Pay (live) + Lenco (planned) | MTN MoMo, Airtel Money, card |
-| Scraping | n8n → Gemini AI → POST /ingest | JobSearchZM.com, Go Zambia Jobs, every 12h |
+| Payments | DPO Pay (live) + Lenco (initiation live, webhook handler missing) | MTN MoMo, Airtel Money, card |
+| Scraping | n8n → Gemini AI → POST /api/v1/jobs | JobSearchZM.com, Go Zambia Jobs, every 12h |
 | Hosting | Vercel (frontend), OCI free tier (backend/infra) | Docker Compose |
 
 ---
@@ -98,35 +102,61 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
 
 ---
 
-## 5. API Endpoints (22 total)
+## 5. API Endpoints (37 across 10 route files)
 
 ### Auth (2)
 - `POST /api/v1/auth/otp/request` — Send OTP via WhatsApp
 - `POST /api/v1/auth/otp/verify` — Verify OTP, return JWT tokens
 
+### Profile (8)
+- `GET /api/v1/profile` — Current user profile
+- `PATCH /api/v1/profile` — Update profile fields (name, email, location, years_experience)
+- `DELETE /api/v1/profile` — Delete account
+- `GET /api/v1/profile/preferences` — Notification preferences
+- `PATCH /api/v1/profile/preferences` — Update preferences (email/WhatsApp toggles)
+- `GET /api/v1/profile/skills` — User's skill list
+- `POST /api/v1/profile/skills` — Add skill
+- `PATCH /api/v1/profile/skills/{name}` — Update skill (e.g., proficiency)
+- `DELETE /api/v1/profile/skills/{name}` — Remove skill
+
 ### CV (3)
 - `POST /api/v1/cv/upload` — Upload CV file (PDF/DOCX/JPG/PNG, max 5MB)
+- `POST /api/v1/cv/analyze` — AI analysis of primary CV with scores
 - `POST /api/v1/cv/generate` — Generate tailored CV for job title (tier-gated)
-- `GET /api/v1/cv/analyze` — AI analysis of primary CV with scores
 
-### Jobs (4)
+### Cover Letter (1)
+- `POST /api/v1/cover-letter/generate` — Generate cover letter for a job (tier-gated; see §10 — currently blocked for super_standard)
+
+### Interview Prep (1)
+- `POST /api/v1/interview-prep/generate` — Generate interview prep kit (Super Standard tier)
+
+### Jobs (3)
 - `GET /api/v1/jobs` — List jobs (public, filterable)
 - `GET /api/v1/jobs/{id}` — Get single job (public)
-- `POST /api/v1/jobs` — Create job (auth required)
-- `POST /api/v1/jobs/ingest` — Bulk ingest from scraper (API key auth)
+- `POST /api/v1/jobs` — Create job (auth required, rate-limited 10/min). Used by both n8n scraper and admin job creation. No dedicated `/ingest` route exists.
 
 ### Matches (2)
 - `GET /api/v1/matches` — List user's matches (min_score, limit)
 - `POST /api/v1/matches/trigger` — Trigger AI matching (background task)
 
+### Subscription (2)
+- `GET /api/v1/subscription` — Current subscription details
+- `POST /api/v1/subscription/pay` — Initiate payment (DPO Pay or Lenco)
+
 ### Webhooks (2)
 - `POST /api/v1/webhooks/whatsapp` — WAHA incoming messages
-- `POST /api/v1/webhooks/dpo` — DPO Pay payment callbacks
+- `POST /api/v1/webhooks/dpo` — DPO Pay payment callbacks (no idempotency / signature check — see §10)
 
-### Admin (9)
+### Admin (12)
 - `GET /api/v1/admin/stats` — Dashboard statistics
-- `GET/POST/PATCH/DELETE /api/v1/admin/jobs` — Job CRUD
 - `GET /api/v1/admin/users` — List users
+- `PATCH /api/v1/admin/users/{user_id}/role` — Change user role
+- `GET /api/v1/admin/jobs` — List jobs
+- `POST /api/v1/admin/jobs` — Create job
+- `PATCH /api/v1/admin/jobs/{job_id}` — Update job
+- `DELETE /api/v1/admin/jobs/{job_id}` — Delete job
+- `POST /api/v1/admin/jobs/bulk-deactivate` — Bulk deactivate jobs
+- `GET /api/v1/admin/payments` — List payments
 - `GET /api/v1/admin/matches` — List matches
 - `GET /api/v1/admin/subscriptions` — List subscriptions
 - `PATCH /api/v1/admin/subscriptions/{user_id}` — Update subscription
@@ -187,6 +217,9 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
 - [x] CV generation (tailored CV for specific job, tier-gated)
 - [x] CV analysis (AI scoring with improvement recommendations)
 - [x] Cover letter generation endpoint
+- [x] Interview prep generation endpoint (Super Standard tier)
+- [x] Profile management endpoints (PATCH /profile, /profile/preferences, /profile/skills CRUD)
+- [x] Rate limiting via slowapi across auth, cv, cover_letter, interview_prep, jobs, matches, subscription routes
 
 ### Frontend/UX
 - [x] Full redesign with custom design system (green + copper palette)
@@ -205,7 +238,8 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
 - [x] Vercel frontend deployment with custom domain
 - [x] OCI free-tier server setup
 - [x] n8n workflows (job scraping, daily digest, heartbeat)
-- [x] GitHub repo with CI/CD via Vercel
+- [x] GitHub Actions CI (`.github/workflows/ci.yml`) — backend tests, frontend build, backend Docker build on push to master
+- [x] Vercel auto-deploy for frontend on push to master
 
 ---
 
@@ -423,23 +457,32 @@ Zed CV is an AI-powered job matching SaaS for Zambian professionals. Users uploa
 
 ### Critical
 1. **Database CHECK constraints are stale** — `001_initial_schema.sql` still has `CHECK (tier IN ('mwana', 'mwezi', 'bwino'))` on both `users.subscription_tier` and `subscriptions.tier`. Claude Code handled this via migration 006, but the initial schema file is misleading for anyone reading it.
-2. **No profile update endpoint** — Users can only update profile data through CV upload (auto-parsed). Need `PATCH /api/v1/profile`.
-3. **RLS bypassed** — Backend uses `supabase_service_key` (service role), so RLS policies are bypassed. This is standard for server-side access but means RLS is only effective for direct Supabase client access (which we don't currently use from frontend).
-4. **No rate limiting on ingest endpoint** — The `/jobs/ingest` endpoint uses API key auth but has no rate limiting.
-5. **Payment webhook maps tiers by price** — If prices change, the DPO webhook tier mapping breaks.
+2. **DPO webhook is unprotected** — `POST /api/v1/webhooks/dpo` has no idempotency key, no replay protection, and no signature verification. A duplicate or forged callback can grant arbitrary tier upgrades or double-credit a payment.
+3. **Lenco initiation is live but the webhook handler does not exist** — `services/lenco.py` and `subscription.py:74-118` initiate Lenco payments, but there is no `POST /api/v1/webhooks/lenco` route. Any Lenco payment that completes evaporates: subscription is never activated, no payment row is reconciled.
+4. **`payments.payment_method` CHECK constraint rejects real values** — The constraint does not include `'card'` or any `'lenco_*'` value, so any DPO card payment or Lenco payment fails to insert into `payments`. Payment records silently drop.
+5. **RLS bypassed** — Backend uses `supabase_service_key` (service role), so RLS policies are bypassed. This is standard for server-side access but means RLS is only effective for direct Supabase client access (which we don't currently use from frontend).
+6. **Payment webhook maps tiers by price** — If prices change, the DPO webhook tier mapping breaks.
+
+### High
+7. **Tier-limit constants diverge across the codebase** — `subscription.py`, `admin.py`, the Pydantic schemas, and the frontend all hardcode their own copies of per-tier match limits and feature gates. Changing a limit in one place silently de-syncs the others.
+8. **Cover letter generation blocked for `super_standard` tier** — The tier-gate check in `cover_letter.py` excludes super_standard, so the highest-paying tier cannot use a feature the pricing table promises.
+9. **`POST /api/v1/jobs` is open to any authenticated user** — Any logged-in user can create job listings. Used by n8n (acceptable) and admin (acceptable) but no role check, so any free-tier user can pollute the job board.
+10. **OTP `attempts` counter is never incremented and `/auth/otp/verify` has no rate limit** — The `otp_codes.attempts` column exists but is never written, and `/verify` has no slowapi decorator. OTPs are brute-forceable in practice.
+11. **LLM CV-parser output is stored without Pydantic validation** — `cv_parser.py` writes the raw model JSON straight into `cvs.parsed_data`. A malformed or hallucinated structure can break every downstream consumer (matching, analysis, generation).
+12. **`ai_cache` not consulted by `cv_parser` or `embedding` services** — The cache table exists and is wired for some calls, but CV parsing and embedding generation always hit the model. Direct cost burn on every retry/re-upload.
+13. **CV filename used as storage path without sanitization** — User-controlled filename flows into Supabase Storage path on upload. Path traversal / collision / overwrite risk against other users' files.
 
 ### Moderate
-6. **~~Embedding model mismatch risk~~** — RESOLVED by migration 007 (2026-05-09): source migrations now declare `vector(768)` matching the live Gemini `text-embedding-004` model and prod schema. Originally: source migrations declared `vector(1536)` (OpenAI sizing) while prod and the backend's `embedding_dimensions` config had been switched to 768 (Gemini), so a fresh-clone deploy would have silently failed at INSERT. Changing embedding models again would still require re-embedding all CVs and jobs.
-7. **No database migrations strategy** — Migrations are ad-hoc SQL files run manually. No Alembic or migration runner.
-8. **Test coverage gaps** — Tests exist but mock heavily. No integration tests against real Supabase.
-9. **No CI/CD pipeline** — GitHub push triggers Vercel for frontend, but backend deployment is manual.
-10. **WhatsApp session state** — FSM is basic, no timeout handling for stale sessions.
+14. **~~Embedding model mismatch risk~~** — RESOLVED by migration 007 (2026-05-09): source migrations now declare `vector(768)` matching the live Gemini `text-embedding-004` model and prod schema. Originally: source migrations declared `vector(1536)` (OpenAI sizing) while prod and the backend's `embedding_dimensions` config had been switched to 768 (Gemini), so a fresh-clone deploy would have silently failed at INSERT. Changing embedding models again would still require re-embedding all CVs and jobs.
+15. **No database migrations strategy** — Migrations are ad-hoc SQL files run manually. No Alembic or migration runner.
+16. **Test coverage gaps** — Tests exist but mock heavily. No integration tests against real Supabase.
+17. **WhatsApp session state** — FSM is basic, no timeout handling for stale sessions.
 
 ### Low
-11. **AI cache has no eviction** — `ai_cache` table grows unbounded. Need TTL cleanup.
-12. **No error tracking** — No Sentry or equivalent. Errors only visible in Docker logs.
-13. **No API versioning strategy** — All routes under `/api/v1` but no plan for v2.
-14. **PWA needs audit** — Service worker and manifest deployed but functionality not verified.
+18. **AI cache has no eviction** — `ai_cache` table grows unbounded. Need TTL cleanup.
+19. **No error tracking** — No Sentry or equivalent. Errors only visible in Docker logs.
+20. **No API versioning strategy** — All routes under `/api/v1` but no plan for v2.
+21. **PWA needs audit** — Service worker and manifest deployed but functionality not verified.
 
 ---
 
@@ -504,10 +547,10 @@ zed-cv/
 ├── apps/
 │   ├── backend/
 │   │   ├── app/
-│   │   │   ├── api/v1/          # 6 route files, 22 endpoints
-│   │   │   ├── core/            # config.py, deps.py
-│   │   │   ├── schemas/         # 5 Pydantic model files
-│   │   │   └── services/        # 6 service modules
+│   │   │   ├── api/v1/          # 10 route files, 37 endpoints
+│   │   │   ├── core/            # config.py, deps.py, rate_limit.py
+│   │   │   ├── schemas/         # 6 Pydantic model files
+│   │   │   └── services/        # 10 service modules
 │   │   ├── tests/               # 8 test files
 │   │   ├── main.py              # FastAPI app entry
 │   │   ├── requirements.txt
@@ -515,8 +558,8 @@ zed-cv/
 │   └── frontend/
 │       ├── src/
 │       │   ├── app/             # 14 pages (Next.js App Router)
-│       │   ├── components/      # 17 components
-│       │   ├── hooks/           # 1 custom hook
+│       │   ├── components/      # 47 .tsx files (across feature/marketing/ui/shared/providers subfolders)
+│       │   ├── hooks/           # 3 custom hooks
 │       │   └── lib/             # api.ts, auth.tsx
 │       ├── public/              # PWA icons, manifest, sw.js
 │       ├── package.json
@@ -529,7 +572,7 @@ zed-cv/
 │   ├── types/                   # Shared TypeScript types
 │   └── utils/                   # Skill aliases
 ├── docs/
-│   ├── openapi.yaml             # API spec (partial, needs update)
+│   ├── openapi.yaml             # API spec (covers /profile, /profile/preferences, /profile/skills)
 │   ├── CODE_REVIEW_PROMPT.md    # Codebase audit prompt for Claude/Cursor
 │   ├── ZED_CV_BIRDS_EYE_VIEW.md # This document
 │   └── references/
