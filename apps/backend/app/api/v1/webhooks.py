@@ -105,6 +105,13 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
     payment_id = payment["id"]
     user_id = payment["user_id"]
 
+    # Idempotency: a webhook for an already-completed payment must not re-upgrade
+    # the subscription. DPO can replay or duplicate callbacks, and without this
+    # guard a duplicate would re-run the upgrade and reset matches_used to 0.
+    if payment.get("status") == "completed":
+        logging.info(f"DPO webhook: payment {payment_id} already processed, skipping")
+        return {"status": "already_processed"}
+
     if verification["is_paid"]:
         from datetime import datetime, timedelta, timezone
 
