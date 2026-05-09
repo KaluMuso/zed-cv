@@ -81,7 +81,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
     # Find payment record by provider_ref (transaction token)
     payment_result = (
         supabase.table("payments")
-        .select("*, subscriptions(id, user_id, tier)")
+        .select("*, subscriptions(id, user_id, tier, current_period_end)")
         .eq("provider_ref", parsed["transaction_token"])
         .limit(1)
         .execute()
@@ -91,7 +91,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
     if not payment_result.data and parsed.get("company_ref"):
         payment_result = (
             supabase.table("payments")
-            .select("*, subscriptions(id, user_id, tier)")
+            .select("*, subscriptions(id, user_id, tier, current_period_end)")
             .eq("id", parsed["company_ref"])
             .limit(1)
             .execute()
@@ -133,6 +133,20 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
             new_tier, new_limit = "super_standard", 99999
         now = datetime.now(timezone.utc)
 
+        # Period-end safety: if a webhook arrives mid-cycle (e.g. early renewal
+        # or duplicate that bypassed the idempotency guard via a different
+        # token), stack the new 30 days on top of any remaining paid days
+        # rather than truncating the cycle.
+        existing_end_str = (payment.get("subscriptions") or {}).get("current_period_end")
+        existing_end = None
+        if existing_end_str:
+            try:
+                existing_end = datetime.fromisoformat(existing_end_str.replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                existing_end = None
+        base = existing_end if (existing_end and existing_end > now) else now
+        new_period_end = base + timedelta(days=30)
+
         # Upgrade subscription
         supabase.table("subscriptions").update({
             "tier": new_tier,
@@ -140,7 +154,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
             "matches_limit": new_limit,
             "matches_used": 0,
             "current_period_start": now.isoformat(),
-            "current_period_end": (now + timedelta(days=30)).isoformat(),
+            "current_period_end": new_period_end.isoformat(),
         }).eq("user_id", user_id).execute()
 
         # Update user's subscription_tier field
