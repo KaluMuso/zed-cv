@@ -47,6 +47,13 @@ async def initiate_payment(
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
 ):
+    # TODO: Lenco support removed pending /webhooks/lenco handler — see audit slice 2D-1c
+    if body.payment_method.startswith("lenco"):
+        raise HTTPException(
+            status_code=422,
+            detail="Lenco payments are not currently supported. Please choose mtn, airtel, or card.",
+        )
+
     tier_value = body.tier.value if hasattr(body.tier, "value") else body.tier
     if tier_value not in TIER_PRICES_NGWEE:
         raise HTTPException(
@@ -69,9 +76,6 @@ async def initiate_payment(
 
     subscription_id = sub_result.data["id"]
 
-    # Determine payment provider from payment_method
-    provider = "lenco" if body.payment_method.startswith("lenco") else "dpo_pay"
-
     # Create payment record
     payment_result = supabase.table("payments").insert({
         "user_id": user_id,
@@ -79,7 +83,7 @@ async def initiate_payment(
         "amount": amount_ngwee,
         "currency": "ZMW",
         "payment_method": f"{body.payment_method}_money",
-        "provider": provider,
+        "provider": "dpo_pay",
         "status": "pending",
     }).execute()
 
@@ -94,59 +98,32 @@ async def initiate_payment(
         "super_standard": "Super Standard",
     }.get(tier_value, "Plan")
 
-    # Route to the appropriate payment provider
-    if provider == "lenco":
-        from app.services.lenco import create_lenco_payment
-        try:
-            lenco_result = await create_lenco_payment(
-                amount_zmw=amount_zmw,
-                phone=body.phone,
-                description=f"Zed CV {tier_name} Plan - 1 Month",
-                payment_ref=payment_id,
-            )
-            supabase.table("payments").update({
-                "provider_ref": lenco_result["transaction_id"],
-            }).eq("id", payment_id).execute()
+    from app.services.dpo_pay import create_payment_token
+    try:
+        dpo_result = await create_payment_token(
+            amount_zmw=amount_zmw,
+            phone=body.phone,
+            description=f"Zed CV {tier_name} Plan - 1 Month",
+            payment_ref=payment_id,
+        )
+        supabase.table("payments").update({
+            "provider_ref": dpo_result["token"],
+        }).eq("id", payment_id).execute()
 
-            return PaymentInitiateResponse(
-                message=f"Payment of K{int(amount_zmw)} initiated via Lenco. "
-                        f"Check your phone for a prompt.",
-                transaction_id=payment_id,
-            )
-        except ValueError as e:
-            logging.warning(f"Lenco payment failed: {e}")
-            return PaymentInitiateResponse(
-                message=f"Payment of K{int(amount_zmw)} recorded. {str(e)}",
-                transaction_id=payment_id,
-            )
-    else:
-        # DPO Pay (default)
-        from app.services.dpo_pay import create_payment_token
-        try:
-            dpo_result = await create_payment_token(
-                amount_zmw=amount_zmw,
-                phone=body.phone,
-                description=f"Zed CV {tier_name} Plan - 1 Month",
-                payment_ref=payment_id,
-            )
-            supabase.table("payments").update({
-                "provider_ref": dpo_result["token"],
-            }).eq("id", payment_id).execute()
+        logging.info(
+            f"Payment token created: user={user_id}, tier={tier_value}, "
+            f"amount=K{amount_zmw}, token={dpo_result['token']}"
+        )
 
-            logging.info(
-                f"Payment token created: user={user_id}, tier={tier_value}, "
-                f"amount=K{amount_zmw}, token={dpo_result['token']}"
-            )
+        return PaymentInitiateResponse(
+            message=f"Payment of K{int(amount_zmw)} initiated. "
+                    f"Complete payment at the redirect URL or check your phone for a prompt.",
+            transaction_id=payment_id,
+        )
 
-            return PaymentInitiateResponse(
-                message=f"Payment of K{int(amount_zmw)} initiated. "
-                        f"Complete payment at the redirect URL or check your phone for a prompt.",
-                transaction_id=payment_id,
-            )
-
-        except ValueError as e:
-            logging.warning(f"DPO Pay token creation failed: {e}")
-            return PaymentInitiateResponse(
-                message=f"Payment of K{int(amount_zmw)} recorded. {str(e)}",
-                transaction_id=payment_id,
-            )
+    except ValueError as e:
+        logging.warning(f"DPO Pay token creation failed: {e}")
+        return PaymentInitiateResponse(
+            message=f"Payment of K{int(amount_zmw)} recorded. {str(e)}",
+            transaction_id=payment_id,
+        )
