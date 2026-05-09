@@ -36,11 +36,15 @@ router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(requir
 async def get_stats(supabase=Depends(get_supabase)):
     """Aggregate counters for the admin dashboard."""
     rpc_res = supabase.rpc("admin_stats").execute()
-    data = rpc_res.data or {}
+    data = rpc_res.data
+    # supabase-py may return: a dict (jsonb output), a list-of-one (SETOF),
+    # a bool (some RPCs), or None. Normalize to a dict and let AdminStats
+    # apply its own defaults for missing fields.
     if isinstance(data, list):
-        # supabase-py returns list of one row for SETOF; handle either shape
         data = data[0] if data else {}
-    return AdminStats(**(data or {}))
+    if not isinstance(data, dict):
+        data = {}
+    return AdminStats(**data)
 
 
 @router.get("/users", response_model=AdminUserList)
