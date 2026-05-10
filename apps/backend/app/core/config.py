@@ -18,8 +18,12 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 768
 
     # ── AI: LLM via OpenRouter ──
+    # Stable OpenRouter slug for Gemini 2.0 Flash. The shorthand
+    # 'google/gemini-flash-2.0' (without version suffix) is rejected by
+    # OpenRouter with 400 BadRequestError. Use ':free' suffix for the
+    # zero-cost experimental tier, or the -001 stable model below.
     openrouter_api_key: str = ""
-    llm_model: str = "google/gemini-flash-2.0"
+    llm_model: str = "google/gemini-2.0-flash-001"
 
     # ── Payments ──
     dpo_pay_company_token: str = ""
