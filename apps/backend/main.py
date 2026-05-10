@@ -30,14 +30,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Local development
         "http://localhost:3000",
-        "https://zedcv.vercel.app",
+        # Production frontend (canonical)
+        "https://www.zedapply.com",
+        "https://zedapply.com",
+        # Vercel preview deployments
         "https://zed-cv.vercel.app",
-        "https://www.zedcv.com",
-        "https://zedcv.com",
-        "https://vergeo.company",
-        "https://www.vergeo.company",
+        "https://zedcv.vercel.app",
     ],
+    # Allow Vercel preview URLs of the form zed-cv-*.vercel.app
+    allow_origin_regex=r"https://zed-cv-[a-z0-9-]+-vergeo-projects\.vercel\.app",
     allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
