@@ -31,10 +31,25 @@
 -- Fix:
 --   Keep the RETURNS TABLE columns as TEXT (cleaner contract — the Python
 --   layer already treats them as strings) and add explicit ::TEXT casts
---   on the three problem source columns inside the CTE projection. The
---   rest of the function body — scoring formula, weights (60/30/10),
---   skill aggregation, bonus CASE block, ORDER BY, LIMIT — is unchanged
---   from migration 007 byte for byte.
+--   on the three problem source columns inside the CTE projection.
+--
+--   The text-vs-varchar mismatch on columns 2-4 was masking a second
+--   class of mismatch on the numeric scoring columns. After the column-2
+--   fix landed, prod surfaced:
+--     ERROR 42804: Returned type double precision does not match
+--                  expected type real in column 5.
+--   Cause: pgvector's <=> operator returns DOUBLE PRECISION, so the
+--   v_score expression `(1 - (j.embedding <=> v_user_embedding)) * 100`
+--   is double precision, not REAL as the RETURNS TABLE declares.
+--   `f_score` (the weighted sum involving `* 0.6` numeric literals)
+--   is also double precision/numeric for the same reason.
+--   This migration therefore also adds explicit ::REAL casts on
+--   v_score, s_score (defensive), and f_score so every numeric column
+--   exits the function as REAL. b_score is already cast inline.
+--
+--   Scoring formula, weights (60/30/10), skill aggregation, bonus CASE
+--   block, ORDER BY, LIMIT — all unchanged from migration 007 byte for
+--   byte. Only the type casts differ.
 --
 -- Idempotency:
 --   Pure DROP FUNCTION IF EXISTS … ; CREATE FUNCTION …. No data
@@ -95,8 +110,8 @@ BEGIN
             j.title::TEXT     AS j_title,
             j.company::TEXT   AS j_company,
             j.location::TEXT  AS j_location,
-            (1 - (j.embedding <=> v_user_embedding)) * 100 AS v_score,
-            COALESCE(
+            ((1 - (j.embedding <=> v_user_embedding)) * 100)::REAL AS v_score,
+            (COALESCE(
                 (SELECT COUNT(*)::REAL
                    FROM job_skills js2
                    JOIN skills s2 ON s2.id = js2.skill_id
@@ -104,7 +119,7 @@ BEGIN
                 / NULLIF((SELECT COUNT(*)::REAL FROM job_skills js3 WHERE js3.job_id = j.id), 0)
                 * 100,
                 0
-            ) AS s_score,
+            ))::REAL AS s_score,
             (CASE WHEN j.location = v_user_location THEN 30 ELSE 0 END +
              CASE WHEN j.quality_score > 70 THEN 20 ELSE 0 END +
              CASE WHEN j.closing_date > CURRENT_DATE THEN 20 ELSE 0 END +
@@ -129,7 +144,7 @@ BEGIN
         js.v_score,
         js.s_score,
         js.b_score,
-        (js.v_score * 0.6 + js.s_score * 0.3 + js.b_score * 0.1) AS f_score,
+        (js.v_score * 0.6 + js.s_score * 0.3 + js.b_score * 0.1)::REAL AS f_score,
         js.m_skills,
         js.miss_skills
     FROM job_scores js
