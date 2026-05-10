@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://zedcv.vergeo.company"),
+  metadataBase: new URL("https://www.zedapply.com"),
   title: {
     default: "ZedApply — AI Job Matching for Zambia",
     template: "%s | ZedApply",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_ZM",
-    url: "https://zedcv.vergeo.company",
+    url: "https://www.zedapply.com",
     siteName: "ZedApply",
     title: "ZedApply — AI Job Matching for Zambia",
     description:

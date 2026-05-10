@@ -17,9 +17,9 @@ const columns = [
     title: "Company",
     links: [
       { label: "About", href: "/about" },
-      { label: "Blog", href: "/blog" },
-      { label: "Careers", href: "/careers" },
-      { label: "Contact", href: "/contact" },
+      // TODO: re-add Blog, Careers, Contact once those pages exist.
+      // Removed 2026-05-10 — links pointed at /blog /careers /contact
+      // which have no page.tsx, generating 404s on Next.js prefetch.
     ],
   },
   {
@@ -27,7 +27,7 @@ const columns = [
     links: [
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
-      { label: "Cookie Policy", href: "/cookies" },
+      // TODO: re-add Cookie Policy once /cookies page exists.
     ],
   },
 ];
