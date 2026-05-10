@@ -1,6 +1,6 @@
 # Zed CV — Complete Project Birds-Eye View
 
-> Last updated: 2026-05-09
+> Last updated: 2026-05-10
 > Owner: Kaluba Prosper Musonda (convergeozambia@gmail.com)
 > Repo: https://github.com/KaluMuso/zed-cv (private, branch: master)
 
@@ -203,7 +203,7 @@ The platform is **deployed but not yet in active use**. Verified via Supabase: *
 - [x] Phone + WhatsApp OTP authentication
 - [x] CV upload (PDF, DOCX, JPG, PNG) with AI parsing
 - [x] Vector embedding generation (Gemini text-embedding-004, 768d)
-- [x] AI job matching (pgvector cosine similarity + skill overlap + bonuses)
+- [x] AI job matching (pgvector cosine similarity + skill overlap + bonuses) — RPC return-type bug fixed in migration 009 (slice 2D-1f); matching now executes end-to-end
 - [x] Match scoring with explanations
 - [x] Job browsing with filters (location, search, pagination)
 - [x] 4-tier subscription system (free/starter/professional/super_standard)
@@ -462,27 +462,28 @@ The platform is **deployed but not yet in active use**. Verified via Supabase: *
 4. **`payments.payment_method` CHECK constraint rejects real values** — The constraint does not include `'card'` or any `'lenco_*'` value, so any DPO card payment or Lenco payment fails to insert into `payments`. Payment records silently drop.
 5. **RLS bypassed** — Backend uses `supabase_service_key` (service role), so RLS policies are bypassed. This is standard for server-side access but means RLS is only effective for direct Supabase client access (which we don't currently use from frontend).
 6. **Payment webhook maps tiers by price** — If prices change, the DPO webhook tier mapping breaks.
+7. **~~Matching RPC return-type mismatch~~** — RESOLVED by migration 009 (slice 2D-1f, 2026-05-10): `match_jobs_for_user` declared `RETURNS TABLE(... job_title TEXT, job_company TEXT, job_location TEXT, ...)` but `RETURN QUERY` selected `j.title / company / location`, which are `VARCHAR(500)` on the `jobs` table. Postgres rejected every call with `42804: structure of query does not match function result type`. Bug shipped silently in `001_initial_schema.sql` and was carried verbatim into `007_align_embedding_dim_to_768.sql`. Production state at discovery: 0 matches generated for the lifetime of the project. Migration 009 adds explicit `::TEXT` casts on the three problem columns; the failure was masked by a silent `except Exception: pass` in `_run_matching_task`, also patched as part of this slice (now logs at ERROR / WARNING).
 
 ### High
-7. **Tier-limit constants diverge across the codebase** — `subscription.py`, `admin.py`, the Pydantic schemas, and the frontend all hardcode their own copies of per-tier match limits and feature gates. Changing a limit in one place silently de-syncs the others.
-8. **Cover letter generation blocked for `super_standard` tier** — The tier-gate check in `cover_letter.py` excludes super_standard, so the highest-paying tier cannot use a feature the pricing table promises.
-9. **`POST /api/v1/jobs` is open to any authenticated user** — Any logged-in user can create job listings. Used by n8n (acceptable) and admin (acceptable) but no role check, so any free-tier user can pollute the job board.
-10. **OTP `attempts` counter is never incremented and `/auth/otp/verify` has no rate limit** — The `otp_codes.attempts` column exists but is never written, and `/verify` has no slowapi decorator. OTPs are brute-forceable in practice.
-11. **LLM CV-parser output is stored without Pydantic validation** — `cv_parser.py` writes the raw model JSON straight into `cvs.parsed_data`. A malformed or hallucinated structure can break every downstream consumer (matching, analysis, generation).
-12. **`ai_cache` not consulted by `cv_parser` or `embedding` services** — The cache table exists and is wired for some calls, but CV parsing and embedding generation always hit the model. Direct cost burn on every retry/re-upload.
-13. **CV filename used as storage path without sanitization** — User-controlled filename flows into Supabase Storage path on upload. Path traversal / collision / overwrite risk against other users' files.
+8. **Tier-limit constants diverge across the codebase** — `subscription.py`, `admin.py`, the Pydantic schemas, and the frontend all hardcode their own copies of per-tier match limits and feature gates. Changing a limit in one place silently de-syncs the others.
+9. **Cover letter generation blocked for `super_standard` tier** — The tier-gate check in `cover_letter.py` excludes super_standard, so the highest-paying tier cannot use a feature the pricing table promises.
+10. **`POST /api/v1/jobs` is open to any authenticated user** — Any logged-in user can create job listings. Used by n8n (acceptable) and admin (acceptable) but no role check, so any free-tier user can pollute the job board.
+11. **OTP `attempts` counter is never incremented and `/auth/otp/verify` has no rate limit** — The `otp_codes.attempts` column exists but is never written, and `/verify` has no slowapi decorator. OTPs are brute-forceable in practice.
+12. **LLM CV-parser output is stored without Pydantic validation** — `cv_parser.py` writes the raw model JSON straight into `cvs.parsed_data`. A malformed or hallucinated structure can break every downstream consumer (matching, analysis, generation).
+13. **`ai_cache` not consulted by `cv_parser` or `embedding` services** — The cache table exists and is wired for some calls, but CV parsing and embedding generation always hit the model. Direct cost burn on every retry/re-upload.
+14. **CV filename used as storage path without sanitization** — User-controlled filename flows into Supabase Storage path on upload. Path traversal / collision / overwrite risk against other users' files.
 
 ### Moderate
-14. **~~Embedding model mismatch risk~~** — RESOLVED by migration 007 (2026-05-09): source migrations now declare `vector(768)` matching the live Gemini `text-embedding-004` model and prod schema. Originally: source migrations declared `vector(1536)` (OpenAI sizing) while prod and the backend's `embedding_dimensions` config had been switched to 768 (Gemini), so a fresh-clone deploy would have silently failed at INSERT. Changing embedding models again would still require re-embedding all CVs and jobs.
-15. **No database migrations strategy** — Migrations are ad-hoc SQL files run manually. No Alembic or migration runner.
-16. **Test coverage gaps** — Tests exist but mock heavily. No integration tests against real Supabase.
-17. **WhatsApp session state** — FSM is basic, no timeout handling for stale sessions.
+15. **~~Embedding model mismatch risk~~** — RESOLVED by migration 007 (2026-05-09): source migrations now declare `vector(768)` matching the live Gemini `text-embedding-004` model and prod schema. Originally: source migrations declared `vector(1536)` (OpenAI sizing) while prod and the backend's `embedding_dimensions` config had been switched to 768 (Gemini), so a fresh-clone deploy would have silently failed at INSERT. Changing embedding models again would still require re-embedding all CVs and jobs.
+16. **No database migrations strategy** — Migrations are ad-hoc SQL files run manually. No Alembic or migration runner.
+17. **Test coverage gaps** — Tests exist but mock heavily. No integration tests against real Supabase.
+18. **WhatsApp session state** — FSM is basic, no timeout handling for stale sessions.
 
 ### Low
-18. **AI cache has no eviction** — `ai_cache` table grows unbounded. Need TTL cleanup.
-19. **No error tracking** — No Sentry or equivalent. Errors only visible in Docker logs.
-20. **No API versioning strategy** — All routes under `/api/v1` but no plan for v2.
-21. **PWA needs audit** — Service worker and manifest deployed but functionality not verified.
+19. **AI cache has no eviction** — `ai_cache` table grows unbounded. Need TTL cleanup.
+20. **No error tracking** — No Sentry or equivalent. Errors only visible in Docker logs.
+21. **No API versioning strategy** — All routes under `/api/v1` but no plan for v2.
+22. **PWA needs audit** — Service worker and manifest deployed but functionality not verified.
 
 ---
 
