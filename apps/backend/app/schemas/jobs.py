@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Any
 from enum import Enum
 
 class JobSource(str, Enum):
@@ -8,6 +8,48 @@ class JobSource(str, Enum):
     scraper = "scraper"
     ocr = "ocr"
     partner = "partner"
+
+
+# Date formats the scraper has been observed to emit. ISO 8601 is the
+# canonical form; the rest are fallbacks for scraper-AI outputs that
+# don't yet normalize. Failure on all formats returns None — the DB
+# column has a now() / null default and we don't want to fail the whole
+# row over a malformed date string.
+_DATE_FALLBACK_FORMATS = (
+    "%d/%b/%Y",   # 11/May/2026
+    "%d/%B/%Y",   # 11/December/2026
+    "%d-%b-%Y",   # 11-May-2026
+    "%d-%B-%Y",
+    "%d/%m/%Y",   # 11/05/2026
+    "%d-%m-%Y",
+    "%Y/%m/%d",   # 2026/05/11
+    "%b %d, %Y",  # May 11, 2026
+    "%B %d, %Y",
+)
+
+
+def _tolerant_parse_date(v: Any) -> Optional[date]:
+    """Accept ISO dates (canonical), datetimes, and common scraper-AI
+    fallback formats. Return None on failure so the DB default applies."""
+    if v is None or isinstance(v, date):
+        return v if not isinstance(v, datetime) else v.date()
+    if not isinstance(v, str):
+        return None
+    s = v.strip()
+    if not s:
+        return None
+    # Strict ISO first
+    try:
+        return date.fromisoformat(s)
+    except ValueError:
+        pass
+    # Fallbacks
+    for fmt in _DATE_FALLBACK_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
 
 class JobCreate(BaseModel):
     title: str = Field(..., min_length=5)
@@ -29,6 +71,14 @@ class JobCreate(BaseModel):
     # Date the job was originally posted (set by scraper). Falls back to
     # NOW() at insert if not provided.
     posted_at: Optional[date] = None
+
+    # Tolerant date parsing — the scraper's AI parsing nodes have been
+    # observed emitting non-ISO formats like "11/May/2026". Accept them
+    # rather than 422-ing the whole batch.
+    @field_validator("posted_at", "closing_date", mode="before")
+    @classmethod
+    def _parse_dates(cls, v: Any) -> Optional[date]:
+        return _tolerant_parse_date(v)
 
 class Job(BaseModel):
     id: str
