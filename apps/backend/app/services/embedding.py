@@ -1,7 +1,17 @@
-"""Embedding generation using Google Gemini text-embedding-004.
+"""Embedding generation using Google Gemini.
 
-768 dimensions, free tier: 1,500 requests/min.
-Cost on paid tier: free up to 1M tokens/day, then ~$0.00 (embeddings are free on Gemini).
+Default model: `gemini-embedding-001` (the current public Gemini embedding
+model). Native output is 3072 dimensions; we use Matryoshka Representation
+Learning (the `outputDimensionality` parameter) to truncate to the size of
+our `vector(N)` column — 768 by default. This lets us swap models without
+migrating the DB.
+
+Note: the older `text-embedding-004` was retired from the v1beta endpoint
+on 2026-05 (returns 404 for embedContent). `gemini-embedding-001` is now
+the only recommended modern path; older `text-embedding-*` aliases are
+gone.
+
+Free tier limits: 1,500 requests/min, generous daily token allowance.
 """
 import asyncio
 import hashlib
@@ -18,7 +28,12 @@ GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/{mod
 
 
 async def generate_embedding(text: str) -> list[float]:
-    """Generate a 768-dim embedding via Gemini text-embedding-004.
+    """Generate an embedding via Gemini `embedContent`.
+
+    Output dimensionality is taken from `settings.embedding_dimensions`
+    (default 768). With `gemini-embedding-001`, this is achieved via
+    Matryoshka truncation of the native 3072-dim vector. The returned
+    list always has exactly `settings.embedding_dimensions` floats.
 
     Uses httpx async — no thread pool needed.
     """
@@ -35,6 +50,10 @@ async def generate_embedding(text: str) -> list[float]:
                 json={
                     "model": f"models/{settings.embedding_model}",
                     "content": {"parts": [{"text": truncated}]},
+                    # Matryoshka truncation — supported by gemini-embedding-001.
+                    # Older models silently 400 with this param; that's the
+                    # signal that the EMBEDDING_MODEL env var needs updating.
+                    "outputDimensionality": settings.embedding_dimensions,
                 },
             )
 

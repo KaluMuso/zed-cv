@@ -13,8 +13,12 @@ class Settings(BaseSettings):
     supabase_key: str  # service_role key for backend
 
     # ── AI: Embeddings (Google Gemini) ──
+    # gemini-embedding-001 is the current modern model (native 3072 dim,
+    # supports Matryoshka truncation via outputDimensionality). The older
+    # text-embedding-004 was retired from v1beta in 2026-05; do not set
+    # EMBEDDING_MODEL to text-embedding-* on production.
     gemini_api_key: str
-    embedding_model: str = "text-embedding-004"
+    embedding_model: str = "gemini-embedding-001"
     embedding_dimensions: int = 768
 
     # ── AI: LLM via OpenRouter ──
