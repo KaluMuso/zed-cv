@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     # ── Matching ──
     min_match_score: float = 50.0
 
+    # ── Scraper / Ingest ──
+    # Shared secret in JSON body of POST /api/v1/jobs/ingest.
+    # n8n's "Zambia Job Scraper" workflow includes this as `api_key`.
+    # Leave empty in dev to disable the ingest endpoint entirely.
+    ingest_api_key: str = ""
+
     # ── OTP ──
     otp_cooldown_seconds: int = 60
     max_otp_attempts: int = 5

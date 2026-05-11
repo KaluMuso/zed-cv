@@ -18,6 +18,8 @@ os.environ["SUPABASE_URL"] = "https://fake.supabase.co"
 os.environ["SUPABASE_KEY"] = "fake-service-key"
 os.environ["GEMINI_API_KEY"] = "fake-gemini-key"
 os.environ["JWT_SECRET"] = "test-secret-key-for-testing-only"
+# Shared secret for POST /api/v1/jobs/ingest tests
+os.environ["INGEST_API_KEY"] = "test-ingest-key"
 # Legacy/back-compat — some older tests or services may still read these.
 # Cheap to keep; safe to remove in a follow-up cleanup.
 os.environ.setdefault("SUPABASE_ANON_KEY", "fake-anon-key")

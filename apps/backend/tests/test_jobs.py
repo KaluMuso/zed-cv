@@ -143,3 +143,80 @@ class TestJobCreate:
             },
         )
         assert resp.status_code == 403
+
+
+class TestJobIngest:
+    """POST /api/v1/jobs/ingest — bulk endpoint for n8n scraper."""
+
+    SAMPLE_JOB = {
+        "title": "Accounts Officer at TEVETA",
+        "company": "TEVETA",
+        "location": "Lusaka",
+        "description": "VACANCY: TEVETA seeks an Accounts Officer to manage the books, reconcile MoMo, and handle monthly close.",
+        "requirements": ["Degree in accounting", "ZICA member"],
+        "skills_required": [],
+        "salary_min": None,
+        "salary_max": None,
+        "apply_url": "https://jobwebzambia.com/jobs/accounts-officer-teveta/",
+        "apply_email": None,
+        "source": "scraper",
+        "source_url": "https://jobwebzambia.com/jobs/accounts-officer-teveta/",
+        "closing_date": None,
+        "posted_at": "2026-05-08",
+    }
+
+    def test_ingest_rejects_missing_api_key(self, client, fake_supabase):
+        """No api_key field → 422 (Pydantic missing-required-field)."""
+        resp = client.post("/api/v1/jobs/ingest", json={"jobs": [self.SAMPLE_JOB]})
+        assert resp.status_code == 422
+
+    def test_ingest_rejects_wrong_api_key(self, client, fake_supabase):
+        """Wrong api_key → 401, no leak of whether the server has one configured."""
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "definitely-not-the-key", "jobs": [self.SAMPLE_JOB]},
+        )
+        assert resp.status_code == 401
+
+    @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
+    def test_ingest_success_with_valid_key(
+        self, mock_embed, client, fake_supabase
+    ):
+        """Valid batch with one job → ingested=1, duplicates=0."""
+        mock_embed.return_value = [0.1] * 768
+        fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
+        fake_supabase.set_table(
+            "jobs",
+            FakeSupabaseQuery(data=[{"id": "job-ingested-1"}]),
+        )
+        fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
+
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "test-ingest-key", "jobs": [self.SAMPLE_JOB]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ingested"] == 1
+        assert body["duplicates"] == 0
+        assert body["errors"] == []
+
+    @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
+    def test_ingest_dedupes_existing_fingerprint(
+        self, mock_embed, client, fake_supabase
+    ):
+        """Job already in job_fingerprints → counted as duplicate, not re-inserted."""
+        mock_embed.return_value = [0.1] * 768
+        fake_supabase.set_table(
+            "job_fingerprints",
+            FakeSupabaseQuery(data=[{"job_id": "already-here"}]),
+        )
+
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "test-ingest-key", "jobs": [self.SAMPLE_JOB]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ingested"] == 0
+        assert body["duplicates"] == 1

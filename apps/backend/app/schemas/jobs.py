@@ -21,7 +21,14 @@ class JobCreate(BaseModel):
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
     source: JobSource
+    # URL of the source listing on the scraper site (e.g. jobwebzambia.com).
+    # Distinct from apply_url, which should ideally point at the employer's
+    # own application page when extractable from the description.
+    source_url: Optional[str] = None
     closing_date: Optional[date] = None
+    # Date the job was originally posted (set by scraper). Falls back to
+    # NOW() at insert if not provided.
+    posted_at: Optional[date] = None
 
 class Job(BaseModel):
     id: str
@@ -37,6 +44,7 @@ class Job(BaseModel):
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
     source: str
+    source_url: Optional[str] = None
     quality_score: int = 0
     closing_date: Optional[date] = None
     posted_at: datetime
@@ -48,3 +56,27 @@ class JobList(BaseModel):
     page: int
     per_page: int
     pages: int = 0
+
+
+# ── Bulk ingest (scraper) ─────────────────────────────────────────────
+class JobIngestRequest(BaseModel):
+    """Payload from n8n's Zambia Job Scraper workflow.
+
+    Auth is by shared secret in the body (settings.ingest_api_key) rather
+    than a header so the n8n HTTP Request node can use Predefined
+    Credential Type = None and just send JSON.
+    """
+    api_key: str
+    jobs: list[JobCreate]
+
+
+class JobIngestErrorItem(BaseModel):
+    index: int
+    title: str
+    reason: str
+
+
+class JobIngestResponse(BaseModel):
+    ingested: int
+    duplicates: int
+    errors: list[JobIngestErrorItem] = []
