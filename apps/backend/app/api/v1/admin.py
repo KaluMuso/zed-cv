@@ -24,6 +24,7 @@ from app.schemas.admin import (
     AdminSubscriptionUpdate,
 )
 from app.schemas.subscription import TIER_LIMITS
+from app.schemas.db_enums import QueueStatus
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
@@ -92,8 +93,10 @@ async def drain_cv_queue(
         # Mark processing + bump attempts upfront. If we crash mid-flight,
         # the row stays in 'processing' until manually nudged — that's
         # intentional, manual is safer than auto-retry-storm.
+        # All queue-status writes validated via the enum (migration 013
+        # dropped the SQL CHECK; QueueStatus is now the source of truth).
         supabase.table("cv_upload_queue").update({
-            "status": "processing",
+            "status": QueueStatus.processing.value,
             "attempts": row.get("attempts", 0) + 1,
             "updated_at": "NOW()",
         }).eq("id", row_id).execute()
@@ -132,23 +135,27 @@ async def drain_cv_queue(
                     ).execute()
 
             supabase.table("cv_upload_queue").update({
-                "status": "completed",
+                "status": QueueStatus.completed.value,
                 "processed_at": "NOW()",
                 "updated_at": "NOW()",
             }).eq("id", row_id).execute()
             out["drained"] += 1
-            out["rows"].append({"id": row_id, "status": "completed", "cv_id": new_cv_id})
+            out["rows"].append({"id": row_id, "status": QueueStatus.completed.value, "cv_id": new_cv_id})
 
         except Exception as exc:
             logging.error("cv_upload_queue: row %s failed (attempt %s): %s",
                           row_id, row.get("attempts", 0) + 1, exc)
-            new_status = "queued" if (row.get("attempts", 0) + 1) < MAX_ATTEMPTS else "failed"
+            new_status = (
+                QueueStatus.queued.value
+                if (row.get("attempts", 0) + 1) < MAX_ATTEMPTS
+                else QueueStatus.failed.value
+            )
             supabase.table("cv_upload_queue").update({
                 "status": new_status,
                 "error_message": f"{type(exc).__name__}: {str(exc)[:300]}",
                 "updated_at": "NOW()",
             }).eq("id", row_id).execute()
-            if new_status == "failed":
+            if new_status == QueueStatus.failed.value:
                 out["failed"] += 1
             out["rows"].append({
                 "id": row_id, "status": new_status,

@@ -3,7 +3,11 @@
     "allow": [
       "Bash(python -m pytest -q)",
       "Bash(python -m pytest -q tests/test_webhooks.py::test_subscription_pay_accepts_lenco_method)",
-      "Bash(python -m pytest -q tests/test_webhooks.py)"
+      "Bash(python -m pytest -q tests/test_webhooks.py)",
+      "Bash(git add *)",
+      "Bash(git -C C:\\\\Users\\\\User\\\\Documents\\\\Claude\\\\Projects\\\\ZedCV add apps/backend/ infra/supabase/migrations/)",
+      "Bash(git *)",
+      "Bash(python *)"
     ]
   }
 }

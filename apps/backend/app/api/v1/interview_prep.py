@@ -107,9 +107,11 @@ async def generate(
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+    # cache_type validated via the enum (migration 013 dropped the SQL CHECK).
+    from app.schemas.db_enums import CacheType
     supabase.table("ai_cache").insert({
         "cache_key": cache_key,
-        "cache_type": "interview_prep",
+        "cache_type": CacheType.interview_prep.value,
         "input_hash": hashlib.sha256(
             (cv.get("raw_text") or "").encode() + body.job_id.encode()
         ).hexdigest(),

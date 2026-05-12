@@ -97,11 +97,17 @@ def _cache_get(supabase, cache_key: str):
 
 
 def _cache_put(supabase, cache_key: str, cache_type: str, input_hash: str, result, model: str) -> None:
-    """Store a cache entry. Swallows duplicate-key errors silently."""
+    """Store a cache entry. Swallows duplicate-key errors silently.
+
+    `cache_type` is validated via `validate_cache_type` — invalid values
+    raise ValueError instead of silently writing bad data (migration 013
+    dropped the SQL CHECK that used to catch this).
+    """
+    from app.schemas.db_enums import validate_cache_type
     try:
         supabase.table("ai_cache").insert({
             "cache_key": cache_key,
-            "cache_type": cache_type,
+            "cache_type": validate_cache_type(cache_type),
             "input_hash": input_hash,
             "result": result,
             "model": model,
@@ -149,12 +155,14 @@ def _queue_for_later(
             ),
         )
 
+    # Queue status validated via the enum (migration 013 dropped the SQL CHECK).
+    from app.schemas.db_enums import QueueStatus
     queue_row = supabase.table("cv_upload_queue").insert({
         "user_id": user_id,
         "file_path": storage_path,
         "file_type": file_type,
         "raw_text": raw_text[:10000],
-        "status": "queued",
+        "status": QueueStatus.queued.value,
         "reason": reason,
     }).execute()
     if not queue_row.data:
@@ -343,9 +351,11 @@ async def analyze(
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
+    # cache_type validated via the enum (migration 013 dropped the SQL CHECK).
+    from app.schemas.db_enums import CacheType
     supabase.table("ai_cache").insert({
         "cache_key": cache_key,
-        "cache_type": "cv_analysis",
+        "cache_type": CacheType.cv_analysis.value,
         "input_hash": hashlib.sha256((cv.get("raw_text") or "").encode()).hexdigest(),
         "result": result,
         "model": "google/gemini-flash-2.0",
