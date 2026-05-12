@@ -12,6 +12,7 @@ from typing import Any
 from functools import lru_cache
 
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from PyPDF2 import PdfReader
 from docx import Document
 
@@ -19,7 +20,90 @@ from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── System prompts ──
+
+# Validation schema for LLM output.
+# The LLM occasionally returns unexpected shapes - strings instead of arrays,
+# arrays of nested objects when it was asked for strings, missing fields,
+# or float strings instead of integers. Without validation, that garbage
+# lands directly in cvs.parsed_data and downstream code (skills upsert,
+# confidence display, matching) silently degrades or crashes much later.
+class CVParseResult(BaseModel):
+    full_name: str = Field("", max_length=500)
+    email: str | None = Field(None, max_length=320)
+    phone: str | None = Field(None, max_length=64)
+    location: str | None = Field(None, max_length=200)
+    years_experience: int = Field(0, ge=0, le=80)
+    skills: list[str] = Field(default_factory=list)
+    experience_summary: str = Field("", max_length=2000)
+    education: list[str] = Field(default_factory=list)
+    confidence: float = Field(0.0, ge=0.0, le=1.0)
+
+    @field_validator("skills", "education", mode="before")
+    @classmethod
+    def _coerce_string_list(cls, v: Any) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            v = [v]
+        if not isinstance(v, list):
+            return []
+        out: list[str] = []
+        for item in v:
+            if isinstance(item, str):
+                s = item.strip()
+            elif isinstance(item, dict):
+                s = str(item.get("name") or item.get("skill") or item.get("title") or "").strip()
+            elif item is None:
+                continue
+            else:
+                s = str(item).strip()
+            if s:
+                out.append(s)
+        return out
+
+    @field_validator("skills", mode="after")
+    @classmethod
+    def _normalize_skill_case(cls, v: list[str]) -> list[str]:
+        seen: set[str] = set()
+        normalized: list[str] = []
+        for s in v:
+            key = s.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized.append(key)
+        return normalized
+
+    @field_validator("years_experience", mode="before")
+    @classmethod
+    def _coerce_years(cls, v: Any) -> int:
+        if v is None or v == "":
+            return 0
+        if isinstance(v, int):
+            return max(0, min(v, 80))
+        if isinstance(v, float):
+            return max(0, min(int(v), 80))
+        if isinstance(v, str):
+            import re as _re
+            m = _re.search(r"\d+", v)
+            if m:
+                return max(0, min(int(m.group()), 80))
+        return 0
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _coerce_confidence(cls, v: Any) -> float:
+        if v is None or v == "":
+            return 0.0
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            return 0.0
+        if f > 1.0:
+            f = f / 100.0
+        return max(0.0, min(f, 1.0))
+
+
 CV_PARSE_SYSTEM_PROMPT = """You are a CV/resume parser for the Zambian job market.
 Extract structured information from CV text and return ONLY valid JSON.
 
@@ -29,7 +113,7 @@ Required fields:
 - phone (string or null, format as +260XXXXXXXXX if Zambian)
 - location (string or null, city/province in Zambia if applicable)
 - years_experience (integer, estimate from work history dates)
-- skills (array of lowercase strings, normalized — "javascript" not "JS", "microsoft office" not "MS Word")
+- skills (array of lowercase strings, normalized - "javascript" not "JS", "microsoft office" not "MS Word")
 - experience_summary (string, 1-2 sentences)
 - education (array of strings, highest qualification first)
 - confidence (float 0-1, how confident you are in the extraction)
@@ -48,7 +132,6 @@ Return only the extracted text, nothing else."""
 
 @lru_cache(maxsize=1)
 def _get_openrouter_client() -> OpenAI:
-    """OpenRouter uses the OpenAI SDK — just change the base_url."""
     settings = get_settings()
     return OpenAI(
         api_key=settings.openrouter_api_key,
@@ -57,23 +140,24 @@ def _get_openrouter_client() -> OpenAI:
 
 
 async def extract_text_from_file(file_bytes: bytes, file_type: str) -> str:
-    """Extract raw text from PDF, DOCX, or image files."""
     if file_type == "pdf":
         reader = PdfReader(io.BytesIO(file_bytes))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
-
     elif file_type == "docx":
         doc = Document(io.BytesIO(file_bytes))
         return "\n".join(para.text for para in doc.paragraphs)
-
     elif file_type in ("jpg", "png", "jpeg"):
         return await _ocr_with_vision(file_bytes, file_type)
-
     raise ValueError(f"Unsupported file type: {file_type}")
 
 
 async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
-    """Parse CV text into structured data using Gemini Flash via OpenRouter."""
+    """Parse CV text into structured data using Gemini Flash via OpenRouter.
+
+    The LLM's JSON output is validated through CVParseResult before being
+    returned. Garbage shapes are coerced; truly unrecoverable garbage
+    raises ValueError which the upload route maps to a clean error response.
+    """
     settings = get_settings()
     client = _get_openrouter_client()
 
@@ -93,13 +177,26 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
             )
 
             text = response.choices[0].message.content
-            # Clean markdown fences if model wraps output
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0]
             elif "```" in text:
                 text = text.split("```")[1].split("```")[0]
 
-            return json.loads(text.strip())
+            raw = json.loads(text.strip())
+
+            try:
+                validated = CVParseResult(**raw)
+            except ValidationError as ve:
+                logger.error(
+                    "LLM returned malformed CV JSON. raw=%r errors=%s",
+                    raw, ve.errors(),
+                )
+                raise ValueError(
+                    "Could not understand the CV structure. "
+                    "Please upload a clearer document or try a different format."
+                )
+
+            return validated.model_dump()
 
         except AuthenticationError:
             logger.error("OpenRouter API key is invalid or missing")
@@ -118,7 +215,6 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
 
 
 async def _ocr_with_vision(image_bytes: bytes, file_type: str) -> str:
-    """OCR via Gemini Flash vision capabilities through OpenRouter."""
     settings = get_settings()
     client = _get_openrouter_client()
     media_type = f"image/{'jpeg' if file_type in ('jpg', 'jpeg') else 'png'}"
@@ -145,7 +241,6 @@ async def _ocr_with_vision(image_bytes: bytes, file_type: str) -> str:
                     },
                 ],
             )
-
             return response.choices[0].message.content
 
         except AuthenticationError:

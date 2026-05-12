@@ -213,3 +213,184 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
 
         logging.info(f"Payment failed: user={user_id}, code={verification['result_code']}")
         return {"status": "failed"}
+
+
+@router.post("/lenco")
+async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
+    """Process Lenco v2 webhook with HMAC-SHA512 signature verification.
+
+    Signature is verified against `lenco_webhook_secret` first, then falls
+    back to `lenco_api_key` (Lenco's documented default when no dedicated
+    secret is provisioned). On valid signature + paid status, mirrors the
+    DPO upgrade flow including idempotency + period-end stacking safety.
+
+    Returns 401 on missing/invalid signature so Lenco retries (per their
+    delivery semantics). Returns 200 with a status field on all valid-sig
+    outcomes so Lenco stops retrying once delivery succeeded.
+    """
+    from fastapi import HTTPException
+    from datetime import datetime, timedelta, timezone
+    from app.core.config import get_settings
+    from app.services.lenco_webhook import verify_signature, extract_event_fields
+
+    settings = get_settings()
+    raw_body = await request.body()
+    signature = request.headers.get("x-lenco-signature", "")
+
+    if not verify_signature(
+        raw_body=raw_body,
+        provided_signature=signature,
+        webhook_secret=settings.lenco_webhook_secret,
+        api_key=settings.lenco_api_key,
+    ):
+        logging.warning("Lenco webhook: signature verification failed")
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # Signature ok — safe to parse JSON.
+    import json
+    try:
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        logging.error("Lenco webhook: signed but unparseable body")
+        return {"status": "invalid_payload"}
+
+    fields = extract_event_fields(payload)
+    logging.info(
+        "Lenco webhook: event=%s status=%s ref=%s",
+        fields.get("event"), fields.get("status_raw"), fields.get("company_ref"),
+    )
+
+    company_ref = fields.get("company_ref")
+    if not company_ref:
+        # No company_ref — can't match to a payment row. Acknowledge so
+        # Lenco stops retrying.
+        return {"status": "no_company_ref"}
+
+    # Look up the payment by company_ref (which we set when initiating).
+    payment_result = (
+        supabase.table("payments")
+        .select("*, subscriptions(id, user_id, tier, current_period_end)")
+        .eq("id", company_ref)
+        .limit(1)
+        .execute()
+    )
+    if not payment_result.data:
+        # Try by provider_ref as a fallback (in case we used Lenco's ref).
+        if fields.get("lenco_ref"):
+            payment_result = (
+                supabase.table("payments")
+                .select("*, subscriptions(id, user_id, tier, current_period_end)")
+                .eq("provider_ref", fields["lenco_ref"])
+                .limit(1)
+                .execute()
+            )
+
+    if not payment_result.data:
+        logging.warning("Lenco webhook: no matching payment for ref=%s", company_ref)
+        return {"status": "no_matching_payment"}
+
+    payment = payment_result.data[0]
+    payment_id = payment["id"]
+    user_id = payment["user_id"]
+
+    # Idempotency: a webhook for a completed payment must not re-upgrade.
+    # Lenco can replay deliveries, and without this guard a duplicate
+    # would reset matches_used to 0 mid-cycle.
+    if payment.get("status") == "completed":
+        logging.info("Lenco webhook: payment %s already processed", payment_id)
+        return {"status": "already_processed"}
+
+    if fields["is_paid"]:
+        amount_ngwee = fields["amount_ngwee"] or payment["amount"]
+        now = datetime.now(timezone.utc)
+
+        supabase.table("payments").update({
+            "status": "completed",
+            "provider_ref": fields.get("lenco_ref") or company_ref,
+            "webhook_data": payload,
+            "completed_at": now.isoformat(),
+        }).eq("id", payment_id).execute()
+
+        # Resolve tier from amount — same logic as DPO. Exact match wins;
+        # otherwise the highest paid tier whose price <= amount, flagged
+        # for audit.
+        paid_tiers = {price: tier for tier, price in TIER_PRICES.items() if tier != "free"}
+        new_tier = paid_tiers.get(amount_ngwee)
+        if new_tier is None:
+            logging.warning(
+                "Lenco webhook: unknown amount %s ngwee for payment %s",
+                amount_ngwee, payment_id,
+            )
+            sorted_paid = sorted(paid_tiers.items())
+            new_tier = next(
+                (tier for price, tier in reversed(sorted_paid) if price <= amount_ngwee),
+                "starter",
+            )
+        new_limit = TIER_LIMITS[new_tier]
+
+        # Period-end safety: stack on top of any remaining paid days.
+        existing_end_str = (payment.get("subscriptions") or {}).get("current_period_end")
+        existing_end = None
+        if existing_end_str:
+            try:
+                existing_end = datetime.fromisoformat(existing_end_str.replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                existing_end = None
+        base = existing_end if (existing_end and existing_end > now) else now
+        new_period_end = base + timedelta(days=30)
+
+        supabase.table("subscriptions").update({
+            "tier": new_tier,
+            "status": "active",
+            "matches_limit": new_limit,
+            "matches_used": 0,
+            "current_period_start": now.isoformat(),
+            "current_period_end": new_period_end.isoformat(),
+        }).eq("user_id", user_id).execute()
+
+        supabase.table("users").update({
+            "subscription_tier": new_tier,
+        }).eq("id", user_id).execute()
+
+        # Notify on WhatsApp + email — best-effort, never fail the webhook.
+        user = supabase.table("users").select("phone").eq("id", user_id).single().execute()
+        if user.data:
+            tier_names = {
+                "starter": "Starter (K125/mo)",
+                "professional": "Professional (K250/mo)",
+                "super_standard": "Super Standard (K500/mo)",
+            }
+            tier_name = tier_names.get(new_tier, new_tier)
+            try:
+                await send_whatsapp_message(
+                    user.data["phone"],
+                    f"*Zed CV - Payment Confirmed!*\n\n"
+                    f"Your payment of K{amount_ngwee // 100} via Lenco has been received.\n"
+                    f"You are now on the *{tier_name}* plan.\n\n"
+                    f"Reply *matches* to see your job matches!"
+                )
+            except Exception as e:
+                logging.error(f"Failed to send Lenco payment WhatsApp: {e}")
+
+        try:
+            await send_payment_confirmation_email(user_id, new_tier, amount_ngwee, supabase)
+        except Exception as e:
+            logging.error(f"Failed to send Lenco payment email: {e}")
+
+        logging.info("Lenco payment completed: user=%s tier=%s", user_id, new_tier)
+        return {"status": "completed"}
+
+    elif fields["is_failed"]:
+        supabase.table("payments").update({
+            "status": "failed",
+            "webhook_data": payload,
+        }).eq("id", payment_id).execute()
+        logging.info("Lenco payment failed: user=%s", user_id)
+        return {"status": "failed"}
+
+    # Pending / unrecognised status — store the webhook for audit but don't
+    # change the payment yet.
+    supabase.table("payments").update({
+        "webhook_data": payload,
+    }).eq("id", payment_id).execute()
+    return {"status": "pending"}

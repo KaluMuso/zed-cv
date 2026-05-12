@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 
 from app.core.deps import get_supabase, get_current_user, get_current_user_id, is_superadmin
+from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.services.cv_parser import extract_text_from_file, parse_cv_with_llm
 from app.services.cv_generator import analyze_cv, generate_cv
@@ -47,6 +48,7 @@ class CVGenerateResponse(BaseModel):
     job_title: str
     company: Optional[str] = None
 
+
 _FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]")
 
 
@@ -67,7 +69,45 @@ ALLOWED_TYPES = {
     "image/jpeg": "jpg",
     "image/png": "png",
 }
+
 MAX_FILE_SIZE = 5 * 1024 * 1024
+
+
+# ai_cache helpers.
+# The ai_cache table is keyed by SHA-256 of (operation:model:input).
+# Lookups are best-effort - any failure (RLS, network, unknown column)
+# falls back to a real API call. We never let cache plumbing crash
+# a user's upload. cache_type CHECK was widened in migration 011 to
+# include "cv_parse" and "embedding" so the INSERT here won't 23514.
+def _cache_get(supabase, cache_key: str):
+    """Return the cached result for this key, or None on miss/error."""
+    try:
+        rows = (
+            supabase.table("ai_cache")
+            .select("result")
+            .eq("cache_key", cache_key)
+            .limit(1)
+            .execute()
+        )
+        if rows.data:
+            return rows.data[0].get("result")
+    except Exception:
+        return None
+    return None
+
+
+def _cache_put(supabase, cache_key: str, cache_type: str, input_hash: str, result, model: str) -> None:
+    """Store a cache entry. Swallows duplicate-key errors silently."""
+    try:
+        supabase.table("ai_cache").insert({
+            "cache_key": cache_key,
+            "cache_type": cache_type,
+            "input_hash": input_hash,
+            "result": result,
+            "model": model,
+        }).execute()
+    except Exception:
+        pass
 
 
 @router.post("/upload")
@@ -89,15 +129,31 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
     if not raw_text or len(raw_text.strip()) < 50:
         raise HTTPException(status_code=422, detail="Could not extract enough text. Please upload a clearer document.")
 
-    try:
-        parsed = await parse_cv_with_llm(raw_text)
-    except ValueError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    # ai_cache lookup for parse + embedding.
+    # Same CV text -> Gemini is deterministic enough to cache (temperature 0.1).
+    # Hashing the first 10k chars mirrors what we store in cvs.raw_text so
+    # cache keys are stable across re-uploads. Keyed by model so swapping
+    # LLM_MODEL or EMBEDDING_MODEL invalidates cleanly.
+    settings = get_settings()
+    text_hash = hashlib.sha256(raw_text[:10000].encode("utf-8")).hexdigest()
+    parse_cache_key = f"cv_parse:{settings.llm_model}:{text_hash}"
+    embed_cache_key = f"embedding:{settings.embedding_model}:{settings.embedding_dimensions}:{text_hash}"
 
-    try:
-        embedding = await generate_embedding(raw_text)
-    except ValueError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    parsed = _cache_get(supabase, parse_cache_key)
+    if parsed is None:
+        try:
+            parsed = await parse_cv_with_llm(raw_text)
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        _cache_put(supabase, parse_cache_key, "cv_parse", text_hash, parsed, settings.llm_model)
+
+    embedding = _cache_get(supabase, embed_cache_key)
+    if embedding is None:
+        try:
+            embedding = await generate_embedding(raw_text)
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        _cache_put(supabase, embed_cache_key, "embedding", text_hash, embedding, settings.embedding_model)
 
     storage_path = f"cvs/{user_id}/{_safe_filename(file.filename or '')}"
     supabase.storage.from_("documents").upload(storage_path, file_bytes, {"content-type": content_type})

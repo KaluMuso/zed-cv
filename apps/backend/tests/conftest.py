@@ -76,6 +76,19 @@ class FakeSupabaseQuery:
     def or_(self, *a):
         return self
 
+    def in_(self, *a, **kw):
+        return self
+
+    def is_(self, *a, **kw):
+        return self
+
+    # `.not_.is_("col", "null")` — supabase-py exposes negation as an
+    # attribute that proxies the next filter call. Mirror that here so
+    # backend code using `query.not_.is_(...)` doesn't AttributeError.
+    @property
+    def not_(self):
+        return self
+
     def order(self, *a, **kw):
         return self
 

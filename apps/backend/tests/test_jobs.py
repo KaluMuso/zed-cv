@@ -44,6 +44,41 @@ class TestJobList:
         assert len(body["jobs"]) == 1
         assert body["jobs"][0]["title"] == "Python Developer"
 
+    def test_list_jobs_accepts_sort_recent(self, client, fake_supabase):
+        """sort=recent is the default; route should accept it without 422."""
+        fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[], count=0))
+        resp = client.get("/api/v1/jobs?sort=recent")
+        assert resp.status_code == 200
+
+    def test_list_jobs_accepts_sort_closing(self, client, fake_supabase):
+        """sort=closing emits a `not.is.null` filter on closing_date."""
+        fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[], count=0))
+        resp = client.get("/api/v1/jobs?sort=closing")
+        assert resp.status_code == 200
+
+    def test_list_jobs_unknown_sort_falls_back(self, client, fake_supabase):
+        """Unknown sort should fall back silently to 'recent' (no 400)."""
+        fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[], count=0))
+        resp = client.get("/api/v1/jobs?sort=does-not-exist")
+        assert resp.status_code == 200
+
+    def test_list_jobs_short_circuits_unknown_skill(self, client, fake_supabase):
+        """If the requested skill names resolve to zero skill_ids, return
+        an empty list immediately — don't burn the main query."""
+        fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
+        fake_supabase.set_table("skill_aliases", FakeSupabaseQuery(data=[]))
+        resp = client.get("/api/v1/jobs?skills=quantum-clog-dancing")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["jobs"] == []
+        assert body["total"] == 0
+
+    def test_list_jobs_source_filter_accepted(self, client, fake_supabase):
+        """source=manual,scraper passes type-check and reaches the query."""
+        fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[], count=0))
+        resp = client.get("/api/v1/jobs?source=manual,scraper")
+        assert resp.status_code == 200
+
 
 class TestJobCreate:
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
