@@ -3,7 +3,21 @@ uvicorn[standard]==0.30.1
 python-multipart==0.0.9
 python-jose[cryptography]==3.3.0
 httpx==0.27.0
-supabase==2.5.1
+# Upgraded from 2.5.1 → 2.9.x to support the new sb_secret_* key format
+# Supabase rolled out for newly-issued service-role keys. The legacy
+# `service_role` JWT format (which is what our SUPABASE_KEY currently
+# uses) still works on 2.9.x, so this bump is preventive — it lets us
+# rotate keys via the dashboard without re-deploying.
+#
+# Range pin (not exact) so pip picks the latest compatible 2.9.x without
+# accidentally pulling 2.10 / 3.x which have shipped further breaking
+# changes (especially in the .storage and .auth submodules).
+#
+# Surface area at risk:
+#   - supabase.storage.from_("documents").upload(...) in cv.py (2 sites)
+#   - postgrest.exceptions.APIError import in jobs.py (1 site)
+# Everything else (.table(), .rpc(), create_client) is on the stable surface.
+supabase>=2.9.0,<2.10.0
 openai==1.35.3
 python-docx==1.1.2
 PyPDF2==3.0.1
