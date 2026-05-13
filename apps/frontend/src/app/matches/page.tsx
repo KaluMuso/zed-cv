@@ -118,10 +118,21 @@ export default function MatchesPage() {
     );
   }
 
-  // Apply filters
+  // Apply filters + sort. "Closing soon" must sort by closing_date — without
+  // this branch the UI button is a no-op (regression from quota work, 2026-05).
+  const closingKey = (iso: string | null | undefined): number => {
+    if (!iso) return Number.POSITIVE_INFINITY;
+    const t = new Date(iso).getTime();
+    return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+  };
+
   let filtered = data.matches.filter((m) => m.score >= scoreFilter);
   if (sort === "score") {
     filtered = [...filtered].sort((a, b) => b.score - a.score);
+  } else {
+    filtered = [...filtered].sort(
+      (a, b) => closingKey(a.job.closing_date) - closingKey(b.job.closing_date)
+    );
   }
 
   // Real quota from /subscription (sub.matches_limit). Falls back to the
