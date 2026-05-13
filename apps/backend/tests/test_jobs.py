@@ -3,6 +3,67 @@ from unittest.mock import AsyncMock, patch
 from tests.conftest import FakeSupabaseQuery
 
 
+class TestStripHtml:
+    """`_strip_html` must remove real HTML tags but leave non-HTML angle
+    brackets alone — job descriptions routinely contain literal `<...>`
+    in salary ranges, emails, placeholders, and comparisons. Stripping
+    those would silently lose ingested data (description is mutated in
+    place before fingerprinting, embedding, and storage)."""
+
+    def test_strips_real_html(self):
+        from app.api.v1.jobs import _strip_html
+        assert _strip_html("<p>Hello <b>world</b></p>") == "Hello world"
+        assert _strip_html("<H1>Title</H1>") == "Title"
+        assert _strip_html('<div class="x">Hi</div>') == "Hi"
+
+    def test_paragraph_breaks(self):
+        from app.api.v1.jobs import _strip_html
+        assert _strip_html("<p>First.</p><p>Second.</p>") == "First.\n\nSecond."
+
+    def test_lists_become_bullets(self):
+        from app.api.v1.jobs import _strip_html
+        assert (
+            _strip_html("<ul><li>One</li><li>Two</li></ul>")
+            == "• One\n• Two"
+        )
+
+    def test_br_becomes_newline(self):
+        from app.api.v1.jobs import _strip_html
+        assert (
+            _strip_html("Line one<br>Line two<br/>Line three")
+            == "Line one\nLine two\nLine three"
+        )
+
+    def test_entities_unescaped(self):
+        from app.api.v1.jobs import _strip_html
+        assert _strip_html("A &amp; B") == "A & B"
+
+    def test_preserves_salary_range_with_angle_brackets(self):
+        """Regression: previously '<K15000 - K30000>' got eaten by the
+        catch-all `<[^>]+>` regex, silently destroying salary data on
+        every scraped ingest and on the backfill endpoint."""
+        from app.api.v1.jobs import _strip_html
+        s = "Salary range: <K15000 - K30000> ZMW per month."
+        assert _strip_html(s) == s
+
+    def test_preserves_email_in_angle_brackets(self):
+        """Regression: '<user@host>' is a common contact format in
+        scraped job postings. Stripping it loses the only way to apply."""
+        from app.api.v1.jobs import _strip_html
+        s = "Apply via <careers@company.com>"
+        assert _strip_html(s) == s
+
+    def test_preserves_template_placeholders(self):
+        from app.api.v1.jobs import _strip_html
+        s = "Required: <relevant degree>. Must have <2 years experience>."
+        assert _strip_html(s) == s
+
+    def test_preserves_lone_comparisons(self):
+        from app.api.v1.jobs import _strip_html
+        s = "Latency must be < 10ms but > 2ms baseline."
+        assert _strip_html(s) == s
+
+
 class TestJobList:
     def test_list_jobs_public(self, client):
         """GET /jobs is intentionally public (per birds-eye doc §5)."""

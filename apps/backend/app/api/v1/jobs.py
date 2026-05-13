@@ -22,7 +22,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 
-_HTML_TAG_RE = _re.compile(r"<[^>]+>")
+# Whitelist of HTML tag names the sanitizer will strip. Anything outside
+# this set is left as literal text so non-HTML angle-bracket content
+# (salary ranges like "<K15000 - K30000>", emails like "<user@host>",
+# placeholders like "<relevant degree>", comparisons like "< 10ms")
+# survives ingestion instead of being silently deleted.
+_KNOWN_HTML_TAGS = (
+    "a|abbr|address|article|aside|b|big|blockquote|body|br|button|canvas|"
+    "caption|center|cite|code|col|colgroup|dd|del|details|dfn|div|dl|dt|"
+    "em|embed|fieldset|figcaption|figure|font|footer|form|h[1-6]|head|"
+    "header|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|main|mark|"
+    "meta|nav|noscript|ol|optgroup|option|p|pre|q|s|samp|script|section|"
+    "select|small|source|span|strong|style|sub|summary|sup|svg|table|tbody|"
+    "td|template|textarea|tfoot|th|thead|time|title|tr|tt|u|ul|var|video|wbr"
+)
+_HTML_TAG_RE = _re.compile(
+    rf"</?(?:{_KNOWN_HTML_TAGS})\b[^<>]*>", _re.IGNORECASE
+)
 _BR_RE = _re.compile(r"<\s*br\s*/?\s*>", _re.IGNORECASE)
 _LI_OPEN_RE = _re.compile(r"<\s*li\b[^>]*>", _re.IGNORECASE)
 _BLOCK_CLOSE_RE = _re.compile(
