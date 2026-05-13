@@ -33,6 +33,7 @@ class CacheType(str, Enum):
     cover_letter = "cover_letter"      # cover_letter.py /generate
     interview_prep = "interview_prep"  # interview_prep.py /generate
     explanation = "explanation"        # matches.py /explain
+    job_extract = "job_extract"        # job_extractor.py — WhatsApp channel ingest
 
 
 class QueueStatus(str, Enum):

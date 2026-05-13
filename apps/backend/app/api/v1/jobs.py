@@ -308,6 +308,93 @@ async def create_job(request: Request, body: JobCreate, current_user: dict = Dep
     return Job(**job)
 
 
+def _build_aggregator_blacklist(settings: Settings) -> list[str]:
+    """Lowercased aggregator-domain list ready for substring matching."""
+    return [
+        d.strip().lower()
+        for d in (settings.aggregator_domains_blacklist or "").split(",")
+        if d.strip()
+    ]
+
+
+async def _ingest_one_job(
+    supabase,
+    job: JobCreate,
+    aggregator_blacklist: list[str],
+) -> tuple[str, str]:
+    """Run the full per-row ingest pipeline on one JobCreate.
+
+    Returns (status, detail) where status is one of:
+      - "ingested" — row inserted, fingerprint stored, skills linked.
+      - "duplicate" — fingerprint already in job_fingerprints; no write.
+      - "skipped" — apply_url/source_url matched the aggregator blacklist.
+      - "error" — anything else; detail carries the short reason.
+
+    Shared between the n8n bulk-ingest route and Slice F's WhatsApp
+    channel ingest path so both go through the same HTML-strip /
+    fingerprint-dedup / embedding / skills-link pipeline. Mutating
+    `job.description` here (HTML strip) is intentional — see the comment
+    in the body.
+    """
+    try:
+        if aggregator_blacklist:
+            urls_to_check = " ".join(
+                filter(None, [job.apply_url or "", job.source_url or ""])
+            ).lower()
+            if urls_to_check and any(
+                domain in urls_to_check for domain in aggregator_blacklist
+            ):
+                logger.info(
+                    "ingest_one_job: skipped as aggregator cross-listing (title=%r)",
+                    job.title,
+                )
+                return "skipped", "aggregator"
+
+        # Strip HTML BEFORE fingerprinting so identical jobs that differ
+        # only in markup collapse to the same dedup key. Mutated value is
+        # what gets embedded, fingerprinted, AND stored — all three stay
+        # in sync.
+        job.description = _strip_html(job.description)
+
+        fp = _fingerprint(job.title, job.company, job.description)
+        existing = (
+            supabase.table("job_fingerprints")
+            .select("job_id")
+            .eq("fingerprint", fp)
+            .execute()
+        )
+        if existing.data:
+            return "duplicate", ""
+
+        try:
+            embedding = await generate_embedding(
+                f"{job.title} {job.company or ''} {job.description}"
+            )
+        except Exception as exc:
+            return "error", f"embedding_failed: {type(exc).__name__}"
+
+        job_data = job.model_dump(exclude_none=True, mode="json")
+        skills_required = job_data.pop("skills_required", [])
+        job_data["embedding"] = embedding
+
+        result = supabase.table("jobs").insert(job_data).execute()
+        if not result.data:
+            return "error", "insert_returned_empty"
+
+        new_job = result.data[0]
+        supabase.table("job_fingerprints").insert(
+            {"fingerprint": fp, "job_id": new_job["id"]}
+        ).execute()
+        _link_job_skills(supabase, new_job["id"], skills_required)
+        return "ingested", ""
+    except Exception as exc:
+        logger.error(
+            "ingest_one_job: failed (title=%r): %s",
+            getattr(job, "title", None), exc, exc_info=True,
+        )
+        return "error", f"unexpected: {type(exc).__name__}"
+
+
 @router.post("/ingest", response_model=JobIngestResponse)
 @limiter.limit("10/minute")
 async def ingest_jobs(
@@ -334,13 +421,7 @@ async def ingest_jobs(
         # whether the server has an ingest key configured.
         raise HTTPException(status_code=401, detail="Invalid ingest API key")
 
-    # Pre-compute the blacklist once per request rather than per-row.
-    # Lowercased and stripped so the per-row check is a simple substring.
-    aggregator_blacklist = [
-        d.strip().lower()
-        for d in (settings.aggregator_domains_blacklist or "").split(",")
-        if d.strip()
-    ]
+    aggregator_blacklist = _build_aggregator_blacklist(settings)
 
     ingested = 0
     duplicates = 0
@@ -348,85 +429,18 @@ async def ingest_jobs(
     errors: list[JobIngestErrorItem] = []
 
     for idx, job in enumerate(body.jobs):
-        try:
-            # Filter cross-listings / aggregator-domain noise BEFORE
-            # fingerprinting and embedding — both are expensive (DB call +
-            # Gemini call) and the filter is cheap.
-            if aggregator_blacklist:
-                urls_to_check = " ".join(
-                    filter(None, [job.apply_url or "", job.source_url or ""])
-                ).lower()
-                if urls_to_check and any(
-                    domain in urls_to_check for domain in aggregator_blacklist
-                ):
-                    skipped += 1
-                    logger.info(
-                        "ingest_jobs: row %d skipped as aggregator cross-listing (title=%r)",
-                        idx, job.title,
-                    )
-                    continue
-
-            # Strip HTML BEFORE fingerprinting so identical jobs that
-            # differ only in markup (one scraper emits <p>, another doesn't)
-            # collapse to the same dedup key. The mutated description is
-            # what gets embedded, fingerprinted, AND stored — keeps all
-            # three in sync.
-            job.description = _strip_html(job.description)
-
-            fp = _fingerprint(job.title, job.company, job.description)
-            existing = (
-                supabase.table("job_fingerprints")
-                .select("job_id")
-                .eq("fingerprint", fp)
-                .execute()
-            )
-            if existing.data:
-                duplicates += 1
-                continue
-
-            try:
-                embedding = await generate_embedding(
-                    f"{job.title} {job.company or ''} {job.description}"
-                )
-            except Exception as exc:
-                errors.append(JobIngestErrorItem(
-                    index=idx,
-                    title=job.title[:80],
-                    reason=f"embedding_failed: {type(exc).__name__}",
-                ))
-                continue
-
-            job_data = job.model_dump(exclude_none=True, mode="json")
-            skills_required = job_data.pop("skills_required", [])
-            job_data["embedding"] = embedding
-
-            result = supabase.table("jobs").insert(job_data).execute()
-            if not result.data:
-                errors.append(JobIngestErrorItem(
-                    index=idx,
-                    title=job.title[:80],
-                    reason="insert_returned_empty",
-                ))
-                continue
-
-            new_job = result.data[0]
-            supabase.table("job_fingerprints").insert({
-                "fingerprint": fp,
-                "job_id": new_job["id"],
-            }).execute()
-            _link_job_skills(supabase, new_job["id"], skills_required)
+        status, detail = await _ingest_one_job(supabase, job, aggregator_blacklist)
+        if status == "ingested":
             ingested += 1
-        except Exception as exc:
-            # Catch-all so one bad row never poisons the batch. Sentry
-            # captures the full trace via the global handler.
-            logger.error(
-                "ingest_jobs: row %d failed (title=%r): %s",
-                idx, getattr(job, "title", None), exc, exc_info=True,
-            )
+        elif status == "duplicate":
+            duplicates += 1
+        elif status == "skipped":
+            skipped += 1
+        else:  # "error"
             errors.append(JobIngestErrorItem(
                 index=idx,
                 title=(getattr(job, "title", None) or "<unknown>")[:80],
-                reason=f"unexpected: {type(exc).__name__}",
+                reason=detail,
             ))
 
     return JobIngestResponse(

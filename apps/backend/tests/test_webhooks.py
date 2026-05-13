@@ -255,3 +255,241 @@ def test_subscription_pay_accepts_lenco_method(client, auth_headers, fake_supaba
     assert resp.status_code == 200
     body = resp.json()
     assert body["transaction_id"] == "pay-lenco-1"
+
+
+# ── Slice F: WhatsApp channel ingest ─────────────────────────────────────
+
+
+CHANNEL_ID = "120363401234567890@newsletter"
+
+SAMPLE_CHANNEL_BODY = """
+*ACCOUNTANT*
+
+Position: Accountant
+Company: ZANACO
+Location: Lusaka
+
+Requirements:
+- ZICA Licentiate or higher
+- 3+ years experience in financial reporting
+- Strong Excel and IFRS knowledge
+- Experience with Sage Evolution preferred
+
+How to apply: send CV to careers@zanaco.co.zm
+Closing date: 2026-06-15
+""".strip()
+
+
+def _mock_extractor_response(extracted_payload: dict):
+    """Build a MagicMock that mimics an OpenAI client returning the given
+    payload as the assistant message content. Avoids hitting OpenRouter."""
+    import json as _json
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = _json.dumps(extracted_payload)
+    mock_client.chat.completions.create.return_value = mock_response
+    return mock_client
+
+
+def test_whatsapp_channel_branch_off_by_default(client, fake_supabase, monkeypatch):
+    """When whatsapp_jobs_ingest_enabled is False, the channel branch is
+    NOT taken — even for messages from the configured channel ID. The
+    feature is strictly opt-in via the env flag."""
+    monkeypatch.setenv("WHATSAPP_CHANNEL_JOBS_ID", CHANNEL_ID)
+    # Note: WHATSAPP_JOBS_INGEST_ENABLED intentionally NOT set.
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+    # Mock both downstream paths the message COULD hit:
+    #   - the extractor (Slice F branch — must NOT fire)
+    #   - send_whatsapp_message (existing fall-through branch — will fire
+    #     because the message body isn't a known command)
+    with patch(
+        "app.services.job_extractor.extract_job_from_message",
+        new_callable=AsyncMock,
+    ) as mock_extract, patch(
+        "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
+    ):
+        resp = client.post(
+            "/api/v1/webhooks/whatsapp",
+            json={
+                "event": "message",
+                "payload": {
+                    "from": CHANNEL_ID,
+                    "id": "msg-123",
+                    "body": SAMPLE_CHANNEL_BODY,
+                },
+            },
+        )
+
+    get_settings.cache_clear()
+
+    assert resp.status_code == 200
+    # The critical assertion: with the flag off, the extractor was never
+    # called — the message fell through to the existing user-command path.
+    mock_extract.assert_not_called()
+
+
+def test_whatsapp_channel_branch_routes_to_extractor(
+    client, fake_supabase, monkeypatch
+):
+    """Flag on + matching chatId → extractor runs and feeds _ingest_one_job."""
+    monkeypatch.setenv("WHATSAPP_CHANNEL_JOBS_ID", CHANNEL_ID)
+    monkeypatch.setenv("WHATSAPP_JOBS_INGEST_ENABLED", "true")
+    # Bust the lru_cache so the new env vars are seen.
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+    # Fresh fingerprint table → first ingest goes through.
+    fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
+    fake_supabase.set_table(
+        "jobs", FakeSupabaseQuery(data=[{"id": "job-from-channel-1"}])
+    )
+
+    payload = {
+        "title": "Accountant",
+        "company": "ZANACO",
+        "location": "Lusaka",
+        "description": (
+            "ZICA Licentiate or higher. 3+ years experience in financial "
+            "reporting. Strong Excel and IFRS knowledge."
+        ),
+        "apply_url": None,
+        "apply_email": "careers@zanaco.co.zm",
+        "closing_date": "2026-06-15",
+        "skills_required": ["accounting", "ifrs", "excel"],
+        "confidence": 85,
+    }
+
+    with patch(
+        "app.services.job_extractor._client",
+        return_value=_mock_extractor_response(payload),
+    ), patch(
+        "app.api.v1.jobs.generate_embedding", new_callable=AsyncMock
+    ) as mock_embed:
+        mock_embed.return_value = [0.1] * 768
+        resp = client.post(
+            "/api/v1/webhooks/whatsapp",
+            json={
+                "event": "message",
+                "payload": {
+                    "from": CHANNEL_ID,
+                    "id": "msg-456",
+                    "body": SAMPLE_CHANNEL_BODY,
+                },
+            },
+        )
+
+    get_settings.cache_clear()  # Restore for any later tests.
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["ingest_result"] == "ingested"
+    assert body["title"] == "Accountant"
+    mock_embed.assert_called_once()
+
+
+def test_whatsapp_channel_rebroadcast_returns_duplicate(
+    client, fake_supabase, monkeypatch
+):
+    """The smoke-test requirement: a second paste of the same message
+    must short-circuit at the fingerprint dedup, not re-insert. The
+    extractor sees the same body and either (a) hits ai_cache or (b)
+    re-runs, but either way the resulting JobCreate fingerprints to the
+    same hash as the first round — so _ingest_one_job returns 'duplicate'."""
+    monkeypatch.setenv("WHATSAPP_CHANNEL_JOBS_ID", CHANNEL_ID)
+    monkeypatch.setenv("WHATSAPP_JOBS_INGEST_ENABLED", "true")
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+    # Pre-seeded fingerprint table simulates "the job was already ingested
+    # from yesterday's broadcast".
+    fake_supabase.set_table(
+        "job_fingerprints",
+        FakeSupabaseQuery(data=[{"job_id": "job-from-yesterday"}]),
+    )
+
+    payload = {
+        "title": "Accountant",
+        "company": "ZANACO",
+        "location": "Lusaka",
+        "description": "ZICA Licentiate or higher. Strong Excel and IFRS knowledge.",
+        "apply_email": "careers@zanaco.co.zm",
+        "closing_date": "2026-06-15",
+        "skills_required": ["accounting"],
+        "confidence": 85,
+    }
+
+    with patch(
+        "app.services.job_extractor._client",
+        return_value=_mock_extractor_response(payload),
+    ), patch(
+        "app.api.v1.jobs.generate_embedding", new_callable=AsyncMock
+    ) as mock_embed:
+        resp = client.post(
+            "/api/v1/webhooks/whatsapp",
+            json={
+                "event": "message",
+                "payload": {
+                    "from": CHANNEL_ID,
+                    "id": "msg-789",
+                    "body": SAMPLE_CHANNEL_BODY,
+                },
+            },
+        )
+
+    get_settings.cache_clear()
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ingest_result"] == "duplicate"
+    # Critical: dedup short-circuited BEFORE the expensive embedding call.
+    mock_embed.assert_not_called()
+
+
+def test_whatsapp_channel_low_confidence_not_ingested(
+    client, fake_supabase, monkeypatch
+):
+    """Extractor confidence below the floor (60) → drop quietly. No write,
+    no error. Keeps channel chitchat ('Good morning everyone!') from
+    polluting the jobs table."""
+    monkeypatch.setenv("WHATSAPP_CHANNEL_JOBS_ID", CHANNEL_ID)
+    monkeypatch.setenv("WHATSAPP_JOBS_INGEST_ENABLED", "true")
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+    payload = {
+        "title": "Something maybe",
+        "description": "This message is probably not a job posting at all.",
+        "skills_required": [],
+        "confidence": 15,
+    }
+
+    with patch(
+        "app.services.job_extractor._client",
+        return_value=_mock_extractor_response(payload),
+    ), patch(
+        "app.api.v1.jobs.generate_embedding", new_callable=AsyncMock
+    ) as mock_embed:
+        resp = client.post(
+            "/api/v1/webhooks/whatsapp",
+            json={
+                "event": "message",
+                "payload": {
+                    "from": CHANNEL_ID,
+                    "id": "msg-noise",
+                    "body": (
+                        "Good morning everyone! Just a reminder we have "
+                        "more job posts coming this afternoon."
+                    ),
+                },
+            },
+        )
+
+    get_settings.cache_clear()
+
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "not_a_job"
+    mock_embed.assert_not_called()

@@ -48,6 +48,19 @@ class Settings(BaseSettings):
     waha_api_url: str = "http://localhost:3001"
     waha_api_key: str = ""
 
+    # WhatsApp channel ingest (Slice F).
+    # When `whatsapp_jobs_ingest_enabled` is True and a webhook message's
+    # chatId/from contains `whatsapp_channel_jobs_id`, the message body is
+    # routed to job_extractor.py (Gemini structured output) instead of the
+    # user-command handler. The extracted JobCreate is fed through the same
+    # ingest pipeline as the n8n scraper. Default OFF so the feature can be
+    # A/B'd against real channel traffic before flipping it on.
+    # The ID format is `<id>@newsletter` for WhatsApp channels; we match by
+    # substring so the env var can be set to either the full chatId or just
+    # the numeric prefix.
+    whatsapp_channel_jobs_id: str = ""
+    whatsapp_jobs_ingest_enabled: bool = False
+
     # Auth
     jwt_secret: str
     jwt_algorithm: str = "HS256"

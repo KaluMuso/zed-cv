@@ -7,6 +7,8 @@ from app.schemas.subscription import TIER_LIMITS, TIER_PRICES
 from app.services.whatsapp import send_whatsapp_message, send_match_digest
 from app.services.email import send_payment_confirmation_email
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 COMMANDS = {"hi": "welcome", "hello": "welcome", "menu": "menu", "help": "menu",
@@ -32,6 +34,71 @@ PLAN_INFO_BY_TIER = {
 }
 
 
+async def _handle_channel_message(payload: dict, supabase, settings) -> dict:
+    """Slice F: extract a job from a channel post and feed it to the
+    same ingest pipeline as the n8n scraper.
+
+    Returns a status dict (WAHA logs the webhook response, so the ops
+    team can read "ingested" / "duplicate" / "not_a_job" counts from
+    the webhook tail). Never raises — channel messages aren't user
+    requests, and a 500 here would have WAHA back off the entire
+    webhook URL, breaking real user commands too.
+    """
+    from pydantic import ValidationError
+    from app.services.job_extractor import extract_job_from_message
+    from app.api.v1.jobs import _ingest_one_job, _build_aggregator_blacklist
+    from app.schemas.jobs import JobCreate, JobSource
+
+    raw_body = payload.get("body", "")
+    msg_id = payload.get("id") or payload.get("messageId") or ""
+
+    try:
+        extracted = await extract_job_from_message(raw_body, supabase)
+    except ValueError as e:
+        # Hard infra failure (auth, rate limit) — log and let WAHA retry.
+        logger.error("Slice F: extractor infrastructure failure: %s", e)
+        return {"status": "extract_unavailable", "detail": str(e)[:120]}
+
+    if extracted is None:
+        # Below confidence floor, too short to be a job, or model said
+        # "not a job". Quiet ignore — channel traffic is mostly non-job.
+        return {"status": "not_a_job"}
+
+    source_url = f"whatsapp://channel/{settings.whatsapp_channel_jobs_id}/{msg_id}"
+    try:
+        job_create = JobCreate(
+            title=extracted.title,
+            company=extracted.company,
+            location=extracted.location,
+            description=extracted.description,
+            apply_url=extracted.apply_url,
+            apply_email=extracted.apply_email,
+            closing_date=extracted.closing_date,
+            skills_required=extracted.skills_required,
+            source=JobSource.scraper,
+            source_url=source_url,
+        )
+    except ValidationError as ve:
+        logger.warning(
+            "Slice F: extractor output rejected by JobCreate validators: %s",
+            ve.errors()[:2],
+        )
+        return {"status": "validation_failed"}
+
+    blacklist = _build_aggregator_blacklist(settings)
+    result, detail = await _ingest_one_job(supabase, job_create, blacklist)
+    logger.info(
+        "Slice F: channel msg %s → %s (title=%r)",
+        msg_id, result, extracted.title,
+    )
+    return {
+        "status": "ok",
+        "ingest_result": result,
+        "detail": detail or None,
+        "title": extracted.title,
+    }
+
+
 @router.post("/whatsapp")
 async def whatsapp_webhook(request: Request, supabase=Depends(get_supabase)):
     body = await request.json()
@@ -39,6 +106,22 @@ async def whatsapp_webhook(request: Request, supabase=Depends(get_supabase)):
         return {"status": "ignored"}
 
     payload = body.get("payload", {})
+
+    # Slice F: WhatsApp channel ingest branch. When the configured jobs
+    # channel posts a message AND the feature flag is on, route to the
+    # structured-output extractor → _ingest_one_job pipeline instead of
+    # the user-command handler. Channel chatIds end in `@newsletter`,
+    # not `@c.us`, so they would otherwise fall through to the
+    # "I didn't understand that" reply at the bottom of this handler.
+    settings = get_settings()
+    chat_id = payload.get("from") or payload.get("chatId") or ""
+    if (
+        settings.whatsapp_jobs_ingest_enabled
+        and settings.whatsapp_channel_jobs_id
+        and settings.whatsapp_channel_jobs_id in chat_id
+    ):
+        return await _handle_channel_message(payload, supabase, settings)
+
     message_body = payload.get("body", "").strip().lower()
     from_number = payload.get("from", "").replace("@c.us", "")
     if not from_number or not message_body:
