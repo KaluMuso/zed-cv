@@ -12,15 +12,21 @@ settings = get_settings()
 
 # ── Observability: Sentry (no-op if SENTRY_DSN is empty) ──
 # Init must happen BEFORE the FastAPI app is created so the integration
-# can hook ASGI middleware. send_default_pii=False keeps user phone/email
-# out of error reports — Sentry only sees stack traces and breadcrumbs.
+# can hook ASGI middleware. send_default_pii=False keeps Sentry's
+# standard PII fields (IP, user.email) out of error reports. The
+# `before_send` hook then runs over every event and scrubs OUR
+# domain-specific PII (+260 phones, email addresses, JWT-shaped tokens)
+# from exception messages, request bodies, breadcrumbs and extras
+# before they leave the cluster. See app/core/sentry_redaction.py.
 if settings.sentry_dsn:
     import sentry_sdk
+    from app.core.sentry_redaction import before_send as _sentry_before_send
     sentry_sdk.init(
         dsn=settings.sentry_dsn,
         environment=settings.sentry_environment,
         traces_sample_rate=0.1,
         send_default_pii=False,
+        before_send=_sentry_before_send,
     )
 
 app = FastAPI(title=settings.app_name, version=settings.app_version, docs_url="/docs", redoc_url="/redoc")

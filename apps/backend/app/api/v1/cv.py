@@ -105,6 +105,70 @@ ALLOWED_TYPES = {
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
 
+# ── task #77: libmagic-based content sniffing ───────────────────────────
+# Set of MIME strings the LIBMAGIC sniffer might legitimately return for
+# each accepted file kind. We match against this rather than the raw
+# Content-Type header so a renamed .exe → .pdf is caught even though the
+# browser/curl reports application/pdf. docx is a zip container — many
+# libmagic builds report application/zip (or sometimes
+# application/octet-stream) instead of the full OOXML MIME, so we
+# accept both. Anything not in this map is rejected.
+_SNIFFED_MIME_BY_TYPE: dict[str, set[str]] = {
+    "pdf": {"application/pdf"},
+    "docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip",
+        # Some older libmagic builds on minimal Linux images fall back
+        # to a generic binary type for zip-based formats. Keep it in
+        # the docx whitelist; the file_type is already gated by the
+        # claimed Content-Type before we reach this check.
+        "application/octet-stream",
+    },
+    "jpg": {"image/jpeg"},
+    "png": {"image/png"},
+}
+
+
+def _sniff_mime(file_bytes: bytes) -> str:
+    """Return the libmagic MIME for the first 4096 bytes of `file_bytes`.
+
+    Isolated as a helper so tests can monkey-patch it without needing
+    libmagic installed on the test host. Imports `magic` lazily so a
+    missing libmagic shared library only blows up on actual uploads,
+    not at module import time.
+    """
+    import magic
+    return magic.from_buffer(file_bytes[:4096], mime=True)
+
+
+def _verify_file_type(file_bytes: bytes, claimed_file_type: str) -> str | None:
+    """Return None if `file_bytes` actually IS the claimed type; else a
+    user-facing error string. The 400 error message intentionally names
+    what we saw vs what was claimed so a developer hitting this in dev
+    can diagnose without a stack trace."""
+    expected = _SNIFFED_MIME_BY_TYPE.get(claimed_file_type)
+    if not expected:
+        return f"Unknown file type: {claimed_file_type}"
+    try:
+        sniffed = _sniff_mime(file_bytes)
+    except Exception as exc:  # noqa: BLE001
+        # libmagic missing or buggy on this host. Fail loud — we'd rather
+        # block uploads than silently disable the sanitisation. A 500
+        # would be confusing; a 503 communicates "infra problem, try
+        # later" which matches reality.
+        raise HTTPException(
+            status_code=503,
+            detail=f"File content verification is unavailable: {exc}",
+        )
+    if sniffed not in expected:
+        return (
+            f"File contents look like '{sniffed}', not '{claimed_file_type}'. "
+            "This file appears to have been renamed; please upload the "
+            "original document."
+        )
+    return None
+
+
 # ai_cache helpers.
 # The ai_cache table is keyed by SHA-256 of (operation:model:input).
 # Lookups are best-effort - any failure (RLS, network, unknown column)
@@ -242,6 +306,14 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
     file_bytes = await file.read()
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=422, detail="File too large. Maximum 5MB.")
+
+    # task #77: don't trust the Content-Type header. Sniff the first 4096
+    # bytes with libmagic and reject anything whose real content type
+    # doesn't match the claimed extension — catches a .exe / .sh / etc.
+    # renamed to .pdf, which the previous header-only check waved through.
+    mime_err = _verify_file_type(file_bytes, file_type)
+    if mime_err:
+        raise HTTPException(status_code=400, detail=mime_err)
 
     try:
         raw_text = await extract_text_from_file(file_bytes, file_type)

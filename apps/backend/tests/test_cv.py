@@ -4,6 +4,15 @@ from unittest.mock import AsyncMock, patch
 from tests.conftest import FakeSupabaseQuery
 
 
+# task #77: every upload test that gets past the Content-Type allowlist
+# must short-circuit the libmagic sniff to a matching MIME, because the
+# test bytes (e.g. b"fake-pdf-content") aren't real PDF/JPG/etc. Tests
+# that specifically exercise the sniff (renamed-EXE, MIME mismatch)
+# patch this with their own return value.
+def _mime_for_pdf(_bytes):
+    return "application/pdf"
+
+
 class TestCVUpload:
     def test_upload_unauthenticated(self, client):
         """CV upload requires auth."""
@@ -22,6 +31,64 @@ class TestCVUpload:
         )
         assert resp.status_code == 422
 
+    def test_upload_renamed_executable_rejected(
+        self, client, auth_headers
+    ):
+        """task #77: a .exe renamed to .pdf must be rejected at the sniff
+        step with a 400. Critical — without this, the previous header-
+        only check would happily store an arbitrary binary as if it were
+        a PDF and feed it to the parsing pipeline."""
+        # MZ header = "This is a DOS/Windows executable". libmagic
+        # identifies these as application/x-dosexec on Linux and
+        # application/x-msdownload on some macOS builds. Either way,
+        # NOT application/pdf, so verification should fail.
+        exe_bytes = b"MZ\x90\x00\x03\x00\x00\x00\x04" + (b"\x00" * 200)
+
+        with patch(
+            "app.api.v1.cv._sniff_mime",
+            return_value="application/x-dosexec",
+        ):
+            resp = client.post(
+                "/api/v1/cv/upload",
+                headers=auth_headers,
+                files={"file": ("malware.pdf", exe_bytes, "application/pdf")},
+            )
+
+        assert resp.status_code == 400, resp.text
+        detail = resp.json()["detail"].lower()
+        # User-facing error must name BOTH what we saw and what was
+        # claimed so the user understands why their "pdf" was rejected.
+        assert "application/x-dosexec" in detail
+        assert "pdf" in detail
+        # Defence-in-depth phrasing — flags that the file looks like
+        # it was renamed, not just that the type was wrong.
+        assert "renamed" in detail
+
+    def test_upload_zip_disguised_as_pdf_rejected(
+        self, client, auth_headers
+    ):
+        """A real .zip with a .pdf extension must also be rejected — the
+        sniffer maps zip to application/zip, which is in the docx
+        whitelist but NOT in the pdf whitelist."""
+        with patch(
+            "app.api.v1.cv._sniff_mime",
+            return_value="application/zip",
+        ):
+            resp = client.post(
+                "/api/v1/cv/upload",
+                headers=auth_headers,
+                files={
+                    "file": (
+                        "archive.pdf",
+                        b"PK\x03\x04" + b"\x00" * 100,
+                        "application/pdf",
+                    )
+                },
+            )
+        assert resp.status_code == 400
+        assert "application/zip" in resp.json()["detail"]
+
+    @patch("app.api.v1.cv._sniff_mime", side_effect=_mime_for_pdf)
     @patch("app.api.v1.cv.generate_embedding", new_callable=AsyncMock)
     @patch("app.api.v1.cv.parse_cv_with_llm", new_callable=AsyncMock)
     @patch("app.api.v1.cv.extract_text_from_file", new_callable=AsyncMock)
@@ -30,6 +97,7 @@ class TestCVUpload:
         mock_extract,
         mock_parse,
         mock_embed,
+        mock_sniff,
         client,
         auth_headers,
         fake_supabase,
@@ -71,6 +139,7 @@ class TestCVUpload:
         assert "cv_id" in body
         assert "parsed_skills" in body
 
+    @patch("app.api.v1.cv._sniff_mime", side_effect=_mime_for_pdf)
     @patch("app.api.v1.cv.generate_embedding", new_callable=AsyncMock)
     @patch("app.api.v1.cv.parse_cv_with_llm", new_callable=AsyncMock)
     @patch("app.api.v1.cv.extract_text_from_file", new_callable=AsyncMock)
@@ -79,6 +148,7 @@ class TestCVUpload:
         mock_extract,
         mock_parse,
         mock_embed,
+        mock_sniff,
         client,
         auth_headers,
         fake_supabase,

@@ -35,3 +35,12 @@ redis>=5.0.0
 resend>=2.0.0
 defusedxml>=0.7.1
 sentry-sdk[fastapi]>=2.0.0
+# libmagic-based MIME sniffing for the CV upload route (task #77).
+# Verifies the file's actual contents against the claimed extension so a
+# renamed .exe → .pdf can't be stored. Requires the libmagic shared
+# library to be present on the host:
+#   - Linux (prod Docker): apt install libmagic1
+#   - macOS dev:           brew install libmagic
+#   - Windows CI/dev:      pip install python-magic-bin instead (bundles
+#                          the binaries; mutually exclusive with this).
+python-magic>=0.4.27
