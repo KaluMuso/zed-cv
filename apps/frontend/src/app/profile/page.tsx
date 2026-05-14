@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CvSkillsTab } from "./_tabs/CvSkillsTab";
 import { AnalysisTab } from "./_tabs/AnalysisTab";
 import { GeneratorTab } from "./_tabs/GeneratorTab";
+import { DataPrivacyCard } from "./_tabs/DataPrivacyCard";
 
 type Tab = "cv" | "analysis" | "generator" | "preferences";
 
@@ -381,6 +382,15 @@ export default function ProfilePage() {
               )}
             </div>
           </div>
+
+          <DataPrivacyCard
+            token={token}
+            phone={profileData.phone}
+            onDeleted={() => {
+              logout();
+              router.replace("/account-deleted");
+            }}
+          />
         </div>
       </div>
     </div>

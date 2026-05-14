@@ -777,3 +777,58 @@ export const interviewPrep = {
       body: JSON.stringify({ job_id: jobId }),
     }),
 };
+
+// ── Data-subject rights (task #63) ──
+export interface AccountDeletionResult {
+  deleted: boolean;
+  already_deleted: boolean;
+  user_id: string | null;
+}
+
+export const me = {
+  /**
+   * Triggers /api/v1/me/export. Bypasses the JSON helper because the
+   * server streams an attachment — we want to surface it to the user
+   * as a download rather than reading it into JS memory and stringifying
+   * a second time. Uses the same auth + base URL as the rest of the
+   * client.
+   */
+  export: async (token: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/me/export`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(res.status, body.detail || "Could not export data");
+    }
+    const blob = await res.blob();
+    // Pull the suggested filename from Content-Disposition; fall back to
+    // a sensible default so the download still works if the header is
+    // stripped by a proxy.
+    const cd = res.headers.get("content-disposition") || "";
+    const match = cd.match(/filename="?([^"]+)"?/i);
+    const filename = match?.[1] || `zedcv-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * DELETE /api/v1/me with a phone confirmation in the body. The phone
+   * is sent verbatim — the backend does a byte-exact compare against
+   * the stored phone, so any whitespace or case difference is rejected.
+   */
+  deleteAccount: (token: string, confirmPhone: string) =>
+    apiFetch<AccountDeletionResult>("/me", {
+      method: "DELETE",
+      token,
+      body: JSON.stringify({ confirm_phone: confirmPhone }),
+    }),
+};
