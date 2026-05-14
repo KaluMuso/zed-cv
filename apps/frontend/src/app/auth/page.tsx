@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -307,14 +308,20 @@ export default function AuthPage() {
                 className="mt-6 text-center text-xs leading-relaxed"
                 style={{ color: "var(--muted)" }}
               >
-                By continuing, you agree to our{" "}
-                <a href="/terms" style={{ color: "var(--ink-2)" }}>
+                By signing in, you agree to our{" "}
+                <Link
+                  href="/legal/terms"
+                  style={{ color: "var(--ink-2)", textDecoration: "underline" }}
+                >
                   Terms
-                </a>{" "}
-                and{" "}
-                <a href="/privacy" style={{ color: "var(--ink-2)" }}>
+                </Link>{" "}
+                and acknowledge our{" "}
+                <Link
+                  href="/legal/privacy"
+                  style={{ color: "var(--ink-2)", textDecoration: "underline" }}
+                >
                   Privacy Policy
-                </a>
+                </Link>
                 .
               </div>
             </div>

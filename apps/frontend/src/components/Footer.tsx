@@ -25,9 +25,9 @@ const columns = [
   {
     title: "Legal",
     links: [
-      { label: "Terms of Service", href: "/terms" },
-      { label: "Privacy Policy", href: "/privacy" },
-      // TODO: re-add Cookie Policy once /cookies page exists.
+      { label: "Terms of Service", href: "/legal/terms" },
+      { label: "Privacy Policy", href: "/legal/privacy" },
+      { label: "Cookie Policy", href: "/legal/cookies" },
     ],
   },
 ];
