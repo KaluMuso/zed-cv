@@ -54,6 +54,10 @@ def _patch_dpo_helpers(parsed_token: str = "TOK-123", is_paid: bool = True):
         "app.services.dpo_pay.parse_dpo_webhook_xml",
         return_value={
             "company_ref": "",
+            # task #75: the route now verifies this matches
+            # settings.dpo_pay_company_token. Conftest sets the env to
+            # "test-dpo-merchant-token" so the mock must emit the same.
+            "company_token": "test-dpo-merchant-token",
             "transaction_token": parsed_token,
             "transaction_ref": "REF-1",
             "transaction_amount": "125.00",

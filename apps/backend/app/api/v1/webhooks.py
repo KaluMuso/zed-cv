@@ -158,18 +158,76 @@ async def whatsapp_webhook(request: Request, supabase=Depends(get_supabase)):
 
 @router.post("/dpo")
 async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
-    """Process DPO Pay webhook — verify payment and upgrade subscription."""
+    """Process DPO Pay webhook — verify payment and upgrade subscription.
+
+    Authenticity verification (task #75) — two layers:
+      1. CompanyToken in the XML body must match settings.dpo_pay_company_token
+         (shared secret; an attacker without it can't forge a payload).
+      2. verify_payment() callback to DPO's verifyToken API — DPO only
+         returns "paid" for transactions it actually processed.
+
+    Plus optional layer 3: if settings.dpo_pay_webhook_secret is set AND
+    DPO ever starts emitting a signature header, verify HMAC-SHA256.
+    Currently DPO doesn't sign webhooks, so this layer is opt-in.
+
+    Mismatched CompanyToken → 401. The route purposely does not echo
+    parse details on auth failure — minimises information leak to a
+    probing attacker.
+    """
+    from fastapi import HTTPException
     from app.services.dpo_pay import parse_dpo_webhook_xml, verify_payment
+    from app.services.dpo_webhook import (
+        verify_company_token,
+        verify_hmac_signature,
+    )
+    from app.core.config import get_settings
 
-    body = await request.body()
-    logging.info(f"DPO webhook received: {body[:500]}")
+    settings = get_settings()
+    raw_body = await request.body()
+    logging.info(f"DPO webhook received: {raw_body[:500]}")
 
-    parsed = parse_dpo_webhook_xml(body)
+    parsed = parse_dpo_webhook_xml(raw_body)
     if not parsed or not parsed.get("transaction_token"):
         logging.warning("DPO webhook: missing or unparseable payload")
         return {"status": "ignored"}
 
-    # Verify the payment with DPO
+    # Layer 1: CompanyToken verification. Required when we have a
+    # configured token (which we always do in any environment running
+    # paid flows). Empty configured token would be a misconfiguration —
+    # log + reject so we fail loud rather than silently accepting
+    # everything.
+    if not settings.dpo_pay_company_token:
+        logging.error(
+            "DPO webhook: dpo_pay_company_token not configured — "
+            "rejecting all webhooks until env is set"
+        )
+        raise HTTPException(status_code=503, detail="DPO not configured")
+    if not verify_company_token(
+        parsed.get("company_token", ""),
+        settings.dpo_pay_company_token,
+    ):
+        logging.warning(
+            "DPO webhook: CompanyToken mismatch — possible forgery, rejecting"
+        )
+        raise HTTPException(status_code=401, detail="Invalid CompanyToken")
+
+    # Layer 1b (optional): HMAC signature header. Only verified when
+    # settings.dpo_pay_webhook_secret is set AND DPO emits a signature.
+    # When the secret is set but the header is missing → still reject
+    # (deliberate: opting into HMAC means demanding it).
+    if settings.dpo_pay_webhook_secret:
+        provided_sig = request.headers.get("x-dpo-signature", "")
+        if not verify_hmac_signature(
+            raw_body, provided_sig, settings.dpo_pay_webhook_secret
+        ):
+            logging.warning(
+                "DPO webhook: HMAC signature verification failed despite "
+                "secret being configured — rejecting"
+            )
+            raise HTTPException(status_code=401, detail="Invalid signature")
+
+    # Layer 2: Callback to DPO's verifyToken API. This is the strongest
+    # check — only transactions DPO actually processed return "paid".
     try:
         verification = await verify_payment(parsed["transaction_token"])
     except ValueError as e:
