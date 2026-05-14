@@ -99,11 +99,89 @@ export default function MatchesPage() {
   }, [token, isAuthenticated, authLoading, router, logout]);
 
   if (loading || authLoading) {
+    // Skeleton mirrors the real layout: header headline + quota card,
+    // filter/sort row, then 3 match cards with the auto/1fr/auto grid
+    // (circular score badge · title+meta · button stack). Same outer
+    // padding as the loaded page so there's no layout shift on resolve.
     return (
-      <div className="max-w-[1280px] mx-auto px-6 py-12">
-        <div className="space-y-4">
+      <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+        <div
+          className="matches-header grid gap-8 items-start mb-10"
+          style={{ gridTemplateColumns: "1.4fr 1fr" }}
+        >
+          <div>
+            <div className="skeleton h-3 w-40 mb-2" />
+            <div className="skeleton h-14 md:h-20 w-11/12 mb-3" />
+            <div className="skeleton h-14 md:h-20 w-3/4 mb-4" />
+            <div className="skeleton h-4 w-2/3" />
+          </div>
+          <div className="card p-6">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <div className="skeleton h-3 w-20 mb-3" />
+                <div className="skeleton h-10 w-32 mb-1" />
+                <div className="skeleton h-3 w-24" />
+              </div>
+              <div className="skeleton h-6 w-16 rounded-full" />
+            </div>
+            <div className="skeleton h-2 w-full mt-5 rounded-full" />
+            <div className="flex justify-between mt-3">
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-3 w-32" />
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="flex items-center justify-between flex-wrap gap-3 pb-4 mb-6"
+          style={{ borderBottom: "1px solid var(--line)" }}
+        >
+          <div className="flex gap-2 flex-wrap">
+            <div className="skeleton h-8 w-12 rounded-md" />
+            <div className="skeleton h-8 w-14 rounded-md" />
+            <div className="skeleton h-8 w-20 rounded-md" />
+          </div>
+          <div className="flex gap-2 items-center">
+            <div className="skeleton h-3 w-8" />
+            <div className="skeleton h-8 w-16 rounded-md" />
+            <div className="skeleton h-8 w-24 rounded-md" />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3.5">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="skeleton h-32 w-full" />
+            <div key={i} className="card overflow-hidden">
+              <div
+                className="match-row p-5 sm:p-6 grid gap-6 items-center"
+                style={{ gridTemplateColumns: "auto 1fr auto" }}
+              >
+                <div
+                  className="skeleton rounded-full"
+                  style={{ width: 80, height: 80 }}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div
+                      className="skeleton rounded-full"
+                      style={{ width: 28, height: 28 }}
+                    />
+                    <div className="skeleton h-3 w-40" />
+                  </div>
+                  <div className="skeleton h-7 md:h-8 w-3/4 mb-3" />
+                  <div className="flex flex-wrap gap-1.5">
+                    <div className="skeleton h-6 w-14 rounded-md" />
+                    <div className="skeleton h-6 w-20 rounded-md" />
+                    <div className="skeleton h-6 w-16 rounded-md" />
+                    <div className="skeleton h-6 w-12 rounded-md" />
+                  </div>
+                </div>
+                <div className="match-actions flex flex-col gap-2 items-end">
+                  <div className="skeleton h-8 w-40 rounded-md" />
+                  <div className="skeleton h-8 w-40 rounded-md" />
+                  <div className="skeleton h-8 w-40 rounded-md" />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </div>

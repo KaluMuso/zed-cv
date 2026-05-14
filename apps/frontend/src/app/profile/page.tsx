@@ -110,10 +110,83 @@ export default function ProfilePage() {
   };
 
   if (loading || authLoading) {
+    // Skeleton mirrors the loaded layout: header card with avatar + name lines
+    // + tier tag + completion ring, then tab strip, then 2-col body (tab
+    // content on the left, plan + account sidebar on the right). Same outer
+    // padding as the loaded page so there's no layout shift on resolve.
     return (
-      <div className="max-w-[1280px] mx-auto px-6 py-12">
-        <div className="skeleton h-48 w-full mb-6" />
-        <div className="skeleton h-64 w-full" />
+      <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+        <div className="card p-6 md:p-8 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex items-center gap-5 flex-1">
+              <div
+                className="skeleton rounded-full shrink-0"
+                style={{ width: 72, height: 72 }}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="skeleton h-8 w-56 mb-2" />
+                <div className="skeleton h-4 w-32 mb-3" />
+                <div className="flex items-center gap-2">
+                  <div className="skeleton h-6 w-20 rounded-full" />
+                  <div className="skeleton h-6 w-32 rounded-full" />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div
+                className="skeleton rounded-full shrink-0"
+                style={{ width: 80, height: 80 }}
+              />
+              <div>
+                <div className="skeleton h-4 w-32 mb-2" />
+                <div className="skeleton h-3 w-44" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="flex gap-6 mb-8"
+          style={{ borderBottom: "1px solid var(--line)" }}
+        >
+          <div className="skeleton h-4 w-20 mb-3" />
+          <div className="skeleton h-4 w-24 mb-3" />
+          <div className="skeleton h-4 w-24 mb-3" />
+          <div className="skeleton h-4 w-20 mb-3" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="card p-6">
+              <div className="skeleton h-3 w-24 mb-4" />
+              <div className="skeleton h-32 w-full mb-3" />
+              <div className="skeleton h-4 w-5/6 mb-2" />
+              <div className="skeleton h-4 w-4/6" />
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="card p-6">
+              <div className="skeleton h-3 w-20 mb-3" />
+              <div className="skeleton h-7 w-40 mb-3" />
+              <div className="skeleton h-4 w-full mb-2" />
+              <div className="skeleton h-4 w-3/4 mb-4" />
+              <div className="skeleton h-9 w-full rounded-md" />
+            </div>
+            <div className="card p-6">
+              <div className="skeleton h-3 w-20 mb-4" />
+              <div className="space-y-3">
+                <div>
+                  <div className="skeleton h-3 w-12 mb-1" />
+                  <div className="skeleton h-4 w-32" />
+                </div>
+                <div>
+                  <div className="skeleton h-3 w-12 mb-1" />
+                  <div className="skeleton h-4 w-28" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

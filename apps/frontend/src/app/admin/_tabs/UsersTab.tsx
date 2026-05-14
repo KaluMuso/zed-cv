@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { formatDate } from "./shared";
+import { formatDate, SkeletonTableRows } from "./shared";
 
 import type { SubscriptionTier } from "@/lib/api";
 
@@ -85,9 +85,10 @@ export function UsersTab({ token }: { token: string }) {
             </TableHeader>
             <TableBody>
               {loading && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-sm text-muted-foreground">Loading…</TableCell>
-                </TableRow>
+                <SkeletonTableRows
+                  rows={5}
+                  widths={["w-32", "w-28", "w-20", "w-12", "w-12", "w-20"]}
+                />
               )}
               {!loading && data.length === 0 && (
                 <TableRow>

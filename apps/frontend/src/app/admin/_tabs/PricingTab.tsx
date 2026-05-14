@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { StatCard, formatNgwee, formatDate } from "./shared";
+import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
 
 export function PricingTab({
   token,
@@ -125,9 +125,10 @@ export function PricingTab({
               </TableHeader>
               <TableBody>
                 {loading && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">Loading…</TableCell>
-                  </TableRow>
+                  <SkeletonTableRows
+                    rows={5}
+                    widths={["w-28", "w-16", "w-16", "w-16", "w-20"]}
+                  />
                 )}
                 {!loading && data.length === 0 && (
                   <TableRow>

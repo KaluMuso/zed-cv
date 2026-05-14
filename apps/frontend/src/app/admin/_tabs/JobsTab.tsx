@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { formatDate } from "./shared";
+import { formatDate, SkeletonTableRows } from "./shared";
 
 const EMPTY_FORM: AdminJobCreate = {
   title: "",
@@ -404,9 +404,10 @@ export function JobsTab({ token }: { token: string }) {
             </TableHeader>
             <TableBody>
               {loading && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-sm text-muted-foreground">Loading…</TableCell>
-                </TableRow>
+                <SkeletonTableRows
+                  rows={5}
+                  widths={["w-40", "w-32", "w-12", "w-8", "w-16", "w-20", "w-24"]}
+                />
               )}
               {!loading && data.length === 0 && (
                 <TableRow>

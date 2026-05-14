@@ -10,70 +10,85 @@ export function OverviewTab({
   stats: AdminStats | null;
   breakdown: AdminTierBreakdown | null;
 }) {
+  const statsLoading = !stats;
+  const breakdownLoading = !breakdown;
   return (
     <div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Users"
-          value={stats ? stats.users_total.toLocaleString() : "—"}
+          value={stats ? stats.users_total.toLocaleString() : ""}
           hint={stats ? `${stats.users_active_30d} active in 30d` : undefined}
+          loading={statsLoading}
         />
         <StatCard
           label="Active subs"
-          value={stats ? stats.subscriptions_active.toLocaleString() : "—"}
+          value={stats ? stats.subscriptions_active.toLocaleString() : ""}
           hint={stats ? `${stats.subscriptions_paid} paying` : undefined}
+          loading={statsLoading}
         />
         <StatCard
           label="Jobs in DB"
-          value={stats ? stats.jobs_active.toLocaleString() : "—"}
+          value={stats ? stats.jobs_active.toLocaleString() : ""}
           hint={stats ? `${stats.jobs_expired} expired & still active` : undefined}
+          loading={statsLoading}
         />
         <StatCard
           label="Matches (24h)"
-          value={stats ? stats.matches_24h.toLocaleString() : "—"}
+          value={stats ? stats.matches_24h.toLocaleString() : ""}
           hint={stats ? `${stats.matches_total.toLocaleString()} all time` : undefined}
+          loading={statsLoading}
         />
       </div>
 
-      {stats && (
-        <div className="mt-3 grid sm:grid-cols-2 gap-3">
-          <StatCard
-            label="Revenue (30d)"
-            value={formatNgwee(stats.revenue_ngwee_30d)}
-          />
-          <StatCard
-            label="Revenue (lifetime)"
-            value={formatNgwee(stats.revenue_ngwee_total)}
-          />
-        </div>
-      )}
+      {/* Reserve space for revenue + tier breakdown so the page doesn't
+          jump when stats/breakdown resolve. Skeleton inside each card while
+          loading; real values once data arrives. */}
+      <div className="mt-3 grid sm:grid-cols-2 gap-3">
+        <StatCard
+          label="Revenue (30d)"
+          value={stats ? formatNgwee(stats.revenue_ngwee_30d) : ""}
+          loading={statsLoading}
+        />
+        <StatCard
+          label="Revenue (lifetime)"
+          value={stats ? formatNgwee(stats.revenue_ngwee_total) : ""}
+          loading={statsLoading}
+        />
+      </div>
 
-      {breakdown && (
-        <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            label="Free"
-            value={breakdown.free.toLocaleString()}
-            hint={`${Math.round(
-              (breakdown.free / Math.max(breakdown.total_active, 1)) * 100
-            )}% of active`}
-          />
-          <StatCard
-            label="Starter"
-            value={breakdown.starter.toLocaleString()}
-            hint="K125/mo"
-          />
-          <StatCard
-            label="Professional"
-            value={breakdown.professional.toLocaleString()}
-            hint="K250/mo"
-          />
-          <StatCard
-            label="Super Standard"
-            value={breakdown.super_standard.toLocaleString()}
-            hint="K500/mo · unlimited"
-          />
-        </div>
-      )}
+      <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          label="Free"
+          value={breakdown ? breakdown.free.toLocaleString() : ""}
+          hint={
+            breakdown
+              ? `${Math.round(
+                  (breakdown.free / Math.max(breakdown.total_active, 1)) * 100
+                )}% of active`
+              : undefined
+          }
+          loading={breakdownLoading}
+        />
+        <StatCard
+          label="Starter"
+          value={breakdown ? breakdown.starter.toLocaleString() : ""}
+          hint="K125/mo"
+          loading={breakdownLoading}
+        />
+        <StatCard
+          label="Professional"
+          value={breakdown ? breakdown.professional.toLocaleString() : ""}
+          hint="K250/mo"
+          loading={breakdownLoading}
+        />
+        <StatCard
+          label="Super Standard"
+          value={breakdown ? breakdown.super_standard.toLocaleString() : ""}
+          hint="K500/mo · unlimited"
+          loading={breakdownLoading}
+        />
+      </div>
     </div>
   );
 }
