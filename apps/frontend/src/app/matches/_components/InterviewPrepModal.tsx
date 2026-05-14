@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 import {
   interviewPrep as interviewPrepApi,
   type InterviewPrepResult,
@@ -156,79 +159,77 @@ export function InterviewPrepModal({
 }
 
 function PrepBody({ markdown }: { markdown: string }) {
-  // Lightweight renderer: headings (## / #), list items (- / *), paragraphs.
-  // Kept inline because we only ever render LLM output in this single modal.
-  const lines = markdown.split("\n");
-  const blocks: React.ReactNode[] = [];
-  let buffer: string[] = [];
-  let listBuffer: string[] = [];
-
-  const flushParagraph = () => {
-    if (buffer.length) {
-      blocks.push(
-        <p key={`p-${blocks.length}`} className="text-sm leading-relaxed mb-3">
-          {buffer.join(" ")}
-        </p>
-      );
-      buffer = [];
-    }
-  };
-  const flushList = () => {
-    if (listBuffer.length) {
-      blocks.push(
-        <ul key={`ul-${blocks.length}`} className="list-disc pl-5 mb-4 space-y-1.5">
-          {listBuffer.map((item, i) => (
-            <li key={i} className="text-sm leading-relaxed">
-              {item}
-            </li>
-          ))}
-        </ul>
-      );
-      listBuffer = [];
-    }
-  };
-
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-    if (line.startsWith("## ")) {
-      flushParagraph();
-      flushList();
-      blocks.push(
-        <h4
-          key={`h-${blocks.length}`}
-          className="font-display text-lg mt-5 mb-2"
-          style={{ letterSpacing: "-0.01em", color: "var(--copper-600)" }}
-        >
-          {line.slice(3)}
-        </h4>
-      );
-      continue;
-    }
-    if (line.startsWith("# ")) {
-      flushParagraph();
-      flushList();
-      blocks.push(
-        <h3 key={`h-${blocks.length}`} className="font-display text-xl mt-5 mb-2">
-          {line.slice(2)}
-        </h3>
-      );
-      continue;
-    }
-    if (line.startsWith("- ") || line.startsWith("* ")) {
-      flushParagraph();
-      listBuffer.push(line.slice(2));
-      continue;
-    }
-    flushList();
-    buffer.push(line);
-  }
-  flushParagraph();
-  flushList();
-
-  return <div>{blocks}</div>;
+  // react-markdown handles the full CommonMark + GFM spec — bold, italic,
+  // numbered lists, inline code, links, tables, strikethrough — instead of
+  // the lightweight inline parser this component used to ship with (which
+  // missed **bold** + *italic* and rendered them as literal asterisks).
+  //
+  // AI-safety: rehypeSanitize is mandatory because the markdown source is
+  // LLM output. Without it a prompt-injection could emit raw HTML (script
+  // tags, iframes, on* handlers) that would execute in the user's browser.
+  // The default rehype-sanitize schema strips dangerous elements/attrs
+  // and is the same hardened schema GitHub uses for issue rendering.
+  return (
+    <div className="prep-body text-sm leading-relaxed">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeSanitize]}
+        components={{
+          // Brand the headings — copper accent matches the rest of the UI.
+          h1: ({ children }) => (
+            <h3 className="font-display text-xl mt-5 mb-2">{children}</h3>
+          ),
+          h2: ({ children }) => (
+            <h4
+              className="font-display text-lg mt-5 mb-2"
+              style={{ letterSpacing: "-0.01em", color: "var(--copper-600)" }}
+            >
+              {children}
+            </h4>
+          ),
+          h3: ({ children }) => (
+            <h5 className="font-display text-base mt-4 mb-2 font-semibold">
+              {children}
+            </h5>
+          ),
+          p: ({ children }) => <p className="mb-3">{children}</p>,
+          ul: ({ children }) => (
+            <ul className="list-disc pl-5 mb-4 space-y-1.5">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 mb-4 space-y-1.5">{children}</ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          strong: ({ children }) => (
+            <strong className="font-semibold" style={{ color: "var(--ink)" }}>
+              {children}
+            </strong>
+          ),
+          em: ({ children }) => (
+            <em style={{ color: "var(--ink-2)" }}>{children}</em>
+          ),
+          code: ({ children }) => (
+            <code
+              className="px-1 py-0.5 rounded text-xs"
+              style={{ background: "var(--bg-2)", color: "var(--copper-600)" }}
+            >
+              {children}
+            </code>
+          ),
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--green-700)", textDecoration: "underline" }}
+            >
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
 }

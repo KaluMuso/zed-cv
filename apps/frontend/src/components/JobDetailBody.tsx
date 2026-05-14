@@ -4,6 +4,53 @@ import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import type { Job } from "@/lib/api";
 
+// Client-side defensive HTML strip for job descriptions. The backend
+// _strip_html runs at ingest and the admin backfill cleaned most rows,
+// but legacy rows ingested before the strip_html deploy can still carry
+// HTML (the "We Effect" / `<p class="ql` half-tag leak from 2026-05-13).
+// This belt-and-braces pass ensures the user always sees plain text even
+// if a stray HTML row slips through.
+//
+// Mirrors the backend whitelist approach so behaviour stays consistent:
+// block-level tags become newlines, list items become bullets, inline
+// tags are stripped. Same whitelist Claude Code introduced in jobs.py so
+// non-HTML angle-bracket content (salary ranges like "K3000<x<K5000",
+// email placeholders) is preserved.
+const HTML_TAG_NAMES = (
+  "h1|h2|h3|h4|h5|h6|p|div|span|a|br|li|ul|ol|" +
+  "strong|em|b|i|u|s|strike|sup|sub|table|thead|tbody|tr|td|th|" +
+  "blockquote|pre|code|hr|figure|figcaption|img|small"
+).split("|");
+
+const _HTML_TAG_RE = new RegExp(
+  `</?\\s*(${HTML_TAG_NAMES.join("|")})(\\s[^>]*)?>`,
+  "gi",
+);
+const _BR_RE = /<\s*br\s*\/?\s*>/gi;
+const _LI_OPEN_RE = /<\s*li\b[^>]*>/gi;
+const _BLOCK_CLOSE_RE = /<\/\s*(p|div|h[1-6]|ul|ol|tr|table)\s*>/gi;
+
+function stripDescriptionHtml(text: string | null | undefined): string {
+  if (!text) return "";
+  if (!text.includes("<")) return text;
+  return text
+    .replace(_BR_RE, "\n")
+    .replace(_LI_OPEN_RE, "\n• ")
+    .replace(_BLOCK_CLOSE_RE, "\n")
+    .replace(_HTML_TAG_RE, "")
+    // Decode the few HTML entities a scraper might leave behind.
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    // Collapse 3+ blank lines (the block-close → newline replacement
+    // can create stacked blank lines for nested tags).
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 interface JobDetailBodyProps {
   job: Job;
   /** Optional callback for closing a drawer; absent on the standalone page. */
@@ -165,18 +212,24 @@ export function JobDetailBody({
         </div>
       )}
 
-      {/* Description */}
-      {job.description && (
-        <div className="mb-8">
-          <div className="eyebrow mb-3">Description</div>
-          <p
-            className="text-sm leading-relaxed whitespace-pre-wrap"
-            style={{ color: "var(--ink-2)" }}
-          >
-            {job.description}
-          </p>
-        </div>
-      )}
+      {/* Description — defensively stripped on the client in case a legacy
+          row still carries HTML (the backend strip+backfill should have
+          handled it, but stale rows + future scraper sources are real). */}
+      {job.description && (() => {
+        const cleaned = stripDescriptionHtml(job.description);
+        if (!cleaned) return null;
+        return (
+          <div className="mb-8">
+            <div className="eyebrow mb-3">Description</div>
+            <p
+              className="text-sm leading-relaxed whitespace-pre-wrap"
+              style={{ color: "var(--ink-2)" }}
+            >
+              {cleaned}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Apply CTA — sticks to the bottom of the scrolling container.
           The mobile tab bar overlays the bottom 80px of the viewport,
