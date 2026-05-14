@@ -146,6 +146,12 @@ def parse_dpo_webhook_xml(body: bytes) -> dict:
 
     return {
         "company_ref": root.findtext("CompanyRef", ""),
+        # CompanyToken is the shared secret between us and DPO. The webhook
+        # signature-verification layer compares this against
+        # settings.dpo_pay_company_token (task #75). DPO embeds our merchant
+        # token in every webhook body; absence or mismatch means the
+        # request is either misrouted or forged.
+        "company_token": root.findtext("CompanyToken", ""),
         "transaction_token": root.findtext("TransactionToken", ""),
         "transaction_ref": root.findtext("TransactionRef", ""),
         "transaction_amount": root.findtext("TransactionAmount", "0"),

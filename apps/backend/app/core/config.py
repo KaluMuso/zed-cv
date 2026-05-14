@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     dpo_pay_company_token: str = ""
     dpo_pay_service_type: str = ""
     dpo_pay_api_url: str = "https://secure.3gdirectpay.com/API/v6/"
+    # Future-proofing for if/when DPO adds HMAC-signed webhooks (header
+    # `x-dpo-signature` or similar). Empty by default = HMAC verification
+    # is disabled and we rely on CompanyToken verification + DPO's
+    # verifyToken callback for authenticity. See dpo_webhook.py.
+    dpo_pay_webhook_secret: str = ""
     lenco_api_key: str = ""
     # Default to v2 sandbox so a fresh dev env points at the right URL. Prod
     # overrides via .env on OCI. Lenco v2 deprecates the v1 path; the email

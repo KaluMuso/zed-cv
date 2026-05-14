@@ -20,6 +20,10 @@ os.environ["GEMINI_API_KEY"] = "fake-gemini-key"
 os.environ["JWT_SECRET"] = "test-secret-key-for-testing-only"
 # Shared secret for POST /api/v1/jobs/ingest tests
 os.environ["INGEST_API_KEY"] = "test-ingest-key"
+# DPO Pay merchant token for /webhooks/dpo CompanyToken verification.
+# Task #75 added route-level CompanyToken matching; tests must mock the
+# parser to emit this exact string so the verify path passes.
+os.environ.setdefault("DPO_PAY_COMPANY_TOKEN", "test-dpo-merchant-token")
 # Legacy/back-compat — some older tests or services may still read these.
 # Cheap to keep; safe to remove in a follow-up cleanup.
 os.environ.setdefault("SUPABASE_ANON_KEY", "fake-anon-key")
