@@ -40,7 +40,10 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.zedapply.com"),
   title: {
     default: "ZedApply — AI Job Matching for Zambia",
-    template: "%s | ZedApply",
+    // Em-dash separator matches the og:title shape ("{role} at {company}
+    // — ZedApply") emitted by /jobs/[id]'s generateMetadata, so the
+    // browser tab and the OG card read the same.
+    template: "%s — ZedApply",
   },
   description:
     "Find jobs that match your skills. AI-powered matching, CV generation, and WhatsApp delivery for Zambian professionals.",
