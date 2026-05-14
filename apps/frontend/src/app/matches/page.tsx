@@ -361,14 +361,50 @@ export default function MatchesPage() {
                     {match.job.title}
                   </Link>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {match.matched_skills.map((s) => (
-                      <SkillBadge key={s} skill={s} matched />
-                    ))}
-                    {match.missing_skills.slice(0, 3).map((s) => (
-                      <SkillBadge key={s} skill={s} matched={false} />
-                    ))}
-                  </div>
+                  {/* Match explainability — tells the user WHY the score is
+                      what it is. When matched_skills is non-empty, surface
+                      the actual skill overlap. When it's empty, the match
+                      came purely from vector similarity (CV semantically
+                      similar to the JD even with no overlapping skill
+                      tags), so we say so explicitly instead of leaving
+                      the row label-less. Missing skills are shown after
+                      with a different visual treatment so the user sees
+                      both "what got us in" and "what to grow toward". */}
+                  {(match.matched_skills.length > 0 || match.missing_skills.length > 0) && (
+                    <div className="mt-3">
+                      {match.matched_skills.length > 0 ? (
+                        <div
+                          className="text-[10px] uppercase tracking-wider mb-1.5"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          Matched on
+                        </div>
+                      ) : (
+                        <div
+                          className="text-[10px] uppercase tracking-wider mb-1.5"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          Strong semantic match
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {match.matched_skills.map((s) => (
+                          <SkillBadge key={s} skill={s} matched />
+                        ))}
+                        {match.missing_skills.slice(0, 3).map((s) => (
+                          <SkillBadge key={s} skill={s} matched={false} />
+                        ))}
+                      </div>
+                      {match.missing_skills.length > 0 && (
+                        <div
+                          className="text-[10px] mt-1.5"
+                          style={{ color: "var(--muted)" }}
+                        >
+                          Faded chips are skills to grow toward
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="match-actions flex flex-col gap-2 items-end">
