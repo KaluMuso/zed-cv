@@ -70,6 +70,110 @@ export const auth = {
     }),
 };
 
+// ── CV structured sections (task #59) ──
+// Mirrors apps/backend/app/schemas/cv_sections.py exactly. Keep these in
+// sync — they're the canonical wire shape for cvs.parsed_data.sections.
+
+export type LanguageProficiency = "native" | "fluent" | "conversational" | "basic";
+
+export interface CVHeader {
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
+  github_url?: string | null;
+}
+
+export interface ProfessionalSummary {
+  text: string;
+}
+
+export interface WorkExperience {
+  title: string;
+  company: string;
+  location?: string;
+  start_date?: string;
+  end_date?: string | null;
+  achievements: string[];
+}
+
+export interface Education {
+  degree: string;
+  institution: string;
+  location?: string;
+  start_date?: string;
+  end_date?: string | null;
+  gpa?: string | null;
+  thesis?: string | null;
+}
+
+export interface Certification {
+  name: string;
+  issuer?: string;
+  year?: string | null;
+  expiry?: string | null;
+}
+
+export interface CVLanguage {
+  name: string;
+  proficiency: LanguageProficiency;
+}
+
+export interface CVProject {
+  name: string;
+  role?: string;
+  technologies: string[];
+  outcome?: string;
+}
+
+export interface CVAchievement {
+  title: string;
+  year?: string | null;
+}
+
+export interface Publication {
+  title: string;
+  venue?: string;
+  year?: string | null;
+  url?: string | null;
+}
+
+export interface Membership {
+  organisation: string;
+  role: string;
+  year_started?: string | null;
+  year_ended?: string | null;
+}
+
+export interface VolunteerWork {
+  organisation: string;
+  role?: string;
+  start_date?: string;
+  end_date?: string | null;
+  description?: string;
+}
+
+export interface Reference {
+  name: string;
+  title?: string;
+  organisation?: string;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface CVSections {
+  header?: CVHeader | null;
+  professional_summary?: ProfessionalSummary | null;
+  work_experience: WorkExperience[];
+  education: Education[];
+  certifications: Certification[];
+  languages: CVLanguage[];
+  projects: CVProject[];
+  achievements: CVAchievement[];
+  publications: Publication[];
+  memberships: Membership[];
+  volunteer_work: VolunteerWork[];
+  references: Reference[];
+}
+
 // ── Profile ──
 export interface UserProfile {
   id: string;
@@ -82,6 +186,9 @@ export interface UserProfile {
   role?: string;
   location?: string | null;
   years_experience?: number;
+  /** Structured CV body from cv_parser (task #59). Null when no CV
+   *  is uploaded or when the upload pre-dates structured parsing. */
+  cv_sections?: CVSections | null;
 }
 
 export interface UserPreferences {
@@ -422,6 +529,11 @@ export interface CVGenerateResult {
   word_count: number;
   job_title: string;
   company: string | null;
+  /** Structured CV from the LLM (task #59). Null on legacy responses or
+   *  when /cv/generate falls through to the free-text path. Templates
+   *  prefer this when present; the `content` field stays for clipboard
+   *  copy and the legacy parseCv.ts fallback. */
+  sections?: CVSections | null;
 }
 
 export interface CVGenerationSummary {
@@ -434,6 +546,9 @@ export interface CVGenerationSummary {
 
 export interface CVGenerationDetail extends CVGenerationSummary {
   content: string;
+  /** Structured CV re-loaded from cv_generations.metadata.sections.
+   *  Null on rows created before structured generation shipped. */
+  sections?: CVSections | null;
 }
 
 export const cv = {

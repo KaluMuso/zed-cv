@@ -196,3 +196,204 @@ export function splitBullets(body: string): { bullets: string[]; paragraphs: str
   }
   return { bullets, paragraphs };
 }
+
+
+// ─── task #59: convert structured CVSections to ParsedCV ─────────────
+// Used by the generator pipeline so EditStep can keep operating on
+// ParsedCV (the editable shape) while the templates prefer the
+// structured CVSections (when present, for richer rendering). The text
+// representation produced here mirrors the backend's
+// _render_sections_to_text() so a fallback parseGeneratedCv() of this
+// output would round-trip cleanly.
+
+import type {
+  CVSections,
+  WorkExperience,
+  Education,
+  Certification,
+  CVProject,
+  CVAchievement,
+  Publication,
+  Membership,
+  VolunteerWork,
+  Reference,
+  CVLanguage,
+} from "@/lib/api";
+
+type ProfileHeaderFields = {
+  full_name: string | null;
+  phone: string;
+  email: string | null;
+  location: string | null;
+};
+
+function renderDateRange(start?: string, end?: string | null, presentLabel = "Present"): string {
+  const s = (start ?? "").trim();
+  const e = end == null ? presentLabel : end.trim();
+  if (!s && !e) return "";
+  return [s, e].filter(Boolean).join(" – ");
+}
+
+function renderWorkExperience(items: WorkExperience[]): string {
+  return items
+    .map((w) => {
+      const head = `${w.title}${w.company ? `, ${w.company}` : ""}`;
+      const locPart = w.location ? ` (${w.location})` : "";
+      const dates = renderDateRange(w.start_date, w.end_date);
+      const headLine = `${head}${locPart}${dates ? `  [${dates}]` : ""}`;
+      const bullets = w.achievements.map((a) => `• ${a}`).join("\n");
+      return bullets ? `${headLine}\n${bullets}` : headLine;
+    })
+    .join("\n\n");
+}
+
+function renderEducation(items: Education[]): string {
+  return items
+    .map((e) => {
+      const head = `${e.degree}${e.institution ? `, ${e.institution}` : ""}`;
+      const locPart = e.location ? ` (${e.location})` : "";
+      const dates = renderDateRange(e.start_date, e.end_date, "");
+      const headLine = `${head}${locPart}${dates ? `  [${dates}]` : ""}`;
+      const extras = [
+        e.gpa ? `  GPA: ${e.gpa}` : "",
+        e.thesis ? `  Thesis: ${e.thesis}` : "",
+      ].filter(Boolean);
+      return [headLine, ...extras].join("\n");
+    })
+    .join("\n");
+}
+
+function renderCertifications(items: Certification[]): string {
+  return items
+    .map((c) => {
+      const line = c.name + (c.issuer ? ` (${c.issuer})` : "") + (c.year ? `, ${c.year}` : "");
+      return `• ${line}`;
+    })
+    .join("\n");
+}
+
+function renderLanguages(items: CVLanguage[]): string {
+  return items.map((l) => `${l.name} (${l.proficiency})`).join(", ");
+}
+
+function renderProjects(items: CVProject[]): string {
+  return items
+    .map((p) => {
+      const head = `${p.name}${p.role ? ` — ${p.role}` : ""}`;
+      const body = [
+        p.outcome ? `  ${p.outcome}` : "",
+        p.technologies.length > 0 ? `  Stack: ${p.technologies.join(", ")}` : "",
+      ].filter(Boolean);
+      return [head, ...body].join("\n");
+    })
+    .join("\n\n");
+}
+
+function renderAchievements(items: CVAchievement[]): string {
+  return items.map((a) => `• ${a.title}${a.year ? ` (${a.year})` : ""}`).join("\n");
+}
+
+function renderPublications(items: Publication[]): string {
+  return items
+    .map((p) => {
+      const line = `${p.title}${p.venue ? ` — ${p.venue}` : ""}${p.year ? ` (${p.year})` : ""}`;
+      return `• ${line}`;
+    })
+    .join("\n");
+}
+
+function renderMemberships(items: Membership[]): string {
+  return items
+    .map((m) => {
+      const dates = m.year_started || m.year_ended
+        ? `  [${m.year_started ?? ""} – ${m.year_ended ?? "present"}]`
+        : "";
+      return `• ${m.organisation}, ${m.role}${dates}`;
+    })
+    .join("\n");
+}
+
+function renderVolunteer(items: VolunteerWork[]): string {
+  return items
+    .map((v) => {
+      const head = `• ${v.role ? `${v.role}, ` : ""}${v.organisation}`;
+      return v.description ? `${head}\n  ${v.description}` : head;
+    })
+    .join("\n");
+}
+
+function renderReferences(items: Reference[]): string {
+  if (items.length === 0) {
+    // Zambian convention: omit the section here; the printed templates
+    // emit a "References available on request" line themselves when the
+    // structured references list is empty. The editor section is hidden
+    // entirely in that case.
+    return "";
+  }
+  return items
+    .map((r) => {
+      const head = `${r.name}${r.title ? `, ${r.title}` : ""}${r.organisation ? ` — ${r.organisation}` : ""}`;
+      const contacts = [r.phone, r.email].filter(Boolean).join(" · ");
+      return contacts ? `${head}  (${contacts})` : head;
+    })
+    .join("\n");
+}
+
+/**
+ * Convert a structured CVSections to the ParsedCV shape so the existing
+ * EditStep + free-text-driven templates can render it. Templates that
+ * understand the structured shape are given the original CVSections via
+ * a separate prop and ignore this output entirely. After the user edits
+ * in EditStep, the structured shape is discarded and templates fall
+ * back to this rendered ParsedCV (carrying the edits forward).
+ */
+export function cvSectionsToParsed(
+  sections: CVSections,
+  profile: ProfileHeaderFields
+): ParsedCV {
+  const sectionBodies: { title: string; body: string }[] = [];
+
+  const summary = sections.professional_summary?.text?.trim();
+  if (summary) sectionBodies.push({ title: "SUMMARY", body: summary });
+
+  if (sections.work_experience.length > 0) {
+    sectionBodies.push({ title: "EXPERIENCE", body: renderWorkExperience(sections.work_experience) });
+  }
+  if (sections.education.length > 0) {
+    sectionBodies.push({ title: "EDUCATION", body: renderEducation(sections.education) });
+  }
+  if (sections.certifications.length > 0) {
+    sectionBodies.push({ title: "CERTIFICATIONS", body: renderCertifications(sections.certifications) });
+  }
+  if (sections.languages.length > 0) {
+    sectionBodies.push({ title: "LANGUAGES", body: renderLanguages(sections.languages) });
+  }
+  if (sections.projects.length > 0) {
+    sectionBodies.push({ title: "PROJECTS", body: renderProjects(sections.projects) });
+  }
+  if (sections.achievements.length > 0) {
+    sectionBodies.push({ title: "ACHIEVEMENTS", body: renderAchievements(sections.achievements) });
+  }
+  if (sections.publications.length > 0) {
+    sectionBodies.push({ title: "PUBLICATIONS", body: renderPublications(sections.publications) });
+  }
+  if (sections.memberships.length > 0) {
+    sectionBodies.push({ title: "MEMBERSHIPS", body: renderMemberships(sections.memberships) });
+  }
+  if (sections.volunteer_work.length > 0) {
+    sectionBodies.push({ title: "VOLUNTEER WORK", body: renderVolunteer(sections.volunteer_work) });
+  }
+  const refsBody = renderReferences(sections.references);
+  if (refsBody) sectionBodies.push({ title: "REFERENCES", body: refsBody });
+
+  return {
+    header: {
+      name: profile.full_name ?? "",
+      phone: profile.phone ?? "",
+      email: profile.email ?? "",
+      location: profile.location ?? "",
+      raw: "",
+    },
+    sections: sectionBodies.filter((s) => s.body.length > 0),
+  };
+}

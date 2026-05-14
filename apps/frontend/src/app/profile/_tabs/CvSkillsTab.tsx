@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { cv as cvApi, type UserProfile } from "@/lib/api";
+import { cv as cvApi, type CVSections, type UserProfile } from "@/lib/api";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 
@@ -212,6 +212,343 @@ export function CvSkillsTab({
           </div>
         )}
       </div>
+
+      {/* Structured CV body (task #59). Rendered only when the backend
+          supplied the new "sections" shape — legacy parsed_data rows
+          without it simply show nothing here, which is the same
+          behaviour as before this slice. Read-only on purpose; edit
+          UI for these sections is a separate task. */}
+      <CVSectionsReadView sections={profileData.cv_sections ?? null} />
     </>
   );
+}
+
+
+// ─── task #59: structured CV sections read view ────────────────────────
+
+const SECTION_DEFS: ReadonlyArray<{
+  key: keyof CVSections;
+  label: string;
+  count: (s: CVSections) => number;
+}> = [
+  { key: "professional_summary", label: "Professional summary", count: (s) => (s.professional_summary?.text ? 1 : 0) },
+  { key: "work_experience", label: "Work experience", count: (s) => s.work_experience.length },
+  { key: "education", label: "Education", count: (s) => s.education.length },
+  { key: "certifications", label: "Certifications", count: (s) => s.certifications.length },
+  { key: "languages", label: "Languages", count: (s) => s.languages.length },
+  { key: "projects", label: "Projects", count: (s) => s.projects.length },
+  { key: "achievements", label: "Achievements", count: (s) => s.achievements.length },
+  { key: "publications", label: "Publications", count: (s) => s.publications.length },
+  { key: "memberships", label: "Memberships", count: (s) => s.memberships.length },
+  { key: "volunteer_work", label: "Volunteer work", count: (s) => s.volunteer_work.length },
+  { key: "references", label: "References", count: (s) => s.references.length },
+];
+
+function CVSectionsReadView({ sections }: { sections: CVSections | null }) {
+  // Open the most informative section by default so first-time viewers
+  // see real content without clicking. Work experience is the most useful
+  // default; if it's empty, fall back to whichever has the highest count.
+  const defaultOpen = (() => {
+    if (!sections) return null as string | null;
+    if (sections.work_experience.length > 0) return "work_experience";
+    for (const def of SECTION_DEFS) {
+      if (def.count(sections) > 0) return String(def.key);
+    }
+    return null;
+  })();
+  const [openKey, setOpenKey] = useState<string | null>(defaultOpen);
+
+  if (!sections) return null;
+
+  const visible = SECTION_DEFS.filter((d) => d.count(sections) > 0);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="card p-6">
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <div>
+          <div className="eyebrow">Your CV at a glance</div>
+          <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+            Parsed from your uploaded CV. Click a section to expand.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {visible.map((def) => {
+          const key = String(def.key);
+          const open = openKey === key;
+          const n = def.count(sections);
+          return (
+            <div
+              key={key}
+              className="rounded-md"
+              style={{ border: "1px solid var(--line)" }}
+            >
+              <button
+                onClick={() => setOpenKey(open ? null : key)}
+                className="w-full flex items-center justify-between px-3 py-2 text-left"
+                style={{ background: open ? "var(--bg-2)" : "transparent" }}
+                type="button"
+              >
+                <span className="text-sm font-medium">{def.label}</span>
+                <span
+                  className="text-xs flex items-center gap-2"
+                  style={{ color: "var(--muted)" }}
+                >
+                  <span className="tabular-nums">{n}</span>
+                  <Icon name={open ? "chevronDown" : "chevronRight"} size={14} />
+                </span>
+              </button>
+              {open && (
+                <div className="px-3 py-3" style={{ borderTop: "1px solid var(--line)" }}>
+                  <SectionBody sections={sections} sectionKey={def.key} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {sections.header && (sections.header.linkedin_url || sections.header.portfolio_url || sections.header.github_url) && (
+        <div className="mt-4 pt-4 flex flex-wrap gap-3" style={{ borderTop: "1px solid var(--line)" }}>
+          {sections.header.linkedin_url && (
+            <a
+              href={sections.header.linkedin_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs"
+              style={{ color: "var(--green-700)" }}
+            >
+              LinkedIn ↗
+            </a>
+          )}
+          {sections.header.portfolio_url && (
+            <a
+              href={sections.header.portfolio_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs"
+              style={{ color: "var(--green-700)" }}
+            >
+              Portfolio ↗
+            </a>
+          )}
+          {sections.header.github_url && (
+            <a
+              href={sections.header.github_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs"
+              style={{ color: "var(--green-700)" }}
+            >
+              GitHub ↗
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionBody({
+  sections,
+  sectionKey,
+}: {
+  sections: CVSections;
+  sectionKey: keyof CVSections;
+}) {
+  switch (sectionKey) {
+    case "professional_summary":
+      return (
+        <p className="text-sm" style={{ color: "var(--ink-2)" }}>
+          {sections.professional_summary?.text}
+        </p>
+      );
+    case "work_experience":
+      return (
+        <ul className="space-y-3">
+          {sections.work_experience.map((w, i) => (
+            <li key={i}>
+              <div className="text-sm font-medium">
+                {w.title}
+                {w.company && (
+                  <span style={{ color: "var(--muted)", fontWeight: 400 }}>
+                    {" · "}
+                    {w.company}
+                  </span>
+                )}
+              </div>
+              <div className="text-xs" style={{ color: "var(--muted)" }}>
+                {[w.start_date, w.end_date ?? "Present"].filter(Boolean).join(" – ")}
+                {w.location ? ` · ${w.location}` : ""}
+              </div>
+              {w.achievements.length > 0 && (
+                <ul className="mt-1.5 ml-4 text-sm list-disc" style={{ color: "var(--ink-2)" }}>
+                  {w.achievements.slice(0, 6).map((a, j) => (
+                    <li key={j}>{a}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    case "education":
+      return (
+        <ul className="space-y-2">
+          {sections.education.map((e, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{e.degree}</span>
+              {e.institution && (
+                <span style={{ color: "var(--muted)" }}>{" · "}{e.institution}</span>
+              )}
+              {(e.start_date || e.end_date) && (
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  {[e.start_date, e.end_date].filter(Boolean).join(" – ")}
+                  {e.location ? ` · ${e.location}` : ""}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    case "certifications":
+      return (
+        <ul className="space-y-1">
+          {sections.certifications.map((c, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{c.name}</span>
+              {c.issuer && <span style={{ color: "var(--muted)" }}>{" · "}{c.issuer}</span>}
+              {c.year && <span style={{ color: "var(--muted)" }}>{" · "}{c.year}</span>}
+            </li>
+          ))}
+        </ul>
+      );
+    case "languages":
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {sections.languages.map((l, i) => (
+            <span
+              key={i}
+              className="tag tag-mono text-xs"
+              title={l.proficiency}
+            >
+              {l.name} <span style={{ color: "var(--muted)" }}>({l.proficiency})</span>
+            </span>
+          ))}
+        </div>
+      );
+    case "projects":
+      return (
+        <ul className="space-y-2">
+          {sections.projects.map((p, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{p.name}</span>
+              {p.role && <span style={{ color: "var(--muted)" }}>{" — "}{p.role}</span>}
+              {p.outcome && (
+                <div className="text-xs mt-0.5" style={{ color: "var(--ink-2)" }}>
+                  {p.outcome}
+                </div>
+              )}
+              {p.technologies.length > 0 && (
+                <div className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
+                  Stack: {p.technologies.join(", ")}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    case "achievements":
+      return (
+        <ul className="space-y-1">
+          {sections.achievements.map((a, i) => (
+            <li key={i} className="text-sm">
+              {a.title}
+              {a.year && <span style={{ color: "var(--muted)" }}>{" · "}{a.year}</span>}
+            </li>
+          ))}
+        </ul>
+      );
+    case "publications":
+      return (
+        <ul className="space-y-1.5">
+          {sections.publications.map((p, i) => (
+            <li key={i} className="text-sm">
+              {p.url ? (
+                <a
+                  href={p.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--green-700)" }}
+                >
+                  {p.title} ↗
+                </a>
+              ) : (
+                <span className="font-medium">{p.title}</span>
+              )}
+              {p.venue && <span style={{ color: "var(--muted)" }}>{" · "}{p.venue}</span>}
+              {p.year && <span style={{ color: "var(--muted)" }}>{" · "}{p.year}</span>}
+            </li>
+          ))}
+        </ul>
+      );
+    case "memberships":
+      return (
+        <ul className="space-y-1">
+          {sections.memberships.map((m, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{m.organisation}</span>
+              {m.role && <span style={{ color: "var(--muted)" }}>{" · "}{m.role}</span>}
+              {(m.year_started || m.year_ended) && (
+                <span style={{ color: "var(--muted)" }}>
+                  {" · "}
+                  {[m.year_started, m.year_ended].filter(Boolean).join(" – ")}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    case "volunteer_work":
+      return (
+        <ul className="space-y-2">
+          {sections.volunteer_work.map((v, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{v.organisation}</span>
+              {v.role && <span style={{ color: "var(--muted)" }}>{" · "}{v.role}</span>}
+              {v.description && (
+                <div className="text-xs mt-0.5" style={{ color: "var(--ink-2)" }}>
+                  {v.description}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    case "references":
+      return (
+        <ul className="space-y-2">
+          {sections.references.map((r, i) => (
+            <li key={i} className="text-sm">
+              <span className="font-medium">{r.name}</span>
+              {r.title && <span style={{ color: "var(--muted)" }}>{", "}{r.title}</span>}
+              {r.organisation && (
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  {r.organisation}
+                </div>
+              )}
+              {(r.phone || r.email) && (
+                <div className="text-xs" style={{ color: "var(--muted)" }}>
+                  {[r.phone, r.email].filter(Boolean).join(" · ")}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    default:
+      return null;
+  }
 }

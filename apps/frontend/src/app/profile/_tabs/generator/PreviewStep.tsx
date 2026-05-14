@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
+import type { CVSections } from "@/lib/api";
 import type { ParsedCV } from "./parseCv";
 import { AtsTemplate } from "./templates/AtsTemplate";
 import { DesignerTemplate } from "./templates/DesignerTemplate";
@@ -14,6 +15,7 @@ const TEMPLATES: { key: TemplateKey; label: string; sub: string }[] = [
 
 export function PreviewStep({
   parsed,
+  cvSections,
   template,
   setTemplate,
   meta,
@@ -22,6 +24,10 @@ export function PreviewStep({
   onStartOver,
 }: {
   parsed: ParsedCV;
+  /** Structured shape from /cv/generate (task #59). When non-null,
+   *  templates prefer this over `parsed` for richer rendering. Null
+   *  after the user edits or on legacy free-text responses. */
+  cvSections: CVSections | null;
   template: TemplateKey;
   setTemplate: (t: TemplateKey) => void;
   meta: { jobTitle: string; company: string; wordCount: number };
@@ -102,7 +108,11 @@ export function PreviewStep({
       </div>
 
       <div className="cv-preview-shell">
-        {template === "ats" ? <AtsTemplate parsed={parsed} /> : <DesignerTemplate parsed={parsed} />}
+        {template === "ats" ? (
+          <AtsTemplate parsed={parsed} cvSections={cvSections} />
+        ) : (
+          <DesignerTemplate parsed={parsed} cvSections={cvSections} />
+        )}
       </div>
     </div>
   );

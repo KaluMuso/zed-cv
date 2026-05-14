@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { cv as cvApi, type UserProfile } from "@/lib/api";
+import { cv as cvApi, type CVSections, type UserProfile } from "@/lib/api";
 import { InputStep, type InputStepValues } from "./generator/InputStep";
 import { PreviewStep, type TemplateKey } from "./generator/PreviewStep";
 import { EditStep } from "./generator/EditStep";
 import { HistoryPanel } from "./generator/HistoryPanel";
-import { parseGeneratedCv, type ParsedCV } from "./generator/parseCv";
+import {
+  parseGeneratedCv,
+  cvSectionsToParsed,
+  type ParsedCV,
+} from "./generator/parseCv";
 
 import "./generator/print.css";
 
@@ -48,6 +52,11 @@ export function GeneratorTab({
   });
   const [parsed, setParsed] = useState<ParsedCV | null>(null);
   const [originalParsed, setOriginalParsed] = useState<ParsedCV | null>(null);
+  // Structured sections from /cv/generate (task #59). Non-null when the
+  // LLM returned the new shape; templates prefer this for richer rendering.
+  // Cleared on user edit so templates fall back to the edited ParsedCV.
+  const [cvSections, setCvSections] = useState<CVSections | null>(null);
+  const [originalCvSections, setOriginalCvSections] = useState<CVSections | null>(null);
   const [meta, setMeta] = useState<GenerationMeta | null>(null);
   const [template, setTemplate] = useState<TemplateKey>("ats");
   const [loading, setLoading] = useState(false);
@@ -58,8 +67,20 @@ export function GeneratorTab({
     setStep("input");
     setParsed(null);
     setOriginalParsed(null);
+    setCvSections(null);
+    setOriginalCvSections(null);
     setMeta(null);
     setError(null);
+  };
+
+  // Header fields the structured → ParsedCV converter needs. Pulled from
+  // profileData so the edit view shows the user's real name + contact,
+  // not whatever the LLM happened to echo.
+  const profileHeader = {
+    full_name: profileData.full_name,
+    phone: profileData.phone,
+    email: profileData.email,
+    location: profileData.location ?? null,
   };
 
   const handleGenerate = async (values: InputStepValues) => {
@@ -72,9 +93,16 @@ export function GeneratorTab({
         company: values.company || undefined,
         job_description: values.jobDescription || undefined,
       });
-      const p = parseGeneratedCv(r.content);
+      // Prefer the structured shape when the backend supplied it
+      // (task #59 hybrid mode). Free-text parseGeneratedCv() is the
+      // fallback for legacy responses where r.sections is null.
+      const p = r.sections
+        ? cvSectionsToParsed(r.sections, profileHeader)
+        : parseGeneratedCv(r.content);
       setParsed(p);
       setOriginalParsed(p);
+      setCvSections(r.sections ?? null);
+      setOriginalCvSections(r.sections ?? null);
       setMeta({
         jobTitle: r.job_title,
         company: r.company ?? "",
@@ -94,9 +122,16 @@ export function GeneratorTab({
     setError(null);
     try {
       const detail = await cvApi.getGeneration(token, id);
-      const p = parseGeneratedCv(detail.content);
+      // Structured sections live in cv_generations.metadata.sections for
+      // post-#59 rows; pre-#59 rows have only content text. Mirror the
+      // generate path's preference order.
+      const p = detail.sections
+        ? cvSectionsToParsed(detail.sections, profileHeader)
+        : parseGeneratedCv(detail.content);
       setParsed(p);
       setOriginalParsed(p);
+      setCvSections(detail.sections ?? null);
+      setOriginalCvSections(detail.sections ?? null);
       setMeta({
         jobTitle: detail.job_title,
         company: detail.company ?? "",
@@ -142,6 +177,7 @@ export function GeneratorTab({
         {step === "preview" && parsed && meta && (
           <PreviewStep
             parsed={parsed}
+            cvSections={cvSections}
             template={template}
             setTemplate={setTemplate}
             meta={meta}
@@ -154,9 +190,18 @@ export function GeneratorTab({
         {step === "edit" && parsed && originalParsed && (
           <EditStep
             parsed={parsed}
-            onChange={setParsed}
+            onChange={(next) => {
+              // Edits invalidate the structured shape — they only flow into
+              // the ParsedCV view. Drop structured so templates fall back
+              // to the edited ParsedCV and the preview reflects edits.
+              setParsed(next);
+              setCvSections(null);
+            }}
             onDone={() => setStep("preview")}
-            onReset={() => setParsed(originalParsed)}
+            onReset={() => {
+              setParsed(originalParsed);
+              setCvSections(originalCvSections);
+            }}
           />
         )}
       </div>
