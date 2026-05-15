@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install system deps for python-docx, PyPDF2, Pillow
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libffi-dev && \
+    apt-get install -y --no-install-recommends gcc libffi-dev libmagic1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python deps
