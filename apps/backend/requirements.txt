@@ -44,3 +44,16 @@ sentry-sdk[fastapi]>=2.0.0
 #   - Windows CI/dev:      pip install python-magic-bin instead (bundles
 #                          the binaries; mutually exclusive with this).
 python-magic>=0.4.27
+# Markdown → HTML conversion for the admin-editable /legal/* pages
+# (task #62). Pure-Python, MIT, no native deps. We use the stock
+# extension set + extras (fenced_code, tables) because legal copy
+# occasionally uses both. The sanitiser below catches anything the
+# converter would otherwise emit verbatim from inline HTML.
+markdown>=3.6
+# HTML sanitiser — the Python equivalent of rehype-sanitize. Runs on
+# the rendered HTML before it lands in legal_docs.content_html so a
+# stored XSS via the admin editor is closed at the storage boundary.
+# Defense in depth: the public legal page renderer ALSO sanitises at
+# render time via rehype-sanitize, but we don't rely on that being
+# the last line of defence.
+bleach>=6.1.0

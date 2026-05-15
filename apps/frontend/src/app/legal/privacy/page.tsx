@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { LegalMarkdown } from "../_components/LegalMarkdown";
+import { fetchLegalDocFromDB } from "../_fetch";
 import { PRIVACY_MARKDOWN, LAST_UPDATED, VERSION } from "./_content";
+
+// task #62 — DB-fallback render. The admin WYSIWYG saves to legal_docs;
+// the public GET endpoint returns 404 when no row exists, in which case
+// we render the inline _content.ts constant. Revalidate every 5 min so
+// an edit propagates promptly; the admin save handler also fires an
+// explicit revalidatePath() so the change is visible within seconds.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -19,6 +27,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
-  return <LegalMarkdown markdown={PRIVACY_MARKDOWN} />;
+export default async function PrivacyPage() {
+  const dbDoc = await fetchLegalDocFromDB("privacy");
+  // Prefer DB content when it exists. content_md is the source of
+  // truth for the LegalMarkdown renderer (consistent rehype-sanitize
+  // path with the inline-content fallback).
+  const markdown = dbDoc?.content_md || PRIVACY_MARKDOWN;
+  return <LegalMarkdown markdown={markdown} />;
 }
