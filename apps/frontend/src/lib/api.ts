@@ -832,3 +832,24 @@ export const me = {
       body: JSON.stringify({ confirm_phone: confirmPhone }),
     }),
 };
+
+// ── Contact form (task #65) ──
+export interface ContactSubmission {
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+}
+
+export interface ContactResult {
+  success: boolean;
+  message: string;
+}
+
+export const contact = {
+  submit: (data: ContactSubmission) =>
+    apiFetch<ContactResult>("/contact", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
