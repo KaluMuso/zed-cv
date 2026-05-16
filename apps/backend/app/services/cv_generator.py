@@ -242,7 +242,7 @@ def _render_sections_to_text(
     if sections.work_experience:
         out.append("EXPERIENCE")
         for w in sections.work_experience:
-            dates = w.start_date + (f" – {w.end_date}" if w.end_date else " – Present")
+            dates = (w.start_date or "") + (f" – {w.end_date}" if w.end_date else " – Present")
             header = f"{w.title}, {w.company}"
             if w.location:
                 header += f" ({w.location})"
@@ -257,7 +257,7 @@ def _render_sections_to_text(
             line = f"{e.degree}, {e.institution}"
             if e.location:
                 line += f" ({e.location})"
-            dates = e.start_date + (f" – {e.end_date}" if e.end_date else "")
+            dates = (e.start_date or "") + (f" – {e.end_date}" if e.end_date else "")
             if dates.strip(" –"):
                 line += f"  [{dates.strip()}]"
             out.append(line)

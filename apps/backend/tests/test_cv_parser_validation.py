@@ -338,7 +338,9 @@ class TestCVHeader:
 
 class TestProfessionalSummary:
     def test_caps_text_length(self):
-        too_long = "x" * 1500
+        # Cap was raised from 1000 to 5000 to fit long-form CV summaries
+        # the LLM was producing; the cap still exists to bound runaway.
+        too_long = "x" * 5500
         with pytest.raises(ValidationError):
             ProfessionalSummary(text=too_long)
 
