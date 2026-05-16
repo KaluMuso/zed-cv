@@ -175,14 +175,15 @@ chmod +x setup-ssl.sh
 ```bash
 cd ~/zedcv/infra/production
 
-# Create a .env for docker-compose variables
-cat > .env << EOF
-WAHA_API_KEY=your-waha-key-from-phase-1
-N8N_USER=admin
-N8N_PASSWORD=pick-a-strong-password
-SUPABASE_URL=https://chnesgmcuxyhwhzomdov.supabase.co
-SUPABASE_KEY=your-service-role-key
-EOF
+# Create the compose-level .env (separate from apps/backend/.env — docker
+# compose only reads .env in the same directory as the compose file).
+cp .env.example .env
+nano .env   # fill in real values:
+            #   WAHA_API_KEY=<key from Phase 1>
+            #   N8N_USER=admin
+            #   N8N_PASSWORD=<strong password>
+            #   SUPABASE_URL=https://chnesgmcuxyhwhzomdov.supabase.co
+            #   SUPABASE_KEY=<service role key>
 
 docker compose -f docker-compose.prod.yml up -d --build
 ```
