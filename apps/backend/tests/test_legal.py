@@ -320,3 +320,32 @@ class TestAdminPatch:
             json={"version": "1.0", "content_md": "x" * 100_001},
         )
         assert r2.status_code == 422
+
+
+class TestRouterRegistered:
+    """Guard against future regressions of the bug this PR fixes —
+    legal.py defined `public_router` and `admin_router` but neither was
+    ever passed to `app.include_router(...)` in main.py, so every route
+    in this module 404'd in production and the rest of test_legal.py
+    silently failed on CI. If someone deletes the include_router lines
+    again, this test catches it before merge.
+    """
+
+    def test_public_route_in_openapi_schema(self, client):
+        """`GET /api/v1/legal/{slug}` must appear on the OpenAPI schema.
+
+        We assert on the schema (not by hitting the route) so this stays
+        green even if every behavioural test happens to be skipped.
+        """
+        schema = client.get("/openapi.json").json()
+        assert "/api/v1/legal/{slug}" in schema["paths"]
+        assert "get" in schema["paths"]["/api/v1/legal/{slug}"]
+
+    def test_admin_routes_in_openapi_schema(self, client):
+        """Both admin verbs must be registered. PATCH is the WYSIWYG
+        editor's write path; GET is the editor's load path."""
+        schema = client.get("/openapi.json").json()
+        admin_path = "/api/v1/admin/legal/{slug}"
+        assert admin_path in schema["paths"]
+        assert "get" in schema["paths"][admin_path]
+        assert "patch" in schema["paths"][admin_path]
