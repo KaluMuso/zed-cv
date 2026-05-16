@@ -123,7 +123,18 @@ async def verify_otp(request: Request, body: OTPVerify, settings: Settings = Dep
     else:
         # Auto-assign superadmin role if phone matches SUPERADMIN_PHONE env var
         role = "superadmin" if (settings.superadmin_phone and body.phone == settings.superadmin_phone) else "user"
-        new_user = supabase.table("users").insert({"phone": body.phone, "role": role}).execute()
+        # Stamp consent_accepted_at at user-creation time. The /auth form
+        # blocks the OTP request until the user ticks the consent box
+        # (task #62), so reaching this branch implies consent was given
+        # within the OTP TTL — recording NOW() here is the closest
+        # auditable timestamp we have. Returning users keep their
+        # original timestamp from migration 019's backfill or their
+        # original sign-up moment, whichever came first.
+        new_user = supabase.table("users").insert({
+            "phone": body.phone,
+            "role": role,
+            "consent_accepted_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
         user_id = new_user.data[0]["id"]
 
         # Superadmin gets top tier; regular users start on free

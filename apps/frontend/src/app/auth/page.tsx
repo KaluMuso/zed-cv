@@ -26,6 +26,11 @@ export default function AuthPage() {
   const [resendIn, setResendIn] = useState(30);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Required consent checkbox (task #62). The OTP request button stays
+  // disabled until this is ticked. Backend stamps users.consent_accepted_at
+  // when the user row is inserted on first sign-in — so reaching the
+  // user-create path implies the user actively checked this box.
+  const [consentChecked, setConsentChecked] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const fullPhone = `+260${phoneDigits.replace(/\s/g, "")}`;
@@ -58,6 +63,16 @@ export default function AuthPage() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Belt-and-braces — the submit button is also disabled below until
+    // consent is checked, but a determined user could enable it via
+    // devtools. The backend still has no consent field on /otp/request,
+    // so this client guard is the only enforcement; matches the
+    // browser-trust posture of OWASP "validate at the boundary that
+    // can actually withhold value" (here: the OTP delivery itself).
+    if (!consentChecked) {
+      setError("Please accept the Terms and Privacy Policy to continue.");
+      return;
+    }
     const result = phoneSchema.safeParse(fullPhone);
     if (!result.success) {
       setError("Enter a valid Zambian number (9 digits after +260)");
@@ -289,10 +304,60 @@ export default function AuthPage() {
                   </div>
                 )}
 
+                <label
+                  className="mt-5 flex items-start gap-2.5 cursor-pointer select-none"
+                  style={{ color: "var(--ink-2)" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={consentChecked}
+                    onChange={(e) => setConsentChecked(e.target.checked)}
+                    className="mt-0.5"
+                    style={{
+                      // Brand-accent the checkmark — matches the OTP
+                      // verified border + the rest of the green-700 CTAs.
+                      accentColor: "var(--green-700)",
+                      width: 16,
+                      height: 16,
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                    aria-describedby="consent-help"
+                  />
+                  <span id="consent-help" className="text-xs leading-relaxed">
+                    I accept the{" "}
+                    <Link
+                      href="/legal/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "var(--green-700)",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/legal/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "var(--green-700)",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="btn btn-primary btn-lg w-full mt-6"
+                  disabled={loading || !consentChecked}
+                  className="btn btn-primary btn-lg w-full mt-4"
+                  aria-disabled={loading || !consentChecked}
                 >
                   {loading ? (
                     <span className="spinner" />
@@ -303,27 +368,6 @@ export default function AuthPage() {
                   )}
                 </button>
               </form>
-
-              <div
-                className="mt-6 text-center text-xs leading-relaxed"
-                style={{ color: "var(--muted)" }}
-              >
-                By signing in, you agree to our{" "}
-                <Link
-                  href="/legal/terms"
-                  style={{ color: "var(--ink-2)", textDecoration: "underline" }}
-                >
-                  Terms
-                </Link>{" "}
-                and acknowledge our{" "}
-                <Link
-                  href="/legal/privacy"
-                  style={{ color: "var(--ink-2)", textDecoration: "underline" }}
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </div>
             </div>
           )}
 
