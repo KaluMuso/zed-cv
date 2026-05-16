@@ -48,7 +48,10 @@ class CVHeader(BaseModel):
 
 class ProfessionalSummary(BaseModel):
     """A 1-3 sentence elevator pitch at the top of the CV."""
-    text: str = Field("", max_length=1000)
+    # 5000 covers the long-form summaries we've actually seen from
+    # Zambian consultants and academics; 1000 was too tight and was
+    # 503'ing /cv/upload on real CVs.
+    text: str = Field("", max_length=5000)
 
 
 class WorkExperience(BaseModel):
@@ -60,8 +63,13 @@ class WorkExperience(BaseModel):
     """
     title: str = Field(..., max_length=200)
     company: str = Field(..., max_length=200)
-    location: str = Field("", max_length=200)
-    start_date: str = Field("", max_length=20)
+    # `location` / `start_date` are Optional so the LLM can legitimately
+    # send JSON null when the source CV omits them — previously typed as
+    # plain `str` with a default of "", which Pydantic v2 rejects with a
+    # `string_type` error on explicit null. Frontend type already declares
+    # `location?: string` / `start_date?: string`.
+    location: Optional[str] = Field(None, max_length=200)
+    start_date: Optional[str] = Field(None, max_length=20)
     end_date: Optional[str] = Field(None, max_length=20)
     achievements: list[str] = Field(default_factory=list)
 
@@ -85,8 +93,9 @@ class WorkExperience(BaseModel):
 class Education(BaseModel):
     degree: str = Field(..., max_length=200)
     institution: str = Field(..., max_length=200)
-    location: str = Field("", max_length=200)
-    start_date: str = Field("", max_length=20)
+    # See WorkExperience: Optional so JSON null from the LLM validates.
+    location: Optional[str] = Field(None, max_length=200)
+    start_date: Optional[str] = Field(None, max_length=20)
     end_date: Optional[str] = Field(None, max_length=20)
     gpa: Optional[str] = Field(None, max_length=20)
     thesis: Optional[str] = Field(None, max_length=500)
@@ -94,7 +103,9 @@ class Education(BaseModel):
 
 class Certification(BaseModel):
     name: str = Field(..., max_length=200)
-    issuer: str = Field("", max_length=200)
+    # Optional so JSON null from the LLM validates (issuer is often
+    # missing on self-issued or non-accredited certs).
+    issuer: Optional[str] = Field(None, max_length=200)
     year: Optional[str] = Field(None, max_length=10)
     expiry: Optional[str] = Field(None, max_length=20)
 
