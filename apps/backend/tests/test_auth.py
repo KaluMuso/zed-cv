@@ -81,8 +81,9 @@ class TestOTPVerify:
         assert resp.status_code == 401
         assert captured.get("payload") == {"attempts": 3}
 
-    def test_verify_valid_code_new_user(self, client, fake_supabase):
-        """Valid OTP for new user creates account and returns tokens."""
+    def _seed_new_user_verify(self, fake_supabase):
+        """Common fixture: valid unverified OTP, empty users table (so the
+        verify path treats this as a new-user signup)."""
         fake_supabase.set_table(
             "otp_codes",
             FakeSupabaseQuery(
@@ -105,6 +106,80 @@ class TestOTPVerify:
                 data=[{"id": "sub-1", "user_id": "fake-uuid-001"}]
             ),
         )
+
+    def test_verify_valid_code_new_user(self, client, fake_supabase):
+        """Valid OTP for new user with consent_accepted=true creates account
+        and returns tokens."""
+        self._seed_new_user_verify(fake_supabase)
+        resp = client.post(
+            "/api/v1/auth/otp/verify",
+            json={
+                "phone": "+260971234567",
+                "code": "123456",
+                "consent_accepted": True,
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "access_token" in body
+        assert "refresh_token" in body
+        assert "user_id" in body
+
+    def test_verify_new_user_missing_consent_rejected(self, client, fake_supabase):
+        """New user signup without consent_accepted in the payload returns 400.
+
+        The frontend gates the submit button behind a consent checkbox, but
+        the backend is the source of truth — a hand-crafted request without
+        the field must be rejected.
+        """
+        self._seed_new_user_verify(fake_supabase)
+        resp = client.post(
+            "/api/v1/auth/otp/verify",
+            json={"phone": "+260971234567", "code": "123456"},
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Consent required"
+
+    def test_verify_new_user_consent_false_rejected(self, client, fake_supabase):
+        """Explicit consent_accepted=false is also rejected with 400 — only
+        an explicit true unlocks account creation."""
+        self._seed_new_user_verify(fake_supabase)
+        resp = client.post(
+            "/api/v1/auth/otp/verify",
+            json={
+                "phone": "+260971234567",
+                "code": "123456",
+                "consent_accepted": False,
+            },
+        )
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "Consent required"
+
+    def test_verify_existing_user_no_consent_needed(self, client, fake_supabase):
+        """Existing users already consented at original signup; subsequent
+        logins must not require the field. Otherwise every existing user
+        would be locked out until the frontend ships the checkbox."""
+        fake_supabase.set_table(
+            "otp_codes",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "otp-2",
+                        "phone": "+260971234567",
+                        "code": "123456",
+                        "verified": False,
+                        "attempts": 0,
+                        "expires_at": "2099-12-31T00:00:00Z",
+                    }
+                ]
+            ),
+        )
+        fake_supabase.set_table(
+            "users",
+            FakeSupabaseQuery(
+                data=[{"id": "existing-uuid-9", "role": "user"}]
+            ),
+        )
         resp = client.post(
             "/api/v1/auth/otp/verify",
             json={"phone": "+260971234567", "code": "123456"},
@@ -112,5 +187,4 @@ class TestOTPVerify:
         assert resp.status_code == 200
         body = resp.json()
         assert "access_token" in body
-        assert "refresh_token" in body
-        assert "user_id" in body
+        assert body["user_id"] == "existing-uuid-9"

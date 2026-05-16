@@ -63,10 +63,14 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ phone }),
     }),
-  verifyOTP: (phone: string, code: string) =>
+  verifyOTP: (phone: string, code: string, consentAccepted?: boolean) =>
     apiFetch<AuthTokens>("/auth/otp/verify", {
       method: "POST",
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({
+        phone,
+        code,
+        ...(consentAccepted !== undefined && { consent_accepted: consentAccepted }),
+      }),
     }),
 };
 

@@ -115,26 +115,21 @@ async def verify_otp(request: Request, body: OTPVerify, settings: Settings = Dep
     if otp["attempts"] >= settings.max_otp_attempts:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Too many attempts. Request a new OTP.")
 
-    supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
-
     user_result = supabase.table("users").select("id, role").eq("phone", body.phone).limit(1).execute()
     if user_result.data:
+        # Existing user — they consented at original signup; don't re-prompt.
         user_id = user_result.data[0]["id"]
+        supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
     else:
+        # New user — require explicit consent before creating the account.
+        # Done before the OTP is marked verified so a forgotten checkbox
+        # doesn't burn the code; the user can re-submit with consent=true.
+        if body.consent_accepted is not True:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Consent required")
+        supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
         # Auto-assign superadmin role if phone matches SUPERADMIN_PHONE env var
         role = "superadmin" if (settings.superadmin_phone and body.phone == settings.superadmin_phone) else "user"
-        # Stamp consent_accepted_at at user-creation time. The /auth form
-        # blocks the OTP request until the user ticks the consent box
-        # (task #62), so reaching this branch implies consent was given
-        # within the OTP TTL — recording NOW() here is the closest
-        # auditable timestamp we have. Returning users keep their
-        # original timestamp from migration 019's backfill or their
-        # original sign-up moment, whichever came first.
-        new_user = supabase.table("users").insert({
-            "phone": body.phone,
-            "role": role,
-            "consent_accepted_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
+        new_user = supabase.table("users").insert({"phone": body.phone, "role": role}).execute()
         user_id = new_user.data[0]["id"]
 
         # Superadmin gets top tier; regular users start on free

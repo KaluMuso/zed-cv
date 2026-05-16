@@ -26,10 +26,6 @@ export default function AuthPage() {
   const [resendIn, setResendIn] = useState(30);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  // Required consent checkbox (task #62). The OTP request button stays
-  // disabled until this is ticked. Backend stamps users.consent_accepted_at
-  // when the user row is inserted on first sign-in — so reaching the
-  // user-create path implies the user actively checked this box.
   const [consentChecked, setConsentChecked] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -63,16 +59,7 @@ export default function AuthPage() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Belt-and-braces — the submit button is also disabled below until
-    // consent is checked, but a determined user could enable it via
-    // devtools. The backend still has no consent field on /otp/request,
-    // so this client guard is the only enforcement; matches the
-    // browser-trust posture of OWASP "validate at the boundary that
-    // can actually withhold value" (here: the OTP delivery itself).
-    if (!consentChecked) {
-      setError("Please accept the Terms and Privacy Policy to continue.");
-      return;
-    }
+    if (!consentChecked) return;
     const result = phoneSchema.safeParse(fullPhone);
     if (!result.success) {
       setError("Enter a valid Zambian number (9 digits after +260)");
@@ -107,7 +94,7 @@ export default function AuthPage() {
       setLoading(true);
       setError("");
       try {
-        const tokens = await auth.verifyOTP(fullPhone, code);
+        const tokens = await auth.verifyOTP(fullPhone, code, consentChecked);
         login(tokens.access_token, tokens.user_id);
         setStep("success");
         setTimeout(() => router.push(safeNext), 1400);
@@ -305,47 +292,34 @@ export default function AuthPage() {
                 )}
 
                 <label
-                  className="mt-5 flex items-start gap-2.5 cursor-pointer select-none"
-                  style={{ color: "var(--ink-2)" }}
+                  className="mt-5 flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer"
+                  style={{ color: "var(--muted)" }}
                 >
                   <input
                     type="checkbox"
                     checked={consentChecked}
                     onChange={(e) => setConsentChecked(e.target.checked)}
-                    className="mt-0.5"
+                    className="cursor-pointer"
                     style={{
-                      // Brand-accent the checkmark — matches the OTP
-                      // verified border + the rest of the green-700 CTAs.
                       accentColor: "var(--green-700)",
                       width: 16,
                       height: 16,
-                      cursor: "pointer",
+                      marginTop: 2,
                       flexShrink: 0,
                     }}
-                    aria-describedby="consent-help"
                   />
-                  <span id="consent-help" className="text-xs leading-relaxed">
-                    I accept the{" "}
+                  <span>
+                    I agree to the{" "}
                     <Link
                       href="/legal/terms"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: "var(--green-700)",
-                        textDecoration: "underline",
-                      }}
+                      style={{ color: "var(--ink-2)", textDecoration: "underline" }}
                     >
-                      Terms of Service
+                      Terms
                     </Link>{" "}
-                    and{" "}
+                    and acknowledge the{" "}
                     <Link
                       href="/legal/privacy"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        color: "var(--green-700)",
-                        textDecoration: "underline",
-                      }}
+                      style={{ color: "var(--ink-2)", textDecoration: "underline" }}
                     >
                       Privacy Policy
                     </Link>
@@ -355,9 +329,8 @@ export default function AuthPage() {
 
                 <button
                   type="submit"
-                  disabled={loading || !consentChecked}
-                  className="btn btn-primary btn-lg w-full mt-4"
-                  aria-disabled={loading || !consentChecked}
+                  disabled={loading || !consentChecked || !phoneDigits}
+                  className="btn btn-primary btn-lg w-full mt-6"
                 >
                   {loading ? (
                     <span className="spinner" />
