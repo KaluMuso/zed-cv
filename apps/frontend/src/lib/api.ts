@@ -864,3 +864,30 @@ export interface PublicStats {
 export const publicStats = {
   get: () => apiFetch<PublicStats>("/stats/public"),
 };
+
+// ── Legal docs (task #62) ──
+export type LegalSlug = "privacy" | "terms" | "cookies";
+
+export interface AdminLegalDoc {
+  slug: string;
+  version: string;
+  content_md: string;
+  content_html: string;
+  last_modified_by: string | null;
+  last_modified_at: string | null;
+}
+
+export const adminLegal = {
+  get: (token: string, slug: LegalSlug) =>
+    apiFetch<AdminLegalDoc>(`/admin/legal/${slug}`, { token }),
+  update: (
+    token: string,
+    slug: LegalSlug,
+    data: { version: string; content_md: string },
+  ) =>
+    apiFetch<AdminLegalDoc>(`/admin/legal/${slug}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(data),
+    }),
+};
