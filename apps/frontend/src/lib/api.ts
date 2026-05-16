@@ -507,14 +507,19 @@ export const admin = {
 };
 
 // ── CV ──
+// Matches docs/openapi.yaml:265 (CVUploadResponse).
+// 200 path returns the parsed-sync fields; 202 path returns the queue fields.
 export interface CVUploadResult {
-  id?: string;
-  skills_extracted?: string[];
-  message: string;
-  // Set by the backend (HTTP 202) when AI capacity is exhausted and the
-  // upload was stored in the queue instead of processed inline.
+  // Sync path (200 OK) — present when LLM parse succeeds inline:
+  cv_id?: string;
+  parsed_skills?: string[];
+  experience_summary?: string;
+  parsing_confidence?: number;
+
+  // Queue path (202 Accepted) — present when parse is deferred:
   queued?: boolean;
   queue_id?: string;
+  message?: string;
 }
 
 export interface CVAnalysis {

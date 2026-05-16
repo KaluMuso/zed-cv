@@ -41,10 +41,9 @@ export function CvSkillsTab({
       setUploadMsg("");
       try {
         const result = await cvApi.upload(token, file);
-        // Defensive — older backend builds occasionally return without
-        // `skills_extracted`, which used to crash here with
-        // "Cannot read properties of undefined (reading 'length')".
-        const skillsCount = result?.skills_extracted?.length ?? 0;
+        // parsed_skills is the canonical field per docs/openapi.yaml.
+        // 202 (queued) responses won't include it; the ?? 0 covers that case.
+        const skillsCount = result?.parsed_skills?.length ?? 0;
         if (result?.queued) {
           setUploadMsg(
             "CV queued — we'll process it as soon as AI capacity is back."
