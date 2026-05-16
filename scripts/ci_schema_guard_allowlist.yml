@@ -1,0 +1,17 @@
+# Static schema-guard allow-list.
+#
+# Each entry under `ignore:` filters the drift list by any combination of
+# table, column, file, line, method. All declared fields must match for
+# the entry to apply. Always include a `reason` so future readers know
+# why the rule exists.
+#
+# Prefer fixing the code or schema over adding an entry here. Use this
+# file when:
+#   - the analyzer can't statically resolve the call (e.g., the table
+#     comes from a config dict)
+#   - a column exists only on a view / materialized view that PostgREST
+#     surfaces under a different name
+#   - the column is intentionally write-only (CHECK constraint generates
+#     it from a trigger)
+
+ignore: []

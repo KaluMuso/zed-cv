@@ -522,6 +522,7 @@ export interface CVUploadResult {
   message?: string;
 }
 
+// @openapi CVAnalysisResponse
 export interface CVAnalysis {
   overall: number;
   skills: number;

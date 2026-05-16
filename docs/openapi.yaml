@@ -403,6 +403,10 @@ components:
 
     Job:
       type: object
+      description: |
+        Canonical job response shape. Mirrors apps/backend/app/schemas/jobs.py::Job.
+        All task-#60 fields are optional + nullable so legacy rows (pre-migration 016)
+        still satisfy the schema.
       properties:
         id: { type: string, format: uuid }
         title: { type: string }
@@ -411,15 +415,43 @@ components:
         description: { type: string }
         requirements: { type: array, items: { type: string } }
         skills_required: { type: array, items: { type: string } }
+        skills: { type: array, items: { type: string }, description: "Alias for frontend compatibility" }
         salary_min: { type: integer }
         salary_max: { type: integer }
         apply_url: { type: string, format: uri }
         apply_email: { type: string, format: email }
         source: { type: string, enum: [manual, scraper, ocr, partner] }
+        source_url: { type: string, format: uri }
         quality_score: { type: integer, minimum: 0, maximum: 100 }
         closing_date: { type: string, format: date }
         posted_at: { type: string, format: date-time }
         is_active: { type: boolean }
+        # task #60: richer job ad shape (migration 016). All nullable.
+        employment_type:
+          type: string
+          enum: [full_time, part_time, contract, freelance, internship, temporary]
+          nullable: true
+        work_arrangement:
+          type: string
+          enum: [remote, hybrid, on_site]
+          nullable: true
+        hybrid_days_per_week: { type: integer, minimum: 1, maximum: 5, nullable: true }
+        benefits: { type: array, items: { type: string }, nullable: true }
+        application_instructions: { type: string, nullable: true }
+        reporting_structure: { type: string, nullable: true }
+        manages_others: { type: integer, minimum: 0, nullable: true }
+        interview_process: { type: string, nullable: true }
+        tools_tech_stack: { type: array, items: { type: string }, nullable: true }
+        success_metrics: { type: string, nullable: true }
+        company_description: { type: string, nullable: true }
+        reference_number: { type: string, nullable: true }
+        currency: { type: string, nullable: true }
+        pay_frequency:
+          type: string
+          enum: [monthly, annual, hourly, daily]
+          nullable: true
+        bonus_structure: { type: string, nullable: true }
+        equity_offered: { type: boolean, nullable: true }
 
     JobCreate:
       type: object
@@ -445,6 +477,7 @@ components:
         total: { type: integer }
         page: { type: integer }
         per_page: { type: integer }
+        pages: { type: integer }
 
     MatchResult:
       type: object
@@ -468,14 +501,16 @@ components:
 
     Subscription:
       type: object
+      description: |
+        Shape of GET /subscription. Mirrors apps/backend/app/schemas/subscription.py::Subscription
+        (the API response model — distinct from the wider DB row, which carries id,
+        status, and current_period_*). `active` is true when status='active'.
       properties:
-        id: { type: string, format: uuid }
         tier: { type: string, enum: [free, starter, professional, super_standard] }
-        status: { type: string, enum: [active, expired, cancelled] }
-        current_period_start: { type: string, format: date-time }
-        current_period_end: { type: string, format: date-time }
         matches_used: { type: integer }
         matches_limit: { type: integer }
+        active: { type: boolean }
+        expires_at: { type: string, format: date-time, nullable: true }
 
     PaymentInitiate:
       type: object

@@ -1,0 +1,95 @@
+name: drift-guards
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml supabase
+
+      # All three guards write JSON reports the comment step can read.
+      # Each guard sets its own exit code; we always run all three (using
+      # `if: always()`) and gate the job on the union via `Aggregate`.
+
+      - name: schema-guard
+        id: schema
+        if: always()
+        run: |
+          python scripts/ci_schema_guard.py --json > schema_guard.json
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        continue-on-error: true
+
+      - name: openapi-ts-guard
+        id: openapi
+        if: always()
+        run: |
+          python scripts/ci_openapi_ts_guard.py --json > openapi_ts_guard.json
+        continue-on-error: true
+
+      - name: compose-env-guard
+        id: compose
+        if: always()
+        run: |
+          python scripts/ci_compose_env_guard.py --json > compose_env_guard.json
+        continue-on-error: true
+
+      - name: Render human summary
+        if: always()
+        run: |
+          echo "## drift-guards report" > summary.md
+          for guard in schema_guard openapi_ts_guard compose_env_guard; do
+            echo "" >> summary.md
+            echo "### ${guard}" >> summary.md
+            echo '```json' >> summary.md
+            cat "${guard}.json" >> summary.md
+            echo '```' >> summary.md
+          done
+          cat summary.md
+
+      - name: Post PR comment on drift
+        if: github.event_name == 'pull_request' && (steps.schema.outcome != 'success' || steps.openapi.outcome != 'success' || steps.compose.outcome != 'success')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('summary.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Aggregate
+        if: always()
+        run: |
+          status=0
+          for f in schema_guard.json openapi_ts_guard.json compose_env_guard.json; do
+            ok=$(python -c "import json,sys; print(json.load(open('$f')).get('ok'))")
+            echo "$f -> ok=$ok"
+            if [ "$ok" != "True" ]; then
+              status=1
+            fi
+          done
+          exit $status

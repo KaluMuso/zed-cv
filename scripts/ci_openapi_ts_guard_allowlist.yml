@@ -1,0 +1,34 @@
+# Allow-list for the OpenAPI <-> api.ts guard.
+#
+# `ignore:` silences individual (interface, field) drift entries. Each
+# entry should carry a `reason` so future readers know why the field
+# exists in TS without an OpenAPI counterpart (usually: it lives on a
+# different status code than the schema currently documents).
+#
+# `unmapped_ok:` is for apiFetch<Name>() generic types that we don't
+# expect to match an OpenAPI schema at all (primitive responses,
+# anonymous shapes). Listing here turns off the warn-only message;
+# adding `// @openapi SchemaName` to the interface is preferred.
+
+ignore:
+  - interface: CVUploadResult
+    field: queued
+    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
+  - interface: CVUploadResult
+    field: queue_id
+    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
+  - interface: CVUploadResult
+    field: message
+    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
+
+unmapped_ok:
+  # The endpoints below currently return an ad-hoc shape that isn't
+  # documented in openapi.yaml. They're tracked for a follow-up that
+  # adds proper schemas; until then the guard treats them as warn-only
+  # so master HEAD stays green.
+  - OTPResponse           # /auth/otp/request — {message: string}
+  - ContactResult         # /contact          — task #65, not yet in spec
+  - PublicStats           # /stats/public     — not yet in spec
+  - AccountDeletionResult # DELETE /me        — task #63, not yet in spec
+  - AdminLegalDoc         # /admin/legal/*    — task #62, not yet in spec
+
