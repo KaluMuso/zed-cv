@@ -31,6 +31,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # Make `app.*` importable without installing the backend as a package.
 sys.path.insert(0, str(REPO_ROOT / "apps" / "backend"))
 
+# Backfill scripts read SUPABASE_SERVICE_KEY directly, but importing
+# app.services.embedding pulls in app.core.config.Settings, which
+# requires SUPABASE_KEY + JWT_SECRET present in the env even when the
+# code path under test only needs GEMINI_API_KEY. Synthesize them so
+# the documented env-var set (URL + SERVICE_KEY + GEMINI) is enough.
+# This DOES NOT weaken any auth — JWT_SECRET is only used by the auth
+# code path, which the backfill never touches.
+os.environ.setdefault("SUPABASE_KEY", os.environ.get("SUPABASE_SERVICE_KEY", ""))
+os.environ.setdefault("JWT_SECRET", "unused-by-backfill-scripts")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",

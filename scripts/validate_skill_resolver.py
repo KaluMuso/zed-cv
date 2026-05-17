@@ -37,6 +37,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "apps" / "backend"))
 
+# See note in backfill_skill_embeddings.py — Pydantic Settings demands
+# these even though the validation path doesn't use them.
+os.environ.setdefault("SUPABASE_KEY", os.environ.get("SUPABASE_SERVICE_KEY", ""))
+os.environ.setdefault("JWT_SECRET", "unused-by-validate-script")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
