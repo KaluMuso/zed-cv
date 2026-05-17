@@ -765,9 +765,11 @@ async def update_admin_job(
         raise HTTPException(status_code=404, detail="Job not found")
     existing = existing_res.data[0]
 
-    # exclude_unset → only fields the client actually sent. None values
-    # ARE included if the client explicitly sent null (PATCH semantics
-    # = clear-the-field is a valid operation).
+    # exclude_unset → only fields the client actually sent. This keeps
+    # the field-absent vs explicitly-empty-list distinction the owner
+    # addendum relies on (a sent `requirements: []` clears job_skills;
+    # an omitted `requirements` leaves them alone). exclude_none would
+    # collapse the two — never substitute.
     update_payload = body.model_dump(exclude_unset=True, mode="json")
 
     # Pull input-only fields out before the diff/write.
@@ -795,7 +797,21 @@ async def update_admin_job(
 
     embedding_regen = bool(changed_set & _EMBEDDING_TRIGGER_FIELDS)
     fingerprint_regen = bool(changed_set & _FINGERPRINT_TRIGGER_FIELDS)
-    skills_changed = skills_required_new is not None
+
+    # Either `requirements` or `skills_required` (when EXPLICITLY sent —
+    # absence vs `[]` matters) drives a job_skills rebuild. Owner
+    # addendum #2 treats `requirements` as the skill list; the codebase
+    # also accepts `skills_required` for compatibility. The more
+    # specific field (`skills_required`) wins when both are sent.
+    requirements_explicit = "requirements" in body.model_fields_set
+    skills_required_explicit = "skills_required" in body.model_fields_set
+    skills_changed = requirements_explicit or skills_required_explicit
+    if skills_required_explicit:
+        skill_names_new: list[str] = list(skills_required_new or [])
+    elif requirements_explicit:
+        skill_names_new = list(body.requirements or [])
+    else:
+        skill_names_new = []
 
     new_title = update_payload.get("title", existing["title"])
     new_company = update_payload.get("company", existing.get("company"))
@@ -813,13 +829,56 @@ async def update_admin_job(
 
     if fingerprint_regen:
         new_fp = _fingerprint(new_title, new_company, new_description)
+        # Collision check (warn-only per owner addendum #1). If the new
+        # fingerprint matches another ACTIVE job's fingerprint, log +
+        # emit an analytics event, but still apply the update. POST
+        # remains a hard 409 on duplicates; PATCH lets admin reconcile
+        # whatever situation they're knowingly creating.
+        same_fp_rows = (
+            supabase.table("job_fingerprints")
+            .select("job_id")
+            .eq("fingerprint", new_fp)
+            .execute()
+        )
+        other_job_ids = [
+            r["job_id"]
+            for r in (same_fp_rows.data or [])
+            if r.get("job_id") and r["job_id"] != job_id
+        ]
+        collided_with: Optional[str] = None
+        for other_id in other_job_ids:
+            other_row = (
+                supabase.table("jobs")
+                .select("is_active")
+                .eq("id", other_id)
+                .limit(1)
+                .execute()
+            )
+            if other_row.data and other_row.data[0].get("is_active") is not False:
+                collided_with = other_id
+                break
+        if collided_with:
+            logger.warning(
+                "admin_job PATCH fingerprint collision: job_id=%s now matches active job_id=%s",
+                job_id, collided_with,
+            )
+            _emit_analytics_event(
+                supabase,
+                "admin_job_fingerprint_collision",
+                {
+                    "job_id": job_id,
+                    "collided_with_job_id": collided_with,
+                    "admin_user_id": current_user["id"],
+                },
+                current_user["id"],
+            )
         supabase.table("job_fingerprints").update(
             {"fingerprint": new_fp}
         ).eq("job_id", job_id).execute()
 
     if skills_changed:
         resolved_ids = await resolve_skill_ids(
-            skills_required_new or [],
+            skill_names_new,
             supabase=supabase,
             source="admin_job_create",
             user_id=current_user["id"],
@@ -827,7 +886,10 @@ async def update_admin_job(
         # Replace job_skills wholesale. Diff-insert/delete would save
         # one round trip on no-op changes, but the wholesale path keeps
         # the code shape simple and the row counts are small (<50 per
-        # job by validator).
+        # job by validator). An empty `skill_names_new` (admin sent
+        # `requirements: []` or `skills_required: []`) deletes all rows
+        # and inserts none — clears job_skills, as the owner addendum
+        # specifies.
         supabase.table("job_skills").delete().eq("job_id", job_id).execute()
         for sid in resolved_ids:
             supabase.table("job_skills").insert(

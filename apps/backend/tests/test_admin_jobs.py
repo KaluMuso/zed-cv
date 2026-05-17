@@ -615,6 +615,135 @@ class TestPatch:
         )
         assert r.status_code == 404
 
+    def test_with_empty_requirements_clears_job_skills(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        """Owner addendum #2: explicit `requirements: []` clears job_skills
+        AND regenerates embedding (requirements is in the embedding trigger
+        set). 'Three skills before, zero after.'"""
+        job_id = _seed_job(jobs_fake, requirements=["python", "postgres", "node.js"])
+        # Seed three job_skills links manually so the test is independent
+        # of POST routing semantics.
+        for sid in ("s-pg", "s-py", "s-node"):
+            jobs_fake.tables["job_skills"].append(
+                {"job_id": job_id, "skill_id": sid}
+            )
+        assert len(
+            [x for x in jobs_fake.tables["job_skills"] if x["job_id"] == job_id]
+        ) == 3
+
+        before_embedding = list(jobs_fake.tables["jobs"][0]["embedding"])
+        emb = _patch_embedding([0.7] * 768)
+        with patch("app.api.v1.admin.generate_embedding", emb), patch(
+            "app.services.skill_resolver.generate_embedding", emb
+        ):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": []},
+                headers=auth_headers,
+            )
+        assert r.status_code == 200, r.text
+
+        # job_skills emptied.
+        remaining = [
+            x for x in jobs_fake.tables["job_skills"] if x["job_id"] == job_id
+        ]
+        assert remaining == [], remaining
+        # Embedding regenerated.
+        assert jobs_fake.tables["jobs"][0]["embedding"] != before_embedding
+        # Analytics event records skills_changed.
+        events = jobs_fake.tables["analytics_events"]
+        edited = [e for e in events if e["event"] == "admin_job_edited"]
+        assert edited and edited[-1]["properties"]["skills_changed"] is True
+
+    def test_without_requirements_preserves_skills(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        """Owner addendum #2 inverse: omitting `requirements` from the
+        PATCH body leaves job_skills untouched. 'Three before, three
+        after.'"""
+        job_id = _seed_job(jobs_fake)
+        for sid in ("s-pg", "s-py", "s-node"):
+            jobs_fake.tables["job_skills"].append(
+                {"job_id": job_id, "skill_id": sid}
+            )
+
+        # Metadata-only PATCH; embedding mock raises if called.
+        emb = AsyncMock(side_effect=AssertionError("embedding regen forbidden"))
+        with patch("app.api.v1.admin.generate_embedding", emb):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"apply_email": "new@example.com"},
+                headers=auth_headers,
+            )
+        assert r.status_code == 200, r.text
+
+        remaining = [
+            x for x in jobs_fake.tables["job_skills"] if x["job_id"] == job_id
+        ]
+        assert len(remaining) == 3, remaining
+        events = jobs_fake.tables["analytics_events"]
+        edited = [e for e in events if e["event"] == "admin_job_edited"]
+        assert edited and edited[-1]["properties"]["skills_changed"] is False
+
+    def test_fingerprint_collision_warns_and_emits_event(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        """Owner addendum #1: a PATCH whose new fingerprint matches another
+        ACTIVE job's fingerprint is allowed (not 409) but logs a warning
+        and emits admin_job_fingerprint_collision."""
+        # Active other job with a known fingerprint.
+        other_id = _seed_job(jobs_fake, title="Other Active Job")
+        jobs_fake.tables["job_fingerprints"][-1]["fingerprint"] = "collision-fp"
+
+        # Job we're going to PATCH.
+        target_id = _seed_job(jobs_fake)
+
+        # Patch the fingerprint helper so the recomputed fp deterministically
+        # collides with the other active job's fp.
+        emb = _patch_embedding([0.42] * 768)
+        with patch(
+            "app.api.v1.jobs._fingerprint", return_value="collision-fp"
+        ), patch("app.api.v1.admin.generate_embedding", emb):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{target_id}",
+                json={"title": "Something That Forces Fingerprint Change"},
+                headers=auth_headers,
+            )
+
+        assert r.status_code == 200, r.text  # warn-only, no 409
+        events = jobs_fake.tables["analytics_events"]
+        coll = [e for e in events if e["event"] == "admin_job_fingerprint_collision"]
+        assert len(coll) == 1, events
+        props = coll[0]["properties"]
+        assert props["job_id"] == target_id
+        assert props["collided_with_job_id"] == other_id
+        assert props["admin_user_id"] == "test-user-id"
+
+    def test_fingerprint_collision_with_inactive_job_does_not_warn(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        """Inactive jobs' fingerprints don't trigger the collision event —
+        admin can revive a soft-deleted listing by recreating its content."""
+        inactive_id = _seed_job(jobs_fake, is_active=False)
+        jobs_fake.tables["job_fingerprints"][-1]["fingerprint"] = "shared-fp"
+        target_id = _seed_job(jobs_fake)
+
+        emb = _patch_embedding([0.42] * 768)
+        with patch(
+            "app.api.v1.jobs._fingerprint", return_value="shared-fp"
+        ), patch("app.api.v1.admin.generate_embedding", emb):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{target_id}",
+                json={"title": "Same content as the inactive job"},
+                headers=auth_headers,
+            )
+        assert r.status_code == 200, r.text
+        events = jobs_fake.tables["analytics_events"]
+        assert not [
+            e for e in events if e["event"] == "admin_job_fingerprint_collision"
+        ]
+
 
 # ── DELETE ───────────────────────────────────────────────────────────
 

@@ -1024,11 +1024,23 @@ paths:
       tags: [Admin]
       security: [{ bearerAuth: [] }]
       description: |
-        Partial update. Only fields in the request body are written.
+        Partial update. Only fields in the request body are written
+        (computed via `model_dump(exclude_unset=True)` — field absent vs
+        explicit empty list are distinct).
+
         Embedding regenerates when title/description/requirements/tools_tech_stack
-        change; fingerprint regenerates when title/company/description change;
-        job_skills rebuilds when skills_required is provided. `updated_by_user_id`
-        and `updated_at` are always written.
+        change. Fingerprint regenerates when title/company/description
+        change — if the new fingerprint collides with another ACTIVE
+        job, the update is still allowed (warn-only) and an
+        `admin_job_fingerprint_collision` analytics event is emitted.
+
+        job_skills rebuilds wholesale when EITHER `requirements` or
+        `skills_required` is explicitly sent — including an empty list,
+        which clears every job_skills row. Omitting both fields leaves
+        existing job_skills untouched. When both are sent,
+        `skills_required` (the more specific field) takes precedence.
+
+        `updated_by_user_id` and `updated_at` are always written.
       parameters:
         - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
       requestBody:
