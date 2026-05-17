@@ -1,5 +1,5 @@
 import re as _re
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import date, datetime
 from typing import Literal, Optional, Any
 from enum import Enum
@@ -409,3 +409,119 @@ class JobIngestResponse(BaseModel):
     # execution view alongside `ingested` and `duplicates`.
     skipped: int = 0
     errors: list[JobIngestErrorItem] = []
+
+
+# ── Admin CRUD (Wave 4 PR 2) ──────────────────────────────────────────
+# AdminJobCreate / AdminJobUpdate back the /api/v1/admin/jobs POST and
+# PATCH endpoints. They diverge from JobCreate in three ways:
+#   1. Stricter bounds on title/description (1-5000) — admin can post
+#      short listings; scraper input usually carries more text.
+#   2. `extra='forbid'` — typos in the wizard payload should 422, not
+#      silently no-op.
+#   3. source defaults to JobSource.manual (admin entries are manual).
+# Skill-name input flows through `skills_required` (input-only, routed
+# through the Wave 2 resolver in the endpoint), NOT through the
+# `requirements` text[] column which carries free-text qualifications.
+
+class AdminJobCreate(JobCreate):
+    title: str = Field(..., min_length=1, max_length=5000)
+    description: str = Field(..., min_length=1, max_length=5000)
+    company: Optional[str] = Field(None, max_length=500)
+    source: JobSource = JobSource.manual
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("requirements", "skills_required", mode="after")
+    @classmethod
+    def _cap_skill_list(cls, v: list[str]) -> list[str]:
+        if len(v) > 50:
+            raise ValueError("max 50 items")
+        for item in v:
+            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 100):
+                raise ValueError("each item must be 1-100 chars after trim")
+        return v
+
+    @model_validator(mode="after")
+    def _check_invariants(self) -> "AdminJobCreate":
+        if (
+            self.salary_min is not None
+            and self.salary_max is not None
+            and self.salary_min > self.salary_max
+        ):
+            raise ValueError("salary_min must be <= salary_max")
+        has_url = bool(self.apply_url and self.apply_url.strip())
+        has_email = bool(self.apply_email and self.apply_email.strip())
+        if has_url == has_email:
+            raise ValueError(
+                "Exactly one of apply_url or apply_email is required"
+            )
+        return self
+
+
+class AdminJobUpdate(BaseModel):
+    """PATCH payload — every field optional, `extra='forbid'` rejects typos.
+
+    Only fields explicitly set in the request are written. Use
+    `model_fields_set` at the endpoint to detect "no fields to update"
+    and raise 422.
+    """
+
+    title: Optional[str] = Field(None, min_length=1, max_length=5000)
+    description: Optional[str] = Field(None, min_length=1, max_length=5000)
+    company: Optional[str] = Field(None, max_length=500)
+    location: Optional[str] = None
+    requirements: Optional[list[str]] = None
+    skills_required: Optional[list[str]] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    apply_url: Optional[str] = None
+    apply_email: Optional[str] = None
+    source: Optional[JobSource] = None
+    source_url: Optional[str] = None
+    closing_date: Optional[date] = None
+    posted_at: Optional[date] = None
+    employment_type: Optional[EmploymentType] = None
+    work_arrangement: Optional[WorkArrangement] = None
+    hybrid_days_per_week: Optional[int] = Field(None, ge=1, le=5)
+    benefits: Optional[list[str]] = None
+    application_instructions: Optional[str] = Field(None, max_length=2000)
+    reporting_structure: Optional[str] = Field(None, max_length=500)
+    manages_others: Optional[int] = Field(None, ge=0, le=10000)
+    interview_process: Optional[str] = Field(None, max_length=1000)
+    tools_tech_stack: Optional[list[str]] = None
+    success_metrics: Optional[str] = Field(None, max_length=1000)
+    company_description: Optional[str] = Field(None, max_length=2000)
+    reference_number: Optional[str] = Field(None, max_length=100)
+    currency: Optional[str] = Field(None, max_length=3, min_length=3)
+    pay_frequency: Optional[PayFrequency] = None
+    bonus_structure: Optional[str] = Field(None, max_length=500)
+    equity_offered: Optional[bool] = None
+    salary_text: Optional[str] = Field(None, max_length=500)
+    # is_active lets admin re-activate a soft-deleted job without a
+    # second endpoint. DELETE handles deactivation; PATCH handles the
+    # reverse and any other ad-hoc state change.
+    is_active: Optional[bool] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("requirements", "skills_required", mode="after")
+    @classmethod
+    def _cap_skill_list(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        if v is None:
+            return None
+        if len(v) > 50:
+            raise ValueError("max 50 items")
+        for item in v:
+            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 100):
+                raise ValueError("each item must be 1-100 chars after trim")
+        return v
+
+    @model_validator(mode="after")
+    def _check_salary(self) -> "AdminJobUpdate":
+        if (
+            self.salary_min is not None
+            and self.salary_max is not None
+            and self.salary_min > self.salary_max
+        ):
+            raise ValueError("salary_min must be <= salary_max")
+        return self

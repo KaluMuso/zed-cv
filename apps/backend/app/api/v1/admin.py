@@ -3,10 +3,12 @@
 All endpoints require role = 'superadmin'. The frontend's AdminGuard
 mirrors this check, but the API enforces it as the source of truth.
 """
+import logging
 import math
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.core.deps import get_supabase, require_admin
@@ -27,9 +29,46 @@ from app.schemas.admin import (
     AdminSubscriptionList,
     AdminSubscriptionUpdate,
 )
+from app.schemas.jobs import AdminJobCreate, AdminJobUpdate, Job
 from app.schemas.subscription import TIER_LIMITS
 from app.schemas.db_enums import QueueStatus
-from app.services.skill_resolver import resolve_skill_id
+from app.services.embedding import generate_embedding
+from app.services.skill_resolver import resolve_skill_id, resolve_skill_ids
+
+logger = logging.getLogger(__name__)
+
+
+def _emit_analytics_event(
+    supabase,
+    event: str,
+    properties: dict,
+    user_id: Optional[str],
+) -> None:
+    """Fire-and-forget write to analytics_events. Never raises.
+
+    Mirrors the inline pattern from skill_resolver._log_auto_insert
+    (PR #27). Column is `event` (singular). Failures are logged at
+    debug — analytics must never block the user-facing write.
+    """
+    try:
+        supabase.table("analytics_events").insert(
+            {"event": event, "properties": properties, "user_id": user_id}
+        ).execute()
+    except Exception as exc:  # pragma: no cover - logging path
+        logger.debug("analytics_events insert failed (%s): %s", event, exc)
+
+
+# Fields whose change forces an embedding regenerate. These match the
+# inputs to generate_embedding() in the ingest path
+# (title + company + description) plus the two structured fields
+# (requirements, tools_tech_stack) per the Wave 4 brief.
+_EMBEDDING_TRIGGER_FIELDS = {
+    "title", "description", "requirements", "tools_tech_stack",
+}
+
+# Fields whose change forces a dedup-fingerprint recompute. These
+# correspond 1:1 with the inputs to _fingerprint() in jobs.py.
+_FINGERPRINT_TRIGGER_FIELDS = {"title", "company", "description"}
 
 router = APIRouter(prefix="/admin", tags=["Admin"], dependencies=[Depends(require_admin)])
 
@@ -612,34 +651,321 @@ async def update_user_role(
     return {"id": user_id, "role": role}
 
 
-@router.post("/jobs")
-async def create_admin_job(body: dict, supabase=Depends(get_supabase)):
-    required = {"title", "description", "source"}
-    missing = [k for k in required if not body.get(k)]
-    if missing:
-        raise HTTPException(status_code=422, detail=f"Missing required fields: {', '.join(missing)}")
-    res = supabase.table("jobs").insert(body).execute()
-    if not res.data:
+# ── Manual job entry (Wave 4) ───────────────────────────────────────
+# POST/PATCH/DELETE wired through the same embedding, fingerprint and
+# resolver pipeline the scraper uses, so manually-added jobs land in
+# the matching engine the same way scraper-fed rows do. Audit column
+# `updated_by_user_id` (migration 027) records the admin who last
+# touched each row.
+
+@router.post("/jobs", response_model=Job, status_code=status.HTTP_201_CREATED)
+async def create_admin_job(
+    body: AdminJobCreate,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+):
+    # Local imports keep admin.py's top free of jobs.py's regex constants.
+    from app.api.v1.jobs import _fingerprint, _strip_html
+    from app.schemas.jobs import _parse_salary_to_ngwee
+
+    body.description = _strip_html(body.description)
+
+    # Salary text → ngwee fallback (consistency with the ingest path).
+    if (
+        body.salary_min is None
+        and body.salary_max is None
+        and body.salary_text
+    ):
+        parsed_min, parsed_max = _parse_salary_to_ngwee(body.salary_text)
+        if parsed_min is not None or parsed_max is not None:
+            body.salary_min = parsed_min
+            body.salary_max = parsed_max
+
+    fp = _fingerprint(body.title, body.company, body.description)
+    existing = (
+        supabase.table("job_fingerprints")
+        .select("job_id")
+        .eq("fingerprint", fp)
+        .execute()
+    )
+    if existing.data:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Duplicate job listing",
+        )
+
+    skill_ids: list[str] = []
+    if body.skills_required:
+        skill_ids = await resolve_skill_ids(
+            body.skills_required,
+            supabase=supabase,
+            source="admin_job_create",
+            user_id=current_user["id"],
+        )
+
+    try:
+        embedding = await generate_embedding(
+            f"{body.title} {body.company or ''} {body.description}"
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    job_data = body.model_dump(exclude_none=True, mode="json")
+    # Input-only fields not stored on jobs.
+    job_data.pop("skills_required", None)
+    job_data.pop("salary_text", None)
+    job_data["embedding"] = embedding
+    job_data["updated_by_user_id"] = current_user["id"]
+
+    result = supabase.table("jobs").insert(job_data).execute()
+    if not result.data:
         raise HTTPException(status_code=500, detail="Failed to create job")
-    return res.data[0]
+    job = result.data[0]
+
+    supabase.table("job_fingerprints").insert(
+        {"fingerprint": fp, "job_id": job["id"]}
+    ).execute()
+    for sid in skill_ids:
+        supabase.table("job_skills").insert(
+            {"job_id": job["id"], "skill_id": sid}
+        ).execute()
+
+    _emit_analytics_event(
+        supabase,
+        "admin_job_created",
+        {
+            "job_id": job["id"],
+            "admin_user_id": current_user["id"],
+            "source": "admin",
+            "skill_count": len(skill_ids),
+        },
+        current_user["id"],
+    )
+
+    return Job(**job)
 
 
-@router.patch("/jobs/{job_id}")
-async def update_admin_job(job_id: str, body: dict, supabase=Depends(get_supabase)):
-    if not body:
+@router.patch("/jobs/{job_id}", response_model=Job)
+async def update_admin_job(
+    job_id: str,
+    body: AdminJobUpdate,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+):
+    from app.api.v1.jobs import _fingerprint, _strip_html
+    from app.schemas.jobs import _parse_salary_to_ngwee
+
+    if not body.model_fields_set:
         raise HTTPException(status_code=422, detail="No fields to update")
-    res = supabase.table("jobs").update(body).eq("id", job_id).execute()
-    if not res.data:
+
+    existing_res = (
+        supabase.table("jobs").select("*").eq("id", job_id).limit(1).execute()
+    )
+    if not existing_res.data:
         raise HTTPException(status_code=404, detail="Job not found")
-    return res.data[0]
+    existing = existing_res.data[0]
+
+    # exclude_unset → only fields the client actually sent. This keeps
+    # the field-absent vs explicitly-empty-list distinction the owner
+    # addendum relies on (a sent `requirements: []` clears job_skills;
+    # an omitted `requirements` leaves them alone). exclude_none would
+    # collapse the two — never substitute.
+    update_payload = body.model_dump(exclude_unset=True, mode="json")
+
+    # Pull input-only fields out before the diff/write.
+    skills_required_new = update_payload.pop("skills_required", None)
+    salary_text = update_payload.pop("salary_text", None)
+
+    if "description" in update_payload and update_payload["description"]:
+        update_payload["description"] = _strip_html(update_payload["description"])
+
+    if (
+        salary_text
+        and "salary_min" not in update_payload
+        and "salary_max" not in update_payload
+    ):
+        parsed_min, parsed_max = _parse_salary_to_ngwee(salary_text)
+        if parsed_min is not None:
+            update_payload["salary_min"] = parsed_min
+        if parsed_max is not None:
+            update_payload["salary_max"] = parsed_max
+
+    changed_fields = [
+        k for k, v in update_payload.items() if existing.get(k) != v
+    ]
+    changed_set = set(changed_fields)
+
+    embedding_regen = bool(changed_set & _EMBEDDING_TRIGGER_FIELDS)
+    fingerprint_regen = bool(changed_set & _FINGERPRINT_TRIGGER_FIELDS)
+
+    # Either `requirements` or `skills_required` (when EXPLICITLY sent —
+    # absence vs `[]` matters) drives a job_skills rebuild. Owner
+    # addendum #2 treats `requirements` as the skill list; the codebase
+    # also accepts `skills_required` for compatibility. The more
+    # specific field (`skills_required`) wins when both are sent.
+    requirements_explicit = "requirements" in body.model_fields_set
+    skills_required_explicit = "skills_required" in body.model_fields_set
+    skills_changed = requirements_explicit or skills_required_explicit
+    if skills_required_explicit:
+        skill_names_new: list[str] = list(skills_required_new or [])
+    elif requirements_explicit:
+        skill_names_new = list(body.requirements or [])
+    else:
+        skill_names_new = []
+
+    new_title = update_payload.get("title", existing["title"])
+    new_company = update_payload.get("company", existing.get("company"))
+    new_description = update_payload.get(
+        "description", existing.get("description") or ""
+    )
+
+    if embedding_regen:
+        try:
+            update_payload["embedding"] = await generate_embedding(
+                f"{new_title} {new_company or ''} {new_description}"
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+
+    if fingerprint_regen:
+        new_fp = _fingerprint(new_title, new_company, new_description)
+        # Collision check (warn-only per owner addendum #1). If the new
+        # fingerprint matches another ACTIVE job's fingerprint, log +
+        # emit an analytics event, but still apply the update. POST
+        # remains a hard 409 on duplicates; PATCH lets admin reconcile
+        # whatever situation they're knowingly creating.
+        same_fp_rows = (
+            supabase.table("job_fingerprints")
+            .select("job_id")
+            .eq("fingerprint", new_fp)
+            .execute()
+        )
+        other_job_ids = [
+            r["job_id"]
+            for r in (same_fp_rows.data or [])
+            if r.get("job_id") and r["job_id"] != job_id
+        ]
+        collided_with: Optional[str] = None
+        for other_id in other_job_ids:
+            other_row = (
+                supabase.table("jobs")
+                .select("is_active")
+                .eq("id", other_id)
+                .limit(1)
+                .execute()
+            )
+            if other_row.data and other_row.data[0].get("is_active") is not False:
+                collided_with = other_id
+                break
+        if collided_with:
+            logger.warning(
+                "admin_job PATCH fingerprint collision: job_id=%s now matches active job_id=%s",
+                job_id, collided_with,
+            )
+            _emit_analytics_event(
+                supabase,
+                "admin_job_fingerprint_collision",
+                {
+                    "job_id": job_id,
+                    "collided_with_job_id": collided_with,
+                    "admin_user_id": current_user["id"],
+                },
+                current_user["id"],
+            )
+        supabase.table("job_fingerprints").update(
+            {"fingerprint": new_fp}
+        ).eq("job_id", job_id).execute()
+
+    if skills_changed:
+        resolved_ids = await resolve_skill_ids(
+            skill_names_new,
+            supabase=supabase,
+            source="admin_job_create",
+            user_id=current_user["id"],
+        )
+        # Replace job_skills wholesale. Diff-insert/delete would save
+        # one round trip on no-op changes, but the wholesale path keeps
+        # the code shape simple and the row counts are small (<50 per
+        # job by validator). An empty `skill_names_new` (admin sent
+        # `requirements: []` or `skills_required: []`) deletes all rows
+        # and inserts none — clears job_skills, as the owner addendum
+        # specifies.
+        supabase.table("job_skills").delete().eq("job_id", job_id).execute()
+        for sid in resolved_ids:
+            supabase.table("job_skills").insert(
+                {"job_id": job_id, "skill_id": sid}
+            ).execute()
+
+    update_payload["updated_by_user_id"] = current_user["id"]
+    update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    result = (
+        supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to update job")
+    job = result.data[0]
+
+    _emit_analytics_event(
+        supabase,
+        "admin_job_edited",
+        {
+            "job_id": job_id,
+            "admin_user_id": current_user["id"],
+            "changed_fields": changed_fields,
+            "embedding_regenerated": embedding_regen,
+            "skills_changed": skills_changed,
+        },
+        current_user["id"],
+    )
+
+    return Job(**job)
 
 
-@router.delete("/jobs/{job_id}")
-async def delete_admin_job(job_id: str, supabase=Depends(get_supabase)):
-    res = supabase.table("jobs").delete().eq("id", job_id).execute()
-    if not res.data:
+@router.delete("/jobs/{job_id}", response_model=Job)
+async def deactivate_admin_job(
+    job_id: str,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+):
+    """Soft-delete a job (is_active = false).
+
+    Hard-delete is intentionally NOT supported here — matches, analytics,
+    and audit history all reference the row. Returns the row in its
+    deactivated state so the caller can refresh the UI without a
+    follow-up GET.
+    """
+    existing_res = (
+        supabase.table("jobs").select("*").eq("id", job_id).limit(1).execute()
+    )
+    if not existing_res.data:
         raise HTTPException(status_code=404, detail="Job not found")
-    return {"deleted": True, "id": job_id}
+    if existing_res.data[0].get("is_active") is False:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Job is already inactive",
+        )
+
+    update_payload = {
+        "is_active": False,
+        "updated_by_user_id": current_user["id"],
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = (
+        supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to deactivate job")
+    job = result.data[0]
+
+    _emit_analytics_event(
+        supabase,
+        "admin_job_deactivated",
+        {"job_id": job_id, "admin_user_id": current_user["id"]},
+        current_user["id"],
+    )
+
+    return Job(**job)
 
 
 @router.get("/matches", response_model=AdminMatchList)

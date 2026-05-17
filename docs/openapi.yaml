@@ -583,6 +583,93 @@ components:
         source: { type: string, enum: [manual, scraper, ocr, partner] }
         closing_date: { type: string, format: date }
 
+    AdminJobCreate:
+      type: object
+      description: |
+        POST /admin/jobs payload. extra='forbid' on the Python side: unknown
+        fields 422 instead of being silently dropped. Exactly one of apply_url
+        OR apply_email is required (XOR enforced server-side).
+
+        `requirements` carries free-text qualification bullets (stored as-is on
+        the jobs.requirements text[] column). `skills_required` carries skill
+        names that flow through the Wave-2 resolver and populate job_skills —
+        the two fields are NOT interchangeable.
+      required: [title, description]
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 5000 }
+        company: { type: string, maxLength: 500 }
+        location: { type: string }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        requirements: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 50 }
+        skills_required: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 50 }
+        salary_min: { type: integer }
+        salary_max: { type: integer }
+        apply_url: { type: string, format: uri }
+        apply_email: { type: string, format: email }
+        source: { type: string, enum: [manual, scraper, ocr, partner], default: manual }
+        source_url: { type: string, format: uri }
+        closing_date: { type: string, format: date }
+        posted_at: { type: string, format: date }
+        employment_type: { type: string, enum: [full_time, part_time, contract, freelance, internship, temporary] }
+        work_arrangement: { type: string, enum: [remote, hybrid, on_site] }
+        hybrid_days_per_week: { type: integer, minimum: 1, maximum: 5 }
+        benefits: { type: array, items: { type: string } }
+        application_instructions: { type: string, maxLength: 2000 }
+        reporting_structure: { type: string, maxLength: 500 }
+        manages_others: { type: integer, minimum: 0, maximum: 10000 }
+        interview_process: { type: string, maxLength: 1000 }
+        tools_tech_stack: { type: array, items: { type: string } }
+        success_metrics: { type: string, maxLength: 1000 }
+        company_description: { type: string, maxLength: 2000 }
+        reference_number: { type: string, maxLength: 100 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        pay_frequency: { type: string, enum: [monthly, annual, hourly, daily] }
+        bonus_structure: { type: string, maxLength: 500 }
+        equity_offered: { type: boolean }
+        salary_text: { type: string, maxLength: 500, description: "Input-only; parsed into salary_min/max when those are null" }
+
+    AdminJobUpdate:
+      type: object
+      description: |
+        PATCH /admin/jobs/{job_id} payload. Every field optional; only fields
+        explicitly set in the request body are written. `extra='forbid'` —
+        unknown keys 422. Empty body 422.
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 5000 }
+        company: { type: string, maxLength: 500 }
+        location: { type: string }
+        description: { type: string, minLength: 1, maxLength: 5000 }
+        requirements: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 50 }
+        skills_required: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 50 }
+        salary_min: { type: integer }
+        salary_max: { type: integer }
+        apply_url: { type: string, format: uri }
+        apply_email: { type: string, format: email }
+        source: { type: string, enum: [manual, scraper, ocr, partner] }
+        source_url: { type: string, format: uri }
+        closing_date: { type: string, format: date }
+        posted_at: { type: string, format: date }
+        employment_type: { type: string, enum: [full_time, part_time, contract, freelance, internship, temporary] }
+        work_arrangement: { type: string, enum: [remote, hybrid, on_site] }
+        hybrid_days_per_week: { type: integer, minimum: 1, maximum: 5 }
+        benefits: { type: array, items: { type: string } }
+        application_instructions: { type: string, maxLength: 2000 }
+        reporting_structure: { type: string, maxLength: 500 }
+        manages_others: { type: integer, minimum: 0, maximum: 10000 }
+        interview_process: { type: string, maxLength: 1000 }
+        tools_tech_stack: { type: array, items: { type: string } }
+        success_metrics: { type: string, maxLength: 1000 }
+        company_description: { type: string, maxLength: 2000 }
+        reference_number: { type: string, maxLength: 100 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        pay_frequency: { type: string, enum: [monthly, annual, hourly, daily] }
+        bonus_structure: { type: string, maxLength: 500 }
+        equity_offered: { type: boolean }
+        salary_text: { type: string, maxLength: 500 }
+        is_active: { type: boolean, description: "Re-activate a soft-deleted job by PATCHing true" }
+
     JobList:
       type: object
       properties:
@@ -906,6 +993,92 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminJobList' }
         '403': { description: Superadmin only }
+    post:
+      operationId: adminCreateJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Create a manually-entered job. The handler routes the payload through
+        the same embedding + fingerprint + Wave-2-skill-resolver pipeline the
+        scraper uses, so manual entries are first-class in the matching engine.
+        `updated_by_user_id` is set to the calling admin (migration 027).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminJobCreate' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '400': { description: Validation error (unknown field, salary inversion, missing apply_url/apply_email) }
+        '401': { description: Missing or invalid token }
+        '403': { description: Not an admin }
+        '409': { description: Duplicate fingerprint (job already exists) }
+        '503': { description: Embedding service unavailable }
+
+  /admin/jobs/{job_id}:
+    patch:
+      operationId: adminUpdateJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Partial update. Only fields in the request body are written
+        (computed via `model_dump(exclude_unset=True)` — field absent vs
+        explicit empty list are distinct).
+
+        Embedding regenerates when title/description/requirements/tools_tech_stack
+        change. Fingerprint regenerates when title/company/description
+        change — if the new fingerprint collides with another ACTIVE
+        job, the update is still allowed (warn-only) and an
+        `admin_job_fingerprint_collision` analytics event is emitted.
+
+        job_skills rebuilds wholesale when EITHER `requirements` or
+        `skills_required` is explicitly sent — including an empty list,
+        which clears every job_skills row. Omitting both fields leaves
+        existing job_skills untouched. When both are sent,
+        `skills_required` (the more specific field) takes precedence.
+
+        `updated_by_user_id` and `updated_at` are always written.
+      parameters:
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminJobUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '400': { description: Validation error }
+        '401': { description: Missing or invalid token }
+        '403': { description: Not an admin }
+        '404': { description: Job not found }
+        '422': { description: Empty PATCH body }
+        '503': { description: Embedding service unavailable }
+    delete:
+      operationId: adminDeactivateJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Soft-delete a job. Sets `is_active = false` and records
+        `updated_by_user_id`. Hard-delete is intentionally not supported —
+        match history and analytics events reference the row. To
+        re-activate a soft-deleted job, PATCH `is_active = true`.
+      parameters:
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '401': { description: Missing or invalid token }
+        '403': { description: Not an admin }
+        '404': { description: Job not found }
+        '409': { description: Already inactive }
 
   /admin/jobs/bulk-deactivate:
     post:
