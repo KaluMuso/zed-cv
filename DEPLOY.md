@@ -262,16 +262,53 @@ UPDATE users SET role = 'superadmin' WHERE phone = '+260XXXXXXXXX';
 
 ### Updating the App
 
+> **Production reality note (2026-05-17):**
+> The runbook above assumes the compose stack lives in `~/zedcv/infra/production/`. The current OCI box actually runs the stack from `~/n8n-docker/` (the n8n compose stack was extended to include `zedcv-backend` rather than spinning up a second project). Source still lives in `~/zedcv/`. Until the layouts re-converge, use the actual paths below.
+
+**Actual prod redeploy commands (as run today):**
+
 ```bash
 ssh ubuntu@YOUR_SERVER_IP
-cd ~/zedcv && git pull origin main
-cd infra/production && docker compose -f docker-compose.prod.yml up -d --build
+
+# 1. Pull source
+cd ~/zedcv && git pull origin master
+
+# 2. Rebuild + restart only the backend service. ~/n8n-docker/docker-compose.yml
+#    references ../zedcv as the build context, so step 1's pull is what
+#    actually changes the container contents — step 2 rebuilds the image.
+cd ~/n8n-docker
+docker compose build zedcv-backend
+docker compose up -d --force-recreate zedcv-backend
 ```
+
+**Greenfield runbook (the repo's documented path — kept for reference):**
+
+```bash
+cd ~/zedcv/infra/production
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+If you're standing up a new prod box, prefer the greenfield path so you stay in lockstep with the checked-in compose files. If you're maintaining the current OCI box, use the actual-prod commands above.
 
 ### Viewing Logs
 
 ```bash
-docker compose -f docker-compose.prod.yml logs backend --tail 100 -f
+# On the current OCI box:
+cd ~/n8n-docker && docker compose logs zedcv-backend --tail 100 -f
+
+# On a greenfield deploy:
+cd ~/zedcv/infra/production && docker compose -f docker-compose.prod.yml logs backend --tail 100 -f
+```
+
+### Sanity-check after a backend update
+
+```bash
+# Verify the running container is on the expected commit (image was rebuilt)
+docker compose exec zedcv-backend grep -c resolve_skill_ids /app/app/api/v1/cv.py
+# Should print >= 1 once Phase 2 Initiative #1 (semantic skill resolver) is in master.
+
+# Verify health endpoint
+curl -fsS https://api.zedcv.com/api/v1/health
 ```
 
 ---

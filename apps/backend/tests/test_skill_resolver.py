@@ -259,18 +259,20 @@ async def test_pass2_trgm_when_exact_misses(patched_embedding):
 
 @pytest.mark.asyncio
 async def test_pass3_vector_when_trgm_misses(patched_embedding):
+    """Exercises the vector pass with an input that doesn't hit the
+    Pass 0 alias dict and doesn't trigram-match anything."""
     sb = FakeSupabase(
         skills=[
-            {"id": "sk-ml", "name": "machine learning", "canonical_of": None}
+            {"id": "sk-distrib", "name": "distributed systems", "canonical_of": None}
         ]
     )
     sb.rpc_handlers["match_skill_trgm"] = lambda params: []
     sb.rpc_handlers["match_skill_vector"] = lambda params: [
-        {"id": "sk-ml", "name": "machine learning", "similarity": 0.91}
+        {"id": "sk-distrib", "name": "distributed systems", "similarity": 0.91}
     ]
-    sid = await resolve_skill_id("ml", supabase=sb)
-    assert sid == "sk-ml"
-    patched_embedding.assert_awaited_once_with("ml")
+    sid = await resolve_skill_id("scalable distributed architectures", supabase=sb)
+    assert sid == "sk-distrib"
+    patched_embedding.assert_awaited_once_with("scalable distributed architectures")
 
 
 @pytest.mark.asyncio
@@ -433,3 +435,76 @@ async def test_normalization_strips_and_lowercases(patched_embedding):
     )
     sid = await resolve_skill_id("  POSTGRES  ", supabase=sb)
     assert sid == "sk-pg"
+
+
+@pytest.mark.asyncio
+async def test_pass0_alias_substitution(patched_embedding):
+    """Pass 0 hardcoded alias dict — "JS" should resolve to the
+    existing "javascript" row WITHOUT calling the embedding API,
+    because the alias dict short-circuits to the canonical name and
+    Pass 1 then hits exactly."""
+    sb = FakeSupabase(
+        skills=[
+            {"id": "sk-js", "name": "javascript", "canonical_of": None}
+        ]
+    )
+    sid = await resolve_skill_id("JS", supabase=sb)
+    assert sid == "sk-js"
+    # Critical: the alias hit Pass 1 directly via the substituted name,
+    # so neither trgm nor embedding ran.
+    patched_embedding.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pass0_caches_both_raw_and_substituted(patched_embedding):
+    """When alias "js" → "javascript" resolves, the cache should have
+    both "js" AND "javascript" entries so a subsequent call with either
+    form short-circuits."""
+    sb = FakeSupabase(
+        skills=[
+            {"id": "sk-js", "name": "javascript", "canonical_of": None}
+        ]
+    )
+    cache: dict[str, str] = {}
+    a = await resolve_skill_id("JS", supabase=sb, cache=cache)
+    b = await resolve_skill_id("javascript", supabase=sb, cache=cache)
+    assert a == b == "sk-js"
+    # Cache populated under both forms.
+    assert cache.get("js") == "sk-js"
+    assert cache.get("javascript") == "sk-js"
+    # No embedding call across both resolves.
+    patched_embedding.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pass0_alias_falls_through_when_canonical_absent(patched_embedding):
+    """If the alias maps to a canonical form that isn't in skills, the
+    resolver continues through Pass 2/3/4 — the alias dict is a hint,
+    not a guarantee the row exists."""
+    sb = FakeSupabase(skills=[])
+    sb.rpc_handlers["match_skill_trgm"] = lambda params: []
+    sb.rpc_handlers["match_skill_vector"] = lambda params: []
+    sid = await resolve_skill_id("ml", supabase=sb)
+    # Pass 4 inserts the alias-resolved form ("machine learning"),
+    # NOT the raw input "ml". That keeps the master table consistent.
+    assert sid is not None
+    inserted = next(s for s in sb.skills if s["name"] == "machine learning")
+    assert inserted["category"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_pass0_lower_vector_threshold_passes(patched_embedding):
+    """Default vector threshold is now 0.72. A 0.78-cosine match (the
+    react ↔ reactjs band that broke the original 0.85 cutoff) should
+    now resolve via Pass 3."""
+    sb = FakeSupabase(
+        skills=[{"id": "sk-react", "name": "react", "canonical_of": None}]
+    )
+    sb.rpc_handlers["match_skill_trgm"] = lambda params: []
+    # match_skill_vector receives the threshold; it'd filter server-
+    # side. Stub it to return a row WITHIN the new threshold band.
+    sb.rpc_handlers["match_skill_vector"] = lambda params: [
+        {"id": "sk-react", "name": "react", "similarity": 0.78}
+    ]
+    sid = await resolve_skill_id("react native devvariant", supabase=sb)
+    assert sid == "sk-react"

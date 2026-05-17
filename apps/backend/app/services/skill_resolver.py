@@ -41,17 +41,109 @@ from app.services.embedding import generate_embedding
 logger = logging.getLogger(__name__)
 
 # Threshold defaults. Tuned via scripts/validate_skill_resolver.py against
-# scripts/skill_resolver_fixture.json. Bump trgm to be stricter if false
-# matches show up (e.g., "java" vs "javascript" — trgm 0.6 keeps them
-# distinct because of the length-tiebreak in the SQL function, but raise
-# this and the vector threshold if the fixture says otherwise).
+# scripts/skill_resolver_fixture.json on the 2026-05-17 production run.
+# Vector dropped from 0.85 -> 0.72 to catch the short-skill-name cosine
+# band (react/reactjs landed at 0.78, vue/vue.js similar) — these
+# obvious aliases were below the original cutoff because Gemini
+# embeddings of single tokens don't cluster as tightly as full sentences.
+# 0.72 is the lowest threshold the validation fixture cleared without
+# adding new FPs beyond the c/c++ and angular/angularjs pairs the
+# original threshold already had.
 DEFAULT_TRGM_THRESHOLD = 0.6
-DEFAULT_VECTOR_THRESHOLD = 0.85
+DEFAULT_VECTOR_THRESHOLD = 0.72
 
 # Hard cap on canonical_of chain walks. Matches the SQL function in
 # migration 025; both have to agree or behaviour diverges between
 # application writes and raw-SQL writes.
 MAX_CANONICAL_DEPTH = 5
+
+# Pass 0 — hand-curated alias dictionary. Resolved BEFORE Pass 1 so
+# short acronyms and punctuation variants ("js", "ml", "react.js")
+# canonicalise to their full names before any DB lookup. Embeddings
+# handle long-form ↔ acronym pairs poorly (low cosine between a single
+# token and a sentence), so this dict is the cheapest, most reliable
+# way to close that gap without a wholesale design change.
+#
+# Conventions:
+#   - Keys are the alias form (the way users / LLMs write it casually).
+#   - Values are the longer / more formal canonical name the resolver
+#     should look up. The canonical name itself doesn't need to be in
+#     this dict — Pass 1 takes over from there.
+#   - All keys/values lowercase; the resolver compares against
+#     `_normalize(skill_name)` output, so casing is already stripped.
+#   - Add new entries when validate_skill_resolver.py surfaces an
+#     acronym/expansion FN. Keep this list curated — every entry is a
+#     hand-vouched mapping, not LLM-derived.
+SKILL_ALIASES: dict[str, str] = {
+    # Programming languages
+    "js": "javascript",
+    "ts": "typescript",
+    "py": "python",
+    "go": "golang",
+    "node": "node.js",
+    "nodejs": "node.js",
+    "c#": "csharp",
+    "c++": "cpp",
+    "objective c": "objective-c",
+    # Frontend frameworks
+    "react.js": "react",
+    "reactjs": "react",
+    "vue.js": "vue",
+    "vuejs": "vue",
+    "next.js": "next",
+    "nextjs": "next",
+    "express.js": "express",
+    "expressjs": "express",
+    "tailwindcss": "tailwind",
+    # CSS preprocessors
+    "scss": "sass",
+    # AI / ML acronyms
+    "ml": "machine learning",
+    "ai": "artificial intelligence",
+    "nlp": "natural language processing",
+    "cv": "computer vision",
+    "dl": "deep learning",
+    "tf": "tensorflow",
+    "sklearn": "scikit-learn",
+    # Cloud platforms
+    "aws": "amazon web services",
+    "gcp": "google cloud platform",
+    "gcp ": "google cloud platform",
+    "google cloud": "google cloud platform",
+    "azure": "microsoft azure",
+    "k8s": "kubernetes",
+    # Concept / convention
+    "rest api": "rest",
+    "restful": "rest",
+    "cicd": "ci/cd",
+    "etl": "extract transform load",
+    "continuous integration": "ci/cd",
+    "continuous delivery": "ci/cd",
+    # Databases
+    "mongo": "mongodb",
+    # Versioned tech (canonical = the family name, not the version)
+    "html5": "html",
+    "css3": "css",
+    # Soft skills
+    "pm": "project management",
+    "communications skills": "communication",
+    # Microsoft Office
+    "ms excel": "microsoft excel",
+    "excel": "microsoft excel",
+    "ms word": "microsoft word",
+    # Adjacent forms
+    "data analytics": "data analysis",
+}
+
+
+def _apply_alias(norm_name: str) -> str:
+    """Pass 0 — alias substitution.
+
+    If `norm_name` is a known alias, return its canonical form;
+    otherwise return the input unchanged. Idempotent: applying twice is
+    the same as applying once (canonical entries don't appear as keys).
+    """
+    return SKILL_ALIASES.get(norm_name, norm_name)
 
 
 def _normalize(name: str) -> str:
@@ -239,18 +331,28 @@ async def resolve_skill_id(
         The canonical `skills.id` (UUID as str), or None if the input
         is empty after normalization.
     """
-    norm = _normalize(skill_name)
-    if not norm:
+    raw_norm = _normalize(skill_name)
+    if not raw_norm:
         return None
-    if cache is not None and norm in cache:
-        return cache[norm]
+    # Pass 0 — alias substitution. The cache is keyed by the ORIGINAL
+    # normalized input so e.g. "ML" and "machine learning" share an
+    # entry. _apply_alias maps "ml" -> "machine learning"; subsequent
+    # passes run against the canonical form.
+    if cache is not None and raw_norm in cache:
+        return cache[raw_norm]
+    norm = _apply_alias(raw_norm)
 
     def _cache_and_return(sid: Optional[str]) -> Optional[str]:
         if cache is not None and sid is not None:
-            cache[norm] = sid
+            # Cache under both the raw input and the alias-resolved form
+            # so a follow-up call with "machine learning" (which doesn't
+            # need aliasing) still short-circuits.
+            cache[raw_norm] = sid
+            if norm != raw_norm:
+                cache[norm] = sid
         return sid
 
-    # Pass 1 — exact match.
+    # Pass 1 — exact match (on the alias-resolved name).
     hit = _exact_match(supabase, norm)
     if hit is not None:
         sid = hit["id"]
