@@ -7,6 +7,7 @@ from app.core.rate_limit import limiter
 from app.schemas.matching import MatchResult, MatchList
 from app.schemas.jobs import Job
 from app.services.matching import run_matching_for_user, store_matches, check_match_quota
+from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
 
 logger = logging.getLogger(__name__)
@@ -20,20 +21,59 @@ async def get_matches(
     user_id: str = Depends(get_current_user_id), supabase=Depends(get_supabase),
 ):
     has_quota, remaining = await check_match_quota(user_id, supabase)
+    # Pull a wider candidate set than `limit` so the preferences-aware
+    # re-rank below can actually move things around. Without this, a
+    # 10-row LIMIT means re-ranking can only shuffle within 10 rows,
+    # which defeats the purpose. 50 is a reasonable upper bound — the
+    # RPC writes at most 20 per run today.
+    candidate_limit = max(limit * 3, 30)
     result = (
         supabase.table("matches").select("*, jobs(*)").eq("user_id", user_id)
-        .gte("score", min_score).order("score", desc=True).limit(limit).execute()
+        .gte("score", min_score).order("score", desc=True).limit(candidate_limit).execute()
     )
-    matches = []
+
+    # Phase 2 Initiative #4 — preference-aware re-rank. Read the user's
+    # row (None on fresh accounts; harmless — apply_preferences_to_match
+    # treats None as no adjustment). Wrapped so a DB hiccup on the
+    # preferences table never breaks /matches itself.
+    preferences = None
+    try:
+        pref_res = (
+            supabase.table("user_preferences")
+            .select("target_roles, salary_min, salary_max, salary_frequency, "
+                    "preferred_work_arrangement, acceptable_regions")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if pref_res.data:
+            preferences = pref_res.data[0]
+    except Exception:
+        logger.warning("user_preferences read failed in /matches", exc_info=True)
+
+    matches: list[MatchResult] = []
     for m in result.data or []:
         job_data = m.pop("jobs", {})
+        adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
+            base_score=m["score"],
+            base_bonus=m["bonus_score"],
+            job=job_data,
+            preferences=preferences,
+        )
+        explanation = m.get("explanation") or ""
+        if adjustment_note and adjustment_note not in explanation:
+            explanation = (explanation + " " + adjustment_note).strip()
         matches.append(MatchResult(
-            id=m["id"], job=Job(**job_data), score=m["score"],
-            vector_score=m["vector_score"], skill_score=m["skill_score"], bonus_score=m["bonus_score"],
+            id=m["id"], job=Job(**job_data), score=adjusted_score,
+            vector_score=m["vector_score"], skill_score=m["skill_score"],
+            bonus_score=adjusted_bonus,
             matched_skills=m.get("matched_skills", []), missing_skills=m.get("missing_skills", []),
-            explanation=m.get("explanation"), created_at=m["created_at"],
+            explanation=explanation or None, created_at=m["created_at"],
         ))
-    return MatchList(matches=matches, remaining_quota=remaining)
+
+    # Re-sort by the adjusted score and trim to the requested limit.
+    matches.sort(key=lambda mr: mr.score, reverse=True)
+    return MatchList(matches=matches[:limit], remaining_quota=remaining)
 
 
 @router.post("/trigger")

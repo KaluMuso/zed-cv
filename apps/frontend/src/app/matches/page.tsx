@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   matches as matchesApi,
   subscription as subscriptionApi,
+  preferencesApi,
   ApiError,
   type MatchData,
   type Subscription,
+  type JobPreferences,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { MatchScore } from "@/components/MatchScore";
@@ -54,6 +56,7 @@ export default function MatchesPage() {
     remaining_quota: number;
   } | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
+  const [prefs, setPrefs] = useState<JobPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [scoreFilter, setScoreFilter] = useState(0);
@@ -73,8 +76,9 @@ export default function MatchesPage() {
     Promise.allSettled([
       matchesApi.get(token),
       subscriptionApi.get(token),
+      preferencesApi.get(token),
     ])
-      .then(([matchesRes, subRes]) => {
+      .then(([matchesRes, subRes, prefsRes]) => {
         // 401 anywhere means the token is dead (typical: 24h JWT expired
         // while the user wasn't on the site). Clear it and bounce to
         // /auth with a `next` param so they land back here after signing
@@ -94,6 +98,7 @@ export default function MatchesPage() {
         }
         if (matchesRes.status === "fulfilled") setData(matchesRes.value);
         if (subRes.status === "fulfilled") setSub(subRes.value);
+        if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
       })
       .finally(() => setLoading(false));
   }, [token, isAuthenticated, authLoading, router, logout]);
@@ -319,6 +324,34 @@ export default function MatchesPage() {
           </div>
         </div>
       </div>
+
+      {/*
+        Empty-preferences hint. Phase 2 Initiative #4 — conversion UX.
+        Shown only when the user's preferences row is empty across the
+        signals that actually affect matching (target_roles, salary,
+        arrangement). Conservative: a single target_role is enough to
+        suppress the hint, because at that point we're already factoring
+        preferences in. Self-dismisses once the user fills anything in.
+      */}
+      {prefs && _preferencesAreEmpty(prefs) && (
+        <Link
+          href="/profile?tab=preferences"
+          className="card p-4 mb-6 flex items-center gap-3"
+          style={{
+            borderColor: "var(--copper-500)",
+            borderStyle: "dashed",
+            color: "var(--ink)",
+            textDecoration: "none",
+          }}
+        >
+          <Icon name="sliders" size={18} />
+          <div className="flex-1 text-sm">
+            <strong>Set your job preferences</strong> to get better matches and
+            tailored CVs.
+          </div>
+          <Icon name="arrowRight" size={14} />
+        </Link>
+      )}
 
       {/* Filter bar */}
       <div
@@ -700,5 +733,21 @@ export default function MatchesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * True when the user has set none of the match-relevant preferences.
+ * Languages and extras don't count — we don't yet factor them into
+ * /matches scoring, so prompting users to fill them wouldn't change
+ * the match list.
+ */
+function _preferencesAreEmpty(prefs: JobPreferences): boolean {
+  return (
+    prefs.target_roles.length === 0 &&
+    prefs.salary_min === null &&
+    prefs.salary_max === null &&
+    prefs.preferred_work_arrangement === null &&
+    prefs.acceptable_regions.length === 0
   );
 }

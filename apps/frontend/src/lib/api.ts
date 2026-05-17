@@ -200,6 +200,81 @@ export interface UserPreferences {
   language: "en" | "bem";
 }
 
+// ── Job-search preferences (Phase 2 Initiative #4) ─────────────────
+// Distinct from UserPreferences above — that one is notification prefs
+// (legacy /profile/preferences). These are job-search prefs and back
+// the rewritten Preferences tab. Both endpoints live; they cover
+// orthogonal concerns.
+
+export type PreferenceLanguageProficiency =
+  | "native"
+  | "fluent"
+  | "intermediate"
+  | "basic";
+
+export type JobSalaryFrequency = "monthly" | "annual" | "hourly" | "daily";
+
+export type PreferredWorkArrangement = "remote" | "hybrid" | "onsite" | "any";
+
+export type TargetRolesSource = "user_provided" | "cv_inferred" | "mixed";
+
+export interface PreferredLanguage {
+  language: string;
+  proficiency: PreferenceLanguageProficiency;
+}
+
+export interface IndustryExperience {
+  industry: string;
+  years_experience: number;
+}
+
+// @openapi JobPreferences
+export interface JobPreferences {
+  target_roles: string[];
+  target_roles_source: TargetRolesSource;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string;
+  salary_frequency: JobSalaryFrequency | null;
+  preferred_work_arrangement: PreferredWorkArrangement | null;
+  willing_to_relocate: boolean;
+  acceptable_regions: string[];
+  languages: PreferredLanguage[];
+  industries: IndustryExperience[];
+  extras: Record<string, unknown>;
+  auto_populated_at: string | null;
+  manually_updated_at: string | null;
+  /** Per-field hint computed by the API — which fields are still
+   *  showing values from the CV auto-populate path. Empty once the
+   *  user has manually edited the row at all. */
+  auto_populated_fields: string[];
+}
+
+// @openapi JobPreferencesUpdate
+export interface JobPreferencesUpdate {
+  target_roles?: string[];
+  salary_min?: number | null;
+  salary_max?: number | null;
+  salary_currency?: string;
+  salary_frequency?: JobSalaryFrequency | null;
+  preferred_work_arrangement?: PreferredWorkArrangement | null;
+  willing_to_relocate?: boolean;
+  acceptable_regions?: string[];
+  languages?: PreferredLanguage[];
+  industries?: IndustryExperience[];
+  extras?: Record<string, unknown>;
+}
+
+export const preferencesApi = {
+  get: (token: string) => apiFetch<JobPreferences>("/preferences", { token }),
+  patch: (token: string, data: JobPreferencesUpdate) =>
+    apiFetch<JobPreferences>("/preferences", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(data),
+    }),
+};
+
 export type SkillProficiency = "beginner" | "intermediate" | "advanced" | "expert";
 
 export interface UserSkill {

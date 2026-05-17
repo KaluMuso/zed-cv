@@ -16,6 +16,7 @@ from app.services.cv_generator import analyze_cv, generate_cv_structured
 from app.services.embedding import generate_embedding
 from app.services.email import send_welcome_email
 from app.services.skill_resolver import resolve_skill_ids
+from app.services.preferences_auto_populate import auto_populate_from_cv
 
 router = APIRouter(prefix="/cv", tags=["CV"])
 
@@ -432,6 +433,22 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
         profile_update["years_experience"] = parsed["years_experience"]
     if profile_update:
         supabase.table("users").update(profile_update).eq("id", user_id).execute()
+
+    # Phase 2 Initiative #4 — auto-populate user_preferences from the
+    # parsed CV. Isolated in its own try/except: an auto-populate
+    # failure (DB hiccup, malformed parsed_data shape) must NOT cause
+    # the whole upload to fail, because the upload's main job — store
+    # the CV bytes + skill extraction — has already succeeded by this
+    # point and rolling back would be worse than skipping the
+    # preferences fill.
+    try:
+        await auto_populate_from_cv(user_id, parsed, supabase=supabase)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "preferences auto-populate failed for user=%s cv=%s",
+            user_id, cv_id, exc_info=True,
+        )
 
     if is_first_upload:
         try:

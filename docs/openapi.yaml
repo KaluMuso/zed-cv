@@ -123,6 +123,119 @@ components:
         email_notifications_enabled: { type: boolean }
         language: { type: string, enum: [en, bem] }
 
+    # Phase 2 Initiative #4 — job-search preferences. Backs
+    # /api/v1/preferences (distinct from /profile/preferences, which is
+    # notification prefs). Shape mirrors
+    # apps/backend/app/schemas/preferences.py and
+    # apps/frontend/src/lib/api.ts::JobPreferences.
+    PreferredLanguage:
+      type: object
+      required: [language]
+      properties:
+        language: { type: string, minLength: 1, maxLength: 80 }
+        proficiency:
+          type: string
+          enum: [native, fluent, intermediate, basic]
+          default: intermediate
+
+    IndustryExperience:
+      type: object
+      required: [industry]
+      properties:
+        industry: { type: string, minLength: 1, maxLength: 120 }
+        years_experience: { type: integer, minimum: 0, maximum: 80, default: 0 }
+
+    JobPreferences:
+      type: object
+      description: |
+        User's job-search preferences. One row per user; auto-created on
+        first GET. Salary amounts are in ZMW ngwee (1 ZMW = 100 ngwee).
+      properties:
+        target_roles:
+          type: array
+          items: { type: string }
+          maxItems: 10
+        target_roles_source:
+          type: string
+          enum: [user_provided, cv_inferred, mixed]
+          default: user_provided
+        salary_min:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: ZMW ngwee. Null = unspecified.
+        salary_max:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: ZMW ngwee. Null = unspecified.
+        salary_currency: { type: string, minLength: 3, maxLength: 3, default: ZMW }
+        salary_frequency:
+          type: string
+          enum: [monthly, annual, hourly, daily]
+          nullable: true
+        preferred_work_arrangement:
+          type: string
+          enum: [remote, hybrid, onsite, any]
+          nullable: true
+        willing_to_relocate: { type: boolean, default: false }
+        acceptable_regions:
+          type: array
+          items: { type: string }
+          maxItems: 6
+        languages:
+          type: array
+          items: { $ref: '#/components/schemas/PreferredLanguage' }
+          maxItems: 8
+        industries:
+          type: array
+          items: { $ref: '#/components/schemas/IndustryExperience' }
+          maxItems: 8
+        extras:
+          type: object
+          additionalProperties: true
+          description: Free-form key/value bag for additional user-provided info.
+        auto_populated_at: { type: string, format: date-time, nullable: true }
+        manually_updated_at: { type: string, format: date-time, nullable: true }
+        auto_populated_fields:
+          type: array
+          items: { type: string }
+          description: |
+            Which fields are still showing values from the CV auto-populate
+            path (and haven't been manually edited since). Used by the UI
+            to render the "Auto-populated from CV" badge.
+
+    JobPreferencesUpdate:
+      type: object
+      description: |
+        Partial-update body for PATCH /api/v1/preferences. Every field is
+        optional — clients send only what changed. salary_min must be <=
+        salary_max when both are present; the API returns 422 otherwise.
+      properties:
+        target_roles: { type: array, items: { type: string }, maxItems: 10 }
+        salary_min: { type: integer, minimum: 0, nullable: true }
+        salary_max: { type: integer, minimum: 0, nullable: true }
+        salary_currency: { type: string, minLength: 3, maxLength: 3 }
+        salary_frequency:
+          type: string
+          enum: [monthly, annual, hourly, daily]
+          nullable: true
+        preferred_work_arrangement:
+          type: string
+          enum: [remote, hybrid, onsite, any]
+          nullable: true
+        willing_to_relocate: { type: boolean }
+        acceptable_regions: { type: array, items: { type: string }, maxItems: 6 }
+        languages:
+          type: array
+          items: { $ref: '#/components/schemas/PreferredLanguage' }
+          maxItems: 8
+        industries:
+          type: array
+          items: { $ref: '#/components/schemas/IndustryExperience' }
+          maxItems: 8
+        extras: { type: object, additionalProperties: true }
+
     ProfileDeleted:
       type: object
       properties:
@@ -665,6 +778,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/UserPreferences' }
+
+  /preferences:
+    get:
+      operationId: getJobPreferences
+      summary: Get the user's job-search preferences (auto-creates an empty row on first read).
+      tags: [Preferences]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobPreferences' }
+    patch:
+      operationId: updateJobPreferences
+      summary: Partially update the user's job-search preferences.
+      tags: [Preferences]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JobPreferencesUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobPreferences' }
+        '422': { description: Validation failed (e.g. salary_min > salary_max) }
 
   /profile/skills:
     get:

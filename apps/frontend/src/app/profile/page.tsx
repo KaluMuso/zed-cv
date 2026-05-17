@@ -11,6 +11,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { CvSkillsTab } from "./_tabs/CvSkillsTab";
 import { AnalysisTab } from "./_tabs/AnalysisTab";
 import { GeneratorTab } from "./_tabs/GeneratorTab";
+import { PreferencesTab } from "./_tabs/PreferencesTab";
 import { DataPrivacyCard } from "./_tabs/DataPrivacyCard";
 
 type Tab = "cv" | "analysis" | "generator" | "preferences";
@@ -280,7 +281,7 @@ export default function ProfilePage() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => onTabChange(tab.key)}
             className="pb-3 text-sm font-medium relative shrink-0"
             style={{
               color: activeTab === tab.key ? "var(--ink)" : "var(--muted)",
@@ -307,15 +308,7 @@ export default function ProfilePage() {
           )}
           {activeTab === "analysis" && <AnalysisTab token={token} profileData={profileData} />}
           {activeTab === "generator" && <GeneratorTab token={token} profileData={profileData} />}
-          {activeTab === "preferences" && (
-            <div className="card p-6">
-              <div className="eyebrow mb-4">Job preferences</div>
-              <p className="text-sm" style={{ color: "var(--muted)" }}>
-                Preference settings are coming soon. For now, your matches are based on your CV
-                skills and location.
-              </p>
-            </div>
-          )}
+          {activeTab === "preferences" && <PreferencesTab profileData={profileData} />}
         </div>
 
         <div className="space-y-6">
