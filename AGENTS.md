@@ -227,3 +227,29 @@ When you ask, present a plan with the proposed change, the affected
 files, the rollback approach, and the smoke test that proves it
 worked. Don't ask "should I do X?" — ask "I propose X because Y; the
 risk is Z; here's how I'd verify; ok to proceed?"
+
+---
+
+## Cursor Cloud specific instructions
+
+### Services overview
+
+| Service | Command | Port | Notes |
+|---------|---------|------|-------|
+| Backend (FastAPI) | `cd apps/backend && uvicorn main:app --reload --port 8000` | 8000 | Needs `.env` with at minimum `SUPABASE_URL`, `SUPABASE_KEY`, `GEMINI_API_KEY`, `JWT_SECRET` |
+| Frontend (Next.js) | `cd apps/frontend && npm run dev` | 3000 | Needs `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` |
+
+### Running tests
+
+- **Backend**: `cd apps/backend && python3 -m pytest tests/ -v` — tests mock all external deps (Supabase, Gemini, WAHA) via `conftest.py`, no real credentials needed.
+- **Frontend**: `cd apps/frontend && npm test` — uses Vitest + MSW, no network access.
+- **Frontend lint**: `cd apps/frontend && npm run lint`
+
+### Gotchas
+
+- `pytest-asyncio` is required for `test_skill_resolver.py` async tests. The update script installs it.
+- `libmagic1` system package is required by `python-magic` (CV upload MIME validation). Pre-installed in the VM.
+- The backend uses `pydantic-settings` which reads `.env` from `apps/backend/.env`. If that file is missing, the server won't start (required fields: `supabase_url`, `supabase_key`, `gemini_api_key`, `jwt_secret`).
+- `/home/ubuntu/.local/bin` must be on `PATH` for `uvicorn` and `pytest` (pip installs there as non-root).
+- Without real Supabase/Gemini credentials, the health endpoint reports `"status": "unhealthy"` but the server runs fine — routes that hit Supabase will 500 as expected.
+- The frontend uses Next.js 14 App Router. `npm run build` verifies the full compilation chain.
