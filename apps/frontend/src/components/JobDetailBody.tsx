@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import type { Job } from "@/lib/api";
+import { formatJobSource } from "@/lib/jobSource";
+import { splitDescriptionChunks } from "@/lib/jobDescription";
 
 // ── task #60: small formatters for structured field display ───────────
 // Convert wire-format enum strings ("full_time", "on_site") into the
@@ -270,11 +272,9 @@ export function JobDetailBody({
               : `Closes in ${closesIn} days`}
           </span>
         )}
-        {job.source && job.source !== "manual" && job.source !== "partner" && (
-          <span className="ml-auto text-[10px] opacity-60">
-            Listed via {job.source}
-          </span>
-        )}
+        <span className="ml-auto text-[10px] opacity-60">
+          {formatJobSource(job.source, job.source_url)}
+        </span>
       </div>
 
       {/* Skills */}
@@ -339,21 +339,36 @@ export function JobDetailBody({
         </div>
       )}
 
-      {/* Description — defensively stripped on the client in case a legacy
-          row still carries HTML (the backend strip+backfill should have
-          handled it, but stale rows + future scraper sources are real). */}
+      {/* Description — HTML-stripped (legacy rows can still carry tags),
+          then chunked into headings + paragraphs so section titles like
+          "Job Purpose" / "Key Responsibilities" render as bold h3s
+          instead of disappearing into the body text. */}
       {job.description && (() => {
         const cleaned = stripDescriptionHtml(job.description);
         if (!cleaned) return null;
+        const chunks = splitDescriptionChunks(cleaned);
         return (
           <div className="mb-6">
             <div className="eyebrow mb-3">Description</div>
-            <p
-              className="text-sm leading-relaxed whitespace-pre-wrap"
-              style={{ color: "var(--ink-2)" }}
-            >
-              {cleaned}
-            </p>
+            {chunks.map((chunk, i) =>
+              chunk.type === "heading" ? (
+                <h3
+                  key={i}
+                  className="font-display text-base font-semibold mt-4 mb-2"
+                  style={{ color: "var(--ink)" }}
+                >
+                  {chunk.text}
+                </h3>
+              ) : (
+                <p
+                  key={i}
+                  className="text-sm leading-relaxed text-justify whitespace-pre-line mb-3"
+                  style={{ color: "var(--ink-2)" }}
+                >
+                  {chunk.text}
+                </p>
+              ),
+            )}
           </div>
         );
       })()}
