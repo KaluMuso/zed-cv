@@ -481,6 +481,7 @@ export default function JobsPage() {
                 salaryMin={job.salary_min}
                 salaryMax={job.salary_max}
                 source={job.source}
+                sourceUrl={job.source_url}
                 onClick={() =>
                   // For keyboard a11y: stash the currently-focused element
                   // (which IS the card the user just activated via Enter/

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
+import { formatJobSource } from "@/lib/jobSource";
 
 interface JobCardProps {
   /**
@@ -26,6 +27,7 @@ interface JobCardProps {
   salaryMin?: number | null;
   salaryMax?: number | null;
   source?: string | null;
+  sourceUrl?: string | null;
   /**
    * Personalised match score (0–100) from match_jobs_for_user. Only set
    * when rendering inside an authenticated, CV-backed context like /matches.
@@ -107,6 +109,7 @@ export function JobCard({
   salaryMin,
   salaryMax,
   source,
+  sourceUrl,
   matchScore,
   matchedSkills = [],
   onClick,
@@ -121,10 +124,7 @@ export function JobCard({
 
   const postedLabel = formatRelativeTime(postedAt);
   const salaryLabel = formatSalary(salaryMin, salaryMax);
-  const sourceLabel =
-    source && source !== "manual" && source !== "partner"
-      ? `via ${source}`
-      : null;
+  const sourceLabel = formatJobSource(source, sourceUrl);
 
   // role="button" + tabIndex pattern instead of a real <button>: HTML
   // forbids nesting a <Link> (which renders <a>) inside <button>, and we
@@ -231,9 +231,7 @@ export function JobCard({
               : `Closes in ${closesIn}d`}
           </span>
         )}
-        {sourceLabel && (
-          <span className="ml-auto text-[10px] opacity-60">{sourceLabel}</span>
-        )}
+        <span className="ml-auto text-[10px] opacity-60">{sourceLabel}</span>
       </div>
 
       {id && (
