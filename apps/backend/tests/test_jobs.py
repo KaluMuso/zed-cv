@@ -143,6 +143,48 @@ class TestJobList:
         resp = client.get("/api/v1/jobs?source=manual,scraper")
         assert resp.status_code == 200
 
+    def test_list_jobs_location_filter_returns_matching_job(
+        self, client, fake_supabase
+    ):
+        """Regression for Sentry issue ZEDCV-BACKEND-C: filtering by
+        location must return the matching rows, not silently degrade to
+        an empty list. Root cause was `count="exact"` + ilike on a
+        nested-join query tripping the Supabase free-tier Cloudflare
+        Worker (CF error 1101 → APIError: JSON could not be generated),
+        forcing the retry block to return JobList(jobs=[], total=0).
+        Switching to `count="estimated"` keeps the upstream call cheap.
+
+        Uses the real prod row 0aea31f8-5d55-4055-8969-922798a12ab1 as
+        fixture data so the manual post-deploy smoke
+        (GET /jobs?location=Livingstone) can cross-check against the
+        same identifier.
+        """
+        fake_supabase.set_table(
+            "jobs",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "0aea31f8-5d55-4055-8969-922798a12ab1",
+                        "title": "MAINTENANCE MANAGER",
+                        "company": "David Livingstone",
+                        "location": "Livingstone",
+                        "description": "Lead the maintenance team.",
+                        "source": "scraper",
+                        "posted_at": "2026-05-15T00:00:00Z",
+                        "is_active": True,
+                    }
+                ],
+                count=1,
+            ),
+        )
+        resp = client.get("/api/v1/jobs?location=Livingstone")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert len(body["jobs"]) == 1
+        assert body["jobs"][0]["id"] == "0aea31f8-5d55-4055-8969-922798a12ab1"
+        assert body["jobs"][0]["location"] == "Livingstone"
+
 
 class TestJobCreate:
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)

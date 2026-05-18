@@ -191,9 +191,19 @@ async def list_jobs(
             if not job_id_filter:
                 return JobList(jobs=[], total=0, page=page, per_page=per_page, pages=1)
 
+    # `count="estimated"` uses Postgres planner stats for total instead of
+    # running the full filtered query a second time without LIMIT, which
+    # is what `count="exact"` requires. Exact counts on this query (ilike
+    # + nested join through job_skills → skills) routinely tripped the
+    # Cloudflare Worker upstream of Supabase's PostgREST (CF error 1101,
+    # surfacing as `APIError: JSON could not be generated`) and forced
+    # the retry-and-degrade path below to swallow the filtered request
+    # entirely — Sentry issue ZEDCV-BACKEND-C. Estimated is sub-ms even
+    # on a multi-million row table; pagination tolerates an approximate
+    # total and the frontend doesn't surface it as an authoritative count.
     query = (
         supabase.table("jobs")
-        .select("*, job_skills(skills(name))", count="exact")
+        .select("*, job_skills(skills(name))", count="estimated")
         .eq("is_active", True)
     )
 
@@ -236,11 +246,11 @@ async def list_jobs(
 
     offset = (page - 1) * per_page
 
-    # Supabase free-tier Cloudflare Worker occasionally throws exception 1101
-    # on filtered queries (especially `count=exact` + `ilike` + nested join).
-    # Direct Postgres is fine; the issue is upstream of PostgREST. Retry once
-    # before degrading to an empty result so a transient edge hiccup doesn't
-    # nuke the user's session. Sentry sees both attempts via the logger.
+    # Defensive retry: even with count="estimated" the Supabase free-tier
+    # Cloudflare Worker can throw exception 1101 on a noisy ilike + nested
+    # join. Direct Postgres is fine; the issue is upstream of PostgREST.
+    # Retry once before degrading to an empty result so a transient edge
+    # hiccup doesn't nuke the user's session. Sentry sees both attempts.
     import time
     from postgrest.exceptions import APIError as PostgrestAPIError
 
