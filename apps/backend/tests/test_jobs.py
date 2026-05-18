@@ -185,6 +185,64 @@ class TestJobList:
         assert body["jobs"][0]["id"] == "0aea31f8-5d55-4055-8969-922798a12ab1"
         assert body["jobs"][0]["location"] == "Livingstone"
 
+    def test_list_jobs_skills_come_from_second_query(
+        self, client, fake_supabase
+    ):
+        """Path A regression: after splitting the embedded join into a
+        separate `.in_("job_id", [...])` call on job_skills, the response
+        must still carry skill names against the right jobs. Pins both
+        the per-job mapping and the merged `skills` / `skills_required`
+        list shape the frontend reads.
+        """
+        fake_supabase.set_table(
+            "jobs",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "job-A",
+                        "title": "Accountant",
+                        "company": "Co A",
+                        "location": "Lusaka",
+                        "description": "x",
+                        "source": "scraper",
+                        "posted_at": "2026-05-15T00:00:00Z",
+                        "is_active": True,
+                    },
+                    {
+                        "id": "job-B",
+                        "title": "Driver",
+                        "company": "Co B",
+                        "location": "Lusaka",
+                        "description": "y",
+                        "source": "scraper",
+                        "posted_at": "2026-05-15T00:00:00Z",
+                        "is_active": True,
+                    },
+                ],
+                count=2,
+            ),
+        )
+        fake_supabase.set_table(
+            "job_skills",
+            FakeSupabaseQuery(
+                data=[
+                    {"job_id": "job-A", "skills": {"name": "accounting"}},
+                    {"job_id": "job-A", "skills": {"name": "excel"}},
+                    {"job_id": "job-B", "skills": {"name": "driving"}},
+                ],
+            ),
+        )
+
+        resp = client.get("/api/v1/jobs?location=Lusaka")
+        assert resp.status_code == 200
+        body = resp.json()
+
+        by_id = {j["id"]: j for j in body["jobs"]}
+        assert sorted(by_id["job-A"]["skills"]) == ["accounting", "excel"]
+        assert by_id["job-B"]["skills"] == ["driving"]
+        # `skills_required` mirrors `skills` for frontend compatibility.
+        assert by_id["job-A"]["skills_required"] == by_id["job-A"]["skills"]
+
 
 class TestJobCreate:
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
