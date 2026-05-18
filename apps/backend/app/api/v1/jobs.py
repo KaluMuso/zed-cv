@@ -191,19 +191,24 @@ async def list_jobs(
             if not job_id_filter:
                 return JobList(jobs=[], total=0, page=page, per_page=per_page, pages=1)
 
-    # `count="estimated"` uses Postgres planner stats for total instead of
-    # running the full filtered query a second time without LIMIT, which
-    # is what `count="exact"` requires. Exact counts on this query (ilike
-    # + nested join through job_skills → skills) routinely tripped the
-    # Cloudflare Worker upstream of Supabase's PostgREST (CF error 1101,
-    # surfacing as `APIError: JSON could not be generated`) and forced
-    # the retry-and-degrade path below to swallow the filtered request
-    # entirely — Sentry issue ZEDCV-BACKEND-C. Estimated is sub-ms even
-    # on a multi-million row table; pagination tolerates an approximate
-    # total and the frontend doesn't surface it as an authoritative count.
+    # Main query selects only flat columns. PR #41 switched count from
+    # "exact" to "estimated" to cut the planner cost, but Sentry issue
+    # ZEDCV-BACKEND-C kept firing on filtered queries (location='Lusaka'
+    # in particular). The remaining cause is the embedded join
+    # `job_skills(skills(name))`: PostgREST streams a composite JSON
+    # whose serialization size scales with the number of skills per row,
+    # and that occasionally exceeds the free-tier Cloudflare Worker's
+    # CPU budget — surfacing as `APIError: JSON could not be generated`
+    # (CF error 1101). Unfiltered queries happened to fit; filtered ones
+    # didn't, so users hit the degrade-to-empty fallback exactly when
+    # they tried to narrow down by city.
+    #
+    # Path A: keep the main query flat, then fetch skills in a small
+    # follow-up `.in_("job_id", [...])` call. Same outer response shape
+    # for the frontend, but two cheap trips instead of one heavy stream.
     query = (
         supabase.table("jobs")
-        .select("*, job_skills(skills(name))", count="estimated")
+        .select("*", count="estimated")
         .eq("is_active", True)
     )
 
@@ -295,12 +300,50 @@ async def list_jobs(
     total = result.count or 0
     import math
     pages = math.ceil(total / per_page) if total > 0 else 1
+
+    # Second hop: fetch skill names for the returned page only. Goes to
+    # the same Supabase but with a flat shape (no nested join), which
+    # comfortably fits the CF Worker budget. Skipped when the page is
+    # empty so we don't issue a `.in_("job_id", [])` round-trip.
+    #
+    # If the follow-up call hiccups we log and continue with empty skill
+    # lists rather than degrading the whole page — skills are metadata,
+    # not the primary signal users came for.
+    job_rows = result.data or []
+    skills_by_job: dict[str, list[str]] = {}
+    if job_rows:
+        try:
+            sk_res = (
+                supabase.table("job_skills")
+                .select("job_id, skills(name)")
+                .in_("job_id", [j["id"] for j in job_rows])
+                .execute()
+            )
+            for row in (sk_res.data or []):
+                skill_obj = row.get("skills") if isinstance(row, dict) else None
+                name = (
+                    skill_obj.get("name")
+                    if isinstance(skill_obj, dict)
+                    else None
+                )
+                if name:
+                    skills_by_job.setdefault(row["job_id"], []).append(name)
+        except PostgrestAPIError:
+            logger.warning(
+                "list_jobs: skills lookup failed; returning %d jobs with empty "
+                "skill lists. filters: location=%r search=%r",
+                len(job_rows), location, search,
+                exc_info=True,
+            )
+
     jobs = []
-    for j in (result.data or []):
-        skill_rows = j.pop("job_skills", [])
-        job_skills = [s["skills"]["name"] for s in skill_rows if s.get("skills")]
-        j["skills_required"] = job_skills
-        j["skills"] = job_skills
+    for j in job_rows:
+        # Drop the legacy embedded-join field if a future caller re-adds
+        # it; the response shape is driven entirely by skills_by_job now.
+        j.pop("job_skills", None)
+        skills_list = skills_by_job.get(j["id"], [])
+        j["skills_required"] = skills_list
+        j["skills"] = skills_list
         jobs.append(Job(**j))
     return JobList(jobs=jobs, total=total, page=page, per_page=per_page, pages=pages)
 
