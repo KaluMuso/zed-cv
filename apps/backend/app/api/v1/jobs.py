@@ -17,6 +17,8 @@ from app.schemas.jobs import (
     _parse_salary_to_ngwee,
 )
 from app.services.embedding import generate_embedding
+from app.services.job_enricher import enrich_job
+from app.services.job_enrichment import apply_job_enrichment
 
 logger = logging.getLogger(__name__)
 
@@ -542,10 +544,32 @@ async def _ingest_one_job(
             return "error", "insert_returned_empty"
 
         new_job = result.data[0]
+        job_id = new_job["id"]
         supabase.table("job_fingerprints").insert(
-            {"fingerprint": fp, "job_id": new_job["id"]}
+            {"fingerprint": fp, "job_id": job_id}
         ).execute()
-        _link_job_skills(supabase, new_job["id"], skills_required)
+        _link_job_skills(supabase, job_id, skills_required)
+
+        try:
+            enrichment = await enrich_job(
+                title=job.title,
+                company=job.company,
+                description=job.description,
+            )
+            await apply_job_enrichment(
+                supabase,
+                job_id=job_id,
+                job_row=new_job,
+                enrichment=enrichment,
+                source="ingest",
+            )
+        except Exception as exc:
+            logger.warning(
+                "ingest_one_job: enrichment failed for job %s (%r): %s",
+                job_id,
+                job.title,
+                exc,
+            )
         return "ingested", ""
     except Exception as exc:
         logger.error(
