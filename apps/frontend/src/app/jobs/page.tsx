@@ -55,6 +55,17 @@ const WORK_ARRANGEMENT_OPTIONS: { value: "" | WorkArrangement; label: string }[]
   { value: "on_site", label: "On-site" },
 ];
 
+// Toggle for the structural-filter dropdowns. As of 2026-05-19 every
+// active job in the DB has NULL for both employment_type and
+// work_arrangement (310/310 rows), so the dropdowns just guarantee a
+// zero-result page for any user who touches them. Flip these to `true`
+// once Path B (scraper + admin-wizard backfill that populates the
+// columns) ships, then this flag can be removed entirely.
+const FILTERS_AVAILABLE = {
+  employmentType: false,
+  workArrangement: false,
+} as const;
+
 // Curated chip-row of skills most commonly tagged on Zambian listings.
 // Picking from existing data rather than fetching a /skills/top endpoint
 // keeps this slice contained — chips that resolve to nothing simply
@@ -336,41 +347,49 @@ export default function JobsPage() {
           ))}
         </select>
 
-        {/* task #60: employment type + work arrangement filters. Empty
-            string = no filter; the API client drops empty values. */}
-        <select
-          value={employmentType}
-          onChange={(e) => {
-            setEmploymentType(e.target.value as "" | EmploymentType);
-            setPage(1);
-          }}
-          className="field"
-          style={{ width: "auto", minWidth: 140 }}
-          aria-label="Filter by employment type"
-        >
-          {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value || "any-type"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        {/* task #60: employment type + work arrangement filters.
+            Hidden today via FILTERS_AVAILABLE because the columns are
+            100% NULL in the active-jobs corpus — selecting anything
+            here would just give the user a zero-result page. State
+            stays at the default empty string, so the API client drops
+            the params from the request entirely. */}
+        {FILTERS_AVAILABLE.employmentType && (
+          <select
+            value={employmentType}
+            onChange={(e) => {
+              setEmploymentType(e.target.value as "" | EmploymentType);
+              setPage(1);
+            }}
+            className="field"
+            style={{ width: "auto", minWidth: 140 }}
+            aria-label="Filter by employment type"
+          >
+            {EMPLOYMENT_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value || "any-type"} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        )}
 
-        <select
-          value={workArrangement}
-          onChange={(e) => {
-            setWorkArrangement(e.target.value as "" | WorkArrangement);
-            setPage(1);
-          }}
-          className="field"
-          style={{ width: "auto", minWidth: 140 }}
-          aria-label="Filter by work arrangement"
-        >
-          {WORK_ARRANGEMENT_OPTIONS.map((opt) => (
-            <option key={opt.value || "any-setup"} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        {FILTERS_AVAILABLE.workArrangement && (
+          <select
+            value={workArrangement}
+            onChange={(e) => {
+              setWorkArrangement(e.target.value as "" | WorkArrangement);
+              setPage(1);
+            }}
+            className="field"
+            style={{ width: "auto", minWidth: 140 }}
+            aria-label="Filter by work arrangement"
+          >
+            {WORK_ARRANGEMENT_OPTIONS.map((opt) => (
+              <option key={opt.value || "any-setup"} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        )}
 
         <button type="submit" className="btn btn-primary">
           <Icon name="search" size={16} /> Search

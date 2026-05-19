@@ -125,7 +125,11 @@ describe("/jobs page filters", () => {
     });
   });
 
-  it("selecting an employment type forwards `employment_type`", async () => {
+  // Skipped while FILTERS_AVAILABLE.employmentType is false in
+  // jobs/page.tsx — the dropdown isn't rendered today because every
+  // active job has NULL for employment_type. Re-enable when Path B
+  // ships and the flag flips to true.
+  it.skip("selecting an employment type forwards `employment_type`", async () => {
     const user = userEvent.setup();
     render(<JobsPage />);
     await waitFor(() => expect(requestedUrls.length).toBeGreaterThan(0));
@@ -142,7 +146,9 @@ describe("/jobs page filters", () => {
     });
   });
 
-  it("selecting a work arrangement forwards `work_arrangement`", async () => {
+  // Skipped while FILTERS_AVAILABLE.workArrangement is false in
+  // jobs/page.tsx (see sibling skip above).
+  it.skip("selecting a work arrangement forwards `work_arrangement`", async () => {
     const user = userEvent.setup();
     render(<JobsPage />);
     await waitFor(() => expect(requestedUrls.length).toBeGreaterThan(0));
@@ -157,7 +163,10 @@ describe("/jobs page filters", () => {
     });
   });
 
-  it("multiple filters compose into a single request", async () => {
+  // Skipped while FILTERS_AVAILABLE.{employmentType,workArrangement}
+  // are false in jobs/page.tsx. The location-only composition path is
+  // already covered by the location test above.
+  it.skip("multiple filters compose into a single request", async () => {
     const user = userEvent.setup();
     render(<JobsPage />);
     await waitFor(() => expect(requestedUrls.length).toBeGreaterThan(0));
