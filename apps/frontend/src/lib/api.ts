@@ -800,7 +800,7 @@ export const matches = {
       { token }
     ),
   trigger: (token: string) =>
-    apiFetch<{ message: string }>("/matches/trigger", {
+    apiFetch<{ message: string; estimated_seconds?: number }>("/matches/trigger", {
       method: "POST",
       token,
     }),

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   matches as matchesApi,
   subscription as subscriptionApi,
   preferencesApi,
+  profile as profileApi,
   ApiError,
   type MatchData,
   type Subscription,
@@ -18,6 +19,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { Counter } from "@/components/ui/Counter";
 import Link from "next/link";
+import { toast } from "sonner";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 
 /**
@@ -62,6 +64,66 @@ export default function MatchesPage() {
   const [scoreFilter, setScoreFilter] = useState(0);
   const [sort, setSort] = useState<"score" | "closing">("score");
   const [prepFor, setPrepFor] = useState<MatchData | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshCooldown, setRefreshCooldown] = useState(false);
+  const [autoTriggering, setAutoTriggering] = useState(false);
+  const autoTriggeredRef = useRef(false);
+
+  const loadMatches = useCallback(async (authToken: string) => {
+    const [matchesRes, subRes, prefsRes] = await Promise.allSettled([
+      matchesApi.get(authToken),
+      subscriptionApi.get(authToken),
+      preferencesApi.get(authToken),
+    ]);
+    const unauthorized =
+      (matchesRes.status === "rejected" &&
+        matchesRes.reason instanceof ApiError &&
+        matchesRes.reason.status === 401) ||
+      (subRes.status === "rejected" &&
+        subRes.reason instanceof ApiError &&
+        subRes.reason.status === 401);
+    if (unauthorized) {
+      return { unauthorized: true } as const;
+    }
+    if (matchesRes.status === "fulfilled") setData(matchesRes.value);
+    if (subRes.status === "fulfilled") setSub(subRes.value);
+    if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
+    return {
+      unauthorized: false,
+      matches: matchesRes.status === "fulfilled" ? matchesRes.value : null,
+    } as const;
+  }, []);
+
+  const handleRefreshMatches = useCallback(async () => {
+    if (!token || refreshing || refreshCooldown) return;
+    setRefreshing(true);
+    try {
+      const res = await matchesApi.trigger(token);
+      const waitMs = (res.estimated_seconds ?? 15) * 1000;
+      await new Promise((r) => setTimeout(r, waitMs));
+      const result = await loadMatches(token);
+      if (result.unauthorized) {
+        logout();
+        router.replace("/auth?next=/matches");
+        return;
+      }
+      const newCount = result.matches?.matches.length ?? 0;
+      toast.success(`Matches refreshed — ${newCount} matches scored.`);
+    } catch (e: unknown) {
+      if (e instanceof ApiError) {
+        if (e.status === 403) toast.error("Monthly match quota used up.");
+        else if (e.status === 422) toast.error("Upload a CV first before matching.");
+        else if (e.status === 429) toast.error("Too many refreshes — try again in a minute.");
+        else toast.error(e.detail || "Couldn't refresh matches. Try again in a moment.");
+      } else {
+        toast.error("Couldn't refresh matches. Try again in a moment.");
+      }
+    } finally {
+      setRefreshing(false);
+      setRefreshCooldown(true);
+      setTimeout(() => setRefreshCooldown(false), 60_000);
+    }
+  }, [token, refreshing, refreshCooldown, loadMatches, logout, router]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -69,39 +131,35 @@ export default function MatchesPage() {
       router.push("/auth");
       return;
     }
-    // Parallel fetch: matches AND the user's subscription so we can show
-    // their actual quota instead of a hard-coded "25". Either failing is
-    // non-fatal — the UI degrades to "remaining only" if subscription
-    // doesn't load.
-    Promise.allSettled([
-      matchesApi.get(token),
-      subscriptionApi.get(token),
-      preferencesApi.get(token),
-    ])
-      .then(([matchesRes, subRes, prefsRes]) => {
-        // 401 anywhere means the token is dead (typical: 24h JWT expired
-        // while the user wasn't on the site). Clear it and bounce to
-        // /auth with a `next` param so they land back here after signing
-        // in. Without this, the page used to render a permanent "Could
-        // not load matches" with no recovery path.
-        const unauthorized =
-          (matchesRes.status === "rejected" &&
-            matchesRes.reason instanceof ApiError &&
-            matchesRes.reason.status === 401) ||
-          (subRes.status === "rejected" &&
-            subRes.reason instanceof ApiError &&
-            subRes.reason.status === 401);
-        if (unauthorized) {
-          logout();
-          router.replace("/auth?next=/matches");
-          return;
+    loadMatches(token).then(async (result) => {
+      if (result.unauthorized) {
+        logout();
+        router.replace("/auth?next=/matches");
+        return;
+      }
+      // Auto-trigger: if matches empty AND user has a CV, fire trigger once
+      if (
+        result.matches &&
+        result.matches.matches.length === 0 &&
+        !autoTriggeredRef.current
+      ) {
+        autoTriggeredRef.current = true;
+        try {
+          const userProfile = await profileApi.get(token);
+          if (userProfile.cv_uploaded) {
+            setAutoTriggering(true);
+            const triggerRes = await matchesApi.trigger(token);
+            const waitMs = (triggerRes.estimated_seconds ?? 15) * 1000;
+            if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+            await loadMatches(token);
+            setAutoTriggering(false);
+          }
+        } catch {
+          setAutoTriggering(false);
         }
-        if (matchesRes.status === "fulfilled") setData(matchesRes.value);
-        if (subRes.status === "fulfilled") setSub(subRes.value);
-        if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
-      })
-      .finally(() => setLoading(false));
-  }, [token, isAuthenticated, authLoading, router, logout]);
+      }
+    }).finally(() => setLoading(false));
+  }, [token, isAuthenticated, authLoading, router, logout, loadMatches]);
 
   if (loading || authLoading) {
     // Skeleton mirrors the real layout: header headline + quota card,
@@ -193,10 +251,27 @@ export default function MatchesPage() {
     );
   }
 
-  if (!data) {
+  if (!data && !autoTriggering) {
     return (
       <div className="max-w-[1280px] mx-auto px-6 py-20 text-center">
         <p style={{ color: "var(--muted)" }}>Could not load matches.</p>
+      </div>
+    );
+  }
+
+  if (autoTriggering) {
+    return (
+      <div className="max-w-[1280px] mx-auto px-6 py-20 text-center">
+        <div
+          className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center animate-pulse"
+          style={{ background: "var(--bg-2)", color: "var(--copper-500)" }}
+        >
+          <Icon name="target" size={24} />
+        </div>
+        <h3 className="font-display text-2xl mb-2">Generating your first matches&hellip;</h3>
+        <p className="text-sm" style={{ color: "var(--muted)" }}>
+          Scoring your CV against available jobs. This takes about 15 seconds.
+        </p>
       </div>
     );
   }
@@ -208,6 +283,8 @@ export default function MatchesPage() {
     const t = new Date(iso).getTime();
     return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
   };
+
+  if (!data) return null;
 
   let filtered = data.matches.filter((m) => m.score >= scoreFilter);
   if (sort === "score") {
@@ -407,11 +484,25 @@ export default function MatchesPage() {
               {l}
             </button>
           ))}
+          <button
+            onClick={handleRefreshMatches}
+            disabled={refreshing || refreshCooldown}
+            className="btn btn-sm"
+            style={{
+              background: "var(--green-700)",
+              color: "#faf7f2",
+              opacity: refreshing || refreshCooldown ? 0.6 : 1,
+              cursor: refreshing || refreshCooldown ? "not-allowed" : "pointer",
+            }}
+          >
+            <Icon name="refresh" size={13} />
+            {refreshing ? "Refreshing\u2026" : "Refresh matches"}
+          </button>
         </div>
       </div>
 
       {/* Match cards */}
-      {data.matches.length === 0 ? (
+      {data && data.matches.length === 0 ? (
         <div className="text-center py-20">
           <div
             className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
@@ -424,11 +515,24 @@ export default function MatchesPage() {
           </div>
           <h3 className="font-display text-2xl mb-2">No matches yet</h3>
           <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-            Upload your CV to get started!
+            Upload your CV to get started, then refresh your matches.
           </p>
-          <Link href="/profile" className="btn btn-primary">
-            Upload CV <Icon name="upload" size={14} />
-          </Link>
+          <div className="flex gap-3 justify-center">
+            <Link href="/profile" className="btn btn-primary">
+              Upload CV <Icon name="upload" size={14} />
+            </Link>
+            <button
+              onClick={handleRefreshMatches}
+              disabled={refreshing || refreshCooldown}
+              className="btn btn-ghost"
+              style={{
+                opacity: refreshing || refreshCooldown ? 0.6 : 1,
+              }}
+            >
+              <Icon name="refresh" size={14} />
+              {refreshing ? "Refreshing\u2026" : "Refresh matches"}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-3.5">
@@ -696,7 +800,7 @@ export default function MatchesPage() {
           Hide for users who already have it. Professional and Super
           Standard both include tailored CV generation, so the "Pro tip"
           is only relevant for free + starter tiers. */}
-      {data.matches.length > 0 &&
+      {data && data.matches.length > 0 &&
         sub?.tier !== "professional" &&
         sub?.tier !== "super_standard" && (
         <div
