@@ -192,6 +192,45 @@ describe("Auto-trigger", () => {
   });
 });
 
+describe("Apply button fallback", () => {
+  it("shows source fallback when apply links null", async () => {
+    const noApply = {
+      ...MATCH_OBJ,
+      job: {
+        ...MATCH_OBJ.job,
+        apply_url: null,
+        apply_email: null,
+        source_url: "https://example.com/jobs/123",
+      },
+    };
+    withHandlers({ matches: [noApply] });
+    renderWithProviders(<MatchesPage />);
+    const link = await screen.findByRole("link", { name: /apply via source/i }, { timeout: 5000 });
+    expect(link).toHaveAttribute("href", "https://example.com/jobs/123");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("shows support mailto when all apply paths null", async () => {
+    const deadEnd = {
+      ...MATCH_OBJ,
+      job: {
+        ...MATCH_OBJ.job,
+        apply_url: null,
+        apply_email: null,
+        source_url: null,
+      },
+    };
+    withHandlers({ matches: [deadEnd] });
+    renderWithProviders(<MatchesPage />);
+    const link = await screen.findByRole(
+      "link",
+      { name: /contact zedapply support/i },
+      { timeout: 5000 }
+    );
+    expect(link.getAttribute("href")).toMatch(/^mailto:support@zedapply\.com/);
+  });
+});
+
 describe("Auto-match toggle", () => {
   it("calls the auto-match preference endpoint", async () => {
     let patched: unknown = null;

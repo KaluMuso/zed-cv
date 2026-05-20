@@ -901,8 +901,22 @@ export interface MatchData {
     apply_url?: string | null;
     apply_email?: string | null;
     source_url?: string | null;
+    apply_source?: string | null;
   };
 }
+
+export const analytics = {
+  trackEvent: (
+    token: string,
+    event: string,
+    properties: Record<string, unknown>
+  ) =>
+    apiFetch<void>("/analytics/events", {
+      method: "POST",
+      token,
+      body: { event, properties },
+    }),
+};
 
 export interface MatchListResponse {
   matches: MatchData[];

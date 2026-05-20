@@ -25,6 +25,7 @@ from app.api.v1 import (
     users,
     tier_config_routes,
     whatsapp_scraper_webhook,
+    analytics,
 )
 
 settings = get_settings()
@@ -85,6 +86,7 @@ app.include_router(preferences.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(whatsapp_scraper_webhook.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
 # Legal docs (task #62) — public reader + admin editor. The module exports
 # two separate routers so the admin path can carry require_admin as a
 # router-level dependency without leaking to the public reader.

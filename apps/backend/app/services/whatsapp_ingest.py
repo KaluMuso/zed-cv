@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from app.api.v1.jobs import _build_aggregator_blacklist, _ingest_one_job
 from app.core.config import get_settings
 from app.schemas.jobs import JobCreate
+from app.services.job_splitter import split_classification_to_jobs
 from app.services.whatsapp_classifier import WhatsappJobClassification
 from app.services.whatsapp_scraper import whatsapp_source_for_channel
 
@@ -26,7 +27,17 @@ def _job_exists_by_whatsapp_id(supabase: Any, message_id: str) -> bool:
             .limit(1)
             .execute()
         )
-        return bool(res.data)
+        if res.data:
+            return True
+        prefix = f"{message_id}:split:"
+        res2 = (
+            supabase.table("jobs")
+            .select("id")
+            .like("whatsapp_message_id", f"{prefix}%")
+            .limit(1)
+            .execute()
+        )
+        return bool(res2.data)
     except Exception:
         return False
 
@@ -72,9 +83,10 @@ async def ingest_whatsapp_classification(
     *,
     channel_id: str,
     message_id: str,
+    message_body: str = "",
     ocr_source_text: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Run dedup checks and _ingest_one_job. Returns status dict."""
+    """Run dedup checks and _ingest_one_job (possibly split into N jobs)."""
     if not extracted.is_job:
         return {"status": "not_a_job"}
 
@@ -82,11 +94,18 @@ async def ingest_whatsapp_classification(
         return {"status": "duplicate_message_id"}
 
     try:
-        job_create = classification_to_job_create(
+        base_job = classification_to_job_create(
             extracted,
             channel_id=channel_id,
             message_id=message_id,
             ocr_source_text=ocr_source_text,
+        )
+        job_creates = await split_classification_to_jobs(
+            message_body,
+            extracted,
+            base_job,
+            message_id=message_id,
+            supabase=supabase,
         )
     except ValidationError as ve:
         logger.warning("WhatsApp job validation failed: %s", ve.errors()[:2])
@@ -94,10 +113,37 @@ async def ingest_whatsapp_classification(
 
     settings = get_settings()
     blacklist = _build_aggregator_blacklist(settings)
-    result, detail = await _ingest_one_job(supabase, job_create, blacklist)
+    ingested = 0
+    duplicates = 0
+    errors = 0
+    titles: list[str] = []
+
+    for job_create in job_creates:
+        result, detail = await _ingest_one_job(supabase, job_create, blacklist)
+        if result == "ingested":
+            ingested += 1
+            titles.append(job_create.title)
+        elif result == "duplicate":
+            duplicates += 1
+        else:
+            errors += 1
+            logger.info(
+                "WhatsApp split ingest %s for %r: %s",
+                result,
+                job_create.title,
+                detail,
+            )
+
+    if ingested == 0:
+        if duplicates > 0 and errors == 0:
+            return {"status": "ok", "ingest_result": "duplicate"}
+        return {"status": "validation_failed" if errors else "not_ingested"}
+
     return {
         "status": "ok",
-        "ingest_result": result,
-        "detail": detail or None,
-        "title": job_create.title,
+        "ingest_result": "ingested",
+        "ingested_count": ingested,
+        "split_count": len(job_creates),
+        "titles": titles,
+        "title": titles[0] if titles else base_job.title,
     }

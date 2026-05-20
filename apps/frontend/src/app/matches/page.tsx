@@ -32,24 +32,8 @@ import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
 import { isJobPastClosing } from "@/lib/isJobPastClosing";
-
-/**
- * Build the most useful URL for "Apply" — employer page if present, mailto
- * fallback, then source listing. Returns null if literally nothing exists,
- * so we can disable the button instead of opening a dead link.
- */
-function buildApplyHref(job: MatchData["job"]): string | null {
-  if (job.apply_url && /^https?:\/\//i.test(job.apply_url)) return job.apply_url;
-  if (job.apply_email) {
-    const subject = encodeURIComponent(`Application: ${job.title}`);
-    const body = encodeURIComponent(
-      `Hello${job.company ? ` ${job.company}` : ""},\n\nI'd like to apply for the ${job.title} role I saw on ZedApply.\n\n— Sent from zedapply.com`
-    );
-    return `mailto:${job.apply_email}?subject=${subject}&body=${body}`;
-  }
-  if (job.source_url && /^https?:\/\//i.test(job.source_url)) return job.source_url;
-  return null;
-}
+import { resolveApplyAction } from "@/lib/applyLink";
+import { trackApplyClick } from "@/lib/trackApplyClick";
 
 // Human-friendly tier label. Free → "Free", super_standard → "Super",
 // etc. Falls back to the raw key if we don't recognize it so we don't
@@ -914,25 +898,29 @@ export default function MatchesPage() {
                     </button>
                   ) : (
                     (() => {
-                      const href = buildApplyHref(match.job);
-                      return href ? (
+                      const action = resolveApplyAction(match.job);
+                      if (!action) return null;
+                      return (
                         <a
-                          href={href}
-                          target={href.startsWith("mailto:") ? undefined : "_blank"}
-                          rel={href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+                          href={action.href}
+                          target={action.external ? "_blank" : undefined}
+                          rel={action.external ? "noopener noreferrer" : undefined}
                           className="btn btn-primary btn-sm w-40"
+                          onClick={() => {
+                            if (token) {
+                              trackApplyClick(
+                                token,
+                                match.job.id,
+                                action.applySource
+                              );
+                            }
+                          }}
                         >
-                          Apply now <Icon name="external" size={13} />
+                          {action.label}
+                          {action.external ? (
+                            <Icon name="external" size={13} />
+                          ) : null}
                         </a>
-                      ) : (
-                        <button
-                          className="btn btn-primary btn-sm w-40"
-                          disabled
-                          title="No application link or email on this listing"
-                          type="button"
-                        >
-                          Apply unavailable
-                        </button>
                       );
                     })()
                   )}

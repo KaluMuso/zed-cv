@@ -21,6 +21,7 @@ from app.services.job_hydration import hydrate_job_row
 from app.services.embedding import generate_embedding
 from app.services.job_enricher import enrich_job
 from app.services.job_enrichment import apply_job_enrichment
+from app.services.deep_link_enricher import schedule_deep_link_enrichment
 from app.services.skill_resolver import resolve_skill_ids
 
 logger = logging.getLogger(__name__)
@@ -636,6 +637,8 @@ async def _ingest_one_job(
                 job.title,
                 exc,
             )
+
+        schedule_deep_link_enrichment(supabase, job_id, new_job)
         return "ingested", ""
     except Exception as exc:
         logger.error(

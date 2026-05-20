@@ -57,3 +57,5 @@ markdown>=3.6
 # render time via rehype-sanitize, but we don't rely on that being
 # the last line of defence.
 bleach>=6.1.0
+# HTML parsing for deep-link apply enrichment (Track 4d).
+beautifulsoup4>=4.12.0

@@ -133,5 +133,6 @@ async def whatsapp_scraper_webhook(
         extracted,
         channel_id=chat_id,
         message_id=msg_id,
+        message_body=body_text,
         ocr_source_text=ocr_text,
     )

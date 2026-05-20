@@ -611,10 +611,20 @@ components:
         skills: { type: array, items: { type: string }, description: "Alias for frontend compatibility" }
         salary_min: { type: integer }
         salary_max: { type: integer }
-        apply_url: { type: string, format: uri }
-        apply_email: { type: string, format: email }
+        apply_url: { type: string, format: uri, nullable: true }
+        apply_email: { type: string, format: email, nullable: true }
+        apply_source:
+          type: string
+          enum: [direct, source_fallback, enriched]
+          nullable: true
+          description: How apply contact was resolved (Track 4d).
+        enrichment_attempted_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last deep-link enrichment attempt timestamp.
         source: { type: string, enum: [manual, scraper, ocr, partner] }
-        source_url: { type: string, format: uri }
+        source_url: { type: string, format: uri, nullable: true }
         quality_score: { type: integer, minimum: 0, maximum: 100 }
         closing_date: { type: string, format: date }
         posted_at: { type: string, format: date-time }
@@ -1586,6 +1596,29 @@ paths:
         - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         '204': { description: Removed from saved list }
+
+  /analytics/events:
+    post:
+      operationId: trackAnalyticsEvent
+      tags: [Analytics]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event: { type: string, maxLength: 64, example: apply_click }
+                properties:
+                  type: object
+                  additionalProperties: true
+                  example:
+                    job_id: "00000000-0000-0000-0000-000000000001"
+                    apply_source: source_fallback
+      responses:
+        '204': { description: Event recorded (best-effort) }
 
   /matches:
     get:

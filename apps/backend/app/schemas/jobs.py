@@ -366,6 +366,8 @@ class Job(BaseModel):
     salary_max: Optional[int] = None
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
+    apply_source: Optional[str] = None
+    enrichment_attempted_at: Optional[datetime] = None
     source: str
     source_url: Optional[str] = None
     quality_score: int = 0

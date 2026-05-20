@@ -24,6 +24,7 @@ _CLASSIFY_CACHE_DAYS = 30
 
 class WhatsappJobClassification(BaseModel):
     is_job: bool = False
+    is_multi_job: bool = False
     title: Optional[str] = Field(None, max_length=500)
     company: Optional[str] = Field(None, max_length=255)
     location: Optional[str] = Field(None, max_length=255)
@@ -73,6 +74,7 @@ _TEXT_SYSTEM = """You classify WhatsApp channel messages from Zambian job boards
 Return JSON only:
 {
   "is_job": true|false,
+  "is_multi_job": true|false,
   "title": string|null,
   "company": string|null,
   "location": string|null,
@@ -90,6 +92,7 @@ Return JSON only:
 
 Rules:
 - is_job=false for greetings, ads, memes, "good morning", channel rules, unrelated chatter.
+- is_multi_job=true when the message lists 2+ distinct roles (numbered list, multiple job titles, multiple Apply lines).
 - Zambian context: MTN, Airtel, ZANACO, ZESCO, Lusaka, Kitwe are normal.
 - apply_url must be http(s). WhatsApp chat links are NOT apply URLs.
 - Do not invent salary or requirements; omit when not stated.
