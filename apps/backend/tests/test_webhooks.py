@@ -120,12 +120,14 @@ def test_dpo_webhook_idempotency(client, fake_supabase):
         "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
     ), patch(
         "app.api.v1.webhooks.send_payment_confirmation_email", new_callable=AsyncMock
-    ):
+    ), patch(
+        "app.services.subscription_billing.activate_subscription_after_payment",
+    ) as activate:
         resp = _post_dpo(client)
 
     assert resp.status_code == 200
     assert resp.json() == {"status": "already_processed"}
-    assert sub_spy.update_calls == []  # subscription must not be re-upgraded
+    activate.assert_not_called()
 
 
 # ── 2. Period-end safety ─────────────────────────────────────────────────
@@ -143,8 +145,6 @@ def test_dpo_webhook_period_end_safety(client, fake_supabase):
             data=[_payment_row(amount=12500, existing_end=existing_end.isoformat())]
         ),
     )
-    sub_spy = _UpdateSpyQuery(data=[{"id": "sub-1", "user_id": "test-user-id"}])
-    fake_supabase.set_table("subscriptions", sub_spy)
     fake_supabase.set_table("users", _UpdateSpyQuery(data=[{"phone": "+260971234567"}]))
 
     parse, verify = _patch_dpo_helpers()
@@ -152,41 +152,36 @@ def test_dpo_webhook_period_end_safety(client, fake_supabase):
         "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
     ), patch(
         "app.api.v1.webhooks.send_payment_confirmation_email", new_callable=AsyncMock
-    ):
+    ), patch(
+        "app.services.subscription_billing.activate_subscription_after_payment",
+        return_value={"start": now.isoformat(), "end": (existing_end + timedelta(days=30)).isoformat()},
+    ) as activate:
         resp = _post_dpo(client)
 
     assert resp.status_code == 200
-    assert len(sub_spy.update_calls) == 1
-    end_iso = sub_spy.update_calls[0]["current_period_end"]
-    new_end = datetime.fromisoformat(end_iso)
-    delta = new_end - now
-    # Expected ≈ 50 days (20 remaining + 30 new). Wide jitter window absorbs
-    # test runtime; the assertion that fails the *old* code is delta > 31d.
-    assert timedelta(days=49) < delta < timedelta(days=51), (
-        f"Expected ~50d (20 remaining + 30 new), got {delta}"
-    )
+    activate.assert_called_once()
+    sub_row = activate.call_args.kwargs["subscription_row"]
+    assert sub_row["current_period_end"] == existing_end.isoformat()
 
 
 # ── 3. Tier mapping by exact price ───────────────────────────────────────
 
 
 @pytest.mark.parametrize(
-    "amount,expected_tier,expected_limit",
+    "amount,expected_tier",
     [
-        (12500, "starter", 50),
-        (25000, "professional", 125),
-        (50000, "super_standard", 99999),
+        (12500, "starter"),
+        (25000, "professional"),
+        (50000, "super_standard"),
     ],
 )
 def test_dpo_webhook_tier_mapping_exact_price(
-    client, fake_supabase, amount, expected_tier, expected_limit
+    client, fake_supabase, amount, expected_tier
 ):
     """Each canonical price maps to the canonical tier + TIER_LIMITS quota."""
     fake_supabase.set_table(
         "payments", _UpdateSpyQuery(data=[_payment_row(amount=amount)])
     )
-    sub_spy = _UpdateSpyQuery(data=[{"id": "sub-1", "user_id": "test-user-id"}])
-    fake_supabase.set_table("subscriptions", sub_spy)
     fake_supabase.set_table("users", _UpdateSpyQuery(data=[{"phone": "+260971234567"}]))
 
     parse, verify = _patch_dpo_helpers()
@@ -194,14 +189,16 @@ def test_dpo_webhook_tier_mapping_exact_price(
         "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
     ), patch(
         "app.api.v1.webhooks.send_payment_confirmation_email", new_callable=AsyncMock
-    ):
+    ), patch(
+        "app.services.subscription_billing.activate_subscription_after_payment",
+        return_value={"start": "2026-01-01T00:00:00+00:00", "end": "2026-02-01T00:00:00+00:00"},
+    ) as activate:
         resp = _post_dpo(client)
 
     assert resp.status_code == 200
     assert resp.json() == {"status": "completed"}
-    assert len(sub_spy.update_calls) == 1
-    assert sub_spy.update_calls[0]["tier"] == expected_tier
-    assert sub_spy.update_calls[0]["matches_limit"] == expected_limit
+    activate.assert_called_once()
+    assert activate.call_args.kwargs["new_tier"] == expected_tier
 
 
 def test_dpo_webhook_tier_mapping_unknown_amount_logs_warning(
@@ -212,8 +209,6 @@ def test_dpo_webhook_tier_mapping_unknown_amount_logs_warning(
     fake_supabase.set_table(
         "payments", _UpdateSpyQuery(data=[_payment_row(amount=17500)])
     )
-    sub_spy = _UpdateSpyQuery(data=[{"id": "sub-1", "user_id": "test-user-id"}])
-    fake_supabase.set_table("subscriptions", sub_spy)
     fake_supabase.set_table("users", _UpdateSpyQuery(data=[{"phone": "+260971234567"}]))
 
     parse, verify = _patch_dpo_helpers()
@@ -221,13 +216,15 @@ def test_dpo_webhook_tier_mapping_unknown_amount_logs_warning(
         "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
     ), patch(
         "app.api.v1.webhooks.send_payment_confirmation_email", new_callable=AsyncMock
-    ):
+    ), patch(
+        "app.services.subscription_billing.activate_subscription_after_payment",
+        return_value={"start": "2026-01-01T00:00:00+00:00", "end": "2026-02-01T00:00:00+00:00"},
+    ) as activate:
         resp = _post_dpo(client)
 
     assert resp.status_code == 200
     assert "unknown amount 17500" in caplog.text
-    assert sub_spy.update_calls[0]["tier"] == "starter"
-    assert sub_spy.update_calls[0]["matches_limit"] == 50
+    assert activate.call_args.kwargs["new_tier"] == "starter"
 
 
 # ── 4. Subscription/pay now accepts lenco method (Lenco-frontend slice) ──

@@ -310,7 +310,7 @@ class TestBackfillIdempotency:
         assert enrich_calls == 0
 
 
-class TestMigration033ExperiencePenalty:
+class TestMigration034ExperiencePenalty:
     @staticmethod
     def _sql_path() -> str:
         from pathlib import Path
@@ -320,7 +320,7 @@ class TestMigration033ExperiencePenalty:
             / "infra"
             / "supabase"
             / "migrations"
-            / "033_experience_penalty_0_1.sql"
+            / "034_experience_penalty_0_1.sql"
         )
 
     def test_migration_defines_experience_columns(self):
@@ -341,7 +341,8 @@ class TestMigration033ExperiencePenalty:
         from pathlib import Path
 
         sql = Path(self._sql_path()).read_text()
-        assert "0.1 * (j.experience_min_years - v_user_years)" in sql
+        assert "compute_experience_score" in sql
+        assert "0.1 * (p_job_min_years - COALESCE(p_user_years, 0))" in sql
         assert "0.5::REAL" in sql
         assert "GREATEST" in sql
         assert "experience_score  REAL" in sql

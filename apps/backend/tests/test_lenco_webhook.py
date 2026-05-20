@@ -9,6 +9,7 @@ import hmac
 import json
 from unittest.mock import patch
 from tests.conftest import FakeSupabaseQuery
+from tests.test_webhooks import _UpdateSpyQuery
 from app.services.lenco_webhook import verify_signature, extract_event_fields
 
 
@@ -195,6 +196,79 @@ class TestLencoWebhookRoute:
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "completed"
+
+    @patch("app.services.email.send_payment_confirmation_email")
+    @patch("app.services.whatsapp.send_whatsapp_message")
+    def test_lenco_payment_sets_user_and_subscription_billing_period(
+        self, mock_wa, mock_email, client, fake_supabase, monkeypatch
+    ):
+        """Successful Lenco webhook must activate billing via Postgres RPC."""
+        from app.core.config import get_settings
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("LENCO_API_KEY", "test-lenco-key")
+        monkeypatch.setenv("LENCO_WEBHOOK_SECRET", "")
+
+        body_dict = {
+            "event": "collection.successful",
+            "data": {
+                "reference": "pay-bill-1",
+                "transactionRef": "LEN-bill-abc",
+                "status": "successful",
+                "amount": 12500,
+                "currency": "ZMW",
+            },
+        }
+        body_bytes = json.dumps(body_dict).encode("utf-8")
+        sig = _sign(body_bytes, "test-lenco-key")
+
+        fake_supabase.set_table(
+            "payments",
+            _UpdateSpyQuery(
+                data=[
+                    {
+                        "id": "pay-bill-1",
+                        "user_id": "user-1",
+                        "amount": 12500,
+                        "status": "pending",
+                        "subscriptions": {
+                            "id": "sub-1",
+                            "current_period_end": None,
+                            "started_at": None,
+                        },
+                    }
+                ]
+            ),
+        )
+        subs_spy = _UpdateSpyQuery(data=[{"id": "sub-1", "user_id": "user-1"}])
+        users_spy = _UpdateSpyQuery(
+            data=[{"id": "user-1", "phone": "+260971234567", "subscription_started_at": None}]
+        )
+        fake_supabase.set_table("subscriptions", subs_spy)
+        fake_supabase.set_table("users", users_spy)
+
+        resp = client.post(
+            "/api/v1/webhooks/lenco",
+            headers={
+                "x-lenco-signature": sig,
+                "Content-Type": "application/json",
+            },
+            content=body_bytes,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "completed"
+
+        assert len(subs_spy.update_calls) == 1
+        assert subs_spy.update_calls[0]["tier"] == "starter"
+        assert subs_spy.update_calls[0]["current_period_start"]
+        assert subs_spy.update_calls[0]["current_period_end"]
+        assert subs_spy.update_calls[0]["started_at"]
+
+        assert len(users_spy.update_calls) == 1
+        assert users_spy.update_calls[0]["subscription_tier"] == "starter"
+        assert users_spy.update_calls[0]["subscription_started_at"]
+        assert users_spy.update_calls[0]["subscription_expires_at"]
+        assert users_spy.update_calls[0]["subscription_renews_at"]
 
     @patch("app.services.email.send_payment_confirmation_email")
     @patch("app.services.whatsapp.send_whatsapp_message")

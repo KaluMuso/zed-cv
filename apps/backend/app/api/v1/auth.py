@@ -134,9 +134,9 @@ async def verify_otp(request: Request, body: OTPVerify, settings: Settings = Dep
 
         # Superadmin gets top tier; regular users start on free
         if role == "superadmin":
-            supabase.table("subscriptions").insert({"user_id": user_id, "tier": "professional", "status": "active", "matches_limit": 125}).execute()
+            supabase.table("subscriptions").insert({"user_id": user_id, "tier": "professional", "status": "active"}).execute()
         else:
-            supabase.table("subscriptions").insert({"user_id": user_id, "tier": "free", "status": "active", "matches_limit": 10}).execute()
+            supabase.table("subscriptions").insert({"user_id": user_id, "tier": "free", "status": "active"}).execute()
 
     now = datetime.now(timezone.utc)
     access_token = jwt.encode({"sub": user_id, "phone": body.phone, "exp": now + timedelta(minutes=settings.jwt_expire_minutes), "iat": now}, settings.jwt_secret, algorithm=settings.jwt_algorithm)

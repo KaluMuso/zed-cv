@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.core.deps import get_supabase, require_admin
+from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
     AdminStats,
     AdminUserRow,
@@ -507,7 +508,7 @@ async def list_users(
     if user_ids:
         subs = (
             supabase.table("subscriptions")
-            .select("user_id, matches_used, matches_limit")
+            .select("user_id, tier")
             .in_("user_id", user_ids)
             .execute()
         )
@@ -517,16 +518,17 @@ async def list_users(
     rows = []
     for u in result.data or []:
         sub = sub_map.get(u["id"], {})
+        tier = u.get("subscription_tier") or sub.get("tier") or "free"
         rows.append(
             AdminUserRow(
                 id=u["id"],
                 phone=u["phone"],
                 full_name=u.get("full_name"),
                 location=u.get("location"),
-                subscription_tier=u.get("subscription_tier") or "free",
+                subscription_tier=tier,
                 role=u.get("role") or "user",
-                matches_used=sub.get("matches_used", 0),
-                matches_limit=sub.get("matches_limit", 0),
+                matches_used=await get_credited_match_count(u["id"], supabase),
+                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS["free"]),
                 created_at=u.get("created_at"),
             )
         )
@@ -1167,7 +1169,7 @@ async def list_subscriptions(
     )
 
     query = supabase.table("subscriptions").select(
-        "user_id, tier, status, matches_used, matches_limit, current_period_end, created_at",
+        "user_id, tier, status, current_period_end, created_at",
         count="exact",
     ).order("created_at", desc=True)
     if tier:
@@ -1191,20 +1193,22 @@ async def list_subscriptions(
         )
         user_map = {u["id"]: u for u in (users.data or [])}
 
-    rows = [
-        AdminSubscriptionRow(
-            user_id=s["user_id"],
-            user_phone=user_map.get(s["user_id"], {}).get("phone"),
-            full_name=user_map.get(s["user_id"], {}).get("full_name"),
-            tier=s.get("tier", "free"),
-            status=s.get("status", "active"),
-            matches_used=s.get("matches_used", 0),
-            matches_limit=s.get("matches_limit", 0),
-            current_period_end=s.get("current_period_end"),
-            created_at=s.get("created_at"),
+    rows = []
+    for s in (result.data or []):
+        tier = s.get("tier", "free")
+        rows.append(
+            AdminSubscriptionRow(
+                user_id=s["user_id"],
+                user_phone=user_map.get(s["user_id"], {}).get("phone"),
+                full_name=user_map.get(s["user_id"], {}).get("full_name"),
+                tier=tier,
+                status=s.get("status", "active"),
+                matches_used=await get_credited_match_count(s["user_id"], supabase),
+                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS["free"]),
+                current_period_end=s.get("current_period_end"),
+                created_at=s.get("created_at"),
+            )
         )
-        for s in (result.data or [])
-    ]
 
     return AdminSubscriptionList(
         breakdown=breakdown,
@@ -1222,11 +1226,11 @@ async def update_subscription(
     body: AdminSubscriptionUpdate,
     supabase=Depends(get_supabase),
 ):
-    """Set a user's tier. Resets matches_limit to the tier default; matches_used preserved."""
+    """Set a user's tier. Quota limit is derived from TIER_LIMITS by tier."""
     new_limit = TIER_LIMITS[body.tier]
     res = (
         supabase.table("subscriptions")
-        .update({"tier": body.tier, "matches_limit": new_limit, "status": "active"})
+        .update({"tier": body.tier, "status": "active"})
         .eq("user_id", user_id)
         .execute()
     )
@@ -1245,14 +1249,15 @@ async def update_subscription(
     )
     user_row = (user.data or [{}])[0]
     sub = res.data[0]
+    tier = sub.get("tier", body.tier)
     return AdminSubscriptionRow(
         user_id=user_id,
         user_phone=user_row.get("phone"),
         full_name=user_row.get("full_name"),
-        tier=sub.get("tier", body.tier),
+        tier=tier,
         status=sub.get("status", "active"),
-        matches_used=sub.get("matches_used", 0),
-        matches_limit=sub.get("matches_limit", new_limit),
+        matches_used=await get_credited_match_count(user_id, supabase),
+        matches_limit=TIER_LIMITS.get(tier, new_limit),
         current_period_end=sub.get("current_period_end"),
         created_at=sub.get("created_at"),
     )

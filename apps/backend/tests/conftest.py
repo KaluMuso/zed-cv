@@ -129,8 +129,69 @@ class FakeSupabase:
     def set_table(self, name, query: "FakeSupabaseQuery"):
         self._tables[name] = query
 
-    def rpc(self, *a, **kw):
+    def rpc(self, name, args=None, **kw):
+        payload = args if args is not None else kw
+        if name == "activate_subscription_after_payment":
+            return _ActivateSubscriptionRpc(self, payload)
         return FakeSupabaseQuery(data=[True])
+
+
+class _ActivateSubscriptionRpc:
+    """Simulates activate_subscription_after_payment for webhook integration tests."""
+
+    def __init__(self, client: "FakeSupabase", args: dict):
+        self._client = client
+        self._args = args
+
+    def execute(self):
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        period_days = int(self._args.get("p_period_days") or 30)
+        existing_raw = self._args.get("p_existing_period_end")
+        existing = None
+        if existing_raw:
+            try:
+                existing = datetime.fromisoformat(str(existing_raw).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                existing = None
+        base = existing if (existing and existing > now) else now
+        period_end = base + timedelta(days=period_days)
+        sub_id = self._args.get("p_subscription_id") or "sub-rpc-1"
+        user_id = self._args["p_user_id"]
+        tier = self._args["p_new_tier"]
+
+        subs = self._client._tables.setdefault("subscriptions", FakeSupabaseQuery())
+        if hasattr(subs, "update_calls"):
+            subs.update_calls.append(
+                {
+                    "id": sub_id,
+                    "tier": tier,
+                    "status": "active",
+                    "current_period_start": now.isoformat(),
+                    "current_period_end": period_end.isoformat(),
+                    "started_at": now.isoformat(),
+                    "lenco_subscription_ref": self._args.get("p_lenco_subscription_ref"),
+                }
+            )
+        users = self._client._tables.setdefault("users", FakeSupabaseQuery())
+        if hasattr(users, "update_calls"):
+            users.update_calls.append(
+                {
+                    "subscription_tier": tier,
+                    "subscription_started_at": now.isoformat(),
+                    "subscription_expires_at": period_end.isoformat(),
+                    "subscription_renews_at": period_end.isoformat(),
+                }
+            )
+
+        result = MagicMock()
+        result.data = {
+            "subscription_id": sub_id,
+            "period_start": now.isoformat(),
+            "period_end": period_end.isoformat(),
+        }
+        return result
 
 
 @pytest.fixture

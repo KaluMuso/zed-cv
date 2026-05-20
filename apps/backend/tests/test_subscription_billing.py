@@ -25,52 +25,54 @@ class TrackingQuery(FakeSupabaseQuery):
         return self
 
 
+class RpcFakeSupabase:
+    """Minimal client that records activate_subscription_after_payment RPC calls."""
+
+    def __init__(self, rpc_result: dict):
+        self.rpc_calls: list[tuple[str, dict]] = []
+        self._rpc_result = rpc_result
+
+    def rpc(self, name, args):
+        self.rpc_calls.append((name, args))
+        return MagicMock(
+            execute=MagicMock(
+                return_value=MagicMock(data=self._rpc_result),
+            )
+        )
+
+
 class TestActivateSubscriptionAfterPayment:
-    def test_sets_user_billing_columns_and_subscription_period(
-        self, fake_supabase, monkeypatch
-    ):
+    def test_delegates_to_postgres_rpc(self, monkeypatch):
         monkeypatch.setenv("SUBSCRIPTION_PERIOD_DAYS", "30")
         from app.core.config import get_settings
         get_settings.cache_clear()
 
-        subs_q = TrackingQuery(
-            data=[
-                {
-                    "id": "sub-1",
-                    "user_id": "user-1",
-                    "current_period_end": None,
-                    "started_at": None,
-                }
-            ]
+        fake = RpcFakeSupabase(
+            {
+                "subscription_id": "sub-1",
+                "period_start": "2026-05-20T12:00:00+00:00",
+                "period_end": "2026-06-19T12:00:00+00:00",
+            }
         )
-        users_q = TrackingQuery(
-            data=[{"id": "user-1", "subscription_started_at": None}]
-        )
-        payments_q = TrackingQuery(data=[])
-        fake_supabase.set_table("subscriptions", subs_q)
-        fake_supabase.set_table("users", users_q)
-        fake_supabase.set_table("payments", payments_q)
-
         now = datetime(2026, 5, 20, 12, 0, tzinfo=timezone.utc)
         result = activate_subscription_after_payment(
-            fake_supabase,
+            fake,  # type: ignore[arg-type]
             user_id="user-1",
             payment_id="pay-1",
             new_tier="starter",
-            subscription_row={
-                "id": "sub-1",
-                "current_period_end": None,
-            },
+            subscription_row={"id": "sub-1", "current_period_end": None},
             lenco_subscription_ref="LEN-abc",
             now=now,
         )
 
-        assert result["start"] and result["end"]
-        assert subs_q.updates[-1]["tier"] == "starter"
-        assert subs_q.updates[-1]["lenco_subscription_ref"] == "LEN-abc"
-        assert users_q.updates[-1]["subscription_tier"] == "starter"
-        assert users_q.updates[-1]["subscription_renews_at"] == result["end"]
-        assert payments_q.updates[-1]["subscription_id"] == "sub-1"
+        assert fake.rpc_calls[0][0] == "activate_subscription_after_payment"
+        args = fake.rpc_calls[0][1]
+        assert args["p_user_id"] == "user-1"
+        assert args["p_payment_id"] == "pay-1"
+        assert args["p_new_tier"] == "starter"
+        assert args["p_subscription_id"] == "sub-1"
+        assert args["p_lenco_subscription_ref"] == "LEN-abc"
+        assert result["end"] == "2026-06-19T12:00:00+00:00"
 
 
 class TestBillingPeriodMatchCount:
@@ -99,3 +101,48 @@ class TestBillingPeriodMatchCount:
         )
         start = asyncio.run(_billing_period_start("user-1", fake_supabase))
         assert start.isoformat().startswith("2026-04-15")
+
+
+class TestMigration035ActivateRpc:
+    @staticmethod
+    def _sql_path() -> str:
+        from pathlib import Path
+
+        return str(
+            Path(__file__).resolve().parents[3]
+            / "infra"
+            / "supabase"
+            / "migrations"
+            / "035_activate_subscription_rpc.sql"
+        )
+
+    def test_migration_defines_activate_rpc(self):
+        from pathlib import Path
+
+        sql = Path(self._sql_path()).read_text()
+        assert "CREATE OR REPLACE FUNCTION public.activate_subscription_after_payment" in sql
+        assert "subscription_started_at" in sql
+        assert "subscription_expires_at" in sql
+        assert "p_existing_period_end" in sql
+        assert "make_interval(days => p_period_days)" in sql
+
+
+class TestMigration036DropCounters:
+    @staticmethod
+    def _sql_path() -> str:
+        from pathlib import Path
+
+        return str(
+            Path(__file__).resolve().parents[3]
+            / "infra"
+            / "supabase"
+            / "migrations"
+            / "036_drop_subscription_match_counters.sql"
+        )
+
+    def test_migration_drops_legacy_counters(self):
+        from pathlib import Path
+
+        sql = Path(self._sql_path()).read_text()
+        assert "DROP COLUMN IF EXISTS matches_used" in sql
+        assert "DROP COLUMN IF EXISTS matches_limit" in sql

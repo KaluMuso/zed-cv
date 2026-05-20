@@ -1,13 +1,14 @@
--- 033_experience_penalty_0_1.sql
+-- 034_experience_penalty_0_1.sql
 --
 -- Track 4a-extend (follow-up): align experience-gap penalty with spec
 --   score = 1.0 when user years >= job min years
 --   else 1.0 - 0.1 * gap_years, floor 0.5
 --
--- Job/profile columns from 032 are idempotent here for environments that
--- skipped 032. RPC is replaced with the corrected multiplier.
+-- Renumbered from 033_experience_penalty_0_1.sql (collision with
+-- 033_subscription_billing_periods.sql). Adds compute_experience_score()
+-- helper used by match_jobs_for_user().
 --
--- Apply ordering: 033 after 032.
+-- Apply ordering: 034 after 033_subscription_billing_periods.
 
 BEGIN;
 
@@ -24,6 +25,27 @@ ALTER TABLE public.users
 
 ALTER TABLE public.matches
     ADD COLUMN IF NOT EXISTS experience_score REAL;
+
+CREATE OR REPLACE FUNCTION public.compute_experience_score(
+    p_user_years INTEGER,
+    p_job_min_years INTEGER
+)
+RETURNS REAL
+LANGUAGE sql
+IMMUTABLE
+AS $$
+    SELECT CASE
+        WHEN p_job_min_years IS NULL THEN 1.0::REAL
+        WHEN COALESCE(p_user_years, 0) >= p_job_min_years THEN 1.0::REAL
+        ELSE GREATEST(
+            0.5::REAL,
+            (1.0 - 0.1 * (p_job_min_years - COALESCE(p_user_years, 0)))::REAL
+        )
+    END;
+$$;
+
+COMMENT ON FUNCTION public.compute_experience_score(INTEGER, INTEGER) IS
+    'Experience-gap multiplier in [0.5, 1.0] for match scoring.';
 
 DROP FUNCTION IF EXISTS public.match_jobs_for_user(uuid, real, integer);
 
@@ -91,14 +113,10 @@ BEGIN
              CASE WHEN j.closing_date > CURRENT_DATE THEN 20 ELSE 0 END +
              CASE WHEN j.posted_at > NOW() - INTERVAL '7 days' THEN 30 ELSE 0 END
             )::REAL AS b_score,
-            (CASE
-                WHEN j.experience_min_years IS NULL THEN 1.0::REAL
-                WHEN v_user_years >= j.experience_min_years THEN 1.0::REAL
-                ELSE GREATEST(
-                    0.5::REAL,
-                    (1.0 - 0.1 * (j.experience_min_years - v_user_years))::REAL
-                )
-             END) AS exp_score,
+            public.compute_experience_score(
+                v_user_years,
+                j.experience_min_years
+            ) AS exp_score,
             ARRAY(SELECT s2.name
                     FROM job_skills js2
                     JOIN skills s2 ON s2.id = js2.skill_id
@@ -130,5 +148,7 @@ BEGIN
     LIMIT p_limit;
 END;
 $$;
+
+GRANT EXECUTE ON FUNCTION public.compute_experience_score(INTEGER, INTEGER) TO authenticated, service_role;
 
 COMMIT;
