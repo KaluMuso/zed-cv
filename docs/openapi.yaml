@@ -746,6 +746,11 @@ components:
         vector_score: { type: number }
         skill_score: { type: number }
         bonus_score: { type: number }
+        experience_score:
+          type: number
+          minimum: 0.5
+          maximum: 1
+          description: Experience-gap multiplier applied to final score (1.0 = no penalty)
         matched_skills: { type: array, items: { type: string } }
         missing_skills: { type: array, items: { type: string } }
         explanation: { type: string }

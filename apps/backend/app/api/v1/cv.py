@@ -17,6 +17,10 @@ from app.services.embedding import generate_embedding
 from app.services.email import send_welcome_email
 from app.services.skill_resolver import resolve_skill_ids
 from app.services.preferences_auto_populate import auto_populate_from_cv
+from app.services.user_profile_enricher import (
+    build_user_profile_patch,
+    enrich_user_profile,
+)
 
 router = APIRouter(prefix="/cv", tags=["CV"])
 
@@ -431,6 +435,30 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
             profile_update[field] = parsed[field]
     if parsed.get("years_experience") is not None:
         profile_update["years_experience"] = parsed["years_experience"]
+
+    try:
+        user_row = (
+            supabase.table("users")
+            .select(
+                "years_experience, seniority_level, highest_qualification, qualifications"
+            )
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        current_user = user_row.data if isinstance(user_row.data, dict) else {}
+        if profile_update.get("years_experience") is not None:
+            current_user = {**current_user, "years_experience": profile_update["years_experience"]}
+        profile_enrichment = await enrich_user_profile(cv_text=raw_text)
+        profile_update.update(
+            build_user_profile_patch(profile_enrichment, user_row=current_user)
+        )
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "user profile enrichment failed for user=%s", user_id, exc_info=True
+        )
+
     if profile_update:
         supabase.table("users").update(profile_update).eq("id", user_id).execute()
 
