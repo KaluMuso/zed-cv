@@ -159,22 +159,66 @@ async def enrich_user_profile(*, cv_text: str) -> UserProfileEnrichment:
     return await asyncio.to_thread(_call)
 
 
+def _coerce_confidence(value: object) -> float:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        n = float(value)
+        return n if 0.0 <= n <= 1.0 else (n / 100.0 if n <= 100.0 else 0.0)
+    return 0.0
+
+
+def _should_apply_field(
+    *,
+    current: object,
+    proposed: object,
+    new_cv_confidence: float,
+    previous_primary_confidence: float,
+) -> bool:
+    """Write when empty, or when the new CV parse is more confident than the last primary."""
+    if proposed is None or proposed == "" or proposed == []:
+        return False
+    if current is None or current == 0 or current == []:
+        return True
+    return new_cv_confidence > previous_primary_confidence
+
+
 def build_user_profile_patch(
     enrichment: UserProfileEnrichment,
     *,
     user_row: dict,
+    new_cv_confidence: float = 0.0,
+    previous_primary_confidence: float = 0.0,
 ) -> dict[str, object]:
-    """NULL-only updates for profile fields already set on the user row."""
+    """Idempotent profile merge: fill blanks or overwrite on higher parse confidence."""
+    new_conf = _coerce_confidence(new_cv_confidence)
+    prev_conf = _coerce_confidence(previous_primary_confidence)
     patch: dict[str, object] = {}
-    if enrichment.years_experience is not None:
-        current = user_row.get("years_experience")
-        if current is None or current == 0:
-            patch["years_experience"] = enrichment.years_experience
-    if user_row.get("seniority_level") is None and enrichment.seniority_level:
+
+    if enrichment.years_experience is not None and _should_apply_field(
+        current=user_row.get("years_experience"),
+        proposed=enrichment.years_experience,
+        new_cv_confidence=new_conf,
+        previous_primary_confidence=prev_conf,
+    ):
+        patch["years_experience"] = enrichment.years_experience
+    if enrichment.seniority_level and _should_apply_field(
+        current=user_row.get("seniority_level"),
+        proposed=enrichment.seniority_level,
+        new_cv_confidence=new_conf,
+        previous_primary_confidence=prev_conf,
+    ):
         patch["seniority_level"] = enrichment.seniority_level
-    if user_row.get("highest_qualification") is None and enrichment.highest_qualification:
+    if enrichment.highest_qualification and _should_apply_field(
+        current=user_row.get("highest_qualification"),
+        proposed=enrichment.highest_qualification,
+        new_cv_confidence=new_conf,
+        previous_primary_confidence=prev_conf,
+    ):
         patch["highest_qualification"] = enrichment.highest_qualification
-    existing_quals = user_row.get("qualifications") or []
-    if not existing_quals and enrichment.qualifications:
+    if enrichment.qualifications and _should_apply_field(
+        current=user_row.get("qualifications") or [],
+        proposed=enrichment.qualifications,
+        new_cv_confidence=new_conf,
+        previous_primary_confidence=prev_conf,
+    ):
         patch["qualifications"] = enrichment.qualifications
     return patch

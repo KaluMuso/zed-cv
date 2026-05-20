@@ -390,6 +390,20 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
     existing_cvs = supabase.table("cvs").select("id", count="exact").eq("user_id", user_id).limit(1).execute()
     is_first_upload = (existing_cvs.count or 0) == 0
 
+    previous_primary_confidence = 0.0
+    prev_cv = (
+        supabase.table("cvs")
+        .select("parsing_confidence")
+        .eq("user_id", user_id)
+        .eq("is_primary", True)
+        .limit(1)
+        .execute()
+    )
+    if prev_cv.data:
+        previous_primary_confidence = float(
+            prev_cv.data[0].get("parsing_confidence") or 0.0
+        )
+
     supabase.table("cvs").update({"is_primary": False}).eq("user_id", user_id).eq("is_primary", True).execute()
 
     result = supabase.table("cvs").insert({
@@ -451,7 +465,12 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
             current_user = {**current_user, "years_experience": profile_update["years_experience"]}
         profile_enrichment = await enrich_user_profile(cv_text=raw_text)
         profile_update.update(
-            build_user_profile_patch(profile_enrichment, user_row=current_user)
+            build_user_profile_patch(
+                profile_enrichment,
+                user_row=current_user,
+                new_cv_confidence=float(parsed.get("confidence") or 0.0),
+                previous_primary_confidence=previous_primary_confidence,
+            )
         )
     except Exception:
         import logging

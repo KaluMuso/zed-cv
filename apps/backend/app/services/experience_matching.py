@@ -1,7 +1,7 @@
-"""Experience-gap soft penalty for job matching (mirrors migration 032 RPC)."""
+"""Experience-gap soft penalty for job matching (mirrors migration 033 RPC)."""
 
 EXPERIENCE_PENALTY_FLOOR = 0.5
-EXPERIENCE_PENALTY_STEP = 0.075
+EXPERIENCE_PENALTY_STEP = 0.1
 
 
 def experience_score_multiplier(

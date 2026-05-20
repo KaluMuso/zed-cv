@@ -66,15 +66,16 @@ SAMPLE_ENRICHED_JOBS = [
 
 
 class TestExperiencePenaltyMultiplier:
-    def test_perfect_match_no_penalty(self):
-        assert experience_score_multiplier(5, 5) == 1.0
-        assert experience_score_multiplier(10, 5) == 1.0
+    """Acceptance RPC scenarios (mirrored in migration 033 SQL)."""
 
-    def test_mild_gap(self):
-        assert experience_score_multiplier(3, 5) == pytest.approx(0.85)
+    def test_meets_minimum_no_penalty(self):
+        assert experience_score_multiplier(3, 3) == 1.0
 
-    def test_severe_gap(self):
-        assert experience_score_multiplier(1, 5) == pytest.approx(0.7)
+    def test_overqualified_no_penalty(self):
+        assert experience_score_multiplier(10, 1) == 1.0
+
+    def test_four_year_gap_penalty(self):
+        assert experience_score_multiplier(1, 5) == pytest.approx(0.6)
 
     def test_unknown_job_min_is_neutral(self):
         assert experience_score_multiplier(1, None) == 1.0
@@ -191,7 +192,7 @@ class TestUserProfileEnricher:
         assert result.highest_qualification == "MBA"
         assert result.qualifications == ["MBA", "BCom"]
 
-    def test_build_user_profile_patch_null_only(self):
+    def test_build_user_profile_patch_fills_blanks(self):
         enrichment = UserProfileEnrichment(
             years_experience=8,
             seniority_level="senior",
@@ -201,15 +202,44 @@ class TestUserProfileEnricher:
         patch = build_user_profile_patch(
             enrichment,
             user_row={
-                "years_experience": 3,
+                "years_experience": 0,
                 "seniority_level": None,
                 "highest_qualification": None,
                 "qualifications": [],
             },
         )
-        assert "years_experience" not in patch
+        assert patch["years_experience"] == 8
         assert patch["seniority_level"] == "senior"
         assert patch["highest_qualification"] == "BEng"
+
+    def test_build_user_profile_patch_higher_confidence_overwrites(self):
+        enrichment = UserProfileEnrichment(
+            years_experience=8,
+            seniority_level="senior",
+        )
+        patch = build_user_profile_patch(
+            enrichment,
+            user_row={
+                "years_experience": 3,
+                "seniority_level": "mid",
+                "highest_qualification": "Diploma",
+                "qualifications": ["Diploma"],
+            },
+            new_cv_confidence=0.95,
+            previous_primary_confidence=0.7,
+        )
+        assert patch["years_experience"] == 8
+        assert patch["seniority_level"] == "senior"
+
+    def test_build_user_profile_patch_low_confidence_skips_overwrite(self):
+        enrichment = UserProfileEnrichment(years_experience=8, seniority_level="senior")
+        patch = build_user_profile_patch(
+            enrichment,
+            user_row={"years_experience": 3, "seniority_level": "mid"},
+            new_cv_confidence=0.5,
+            previous_primary_confidence=0.8,
+        )
+        assert patch == {}
 
     @pytest.mark.asyncio
     async def test_enrich_user_profile_mock_openrouter(self):
@@ -280,12 +310,7 @@ class TestBackfillIdempotency:
         assert enrich_calls == 0
 
 
-class TestMigration032ExperiencePenalty:
-    MIGRATION_PATH = (
-        __file__.replace("tests/test_track4a_extend.py", "")
-        + "../../infra/supabase/migrations/032_experience_profile_enrichment.sql"
-    )
-
+class TestMigration033ExperiencePenalty:
     @staticmethod
     def _sql_path() -> str:
         from pathlib import Path
@@ -295,7 +320,7 @@ class TestMigration032ExperiencePenalty:
             / "infra"
             / "supabase"
             / "migrations"
-            / "032_experience_profile_enrichment.sql"
+            / "033_experience_penalty_0_1.sql"
         )
 
     def test_migration_defines_experience_columns(self):
@@ -316,13 +341,13 @@ class TestMigration032ExperiencePenalty:
         from pathlib import Path
 
         sql = Path(self._sql_path()).read_text()
-        assert "0.075 * (j.experience_min_years - v_user_years)" in sql
+        assert "0.1 * (j.experience_min_years - v_user_years)" in sql
         assert "0.5::REAL" in sql
         assert "GREATEST" in sql
         assert "experience_score  REAL" in sql
 
     def test_rpc_three_scenario_multipliers_documented(self):
         """Python helper mirrors SQL — pin the three acceptance scenarios."""
-        assert experience_score_multiplier(5, 5) == 1.0
-        assert experience_score_multiplier(3, 5) == pytest.approx(0.85)
-        assert experience_score_multiplier(1, 5) == pytest.approx(0.7)
+        assert experience_score_multiplier(3, 3) == 1.0
+        assert experience_score_multiplier(10, 1) == 1.0
+        assert experience_score_multiplier(1, 5) == pytest.approx(0.6)
