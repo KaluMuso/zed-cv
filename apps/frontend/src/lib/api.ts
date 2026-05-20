@@ -849,6 +849,7 @@ export const savedJobs = {
 // ── Matches ──
 export interface MatchData {
   id: string;
+  /** When this match row was created / last refreshed for the user. */
   created_at: string | null;
   score: number;
   vector_score: number;
@@ -857,8 +858,6 @@ export interface MatchData {
   matched_skills: string[];
   missing_skills: string[];
   explanation: string | null;
-  /** When this match row was created / last refreshed for the user. */
-  created_at: string;
   job: {
     id: string;
     title: string;
