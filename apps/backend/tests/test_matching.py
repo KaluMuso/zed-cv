@@ -100,10 +100,10 @@ class TestTriggerMatching:
         new_callable=AsyncMock,
         return_value=(False, 0),
     )
-    def test_trigger_no_quota(
+    def test_trigger_allows_refresh_when_credit_quota_full(
         self, mock_quota, client, auth_headers, fake_supabase
     ):
-        """Rejects matching when quota is exhausted."""
+        """Refresh still runs; quota now gates credited rows, not insertion."""
         # /matches/trigger uses Depends(get_current_user), which looks up
         # the user in the `users` table. Tests must seed this table or
         # auth fails with 401 before the quota check runs.
@@ -113,8 +113,9 @@ class TestTriggerMatching:
                 data=[{"id": "test-user-id", "phone": "+260971234567", "role": "user"}]
             ),
         )
+        fake_supabase.set_table("cvs", FakeSupabaseQuery(data=[{"id": "cv-1"}]))
         resp = client.post("/api/v1/matches/trigger", headers=auth_headers)
-        assert resp.status_code == 403
+        assert resp.status_code == 200
 
     @patch(
         "app.api.v1.matches.check_match_quota",
@@ -204,7 +205,7 @@ class TestMatchRpcRegression:
         # task's `sub.data["matches_used"]` access works.
         fake_supabase.set_table(
             "subscriptions",
-            _SingleQuery(data=[{"matches_used": 0}]),
+            _SingleQuery(data=[{"tier": "starter", "status": "active"}]),
         )
         fake_supabase.set_table(
             "matches",

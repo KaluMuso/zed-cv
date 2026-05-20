@@ -28,6 +28,9 @@ from app.schemas.admin import (
     AdminSubscriptionRow,
     AdminSubscriptionList,
     AdminSubscriptionUpdate,
+    AdminJobReviewRow,
+    AdminJobReviewQueue,
+    AdminJobReviewUpdate,
 )
 from app.schemas.jobs import AdminJobCreate, AdminJobUpdate, Job
 from app.schemas.subscription import TIER_LIMITS
@@ -58,6 +61,12 @@ def _emit_analytics_event(
         logger.debug("analytics_events insert failed (%s): %s", event, exc)
 
 
+def _split_review_reasons(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in value.split(",") if part.strip()]
+
+
 # Fields whose change forces an embedding regenerate. These match the
 # inputs to generate_embedding() in the ingest path
 # (title + company + description) plus the two structured fields
@@ -85,6 +94,17 @@ async def get_stats(supabase=Depends(get_supabase)):
         data = data[0] if data else {}
     if not isinstance(data, dict):
         data = {}
+    try:
+        pending = (
+            supabase.table("jobs")
+            .select("id", count="exact")
+            .not_.is_("admin_review_reason", "null")
+            .is_("admin_reviewed_at", "null")
+            .execute()
+        )
+        data["pending_review_count"] = pending.count or 0
+    except Exception:
+        logger.warning("admin pending review count failed", exc_info=True)
     return AdminStats(**data)
 
 
@@ -555,6 +575,103 @@ async def list_jobs(
         for j in (result.data or [])
     ]
     return AdminJobList(jobs=rows, total=total, page=page, per_page=per_page, pages=pages)
+
+
+@router.get("/jobs/review-queue", response_model=AdminJobReviewQueue)
+async def review_queue(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
+    supabase=Depends(get_supabase),
+):
+    query = (
+        supabase.table("jobs")
+        .select("id, title, company, source, source_url, admin_review_reason, created_at", count="exact")
+        .not_.is_("admin_review_reason", "null")
+        .is_("admin_reviewed_at", "null")
+        .order("created_at", desc=False)
+    )
+    offset = (page - 1) * per_page
+    result = query.range(offset, offset + per_page - 1).execute()
+    total = result.count or 0
+    pages = math.ceil(total / per_page) if total > 0 else 1
+    rows = [
+        AdminJobReviewRow(
+            id=j["id"],
+            title=j["title"],
+            company=j.get("company"),
+            source=j["source"],
+            source_url=j.get("source_url"),
+            reasons=_split_review_reasons(j.get("admin_review_reason")),
+            created_at=j.get("created_at"),
+        )
+        for j in (result.data or [])
+    ]
+    return AdminJobReviewQueue(jobs=rows, total=total, page=page, per_page=per_page, pages=pages)
+
+
+@router.post("/jobs/{job_id}/approve")
+async def approve_review_job(
+    job_id: str,
+    body: AdminJobReviewUpdate | None = None,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+):
+    patch = (body or AdminJobReviewUpdate()).model_dump(
+        exclude_unset=True,
+        exclude_none=True,
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    patch.update(
+        {
+            "is_active": True,
+            "admin_reviewed_at": now,
+            "admin_reviewed_by_user_id": current_user["id"],
+            "updated_by_user_id": current_user["id"],
+            "updated_at": now,
+        }
+    )
+    result = supabase.table("jobs").update(patch).eq("id", job_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _emit_analytics_event(
+        supabase,
+        "admin_job_review_approved",
+        {"job_id": job_id, "admin_user_id": current_user["id"]},
+        current_user["id"],
+    )
+    return {"id": job_id, "is_active": True, "admin_reviewed_at": now}
+
+
+@router.post("/jobs/{job_id}/dismiss")
+async def dismiss_review_job(
+    job_id: str,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+):
+    now = datetime.now(timezone.utc).isoformat()
+    result = (
+        supabase.table("jobs")
+        .update(
+            {
+                "is_active": False,
+                "admin_reviewed_at": now,
+                "admin_reviewed_by_user_id": current_user["id"],
+                "updated_by_user_id": current_user["id"],
+                "updated_at": now,
+            }
+        )
+        .eq("id", job_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _emit_analytics_event(
+        supabase,
+        "admin_job_review_dismissed",
+        {"job_id": job_id, "admin_user_id": current_user["id"]},
+        current_user["id"],
+    )
+    return {"id": job_id, "is_active": False, "admin_reviewed_at": now}
 
 
 @router.post("/jobs/bulk-deactivate", response_model=BulkDeactivateResponse)

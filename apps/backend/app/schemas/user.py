@@ -40,6 +40,21 @@ class UserPreferencesUpdate(BaseModel):
     language: Optional[Literal["en", "bem"]] = None
 
 
+class NotificationChannels(BaseModel):
+    whatsapp: bool = True
+    email: bool = True
+
+
+class AutoMatchPreferences(BaseModel):
+    auto_match_enabled: bool = True
+    notification_channels: NotificationChannels = Field(default_factory=NotificationChannels)
+
+
+class AutoMatchPreferencesUpdate(BaseModel):
+    auto_match_enabled: Optional[bool] = None
+    notification_channels: Optional[NotificationChannels] = None
+
+
 class ProfileDeleted(BaseModel):
     deleted: bool = True
     user_id: str

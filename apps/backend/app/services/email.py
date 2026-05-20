@@ -6,6 +6,7 @@ provisioned. The OTP fallback skips the per-user pref check (it's an auth
 delivery channel, not a marketing message).
 """
 import logging
+from html import escape
 from typing import Optional
 
 import resend
@@ -86,10 +87,14 @@ async def send_match_digest_email(user_id: str, matches: list[dict], supabase) -
     rows = []
     for m in matches[:5]:
         job = m.get("jobs") or {}
-        title = m.get("title") or job.get("title") or "Job"
-        company = m.get("company") or job.get("company") or ""
+        title = escape(str(m.get("title") or job.get("title") or "Job"))
+        company = escape(str(m.get("company") or job.get("company") or ""))
         score = int(round(m.get("score", 0)))
-        rows.append(f"<li><strong>{title}</strong> at {company} — {score}% match</li>")
+        href = job.get("apply_url") or job.get("source_url") or settings.app_url
+        rows.append(
+            f'<li><a href="{escape(str(href), quote=True)}"><strong>{title}</strong></a>'
+            f" at {company} — {score}% match</li>"
+        )
     html = f"""
     <h2>Your latest job matches</h2>
     <p>We found {len(matches)} new matches for you:</p>

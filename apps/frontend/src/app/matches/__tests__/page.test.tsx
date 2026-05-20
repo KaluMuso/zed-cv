@@ -55,12 +55,14 @@ function withHandlers(opts: {
   matches?: unknown[];
   cvUploaded?: boolean;
   onTrigger?: () => void;
+  onAutoPatch?: (body: unknown) => void;
   triggerStatus?: number;
 }) {
   const {
     matches = [MATCH_OBJ],
     cvUploaded = false,
     onTrigger,
+    onAutoPatch,
     triggerStatus = 200,
   } = opts;
   server.use(
@@ -82,6 +84,22 @@ function withHandlers(opts: {
         languages: [],
       })
     ),
+    http.get(`${API}/users/me/preferences/auto-match`, () =>
+      HttpResponse.json({
+        auto_match_enabled: true,
+        notification_channels: { whatsapp: true, email: true },
+      })
+    ),
+    http.patch(`${API}/users/me/preferences/auto-match`, async ({ request }) => {
+      const body = await request.json();
+      onAutoPatch?.(body);
+      return HttpResponse.json({
+        auto_match_enabled: Boolean(
+          (body as { auto_match_enabled?: boolean }).auto_match_enabled
+        ),
+        notification_channels: { whatsapp: true, email: true },
+      });
+    }),
     http.get(`${API}/profile`, () =>
       HttpResponse.json({
         id: "u1",
@@ -167,5 +185,23 @@ describe("Auto-trigger", () => {
     render(<AuthProvider><MatchesPage /></AuthProvider>);
     await screen.findByText("Engineer", {}, { timeout: 5000 });
     expect(triggered).toBe(false);
+  });
+});
+
+describe("Auto-match toggle", () => {
+  it("calls the auto-match preference endpoint", async () => {
+    let patched: unknown = null;
+    withHandlers({
+      matches: [MATCH_OBJ],
+      onAutoPatch: (body) => {
+        patched = body;
+      },
+    });
+    render(<AuthProvider><MatchesPage /></AuthProvider>);
+    const toggle = await screen.findByLabelText("Auto-match", {}, { timeout: 5000 });
+    await userEvent.click(toggle);
+    await waitFor(() => {
+      expect(patched).toEqual({ auto_match_enabled: false });
+    });
   });
 });

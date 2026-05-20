@@ -1,0 +1,29 @@
+{
+  "name": "Zed CV - Match Cron Every 12h",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 12 }] } },
+      "name": "Every 12 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/matches/cron-tick",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
+        }
+      },
+      "name": "Run Match Cron",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Every 12 Hours": { "main": [[{ "node": "Run Match Cron", "type": "main", "index": 0 }]] }
+  }
+}

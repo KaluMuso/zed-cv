@@ -123,6 +123,24 @@ components:
         email_notifications_enabled: { type: boolean }
         language: { type: string, enum: [en, bem] }
 
+    NotificationChannels:
+      type: object
+      properties:
+        whatsapp: { type: boolean, default: true }
+        email: { type: boolean, default: true }
+
+    AutoMatchPreferences:
+      type: object
+      properties:
+        auto_match_enabled: { type: boolean, default: true }
+        notification_channels: { $ref: '#/components/schemas/NotificationChannels' }
+
+    AutoMatchPreferencesUpdate:
+      type: object
+      properties:
+        auto_match_enabled: { type: boolean }
+        notification_channels: { $ref: '#/components/schemas/NotificationChannels' }
+
     # Phase 2 Initiative #4 — job-search preferences. Backs
     # /api/v1/preferences (distinct from /profile/preferences, which is
     # notification prefs). Shape mirrors
@@ -295,6 +313,7 @@ components:
         matches_total: { type: integer }
         revenue_ngwee_30d: { type: integer }
         revenue_ngwee_total: { type: integer }
+        pending_review_count: { type: integer }
 
     AdminUserRow:
       type: object
@@ -339,6 +358,33 @@ components:
         page: { type: integer }
         per_page: { type: integer }
         pages: { type: integer }
+
+    AdminJobReviewRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        company: { type: string, nullable: true }
+        source: { type: string, enum: [manual, scraper, ocr, partner] }
+        source_url: { type: string, nullable: true }
+        reasons: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time, nullable: true }
+
+    AdminJobReviewQueue:
+      type: object
+      properties:
+        jobs: { type: array, items: { $ref: '#/components/schemas/AdminJobReviewRow' } }
+        total: { type: integer }
+        page: { type: integer }
+        per_page: { type: integer }
+        pages: { type: integer }
+
+    AdminJobReviewUpdate:
+      type: object
+      properties:
+        apply_url: { type: string, nullable: true }
+        apply_email: { type: string, nullable: true }
+        application_instructions: { type: string, nullable: true, maxLength: 2000 }
 
     BulkDeactivateRequest:
       type: object
@@ -698,6 +744,20 @@ components:
       properties:
         matches: { type: array, items: { $ref: '#/components/schemas/MatchResult' } }
         remaining_quota: { type: integer }
+        credited_count: { type: integer }
+        matches_limit: { type: integer }
+
+    CronTickResponse:
+      type: object
+      properties:
+        users_processed: { type: integer }
+        new_matches_total: { type: integer }
+
+    NotificationDigestResponse:
+      type: object
+      properties:
+        users_processed: { type: integer }
+        notifications_sent: { type: integer }
 
     Subscription:
       type: object
@@ -866,6 +926,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/UserPreferences' }
 
+  /users/me/preferences/auto-match:
+    get:
+      operationId: getAutoMatchPreferences
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutoMatchPreferences' }
+    patch:
+      operationId: updateAutoMatchPreferences
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AutoMatchPreferencesUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutoMatchPreferences' }
+
   /preferences:
     get:
       operationId: getJobPreferences
@@ -1017,6 +1101,49 @@ paths:
         '403': { description: Not an admin }
         '409': { description: Duplicate fingerprint (job already exists) }
         '503': { description: Embedding service unavailable }
+
+  /admin/jobs/review-queue:
+    get:
+      operationId: adminJobsReviewQueue
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminJobReviewQueue' }
+        '403': { description: Not an admin }
+
+  /admin/jobs/{job_id}/approve:
+    post:
+      operationId: adminApproveReviewJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminJobReviewUpdate' }
+      responses:
+        '200': { description: Job approved }
+        '403': { description: Not an admin }
+        '404': { description: Job not found }
+
+  /admin/jobs/{job_id}/dismiss:
+    post:
+      operationId: adminDismissReviewJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200': { description: Job dismissed }
+        '403': { description: Not an admin }
+        '404': { description: Job not found }
 
   /admin/jobs/{job_id}:
     patch:
@@ -1302,6 +1429,32 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '202': { description: Matching queued }
+
+  /matches/cron-tick:
+    post:
+      operationId: matchCronTick
+      tags: [Matching]
+      parameters:
+        - { name: INGEST_API_KEY, in: header, required: true, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CronTickResponse' }
+        '401': { description: Invalid ingest API key }
+
+  /matches/send-notifications:
+    post:
+      operationId: sendMatchNotifications
+      tags: [Matching]
+      parameters:
+        - { name: INGEST_API_KEY, in: header, required: true, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationDigestResponse' }
+        '401': { description: Invalid ingest API key }
 
   /interview-prep/generate:
     post:

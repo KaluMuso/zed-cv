@@ -3,7 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { profile as profileApi, type UserPreferences } from "@/lib/api";
+import {
+  autoMatchPreferences,
+  profile as profileApi,
+  type AutoMatchPreferences,
+  type UserPreferences,
+} from "@/lib/api";
 import { useAppStore } from "@/lib/zustand-store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,8 +29,10 @@ export default function SettingsPage() {
   const { isAuthenticated, isLoading, logout, token } = useAuth();
   const { setProfile: setZust } = useAppStore();
   const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingAlerts, setSavingAlerts] = useState(false);
+  const [savingAutoMatch, setSavingAutoMatch] = useState(false);
   const [savingLang, setSavingLang] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [delConfirm, setDelConfirm] = useState("");
@@ -39,9 +46,15 @@ export default function SettingsPage() {
       router.push("/auth");
       return;
     }
-    profileApi
-      .getPreferences(token)
-      .then(setPrefs)
+    Promise.allSettled([
+      profileApi.getPreferences(token),
+      autoMatchPreferences.get(token),
+    ])
+      .then(([prefsRes, autoRes]) => {
+        if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
+        if (autoRes.status === "fulfilled") setAutoPrefs(autoRes.value);
+        if (prefsRes.status === "rejected") throw prefsRes.reason;
+      })
       .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load preferences"))
       .finally(() => setPrefsLoading(false));
   }, [isAuthenticated, isLoading, router, token]);
@@ -82,6 +95,22 @@ export default function SettingsPage() {
     }
   };
 
+  const updateAutoMatch = async (next: boolean) => {
+    if (!token) {
+      return;
+    }
+    setSavingAutoMatch(true);
+    try {
+      const r = await autoMatchPreferences.patch(token, { auto_match_enabled: next });
+      setAutoPrefs(r);
+      toast.success(next ? "Auto-match enabled." : "Auto-match disabled.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingAutoMatch(false);
+    }
+  };
+
   return (
     <div>
       <h1 className="text-2xl sm:text-3xl font-bold mb-2">Settings</h1>
@@ -104,6 +133,29 @@ export default function SettingsPage() {
                 checked={prefs?.whatsapp_alerts ?? true}
                 disabled={savingAlerts}
                 onChange={(e) => updateAlerts(e.target.checked)}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Auto-match</CardTitle>
+          <CardDescription>Let ZedApply run scheduled matching. Manual refresh still works when off.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4 min-h-11">
+            <span className="text-sm">Scheduled auto-match</span>
+            {prefsLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <input
+                type="checkbox"
+                className="h-5 w-5 rounded border-input"
+                checked={autoPrefs?.auto_match_enabled ?? true}
+                disabled={savingAutoMatch}
+                onChange={(e) => updateAutoMatch(e.target.checked)}
               />
             )}
           </div>

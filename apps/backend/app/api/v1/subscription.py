@@ -8,7 +8,9 @@ from app.schemas.subscription import (
     PaymentInitiate,
     PaymentInitiateResponse,
     TIER_PRICES,
+    TIER_LIMITS,
 )
+from app.services.matching import get_credited_match_count
 
 router = APIRouter(prefix="/subscription", tags=["Subscription"])
 
@@ -29,10 +31,13 @@ async def get_subscription(
         raise HTTPException(status_code=404, detail="No subscription found")
 
     sub = result.data
+    matches_used = await get_credited_match_count(user_id, supabase)
+    tier = sub["tier"]
+    matches_limit = TIER_LIMITS.get(tier, sub["matches_limit"])
     return Subscription(
-        tier=sub["tier"],
-        matches_used=sub["matches_used"],
-        matches_limit=sub["matches_limit"],
+        tier=tier,
+        matches_used=matches_used,
+        matches_limit=matches_limit,
         active=sub["status"] == "active",
         expires_at=sub.get("current_period_end"),
     )

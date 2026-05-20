@@ -197,7 +197,18 @@ export interface UserProfile {
 
 export interface UserPreferences {
   whatsapp_alerts: boolean;
+  email_notifications_enabled: boolean;
   language: "en" | "bem";
+}
+
+export interface NotificationChannels {
+  whatsapp: boolean;
+  email: boolean;
+}
+
+export interface AutoMatchPreferences {
+  auto_match_enabled: boolean;
+  notification_channels: NotificationChannels;
 }
 
 // ── Job-search preferences (Phase 2 Initiative #4) ─────────────────
@@ -336,6 +347,17 @@ export const profile = {
     }),
 };
 
+export const autoMatchPreferences = {
+  get: (token: string) =>
+    apiFetch<AutoMatchPreferences>("/users/me/preferences/auto-match", { token }),
+  patch: (token: string, data: Partial<AutoMatchPreferences>) =>
+    apiFetch<AutoMatchPreferences>("/users/me/preferences/auto-match", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(data),
+    }),
+};
+
 // ── Admin ──
 export interface AdminStats {
   users_total: number;
@@ -349,6 +371,7 @@ export interface AdminStats {
   matches_total: number;
   revenue_ngwee_30d: number;
   revenue_ngwee_total: number;
+  pending_review_count: number;
 }
 
 export interface AdminUserRow {
@@ -389,6 +412,30 @@ export interface AdminJobList {
   page: number;
   per_page: number;
   pages: number;
+}
+
+export interface AdminJobReviewRow {
+  id: string;
+  title: string;
+  company: string | null;
+  source: string;
+  source_url: string | null;
+  reasons: string[];
+  created_at: string | null;
+}
+
+export interface AdminJobReviewQueue {
+  jobs: AdminJobReviewRow[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface AdminJobReviewUpdate {
+  apply_url?: string;
+  apply_email?: string;
+  application_instructions?: string;
 }
 
 export interface AdminPaymentRow {
@@ -505,6 +552,25 @@ export const admin = {
     if (params?.is_active !== undefined) q.set("is_active", String(params.is_active));
     return apiFetch<AdminJobList>(`/admin/jobs?${q}`, { token });
   },
+  reviewQueue: (
+    token: string,
+    params?: { page?: number; per_page?: number }
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    return apiFetch<AdminJobReviewQueue>(`/admin/jobs/review-queue?${q}`, { token });
+  },
+  approveReviewJob: (token: string, jobId: string, data: AdminJobReviewUpdate) =>
+    apiFetch<{ id: string; is_active: boolean; admin_reviewed_at: string }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}/approve`,
+      { method: "POST", token, body: JSON.stringify(data) }
+    ),
+  dismissReviewJob: (token: string, jobId: string) =>
+    apiFetch<{ id: string; is_active: boolean; admin_reviewed_at: string }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}/dismiss`,
+      { method: "POST", token }
+    ),
   bulkDeactivate: (
     token: string,
     body: { job_ids?: string[]; expired_only?: boolean }
@@ -791,6 +857,8 @@ export interface MatchData {
 export interface MatchListResponse {
   matches: MatchData[];
   remaining_quota: number;
+  credited_count?: number;
+  matches_limit?: number;
 }
 
 export const matches = {

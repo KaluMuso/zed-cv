@@ -1,8 +1,10 @@
 """Job matching — delegates to Supabase RPC for hybrid scoring."""
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from supabase import Client
 from app.core.config import get_settings
+from app.schemas.subscription import TIER_LIMITS
 
 
 # Phase 2 Initiative #4 — preference-aware re-rank weights.
@@ -16,6 +18,64 @@ ROLE_BONUS = 3.0
 SALARY_BONUS = 1.5
 ARRANGEMENT_BONUS = 1.5
 REGION_BONUS = 1.0
+
+
+def _first_row(data: Any) -> dict[str, Any] | None:
+    if isinstance(data, list):
+        return data[0] if data else None
+    return data if isinstance(data, dict) else None
+
+
+def _month_start(now: datetime | None = None) -> datetime:
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+async def get_user_tier_limit(user_id: str, supabase: Client) -> tuple[str, int, bool]:
+    """Return (tier, monthly quota, active). Quotas come from TIER_LIMITS."""
+    sub_res = (
+        supabase.table("subscriptions")
+        .select("tier, status")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    sub = _first_row(sub_res.data)
+    if sub:
+        active = sub.get("status") == "active"
+        tier = sub.get("tier") or "free"
+        return tier, TIER_LIMITS.get(tier, TIER_LIMITS["free"]), active
+
+    user_res = (
+        supabase.table("users")
+        .select("subscription_tier")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    user = _first_row(user_res.data) or {}
+    tier = user.get("subscription_tier") or "free"
+    return tier, TIER_LIMITS.get(tier, TIER_LIMITS["free"]), True
+
+
+async def get_credited_match_count(
+    user_id: str,
+    supabase: Client,
+    *,
+    now: datetime | None = None,
+) -> int:
+    result = (
+        supabase.table("matches")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .gte("credited_at", _month_start(now).isoformat())
+        .execute()
+    )
+    if result.count is not None:
+        return int(result.count)
+    return len(result.data or [])
 
 
 async def run_matching_for_user(
@@ -146,27 +206,67 @@ async def store_matches(
     return len(result.data) if result.data else 0
 
 
+async def credit_matches_for_cycle(
+    user_id: str,
+    job_ids: list[str],
+    supabase: Client,
+    *,
+    now: datetime | None = None,
+) -> int:
+    """Mark newly-delivered unique job matches as credited for this month."""
+    unique_job_ids = list(dict.fromkeys([jid for jid in job_ids if jid]))
+    if not unique_job_ids:
+        return 0
+
+    _, quota, active = await get_user_tier_limit(user_id, supabase)
+    if not active:
+        return 0
+
+    credited = await get_credited_match_count(user_id, supabase, now=now)
+    remaining = max(0, quota - credited)
+    if remaining <= 0:
+        return 0
+
+    match_rows = (
+        supabase.table("matches")
+        .select("id, job_id, credited_at")
+        .eq("user_id", user_id)
+        .in_("job_id", unique_job_ids)
+        .execute()
+    )
+    rows_by_job = {
+        row.get("job_id"): row
+        for row in (match_rows.data or [])
+        if isinstance(row, dict) and row.get("job_id")
+    }
+
+    now_iso = (now or datetime.now(timezone.utc)).isoformat()
+    newly_credited = 0
+    for job_id in unique_job_ids:
+        if newly_credited >= remaining:
+            break
+        row = rows_by_job.get(job_id)
+        if row and row.get("credited_at"):
+            continue
+        query = supabase.table("matches").update({"credited_at": now_iso})
+        if row and row.get("id"):
+            query = query.eq("id", row["id"])
+        else:
+            query = query.eq("user_id", user_id).eq("job_id", job_id)
+        query.is_("credited_at", "null").execute()
+        newly_credited += 1
+    return newly_credited
+
+
 async def check_match_quota(user_id: str, supabase: Client) -> tuple[bool, int]:
     """Check remaining match quota. Returns (has_quota, remaining).
 
-    Missing subscription row → free-tier default (covers the signup race
-    where a user's `users` row exists but the `subscriptions` row hasn't
-    been inserted yet). Subscription present but non-active (expired,
-    cancelled, past_due) → (False, 0): historically the active-status
-    filter short-circuited to the free-tier default, which let any
-    lapsed paying user keep generating matches forever.
+    Quota is now based on credited unique matches this month, not the
+    legacy subscriptions.matches_used refresh counter.
     """
-    result = (
-        supabase.table("subscriptions")
-        .select("matches_used, matches_limit, status")
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    if not result.data:
-        return True, 10  # Signup-race free-tier default
-    if result.data.get("status") != "active":
+    _, quota, active = await get_user_tier_limit(user_id, supabase)
+    if not active:
         return False, 0
-    used = result.data["matches_used"]
-    limit = result.data["matches_limit"]
-    return max(0, limit - used) > 0, max(0, limit - used)
+    used = await get_credited_match_count(user_id, supabase)
+    remaining = max(0, quota - used)
+    return remaining > 0, remaining

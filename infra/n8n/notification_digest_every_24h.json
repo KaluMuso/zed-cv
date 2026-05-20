@@ -1,0 +1,29 @@
+{
+  "name": "Zed CV - Notification Digest Every 24h",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] } },
+      "name": "Every 24 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/matches/send-notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
+        }
+      },
+      "name": "Send Due Digests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Every 24 Hours": { "main": [[{ "node": "Send Due Digests", "type": "main", "index": 0 }]] }
+  }
+}

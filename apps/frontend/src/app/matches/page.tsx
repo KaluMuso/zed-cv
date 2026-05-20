@@ -7,10 +7,13 @@ import {
   subscription as subscriptionApi,
   preferencesApi,
   profile as profileApi,
+  autoMatchPreferences,
   ApiError,
   type MatchData,
+  type MatchListResponse,
   type Subscription,
   type JobPreferences,
+  type AutoMatchPreferences,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { MatchScore } from "@/components/MatchScore";
@@ -53,12 +56,11 @@ const TIER_LABELS: Record<string, string> = {
 export default function MatchesPage() {
   const router = useRouter();
   const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
-  const [data, setData] = useState<{
-    matches: MatchData[];
-    remaining_quota: number;
-  } | null>(null);
+  const [data, setData] = useState<MatchListResponse | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
   const [prefs, setPrefs] = useState<JobPreferences | null>(null);
+  const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
+  const [savingAutoPrefs, setSavingAutoPrefs] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [scoreFilter, setScoreFilter] = useState(0);
@@ -70,10 +72,11 @@ export default function MatchesPage() {
   const autoTriggeredRef = useRef(false);
 
   const loadMatches = useCallback(async (authToken: string) => {
-    const [matchesRes, subRes, prefsRes] = await Promise.allSettled([
+    const [matchesRes, subRes, prefsRes, autoPrefsRes] = await Promise.allSettled([
       matchesApi.get(authToken),
       subscriptionApi.get(authToken),
       preferencesApi.get(authToken),
+      autoMatchPreferences.get(authToken),
     ]);
     const unauthorized =
       (matchesRes.status === "rejected" &&
@@ -88,6 +91,7 @@ export default function MatchesPage() {
     if (matchesRes.status === "fulfilled") setData(matchesRes.value);
     if (subRes.status === "fulfilled") setSub(subRes.value);
     if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
+    if (autoPrefsRes.status === "fulfilled") setAutoPrefs(autoPrefsRes.value);
     return {
       unauthorized: false,
       matches: matchesRes.status === "fulfilled" ? matchesRes.value : null,
@@ -124,6 +128,21 @@ export default function MatchesPage() {
       setTimeout(() => setRefreshCooldown(false), 60_000);
     }
   }, [token, refreshing, refreshCooldown, loadMatches, logout, router]);
+
+  const toggleAutoMatch = useCallback(async () => {
+    if (!token || !autoPrefs || savingAutoPrefs) return;
+    const next = !autoPrefs.auto_match_enabled;
+    setSavingAutoPrefs(true);
+    try {
+      const saved = await autoMatchPreferences.patch(token, { auto_match_enabled: next });
+      setAutoPrefs(saved);
+      toast.success(next ? "Auto-match is on." : "Auto-match is off.");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not update auto-match.");
+    } finally {
+      setSavingAutoPrefs(false);
+    }
+  }, [token, autoPrefs, savingAutoPrefs]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -299,8 +318,10 @@ export default function MatchesPage() {
   // sum used+remaining if subscription failed to load — gives a coherent
   // bar even in the degraded case. The historical hard-coded "25" was
   // wrong for every tier except Starter.
-  const matchesUsed = sub?.matches_used ?? Math.max(0, 25 - data.remaining_quota);
-  const matchesLimit = (sub?.matches_limit ?? (matchesUsed + data.remaining_quota)) || 25;
+  const matchesUsed =
+    data.credited_count ?? sub?.matches_used ?? Math.max(0, 25 - data.remaining_quota);
+  const matchesLimit =
+    (data.matches_limit ?? sub?.matches_limit ?? (matchesUsed + data.remaining_quota)) || 25;
   const usagePct = matchesLimit > 0 ? Math.min(100, (matchesUsed / matchesLimit) * 100) : 0;
   const tierLabel = TIER_LABELS[sub?.tier ?? ""] ?? (sub?.tier ?? "Starter");
 
@@ -398,6 +419,25 @@ export default function MatchesPage() {
                 Upgrade for K125/mo &rarr;
               </Link>
             )}
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] px-3 py-2">
+            <div>
+              <div className="text-sm font-medium">Auto-match</div>
+              <div className="text-xs" style={{ color: "var(--muted)" }}>
+                Manual refresh still works when this is off.
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                aria-label="Auto-match"
+                type="checkbox"
+                className="h-5 w-5 rounded border-input"
+                checked={autoPrefs?.auto_match_enabled ?? true}
+                disabled={!autoPrefs || savingAutoPrefs}
+                onChange={toggleAutoMatch}
+              />
+              {autoPrefs?.auto_match_enabled === false ? "Off" : "On"}
+            </label>
           </div>
         </div>
       </div>

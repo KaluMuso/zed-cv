@@ -18,3 +18,15 @@ class MatchResult(BaseModel):
 class MatchList(BaseModel):
     matches: list[MatchResult]
     remaining_quota: int
+    credited_count: int = 0
+    matches_limit: int = 10
+
+
+class CronTickResponse(BaseModel):
+    users_processed: int
+    new_matches_total: int
+
+
+class NotificationDigestResponse(BaseModel):
+    users_processed: int
+    notifications_sent: int

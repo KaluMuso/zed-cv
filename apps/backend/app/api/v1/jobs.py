@@ -24,6 +24,42 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
+_EMAIL_RE = _re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", _re.IGNORECASE)
+_URL_RE = _re.compile(r"\b(?:https?://|www\.)\S+|\b[A-Z0-9.-]+\.[A-Z]{2,}(?:/\S*)?", _re.IGNORECASE)
+_PHONE_RE = _re.compile(r"(?:\+?260|0)?[79]\d{8}\b")
+
+
+def _has_text(value: str | None) -> bool:
+    return bool(value and value.strip())
+
+
+def _instructions_have_contact(value: str | None) -> bool:
+    if not value:
+        return False
+    return bool(_EMAIL_RE.search(value) or _URL_RE.search(value) or _PHONE_RE.search(value))
+
+
+def _job_eligibility_reasons(job: JobCreate) -> list[str]:
+    has_apply_url = _has_text(job.apply_url)
+    has_apply_email = _has_text(job.apply_email)
+    has_instruction_contact = _instructions_have_contact(job.application_instructions)
+    if has_apply_url or has_apply_email or has_instruction_contact:
+        return []
+
+    reasons = ["missing_apply_link", "missing_contact"]
+    if job.closing_date is None:
+        reasons.append("missing_deadline")
+    return reasons
+
+
+def _emit_analytics_event(supabase, event: str, properties: dict) -> None:
+    try:
+        supabase.table("analytics_events").insert(
+            {"event": event, "properties": properties, "user_id": None}
+        ).execute()
+    except Exception as exc:  # pragma: no cover
+        logger.debug("analytics_events insert failed (%s): %s", event, exc)
+
 
 # Whitelist of HTML tag names the sanitizer will strip. Anything outside
 # this set is left as literal text so non-HTML angle-bracket content
@@ -538,6 +574,9 @@ async def _ingest_one_job(
         # stores benefits=[] (matches the JSONB DEFAULT in migration 016).
         job_data.pop("salary_text", None)
         job_data["embedding"] = embedding
+        review_reasons = _job_eligibility_reasons(job)
+        job_data["is_active"] = not review_reasons
+        job_data["admin_review_reason"] = ",".join(review_reasons) if review_reasons else None
 
         result = supabase.table("jobs").insert(job_data).execute()
         if not result.data:
@@ -545,6 +584,12 @@ async def _ingest_one_job(
 
         new_job = result.data[0]
         job_id = new_job["id"]
+        if review_reasons:
+            _emit_analytics_event(
+                supabase,
+                "job_eligibility_flagged",
+                {"job_id": job_id, "reasons": review_reasons},
+            )
         supabase.table("job_fingerprints").insert(
             {"fingerprint": fp, "job_id": job_id}
         ).execute()
