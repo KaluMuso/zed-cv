@@ -71,7 +71,7 @@ function withHandlers(opts: {
       HttpResponse.json({ matches, remaining_quota: 10 })
     ),
     http.get(`${API}/subscription`, () =>
-      HttpResponse.json({ tier: "starter", matches_used: 5, matches_limit: 25 })
+      HttpResponse.json({ tier: "starter", matches_used: 5, matches_limit: 50 })
     ),
     http.get(`${API}/preferences`, () =>
       HttpResponse.json({

@@ -46,7 +46,7 @@ async def get_user_tier_limit(user_id: str, supabase: Client) -> tuple[str, int,
     if sub:
         active = sub.get("status") == "active"
         tier = sub.get("tier") or "free"
-        return tier, TIER_LIMITS.get(tier, TIER_LIMITS.get("free", 5)), active
+        return tier, TIER_LIMITS.get(tier, TIER_LIMITS["free"]), active
 
     user_res = (
         supabase.table("users")
@@ -57,7 +57,7 @@ async def get_user_tier_limit(user_id: str, supabase: Client) -> tuple[str, int,
     )
     user = _first_row(user_res.data) or {}
     tier = user.get("subscription_tier") or "free"
-    return tier, TIER_LIMITS.get(tier, TIER_LIMITS.get("free", 5)), True
+    return tier, TIER_LIMITS.get(tier, TIER_LIMITS["free"]), True
 
 
 async def _billing_period_start(

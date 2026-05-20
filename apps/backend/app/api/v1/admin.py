@@ -528,7 +528,7 @@ async def list_users(
                 subscription_tier=tier,
                 role=u.get("role") or "user",
                 matches_used=await get_credited_match_count(u["id"], supabase),
-                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS.get("free", 5)),
+                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS["free"]),
                 created_at=u.get("created_at"),
             )
         )
@@ -1204,7 +1204,7 @@ async def list_subscriptions(
                 tier=tier,
                 status=s.get("status", "active"),
                 matches_used=await get_credited_match_count(s["user_id"], supabase),
-                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS.get("free", 5)),
+                matches_limit=TIER_LIMITS.get(tier, TIER_LIMITS["free"]),
                 current_period_end=s.get("current_period_end"),
                 created_at=s.get("created_at"),
             )

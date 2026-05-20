@@ -11,13 +11,13 @@ Currency: ZMW (Zambian Kwacha). Phones: +260XXXXXXXXX format.
 Supabase Project ID: chnesgmcuxyhwhzomdov
 
 Matching algorithm: 60% vector similarity + 30% skill overlap + 10% bonus signals
-Pricing: Mwana (Free/K0/5 matches), Mwezi (K79/25 matches), Bwino (K199/unlimited)
+Pricing: Free (K0/10 matches), Starter (K125/50), Professional (K250/125), Super Standard (K500/unlimited)
 
 Rules:
 - No `any` in TypeScript — use `unknown` and narrow
 - Keep files under 300 lines — split into modules
 - Pydantic validation on backend, Zod on frontend
-- All monetary values in ngwee (like cents): K79 = 7900
+- All monetary values in ngwee (like cents): K125 = 12500, K250 = 25000, K500 = 50000
 - Prompt caching enabled for all Claude API calls (cache_control: ephemeral)
 - Never edit existing migration files — create new ones in infra/supabase/migrations/
 - Never store secrets in code — use .env

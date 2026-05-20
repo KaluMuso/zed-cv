@@ -100,6 +100,33 @@ class TestGetSubscription:
         assert body["matches_used"] == 3
         assert body["tier"] == "starter"
 
+    @patch(
+        "app.api.v1.subscription.get_credited_match_count",
+        new_callable=AsyncMock,
+        return_value=0,
+    )
+    def test_get_subscription_free_tier_limit_is_10(
+        self, _mock_credited, client, auth_headers, fake_supabase
+    ):
+        """Free tier quota matches zedapply.com/pricing (10 matches/month)."""
+        fake_supabase.set_table(
+            "subscriptions",
+            _SingleQuery(
+                data=[
+                    {
+                        "id": "sub-free",
+                        "user_id": "test-user-id",
+                        "tier": "free",
+                        "status": "active",
+                        "current_period_end": None,
+                    }
+                ]
+            ),
+        )
+        resp = client.get("/api/v1/subscription", headers=auth_headers)
+        assert resp.status_code == 200
+        assert resp.json()["matches_limit"] == 10
+
 
 class TestPaymentInitiate:
     def test_pay_invalid_tier(self, client, auth_headers, fake_supabase):

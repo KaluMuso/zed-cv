@@ -59,8 +59,14 @@ export interface CoverLetterResponse { content: string; word_count: number; }
 export interface HealthCheck { status: "healthy" | "degraded" | "unhealthy"; version: string; supabase: boolean; waha: boolean; }
 export interface ProblemDetail { type: string; title: string; status: number; detail?: string; }
 
+/** Canonical tiers — mirrors app/schemas/subscription.py (ngwee + match quota). */
 export const PRICING = {
-  free: { price_zmw: 0, matches_limit: 5, label: "Free" },
-  starter: { price_zmw: 12500, matches_limit: 25, label: "Starter" },
+  free: { price_zmw: 0, matches_limit: 10, label: "Free" },
+  starter: { price_zmw: 12500, matches_limit: 50, label: "Starter" },
   professional: { price_zmw: 25000, matches_limit: 125, label: "Professional" },
+  super_standard: {
+    price_zmw: 50000,
+    matches_limit: 99999,
+    label: "Super Standard",
+  },
 } as const;

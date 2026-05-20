@@ -58,9 +58,10 @@ All skills are lowercased and mapped through aliases before comparison:
 ## Pricing Tiers (ZMW)
 | Tier | Price | Matches/Month | Features |
 |------|-------|---------------|----------|
-| Mwana (Free) | K0 | 5 | Basic matching, WhatsApp alerts |
-| Mwezi | K79/mo (~$4) | 25 | CV generation, priority matching |
-| Bwino | K199/mo (~$10) | Unlimited | Cover letters, career coaching |
+| Free | K0 | 10 | WhatsApp alerts, basic CV analysis, job browsing |
+| Starter | K125/mo | 50 | Tailored CVs, priority matching, score breakdowns |
+| Professional | K250/mo | 125 | Cover letters, CV rewriting, priority support |
+| Super Standard | K500/mo | Unlimited | Interview prep notes + everything in Professional |
 
 ## API Conventions
 - All endpoints prefixed with `/api/v1/`

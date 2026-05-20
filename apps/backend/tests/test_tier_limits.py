@@ -1,10 +1,10 @@
-"""Pin the canonical TIER_LIMITS values.
+"""Pin canonical TIER_LIMITS and TIER_PRICES (zedapply.com/pricing).
 
 Two divergent copies (5/25/125/99999) once existed in api/v1/subscription.py
 and api/v1/admin.py and silently reduced quotas. This test fails loudly if
 the canonical values drift again.
 """
-from app.schemas.subscription import TIER_LIMITS
+from app.schemas.subscription import TIER_LIMITS, TIER_PRICES
 
 
 def test_tier_limits_canonical_values():
@@ -13,6 +13,16 @@ def test_tier_limits_canonical_values():
         "starter": 50,
         "professional": 125,
         "super_standard": 99999,
+    }
+
+
+def test_tier_prices_canonical_values():
+    """Prices in ngwee — K125 / K250 / K500 on the public pricing page."""
+    assert TIER_PRICES == {
+        "free": 0,
+        "starter": 12500,
+        "professional": 25000,
+        "super_standard": 50000,
     }
 
 

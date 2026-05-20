@@ -87,7 +87,7 @@ export function LandingPage() {
             <p className="mt-4 flex flex-wrap items-center justify-center sm:justify-start gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
-                No credit card for Mwana
+                No credit card for Free
               </span>
               <span className="hidden sm:inline" aria-hidden>
                 &bull;
@@ -208,7 +208,7 @@ export function LandingPage() {
             {
               icon: Wallet,
               t: "MTN & Airtel Money",
-              d: "Pay in kwacha when you upgrade. Mwana stays free forever — no card needed.",
+              d: "Pay in kwacha when you upgrade. The Free tier stays K0 forever — no card needed.",
             },
             {
               icon: Languages,

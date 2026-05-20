@@ -34,7 +34,7 @@ async def get_subscription(
     sub = result.data
     matches_used = await get_credited_match_count(user_id, supabase)
     tier = sub["tier"]
-    matches_limit = TIER_LIMITS.get(tier, TIER_LIMITS.get("free", 5))
+    matches_limit = TIER_LIMITS.get(tier, TIER_LIMITS["free"])
     return Subscription(
         tier=tier,
         matches_used=matches_used,
