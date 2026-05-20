@@ -16,6 +16,12 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
+from app.services.seniority import (
+    SeniorityLevelLiteral,
+    normalize_experience_years,
+    normalize_qualifications,
+    normalize_seniority_level,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +53,11 @@ Return ONLY valid JSON matching this exact shape:
 {
   "skills": ["skill1", "skill2"],
   "employment_type": "full_time" | "part_time" | "contract" | "freelance" | "internship" | "temporary" | null,
-  "work_arrangement": "on_site" | "remote" | "hybrid" | null
+  "work_arrangement": "on_site" | "remote" | "hybrid" | null,
+  "experience_min_years": <integer or null>,
+  "experience_max_years": <integer or null>,
+  "seniority_level": "intern" | "entry" | "mid" | "senior" | "lead" | "executive" | null,
+  "qualifications_required": ["Bachelor's in Engineering", "ACCA", ...]
 }
 
 Rules for skills:
@@ -61,13 +71,24 @@ Rules for employment_type and work_arrangement:
 - Use null when the description does not clearly state the value. Do NOT guess.
 - employment_type must be one of: full_time, part_time, contract, freelance, internship, temporary.
 - work_arrangement must be one of: on_site, remote, hybrid.
-- Return ONE object only — never a JSON array, even if the posting lists multiple roles."""
+
+Rules for experience and seniority:
+- experience_min_years / experience_max_years: integers 0-50, or null if not stated. Do NOT guess.
+- If a range is given ("3-5 years"), set min=3 and max=5. If only a minimum ("5+ years"), set min=5 and max=null.
+- seniority_level: infer only when the title or requirements clearly imply a band (e.g. "Graduate Trainee" → intern, "Manager" → lead). Use null when unclear.
+- qualifications_required: degrees, diplomas, professional certs (ZICA, EIZ, ACCA, CIMA, etc.). Verbatim phrasing, max 20 items. Empty array if none stated.
+
+Return ONE object only — never a JSON array, even if the posting lists multiple roles."""
 
 
 class JobEnrichment(BaseModel):
     skills: list[str] = Field(default_factory=list, max_length=25)
     employment_type: Optional[EmploymentTypeLiteral] = None
     work_arrangement: Optional[WorkArrangementLiteral] = None
+    experience_min_years: Optional[int] = Field(None, ge=0, le=50)
+    experience_max_years: Optional[int] = Field(None, ge=0, le=50)
+    seniority_level: Optional[SeniorityLevelLiteral] = None
+    qualifications_required: list[str] = Field(default_factory=list, max_length=20)
 
     @field_validator("skills", mode="before")
     @classmethod
@@ -84,6 +105,11 @@ class JobEnrichment(BaseModel):
             if 1 <= len(s) <= 100:
                 out.append(s)
         return out[:25]
+
+    @field_validator("qualifications_required", mode="before")
+    @classmethod
+    def _normalize_qualifications(cls, v: object) -> list[str]:
+        return normalize_qualifications(v)
 
 
 def _make_client(*, max_retries: int) -> OpenAI:
@@ -134,6 +160,23 @@ def parse_llm_enrichment_payload(data: object) -> JobEnrichment:
             wa_norm if wa_norm in _VALID_WORK_ARRANGEMENTS else None
         )
 
+    payload["experience_min_years"] = normalize_experience_years(
+        payload.get("experience_min_years")
+    )
+    payload["experience_max_years"] = normalize_experience_years(
+        payload.get("experience_max_years")
+    )
+    payload["seniority_level"] = normalize_seniority_level(
+        payload.get("seniority_level")
+    )
+    payload["qualifications_required"] = normalize_qualifications(
+        payload.get("qualifications_required")
+    )
+    emin = payload.get("experience_min_years")
+    emax = payload.get("experience_max_years")
+    if emin is not None and emax is not None and emax < emin:
+        payload["experience_max_years"] = None
+
     try:
         return JobEnrichment.model_validate(payload)
     except ValidationError:
@@ -164,7 +207,7 @@ async def enrich_job(
         try:
             response = client.chat.completions.create(
                 model=settings.llm_model,
-                max_tokens=512,
+                max_tokens=768,
                 messages=[
                     {"role": "system", "content": JOB_ENRICH_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
@@ -231,7 +274,7 @@ async def enrich_job_for_backfill(
         try:
             response = client.chat.completions.create(
                 model=settings.llm_model,
-                max_tokens=512,
+                max_tokens=768,
                 messages=[
                     {"role": "system", "content": JOB_ENRICH_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},

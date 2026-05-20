@@ -71,6 +71,25 @@ async def apply_job_enrichment(
         patch["work_arrangement"] = enrichment.work_arrangement
         work_arrangement_set = True
 
+    experience_min_set = False
+    experience_max_set = False
+    seniority_set = False
+    qualifications_set = False
+
+    if job_row.get("experience_min_years") is None and enrichment.experience_min_years is not None:
+        patch["experience_min_years"] = enrichment.experience_min_years
+        experience_min_set = True
+    if job_row.get("experience_max_years") is None and enrichment.experience_max_years is not None:
+        patch["experience_max_years"] = enrichment.experience_max_years
+        experience_max_set = True
+    if job_row.get("seniority_level") is None and enrichment.seniority_level:
+        patch["seniority_level"] = enrichment.seniority_level
+        seniority_set = True
+    existing_quals = job_row.get("qualifications_required") or []
+    if not existing_quals and enrichment.qualifications_required:
+        patch["qualifications_required"] = enrichment.qualifications_required
+        qualifications_set = True
+
     if patch:
         supabase.table("jobs").update(patch).eq("id", job_id).execute()
 
@@ -79,6 +98,10 @@ async def apply_job_enrichment(
         "skills_added": len(new_skill_ids),
         "employment_type_set": employment_type_set,
         "work_arrangement_set": work_arrangement_set,
+        "experience_min_set": experience_min_set,
+        "experience_max_set": experience_max_set,
+        "seniority_set": seniority_set,
+        "qualifications_set": qualifications_set,
         "source": source,
     }
     _emit_analytics_event(

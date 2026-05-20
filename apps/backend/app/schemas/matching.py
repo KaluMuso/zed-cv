@@ -10,6 +10,9 @@ class MatchResult(BaseModel):
     vector_score: float = 0
     skill_score: float = 0
     bonus_score: float = 0
+    experience_score: Optional[float] = Field(
+        None, ge=0.5, le=1.0, description="Experience-gap multiplier at match time"
+    )
     matched_skills: list[str] = []
     missing_skills: list[str] = []
     explanation: Optional[str] = None

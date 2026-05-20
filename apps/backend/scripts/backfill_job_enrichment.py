@@ -106,6 +106,19 @@ def _enum_arrow(current: str | None, proposed: str | None) -> str | None:
     return f"{cur}→{proposed}"
 
 
+def _int_arrow(current: int | None, proposed: int | None) -> str | None:
+    if current is not None or proposed is None:
+        return None
+    cur = "null" if current is None else str(current)
+    return f"{cur}→{proposed}"
+
+
+def _quals_arrow(current: list | None, proposed: list[str]) -> str | None:
+    if current or not proposed:
+        return None
+    return f"null→[{', '.join(proposed[:3])}{'…' if len(proposed) > 3 else ''}]"
+
+
 def format_enrichment_diff_line(
     job: dict,
     enrichment: JobEnrichment,
@@ -126,6 +139,20 @@ def format_enrichment_diff_line(
     wa = _enum_arrow(job.get("work_arrangement"), enrichment.work_arrangement)
     if wa:
         parts.append(f"wa: {wa}")
+    emin = _int_arrow(job.get("experience_min_years"), enrichment.experience_min_years)
+    if emin:
+        parts.append(f"exp_min: {emin}")
+    emax = _int_arrow(job.get("experience_max_years"), enrichment.experience_max_years)
+    if emax:
+        parts.append(f"exp_max: {emax}")
+    sen = _enum_arrow(job.get("seniority_level"), enrichment.seniority_level)
+    if sen:
+        parts.append(f"seniority: {sen}")
+    quals = _quals_arrow(
+        job.get("qualifications_required"), enrichment.qualifications_required
+    )
+    if quals:
+        parts.append(f"quals: {quals}")
     if len(parts) == 2 and not new_skills:
         parts.append("(no changes)")
     return " | ".join(parts)
@@ -189,7 +216,11 @@ async def run_backfill(*, apply: bool, delay_seconds: float) -> int:
 
     result = (
         supabase.table("jobs")
-        .select("id, title, company, description, employment_type, work_arrangement")
+        .select(
+            "id, title, company, description, employment_type, work_arrangement, "
+            "experience_min_years, experience_max_years, seniority_level, "
+            "qualifications_required"
+        )
         .eq("is_active", True)
         .order("created_at", desc=False)
         .execute()

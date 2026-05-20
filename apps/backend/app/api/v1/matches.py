@@ -204,6 +204,7 @@ async def get_matches(
             id=m["id"], job=Job(**job_data), score=adjusted_score,
             vector_score=m["vector_score"], skill_score=m["skill_score"],
             bonus_score=adjusted_bonus,
+            experience_score=m.get("experience_score"),
             matched_skills=m.get("matched_skills", []), missing_skills=m.get("missing_skills", []),
             explanation=explanation or None, created_at=m["created_at"],
         ))

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { contact as contactApi, ApiError } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
+import { toast } from "sonner";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -39,6 +40,7 @@ export default function ContactPage() {
         phone: phone.trim() || undefined,
         message: message.trim(),
       });
+      toast.success("Message sent — we'll get back to you soon.");
       setStatus("success");
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {

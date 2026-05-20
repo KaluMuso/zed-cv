@@ -194,6 +194,7 @@ async def store_matches(
             "vector_score": m["vector_score"],
             "skill_score": m["skill_score"],
             "bonus_score": m["bonus_score"],
+            "experience_score": m.get("experience_score"),
             "matched_skills": m.get("matched_skills", []),
             "missing_skills": m.get("missing_skills", []),
             "status": "new",

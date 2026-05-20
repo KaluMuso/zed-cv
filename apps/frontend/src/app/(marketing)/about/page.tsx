@@ -197,6 +197,22 @@ export default function AboutPage() {
           Contact us
         </Link>
       </div>
+
+      <p
+        className="text-sm text-center"
+        style={{ color: "var(--muted)", lineHeight: 1.6 }}
+      >
+        Zed Apply is a subsidiary of{" "}
+        <a
+          href="https://vergeo.company"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--green-700)", textDecoration: "underline" }}
+        >
+          Vergeo Group
+        </a>
+        .
+      </p>
     </main>
   );
 }
