@@ -43,11 +43,13 @@ class Settings(BaseSettings):
     # overrides via .env on OCI. Lenco v2 deprecates the v1 path; the email
     # received 2026-05-12 only ships v2 sandbox URLs.
     lenco_api_url: str = "https://sandbox.lenco.co/access/v2"
-    # Optional dedicated webhook signing secret. If empty, the webhook
-    # handler falls back to verifying signatures with `lenco_api_key`,
-    # which matches Lenco's documented signing behaviour when no
-    # dedicated secret is provisioned in the dashboard.
+    # Optional dedicated webhook signing secret. Required when
+    # `lenco_verify_signatures` is True (production default).
     lenco_webhook_secret: str = ""
+    # When True (default), Lenco webhooks must carry a valid HMAC-SHA512
+    # signature verified with `lenco_webhook_secret`. Set False in sandbox
+    # where Lenco does not issue signing secrets.
+    lenco_verify_signatures: bool = True
 
     # WhatsApp (WAHA)
     waha_api_url: str = "http://localhost:3001"

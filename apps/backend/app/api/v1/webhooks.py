@@ -253,7 +253,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
                 "DPO webhook: HMAC signature verification failed despite "
                 "secret being configured — rejecting"
             )
-            raise HTTPException(status_code=401, detail="Invalid signature")
+            raise HTTPException(status_code=401, detail="Invalid Lenco signature")
 
     # Layer 2: Callback to DPO's verifyToken API. This is the strongest
     # check — only transactions DPO actually processed return "paid".
@@ -396,16 +396,15 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
 
 @router.post("/lenco")
 async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
-    """Process Lenco v2 webhook with HMAC-SHA512 signature verification.
+    """Process Lenco v2 webhook with optional HMAC-SHA512 signature verification.
 
-    Signature is verified against `lenco_webhook_secret` first, then falls
-    back to `lenco_api_key` (Lenco's documented default when no dedicated
-    secret is provisioned). On valid signature + paid status, mirrors the
-    DPO upgrade flow including idempotency + period-end stacking safety.
+    When `lenco_verify_signatures` is True (production default), requires
+    `lenco_webhook_secret` and rejects missing/invalid signatures (401).
+    When False (sandbox), skips verification and logs a warning — use only
+    while Lenco sandbox does not issue signing secrets.
 
-    Returns 401 on missing/invalid signature so Lenco retries (per their
-    delivery semantics). Returns 200 with a status field on all valid-sig
-    outcomes so Lenco stops retrying once delivery succeeded.
+    On valid delivery + paid status, mirrors the DPO upgrade flow including
+    idempotency + period-end stacking safety.
     """
     from fastapi import HTTPException
     from datetime import datetime, timezone
@@ -416,16 +415,28 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
     raw_body = await request.body()
     signature = request.headers.get("x-lenco-signature", "")
 
-    if not verify_signature(
-        raw_body=raw_body,
-        provided_signature=signature,
-        webhook_secret=settings.lenco_webhook_secret,
-        api_key=settings.lenco_api_key,
-    ):
-        logging.warning("Lenco webhook: signature verification failed")
-        raise HTTPException(status_code=401, detail="Invalid signature")
+    if settings.lenco_verify_signatures:
+        if not settings.lenco_webhook_secret:
+            logging.error(
+                "Lenco webhook: LENCO_WEBHOOK_SECRET missing but "
+                "LENCO_VERIFY_SIGNATURES=True"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "LENCO_WEBHOOK_SECRET missing but LENCO_VERIFY_SIGNATURES=True"
+                ),
+            )
+        if not verify_signature(
+            raw_body=raw_body,
+            provided_signature=signature,
+            webhook_secret=settings.lenco_webhook_secret,
+            api_key="",
+        ):
+            logging.warning("Lenco webhook: signature verification failed")
+            raise HTTPException(status_code=401, detail="Invalid Lenco signature")
 
-    # Signature ok — safe to parse JSON.
+    # Safe to parse JSON.
     import json
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
@@ -471,6 +482,14 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
     payment = payment_result.data[0]
     payment_id = payment["id"]
     user_id = payment["user_id"]
+
+    if not settings.lenco_verify_signatures:
+        logging.warning(
+            "lenco_signature_verification_disabled user_id=%s payment_id=%s — "
+            "set LENCO_VERIFY_SIGNATURES=True before production traffic",
+            user_id,
+            payment_id,
+        )
 
     # Idempotency: a webhook for a completed payment must not re-upgrade.
     # Lenco can replay deliveries, and without this guard a duplicate
