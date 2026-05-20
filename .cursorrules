@@ -14,6 +14,7 @@ Matching algorithm: 60% vector similarity + 30% skill overlap + 10% bonus signal
 Pricing: Free (K0/10 matches), Starter (K125/50), Professional (K250/125), Super Standard (K500/unlimited)
 
 Rules:
+- Do not advise merging PRs with failing CI checks — investigate and fix first. If CI fails but local tests pass, suspect dependency/type mismatch that will break prod.
 - No `any` in TypeScript — use `unknown` and narrow
 - Keep files under 300 lines — split into modules
 - Pydantic validation on backend, Zod on frontend

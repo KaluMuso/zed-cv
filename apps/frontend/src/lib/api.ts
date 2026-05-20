@@ -5,8 +5,29 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-interface FetchOptions extends RequestInit {
+/** JSON object bodies are stringified in apiFetch (analytics, admin bulk ops, etc.). */
+type ApiJsonBody = Record<string, unknown>;
+
+interface FetchOptions extends Omit<RequestInit, "body"> {
   token?: string;
+  body?: BodyInit | null | ApiJsonBody;
+}
+
+function prepareRequestBody(
+  body: FetchOptions["body"]
+): BodyInit | null | undefined {
+  if (body == null || typeof body !== "object") {
+    return body ?? undefined;
+  }
+  if (
+    body instanceof Blob ||
+    body instanceof FormData ||
+    body instanceof URLSearchParams ||
+    ArrayBuffer.isView(body)
+  ) {
+    return body;
+  }
+  return JSON.stringify(body);
 }
 
 export class ApiError extends Error {
@@ -20,8 +41,11 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T> {
-  const { token, ...fetchOptions } = options;
+export async function apiFetch<T>(
+  path: string,
+  options: FetchOptions = {}
+): Promise<T> {
+  const { token, body, ...fetchOptions } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
@@ -30,7 +54,11 @@ async function apiFetch<T>(path: string, options: FetchOptions = {}): Promise<T>
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...fetchOptions,
+    headers,
+    body: prepareRequestBody(body),
+  });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
