@@ -1,19 +1,56 @@
 "use client";
 
+import { useState } from "react";
 import type { AdminStats, AdminTierBreakdown } from "@/lib/api";
+import { admin } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { StatCard, formatNgwee } from "./shared";
 
 export function OverviewTab({
+  token,
   stats,
   breakdown,
 }: {
+  token: string;
   stats: AdminStats | null;
   breakdown: AdminTierBreakdown | null;
 }) {
+  const [exporting, setExporting] = useState(false);
+
+  const onExportCompanies = async () => {
+    setExporting(true);
+    try {
+      await admin.exportCompaniesCsv(token);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
   const statsLoading = !stats;
   const breakdownLoading = !breakdown;
   return (
     <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-9"
+          disabled={exporting}
+          onClick={() => void onExportCompanies()}
+        >
+          {exporting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Exporting…
+            </>
+          ) : (
+            "Export Companies CSV"
+          )}
+        </Button>
+      </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
           label="Users"

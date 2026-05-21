@@ -4,6 +4,20 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
+class AdminScraperStatsDay(BaseModel):
+    date: str
+    accepted_as_job: int = 0
+    rejected_as_promo: int = 0
+    rejected_as_other: int = 0
+
+
+class AdminScraperStats(BaseModel):
+    days: list[AdminScraperStatsDay] = Field(default_factory=list)
+    accepted_as_job: int = 0
+    rejected_as_promo: int = 0
+    rejected_as_other: int = 0
+
+
 class AdminStats(BaseModel):
     users_total: int = 0
     users_active_30d: int = 0

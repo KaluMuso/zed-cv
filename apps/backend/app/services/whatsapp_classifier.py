@@ -6,9 +6,10 @@ import base64
 import hashlib
 import json
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -20,11 +21,17 @@ from app.services.openrouter_helpers import (
     get_completion_content,
 )
 from app.services.seniority import normalize_qualifications, normalize_seniority_level
+from app.services.whatsapp_classifier_prefilter import promo_prefilter_rejects
 
 logger = logging.getLogger(__name__)
 
 _CLASSIFY_CACHE_DAYS = 30
 
+ClassifierDecision = Literal[
+    "accepted_as_job",
+    "rejected_as_promo",
+    "rejected_as_other",
+]
 
 class WhatsappJobClassification(BaseModel):
     is_job: bool = False
@@ -73,7 +80,7 @@ class WhatsappJobClassification(BaseModel):
         return normalize_qualifications(v, max_items=20)
 
 
-_TEXT_SYSTEM = """You classify WhatsApp channel messages from Zambian job boards.
+_TEXT_SYSTEM = """You classify WhatsApp messages from Zambian job channels.
 
 Return JSON only:
 {
@@ -94,9 +101,24 @@ Return JSON only:
   "ocr_text": null
 }
 
-Rules:
-- is_job=false for greetings, ads, memes, "good morning", channel rules, unrelated chatter.
-- is_multi_job=true when the message lists 2+ distinct roles (numbered list, multiple job titles, multiple Apply lines).
+Return is_job=true ONLY if the message describes a SPECIFIC role being filled by a
+SPECIFIC employer, with at least one of: a job title, a company name, or application
+instructions (email, URL, phone, or office address).
+
+Return is_job=false for:
+- CV writing services ('Get your CV done for K50', 'Professional CV writing')
+- Recruitment agency promotions ('We help job seekers find work', 'Inbox us for job tips')
+- Generic motivational content ('Don't give up on your dreams')
+- WhatsApp group promotions ('Join our paid group for daily jobs')
+- Affiliate/referral programs ('Refer 3 friends and earn')
+- Sale of services unrelated to a specific job ('Need a website? Contact...')
+- Mobile-money scams ('Send K50 to register')
+- Bulk message promotions starting with 'Take advantage of', '🎉 Promotion 🎉', or similar
+- Greetings, memes, channel rules, unrelated chatter
+
+If unsure, lean toward is_job=false to keep the platform clean.
+
+- is_multi_job=true when the message lists 2+ distinct roles.
 - Zambian context: MTN, Airtel, ZANACO, ZESCO, Lusaka, Kitwe are normal.
 - apply_url must be http(s). WhatsApp chat links are NOT apply URLs.
 - Do not invent salary or requirements; omit when not stated.
@@ -107,7 +129,33 @@ _VISION_SYSTEM = """You classify images of job posters from Zambian WhatsApp job
 
 First OCR all visible text into ocr_text, then decide if it is a job posting.
 
-Return JSON only with the same schema as text classification, including ocr_text with the full OCR transcript."""
+Return is_job=true ONLY for a SPECIFIC role at a SPECIFIC employer with at least one of:
+job title, company name, or application instructions (email, URL, phone, office address).
+
+Return is_job=false for CV-writing ads, recruitment-agency promos, motivational posts,
+paid-group promos, affiliate schemes, unrelated service sales, mobile-money scams, and
+bulk promotions ('Take advantage of', '🎉 Promotion 🎉'). If unsure, use is_job=false.
+
+Return JSON only with the same schema as text classification, including ocr_text."""
+
+
+def _classifier_decision(result: WhatsappJobClassification) -> ClassifierDecision:
+    if result.is_job:
+        return "accepted_as_job"
+    return "rejected_as_other"
+
+
+def _metadata_payload(
+    *,
+    decision: ClassifierDecision,
+    took_ms: int,
+    llm_response: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "classifier_decision": decision,
+        "llm_response": llm_response,
+        "took_ms": took_ms,
+    }
 
 
 @lru_cache(maxsize=1)
@@ -157,17 +205,21 @@ def _cache_put(
     input_hash: str,
     result: dict,
     model: str,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     expires = datetime.now(timezone.utc) + timedelta(days=_CLASSIFY_CACHE_DAYS)
+    row: dict[str, Any] = {
+        "cache_key": cache_key,
+        "cache_type": validate_cache_type(CacheType.whatsapp_classify.value),
+        "input_hash": input_hash,
+        "result": result,
+        "model": model,
+        "expires_at": expires.isoformat(),
+    }
+    if metadata is not None:
+        row["metadata"] = metadata
     try:
-        supabase.table("ai_cache").insert({
-            "cache_key": cache_key,
-            "cache_type": validate_cache_type(CacheType.whatsapp_classify.value),
-            "input_hash": input_hash,
-            "result": result,
-            "model": model,
-            "expires_at": expires.isoformat(),
-        }).execute()
+        supabase.table("ai_cache").insert(row).execute()
     except Exception:
         pass
 
@@ -177,12 +229,34 @@ def _parse_response(raw: str) -> WhatsappJobClassification:
     return WhatsappJobClassification.model_validate(data)
 
 
+async def _store_classification(
+    supabase: Any | None,
+    *,
+    cache_key: str,
+    input_hash: str,
+    result: WhatsappJobClassification,
+    model: str,
+    metadata: dict[str, Any],
+) -> WhatsappJobClassification:
+    if supabase is not None:
+        _cache_put(
+            supabase,
+            cache_key=cache_key,
+            input_hash=input_hash,
+            result=result.model_dump(mode="json"),
+            model=model,
+            metadata=metadata,
+        )
+    return result
+
+
 async def classify_whatsapp_text(
     message_body: str,
     *,
     supabase: Any | None = None,
 ) -> WhatsappJobClassification:
     """Classify a text channel message."""
+    started = time.perf_counter()
     text = (message_body or "").strip()
     if len(text) < 10:
         return WhatsappJobClassification(is_job=False)
@@ -203,9 +277,25 @@ async def classify_whatsapp_text(
             except ValidationError:
                 pass
 
+    if promo_prefilter_rejects(text):
+        took_ms = int((time.perf_counter() - started) * 1000)
+        result = WhatsappJobClassification(is_job=False)
+        return await _store_classification(
+            supabase,
+            cache_key=cache_key,
+            input_hash=body_hash,
+            result=result,
+            model=model,
+            metadata=_metadata_payload(
+                decision="rejected_as_promo",
+                took_ms=took_ms,
+                llm_response=None,
+            ),
+        )
+
     client = _client()
 
-    def _call() -> WhatsappJobClassification:
+    def _call() -> tuple[WhatsappJobClassification, str]:
         response = create_chat_completion_with_retries(
             client,
             log_prefix="whatsapp_classifier_text",
@@ -220,26 +310,31 @@ async def classify_whatsapp_text(
         raw = get_completion_content(response, default="{}")
         if raw is None:
             logger.warning("whatsapp_classifier_skip: text bad response: empty choices")
-            return WhatsappJobClassification(is_job=False)
-        return _parse_response(raw)
+            return WhatsappJobClassification(is_job=False), "{}"
+        return _parse_response(raw), raw
 
     try:
-        result = await asyncio.to_thread(_call)
+        result, raw = await asyncio.to_thread(_call)
     except (AuthenticationError, RateLimitError) as exc:
         raise ValueError(f"Classifier unavailable: {exc}") from exc
     except (APIError, json.JSONDecodeError, ValidationError) as exc:
         logger.warning("whatsapp text classify failed: %s", exc)
-        return WhatsappJobClassification(is_job=False)
+        result = WhatsappJobClassification(is_job=False)
+        raw = None
 
-    if supabase is not None:
-        _cache_put(
-            supabase,
-            cache_key=cache_key,
-            input_hash=body_hash,
-            result=result.model_dump(mode="json"),
-            model=model,
-        )
-    return result
+    took_ms = int((time.perf_counter() - started) * 1000)
+    return await _store_classification(
+        supabase,
+        cache_key=cache_key,
+        input_hash=body_hash,
+        result=result,
+        model=model,
+        metadata=_metadata_payload(
+            decision=_classifier_decision(result),
+            took_ms=took_ms,
+            llm_response=raw,
+        ),
+    )
 
 
 async def classify_whatsapp_image(
@@ -250,6 +345,7 @@ async def classify_whatsapp_image(
     supabase: Any | None = None,
 ) -> WhatsappJobClassification:
     """OCR + classify a job poster image via Gemini Vision."""
+    started = time.perf_counter()
     if not image_bytes:
         return WhatsappJobClassification(is_job=False)
 
@@ -257,8 +353,29 @@ async def classify_whatsapp_image(
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not configured.")
 
+    cap = (caption or "").strip()
+    if cap and promo_prefilter_rejects(cap):
+        took_ms = int((time.perf_counter() - started) * 1000)
+        img_hash = hashlib.sha256(image_bytes).hexdigest()
+        cap_hash = hashlib.sha256(cap.encode()).hexdigest()[:16]
+        model = settings.openrouter_vision_model
+        cache_key = f"wa_classify_img:{model}:{img_hash}:{cap_hash}"
+        result = WhatsappJobClassification(is_job=False)
+        return await _store_classification(
+            supabase,
+            cache_key=cache_key,
+            input_hash=img_hash,
+            result=result,
+            model=model,
+            metadata=_metadata_payload(
+                decision="rejected_as_promo",
+                took_ms=took_ms,
+                llm_response=None,
+            ),
+        )
+
     img_hash = hashlib.sha256(image_bytes).hexdigest()
-    cap_hash = hashlib.sha256((caption or "").encode()).hexdigest()[:16]
+    cap_hash = hashlib.sha256(cap.encode()).hexdigest()[:16]
     model = settings.openrouter_vision_model
     cache_key = f"wa_classify_img:{model}:{img_hash}:{cap_hash}"
 
@@ -278,12 +395,12 @@ async def classify_whatsapp_image(
             "image_url": {"url": data_url},
         },
     ]
-    if caption.strip():
-        user_parts.append({"type": "text", "text": f"Caption: {caption.strip()[:500]}"})
+    if cap:
+        user_parts.append({"type": "text", "text": f"Caption: {cap[:500]}"})
 
     client = _client()
 
-    def _call() -> WhatsappJobClassification:
+    def _call() -> tuple[WhatsappJobClassification, str]:
         response = create_chat_completion_with_retries(
             client,
             log_prefix="whatsapp_classifier_image",
@@ -298,23 +415,28 @@ async def classify_whatsapp_image(
         raw = get_completion_content(response, default="{}")
         if raw is None:
             logger.warning("whatsapp_classifier_skip: image bad response: empty choices")
-            return WhatsappJobClassification(is_job=False)
-        return _parse_response(raw)
+            return WhatsappJobClassification(is_job=False), "{}"
+        return _parse_response(raw), raw
 
     try:
-        result = await asyncio.to_thread(_call)
+        result, raw = await asyncio.to_thread(_call)
     except (AuthenticationError, RateLimitError) as exc:
         raise ValueError(f"Vision classifier unavailable: {exc}") from exc
     except (APIError, json.JSONDecodeError, ValidationError) as exc:
         logger.warning("whatsapp image classify failed: %s", exc)
-        return WhatsappJobClassification(is_job=False)
+        result = WhatsappJobClassification(is_job=False)
+        raw = None
 
-    if supabase is not None:
-        _cache_put(
-            supabase,
-            cache_key=cache_key,
-            input_hash=img_hash,
-            result=result.model_dump(mode="json"),
-            model=model,
-        )
-    return result
+    took_ms = int((time.perf_counter() - started) * 1000)
+    return await _store_classification(
+        supabase,
+        cache_key=cache_key,
+        input_hash=img_hash,
+        result=result,
+        model=model,
+        metadata=_metadata_payload(
+            decision=_classifier_decision(result),
+            took_ms=took_ms,
+            llm_response=raw,
+        ),
+    )

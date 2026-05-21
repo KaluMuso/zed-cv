@@ -340,12 +340,13 @@ class TestWave25IngestSkills:
 
 
 def test_no_link_job_skills_symbol_in_backend():
-    import subprocess
+    """Wave 2.5 removed _link_job_skills; ensure it does not reappear in app code."""
+    from pathlib import Path
 
-    proc = subprocess.run(
-        ["rg", "_link_job_skills", "apps/backend/app"],
-        cwd="/workspace",
-        capture_output=True,
-        text=True,
-    )
-    assert proc.returncode == 1, proc.stdout
+    backend_app = Path(__file__).resolve().parents[1] / "app"
+    hits = [
+        str(py.relative_to(backend_app))
+        for py in backend_app.rglob("*.py")
+        if "_link_job_skills" in py.read_text(encoding="utf-8")
+    ]
+    assert not hits, f"_link_job_skills found in: {hits}"

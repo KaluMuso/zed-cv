@@ -1,4 +1,4 @@
-"""Extract apply_email / apply_url from job description plain text."""
+"""Extract apply_email / apply_url / contact_phone from job description plain text."""
 from __future__ import annotations
 
 import re
@@ -12,6 +12,16 @@ _EMAIL_RE = re.compile(
     re.IGNORECASE,
 )
 _URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+# +260 97 123 4567 | +260971234567 | 097-123-4567 | 0971234567
+_PHONE_RE = re.compile(
+    r"(?:"
+    r"\+260[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{4}"
+    r"|\+260\d{9}"
+    r"|0[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{4}"
+    r"|0\d{9}"
+    r")",
+    re.IGNORECASE,
+)
 
 _RECRUITMENT_HINTS = ("recruit", "career", "jobs", "apply", "hr", "talent", "hiring")
 _GENERIC_LOCAL = frozenset(
@@ -68,6 +78,28 @@ def _pick_url(urls: list[str]) -> Optional[str]:
     return None
 
 
+def normalize_zambian_phone(raw: str) -> Optional[str]:
+    """Normalize a matched phone string to E.164 +260XXXXXXXXX."""
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("260") and len(digits) == 12:
+        return f"+{digits}"
+    if digits.startswith("0") and len(digits) == 10:
+        return f"+260{digits[1:]}"
+    return None
+
+
+def extract_phone_from_description(description: str | None) -> Optional[str]:
+    """Return the first valid Zambian mobile number in description text."""
+    text = (description or "").strip()
+    if not text:
+        return None
+    for match in _PHONE_RE.finditer(text):
+        normalized = normalize_zambian_phone(match.group(0))
+        if normalized:
+            return normalized
+    return None
+
+
 def extract_apply_from_description(description: str | None) -> EnrichmentResult:
     """Scan description body for emails and URLs when apply fields are empty."""
     text = (description or "").strip()
@@ -79,17 +111,29 @@ def extract_apply_from_description(description: str | None) -> EnrichmentResult:
 
     apply_email = _pick_email(emails)
     apply_url = _pick_url(urls)
+    contact_phone = extract_phone_from_description(text)
 
     if apply_email and apply_url:
         return EnrichmentResult(
             apply_email=apply_email,
             apply_url=apply_url,
             apply_source="description_email",
+            contact_phone=contact_phone,
         )
     if apply_email:
-        return EnrichmentResult(apply_email=apply_email, apply_source="description_email")
+        return EnrichmentResult(
+            apply_email=apply_email,
+            apply_source="description_email",
+            contact_phone=contact_phone,
+        )
     if apply_url:
-        return EnrichmentResult(apply_url=apply_url, apply_source="description_url")
+        return EnrichmentResult(
+            apply_url=apply_url,
+            apply_source="description_url",
+            contact_phone=contact_phone,
+        )
+    if contact_phone:
+        return EnrichmentResult(contact_phone=contact_phone)
     return EnrichmentResult()
 
 
@@ -98,13 +142,18 @@ def merge_description_extraction(
     description: str | None,
 ) -> dict:
     """Apply description extraction into a job row dict in-place."""
-    if row.get("apply_url") and row.get("apply_email"):
+    needs_apply = not (row.get("apply_url") and row.get("apply_email"))
+    needs_phone = not row.get("contact_phone")
+    if not needs_apply and not needs_phone:
         return row
     result = extract_apply_from_description(description)
-    if result.apply_email and not row.get("apply_email"):
-        row["apply_email"] = result.apply_email
-        row["apply_source"] = result.apply_source or "description_email"
-    elif result.apply_url and not row.get("apply_url"):
-        row["apply_url"] = result.apply_url
-        row["apply_source"] = result.apply_source or "description_url"
+    if needs_apply:
+        if result.apply_email and not row.get("apply_email"):
+            row["apply_email"] = result.apply_email
+            row["apply_source"] = result.apply_source or "description_email"
+        elif result.apply_url and not row.get("apply_url"):
+            row["apply_url"] = result.apply_url
+            row["apply_source"] = result.apply_source or "description_url"
+    if needs_phone and result.contact_phone:
+        row["contact_phone"] = result.contact_phone
     return row

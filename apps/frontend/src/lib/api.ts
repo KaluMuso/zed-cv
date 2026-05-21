@@ -563,6 +563,29 @@ export interface AdminJobCreate {
 
 export const admin = {
   stats: (token: string) => apiFetch<AdminStats>("/admin/stats", { token }),
+  /** GET /admin/export/companies.csv — authenticated CSV download */
+  exportCompaniesCsv: async (token: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/admin/export/companies.csv`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new ApiError(res.status, body.detail || "Could not export companies");
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("content-disposition") || "";
+    const match = cd.match(/filename="?([^"]+)"?/i);
+    const filename = match?.[1] || "companies.csv";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   users: (
     token: string,
     params?: { page?: number; per_page?: number; search?: string; tier?: string }

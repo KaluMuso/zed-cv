@@ -299,6 +299,24 @@ components:
           type: string
           enum: [beginner, intermediate, advanced, expert]
 
+    AdminScraperStatsDay:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        accepted_as_job: { type: integer }
+        rejected_as_promo: { type: integer }
+        rejected_as_other: { type: integer }
+
+    AdminScraperStats:
+      type: object
+      properties:
+        days:
+          type: array
+          items: { $ref: '#/components/schemas/AdminScraperStatsDay' }
+        accepted_as_job: { type: integer }
+        rejected_as_promo: { type: integer }
+        rejected_as_other: { type: integer }
+
     AdminStats:
       type: object
       properties:
@@ -835,6 +853,17 @@ components:
         users_processed: { type: integer }
         notifications_sent: { type: integer }
 
+    ReviewQueueAlertResponse:
+      type: object
+      properties:
+        review_count: { type: integer }
+        current_threshold: { type: integer, nullable: true }
+        last_threshold: { type: integer, nullable: true }
+        alerts_enabled: { type: boolean }
+        alerted: { type: boolean }
+        reason: { type: string }
+        threshold_alerted: { type: integer, nullable: true }
+
     ContactSubmission:
       type: object
       required: [name, email, message]
@@ -1203,6 +1232,46 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminStats' }
         '403': { description: Superadmin only }
+
+  /admin/scraper-stats:
+    get:
+      operationId: adminScraperStats
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Daily WhatsApp classifier outcomes from ai_cache.metadata
+        (classifier_decision: accepted_as_job | rejected_as_promo | rejected_as_other).
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 7, minimum: 1, maximum: 90 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminScraperStats' }
+        '403': { description: Admin only }
+
+  /admin/export/companies.csv:
+    get:
+      operationId: adminExportCompaniesCsv
+      tags: [Admin]
+      summary: Export companies CSV (job counts and contact info)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: CSV attachment
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: 'attachment; filename="companies.csv"'
+        '403': { description: Admin only }
 
   /admin/users:
     get:
@@ -1756,6 +1825,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NotificationDigestResponse' }
+        '401': { description: Invalid ingest API key }
+
+  /admin/check-review-queue:
+    post:
+      operationId: checkReviewQueueAlert
+      summary: Cron — WhatsApp alert when review backlog crosses 10/25/50/100
+      tags: [Admin Cron]
+      parameters:
+        - { name: INGEST_API_KEY, in: header, required: true, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueueAlertResponse' }
         '401': { description: Invalid ingest API key }
 
   /interview-prep/generate:
