@@ -18,6 +18,7 @@ from docx import Document
 
 from app.core.config import get_settings
 from app.schemas.cv_sections import CVSections
+from app.services.openrouter_helpers import get_completion_content
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +216,12 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
                 response_format={"type": "json_object"},
             )
 
-            text = response.choices[0].message.content
+            text = get_completion_content(response, default="")
+            if text is None:
+                logger.warning("cv_parser_skip: bad response: empty choices")
+                raise ValueError(
+                    "Could not parse your CV. Please try uploading a clearer document."
+                )
             if "```json" in text:
                 text = text.split("```json")[1].split("```")[0]
             elif "```" in text:
@@ -280,7 +286,11 @@ async def _ocr_with_vision(image_bytes: bytes, file_type: str) -> str:
                     },
                 ],
             )
-            return response.choices[0].message.content
+            content = get_completion_content(response, default="")
+            if content is None:
+                logger.warning("cv_parser_ocr_skip: bad response: empty choices")
+                raise ValueError("Image processing failed. Please try uploading a PDF or Word document instead.")
+            return content
 
         except AuthenticationError:
             logger.error("OpenRouter API key is invalid for OCR")
