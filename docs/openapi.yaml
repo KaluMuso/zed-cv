@@ -617,6 +617,10 @@ components:
         company: { type: string }
         location: { type: string }
         description: { type: string }
+        description_markdown:
+          type: string
+          nullable: true
+          description: Markdown-normalized description for UI (Track 4e).
         requirements: { type: array, items: { type: string } }
         skills_required: { type: array, items: { type: string } }
         skills: { type: array, items: { type: string }, description: "Alias for frontend compatibility" }
@@ -626,9 +630,9 @@ components:
         apply_email: { type: string, format: email, nullable: true }
         apply_source:
           type: string
-          enum: [direct, source_fallback, enriched]
+          enum: [direct, source_fallback, enriched, description_email, description_url]
           nullable: true
-          description: How apply contact was resolved (Track 4d).
+          description: How apply contact was resolved (Track 4d/4e).
         enrichment_attempted_at:
           type: string
           format: date-time

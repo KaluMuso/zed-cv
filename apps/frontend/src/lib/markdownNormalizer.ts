@@ -18,7 +18,7 @@ export function plainTextToMarkdown(description: string): string {
       continue;
     }
     if (BULLET.test(line)) {
-      out.push(`- ${BULLET.replace(line, "").trim()}`);
+      out.push(`- ${line.replace(BULLET, "").trim()}`);
       continue;
     }
     if (CAPS_HEADING.test(line.trim()) || (line.trim().endsWith(":") && line === line.toUpperCase() && line.length < 80)) {
