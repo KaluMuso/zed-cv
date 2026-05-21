@@ -5,7 +5,7 @@ mirrors this check, but the API enforces it as the source of truth.
 """
 import logging
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 from app.core.deps import get_supabase, require_admin
 from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
+    AdminScraperStats,
+    AdminScraperStatsDay,
     AdminStats,
     AdminUserRow,
     AdminUserList,
@@ -107,6 +109,73 @@ async def get_stats(supabase=Depends(get_supabase)):
     except Exception:
         logger.warning("admin pending review count failed", exc_info=True)
     return AdminStats(**data)
+
+
+@router.get("/scraper-stats", response_model=AdminScraperStats)
+async def get_scraper_stats(
+    supabase=Depends(get_supabase),
+    days: int = Query(7, ge=1, le=90, description="Number of calendar days to include"),
+):
+    """Daily WhatsApp classifier decisions from ai_cache metadata (Track 4c)."""
+    since = datetime.now(timezone.utc) - timedelta(days=days - 1)
+    since_iso = since.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    try:
+        rows_res = (
+            supabase.table("ai_cache")
+            .select("metadata, created_at")
+            .eq("cache_type", "whatsapp_classify")
+            .gte("created_at", since_iso)
+            .execute()
+        )
+        rows = rows_res.data or []
+    except Exception as exc:
+        logger.warning("scraper-stats query failed: %s", exc)
+        rows = []
+
+    by_day: dict[str, dict[str, int]] = {}
+    totals = {
+        "accepted_as_job": 0,
+        "rejected_as_promo": 0,
+        "rejected_as_other": 0,
+    }
+
+    for row in rows:
+        meta = row.get("metadata") or {}
+        if not isinstance(meta, dict):
+            continue
+        decision = meta.get("classifier_decision")
+        if decision not in totals:
+            continue
+        created = row.get("created_at")
+        day_key = str(created)[:10] if created else since.strftime("%Y-%m-%d")
+        bucket = by_day.setdefault(
+            day_key,
+            {
+                "accepted_as_job": 0,
+                "rejected_as_promo": 0,
+                "rejected_as_other": 0,
+            },
+        )
+        bucket[decision] += 1
+        totals[decision] += 1
+
+    day_rows = [
+        AdminScraperStatsDay(
+            date=day,
+            accepted_as_job=counts["accepted_as_job"],
+            rejected_as_promo=counts["rejected_as_promo"],
+            rejected_as_other=counts["rejected_as_other"],
+        )
+        for day, counts in sorted(by_day.items())
+    ]
+
+    return AdminScraperStats(
+        days=day_rows,
+        accepted_as_job=totals["accepted_as_job"],
+        rejected_as_promo=totals["rejected_as_promo"],
+        rejected_as_other=totals["rejected_as_other"],
+    )
 
 
 @router.post("/cv-queue/drain")

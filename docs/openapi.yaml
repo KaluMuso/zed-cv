@@ -299,6 +299,24 @@ components:
           type: string
           enum: [beginner, intermediate, advanced, expert]
 
+    AdminScraperStatsDay:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        accepted_as_job: { type: integer }
+        rejected_as_promo: { type: integer }
+        rejected_as_other: { type: integer }
+
+    AdminScraperStats:
+      type: object
+      properties:
+        days:
+          type: array
+          items: { $ref: '#/components/schemas/AdminScraperStatsDay' }
+        accepted_as_job: { type: integer }
+        rejected_as_promo: { type: integer }
+        rejected_as_other: { type: integer }
+
     AdminStats:
       type: object
       properties:
@@ -1203,6 +1221,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminStats' }
         '403': { description: Superadmin only }
+
+  /admin/scraper-stats:
+    get:
+      operationId: adminScraperStats
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Daily WhatsApp classifier outcomes from ai_cache.metadata
+        (classifier_decision: accepted_as_job | rejected_as_promo | rejected_as_other).
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 7, minimum: 1, maximum: 90 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminScraperStats' }
+        '403': { description: Admin only }
 
   /admin/users:
     get:
