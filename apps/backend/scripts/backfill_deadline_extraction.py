@@ -41,6 +41,7 @@ async def run(*, limit: int | None, dry_run: bool) -> None:
             row.get("description") or "",
             row.get("title") or "",
             row.get("company") or "",
+            job_id=str(row.get("id") or ""),
         )
         if not closing:
             continue

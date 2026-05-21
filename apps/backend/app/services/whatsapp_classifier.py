@@ -15,6 +15,10 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
 from app.schemas.db_enums import CacheType, validate_cache_type
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 from app.services.seniority import normalize_qualifications, normalize_seniority_level
 
 logger = logging.getLogger(__name__)
@@ -112,6 +116,7 @@ def _client() -> OpenAI:
     return OpenAI(
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
+        max_retries=0,
     )
 
 
@@ -201,7 +206,9 @@ async def classify_whatsapp_text(
     client = _client()
 
     def _call() -> WhatsappJobClassification:
-        response = client.chat.completions.create(
+        response = create_chat_completion_with_retries(
+            client,
+            log_prefix="whatsapp_classifier_text",
             model=model,
             max_tokens=2048,
             messages=[
@@ -210,7 +217,10 @@ async def classify_whatsapp_text(
             ],
             response_format={"type": "json_object"},
         )
-        raw = response.choices[0].message.content or "{}"
+        raw = get_completion_content(response, default="{}")
+        if raw is None:
+            logger.warning("whatsapp_classifier_skip: text bad response: empty choices")
+            return WhatsappJobClassification(is_job=False)
         return _parse_response(raw)
 
     try:
@@ -274,7 +284,9 @@ async def classify_whatsapp_image(
     client = _client()
 
     def _call() -> WhatsappJobClassification:
-        response = client.chat.completions.create(
+        response = create_chat_completion_with_retries(
+            client,
+            log_prefix="whatsapp_classifier_image",
             model=model,
             max_tokens=4096,
             messages=[
@@ -283,7 +295,10 @@ async def classify_whatsapp_image(
             ],
             response_format={"type": "json_object"},
         )
-        raw = response.choices[0].message.content or "{}"
+        raw = get_completion_content(response, default="{}")
+        if raw is None:
+            logger.warning("whatsapp_classifier_skip: image bad response: empty choices")
+            return WhatsappJobClassification(is_job=False)
         return _parse_response(raw)
 
     try:

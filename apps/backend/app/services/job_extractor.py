@@ -31,6 +31,7 @@ from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 from app.schemas.db_enums import CacheType
 
 logger = logging.getLogger(__name__)
@@ -298,7 +299,10 @@ async def extract_job_from_message(
                 ],
                 response_format={"type": "json_object"},
             )
-            raw = response.choices[0].message.content or ""
+            raw = get_completion_content(response, default="")
+            if raw is None:
+                logger.warning("job_extractor_skip: bad response: empty choices")
+                return None
             data = json.loads(_strip_fences(raw).strip())
             try:
                 extracted = ExtractedJob(**data)

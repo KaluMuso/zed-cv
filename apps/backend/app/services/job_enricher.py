@@ -16,6 +16,7 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 from app.services.seniority import (
     SeniorityLevelLiteral,
     normalize_experience_years,
@@ -214,7 +215,11 @@ async def enrich_job(
                 ],
                 response_format={"type": "json_object"},
             )
-            raw = (response.choices[0].message.content or "").strip()
+            raw = get_completion_content(response, default="")
+            if raw is None:
+                logger.warning("job_enricher_skip: bad response: empty choices")
+                return JobEnrichment()
+            raw = raw.strip()
             if not raw:
                 return JobEnrichment()
             data = json.loads(_strip_fences(raw).strip())
@@ -281,7 +286,11 @@ async def enrich_job_for_backfill(
                 ],
                 response_format={"type": "json_object"},
             )
-            raw = (response.choices[0].message.content or "").strip()
+            raw = get_completion_content(response, default="")
+            if raw is None:
+                logger.warning("job_enricher_skip: bad response: empty choices")
+                return EnrichJobOutcome()
+            raw = raw.strip()
             if not raw:
                 return EnrichJobOutcome()
             data = json.loads(_strip_fences(raw).strip())

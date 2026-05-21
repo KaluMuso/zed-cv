@@ -12,6 +12,7 @@ from functools import lru_cache
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,11 @@ async def generate_interview_prep(
                     {"role": "user", "content": user_prompt},
                 ],
             )
-            content = (response.choices[0].message.content or "").strip()
+            content = get_completion_content(response, default="")
+            if content is None:
+                logger.warning("interview_prep_skip: bad response: empty choices")
+                raise ValueError("Interview prep service is temporarily unavailable. Please try again later.")
+            content = content.strip()
             if not content:
                 raise ValueError("Empty response from interview prep service")
             return {"content": content, "word_count": len(content.split())}

@@ -11,6 +11,7 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 from app.services.seniority import (
     SeniorityLevelLiteral,
     normalize_experience_years,
@@ -126,7 +127,11 @@ async def enrich_user_profile(*, cv_text: str) -> UserProfileEnrichment:
                 ],
                 response_format={"type": "json_object"},
             )
-            raw = (response.choices[0].message.content or "").strip()
+            raw = get_completion_content(response, default="")
+            if raw is None:
+                logger.warning("user_profile_enricher_skip: bad response: empty choices")
+                return UserProfileEnrichment()
+            raw = raw.strip()
             if not raw:
                 return UserProfileEnrichment()
             data = json.loads(_strip_fences(raw).strip())

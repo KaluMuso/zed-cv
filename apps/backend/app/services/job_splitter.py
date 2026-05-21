@@ -14,6 +14,7 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 from app.schemas.db_enums import CacheType, validate_cache_type
 from app.schemas.jobs import JobCreate
 from app.services.seniority import normalize_qualifications, normalize_seniority_level
@@ -243,7 +244,10 @@ async def split_message_with_llm(
             ],
             response_format={"type": "json_object"},
         )
-        raw = response.choices[0].message.content or "{}"
+        raw = get_completion_content(response, default="{}")
+        if raw is None:
+            logger.warning("job_splitter_skip: bad response: empty choices")
+            raise ValueError("Job splitter received an empty model response")
         return SplitJobsResult.model_validate(json.loads(_strip_fences(raw)))
 
     try:

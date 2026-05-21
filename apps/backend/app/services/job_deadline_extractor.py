@@ -1,6 +1,7 @@
 """Extract closing_date from job descriptions via OpenRouter (Gemini Flash)."""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -12,6 +13,10 @@ from openai import APIError, OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +45,7 @@ def _client() -> OpenAI:
     return OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=settings.openrouter_api_key,
+        max_retries=0,
     )
 
 
@@ -76,6 +82,7 @@ async def extract_closing_date_llm(
     description: str,
     title: str = "",
     company: str = "",
+    job_id: str | None = None,
 ) -> Optional[date]:
     """LLM extraction; returns None on refusal, parse error, or missing API key."""
     settings = get_settings()
@@ -84,9 +91,13 @@ async def extract_closing_date_llm(
 
     snippet = (description or "")[:8000]
     user = f"Title: {title}\nCompany: {company}\n\nDescription:\n{snippet}"
+    label = job_id or "unknown"
 
     try:
-        resp = _client().chat.completions.create(
+        resp = await asyncio.to_thread(
+            create_chat_completion_with_retries,
+            _client(),
+            log_prefix="deadline_extractor",
             model=settings.llm_model,
             messages=[
                 {"role": "system", "content": DEADLINE_SYSTEM},
@@ -96,7 +107,14 @@ async def extract_closing_date_llm(
             temperature=0,
             max_tokens=128,
         )
-        raw = resp.choices[0].message.content or "{}"
+        raw = get_completion_content(resp, default="{}")
+        if raw is None:
+            logger.warning(
+                "deadline_extractor_skip: %s bad response: empty choices",
+                label,
+            )
+            return None
+
         data = json.loads(raw)
         parsed = DeadlineExtraction.model_validate(data)
         return parse_closing_date(parsed.closing_date)

@@ -10,6 +10,7 @@ from functools import lru_cache
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 from app.core.config import get_settings
+from app.services.openrouter_helpers import get_completion_content
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,11 @@ async def generate_cover_letter(
                 ],
             )
 
-            letter_text = response.choices[0].message.content.strip()
+            letter_text = get_completion_content(response, default="")
+            if letter_text is None:
+                logger.warning("cover_letter_skip: bad response: empty choices")
+                raise ValueError("Cover letter service is temporarily unavailable. Please try again later.")
+            letter_text = letter_text.strip()
             word_count = len(letter_text.split())
 
             return {
