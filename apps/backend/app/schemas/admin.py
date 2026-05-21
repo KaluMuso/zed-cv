@@ -1,5 +1,5 @@
 """Schemas for admin endpoints."""
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel, Field
 
@@ -89,6 +89,7 @@ class AdminJobReviewQueue(BaseModel):
 class AdminJobReviewUpdate(BaseModel):
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
+    closing_date: Optional[date] = None
     application_instructions: Optional[str] = Field(None, max_length=2000)
 
 

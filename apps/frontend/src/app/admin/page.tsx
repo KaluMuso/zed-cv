@@ -12,6 +12,7 @@ import { UsersTab } from "./_tabs/UsersTab";
 import { MatchesTab } from "./_tabs/MatchesTab";
 import { PricingTab } from "./_tabs/PricingTab";
 import { LegalTab } from "./_tabs/LegalTab";
+import { ReviewJobsTab } from "./_tabs/ReviewJobsTab";
 
 export default function AdminPage() {
   const { token } = useAuth();
@@ -43,6 +44,7 @@ export default function AdminPage() {
         <TabsList>
           <TabsTrigger value="overview" className="min-h-9">Overview</TabsTrigger>
           <TabsTrigger value="jobs" className="min-h-9">Jobs</TabsTrigger>
+          <TabsTrigger value="review" className="min-h-9">Review queue</TabsTrigger>
           <TabsTrigger value="users" className="min-h-9">Users</TabsTrigger>
           <TabsTrigger value="matches" className="min-h-9">Matches</TabsTrigger>
           <TabsTrigger value="pricing" className="min-h-9">Pricing</TabsTrigger>
@@ -54,6 +56,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent className="mt-4" value="jobs">
           <JobsTab token={token} />
+        </TabsContent>
+        <TabsContent className="mt-4" value="review">
+          <ReviewJobsTab token={token} />
         </TabsContent>
         <TabsContent className="mt-4" value="users">
           <UsersTab token={token} />

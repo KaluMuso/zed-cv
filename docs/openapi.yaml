@@ -384,7 +384,18 @@ components:
       properties:
         apply_url: { type: string, nullable: true }
         apply_email: { type: string, nullable: true }
+        closing_date: { type: string, format: date, nullable: true }
         application_instructions: { type: string, nullable: true, maxLength: 2000 }
+
+    ReviewJobsBulkRequest:
+      type: object
+      required: [job_ids]
+      properties:
+        job_ids:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+          maxItems: 100
 
     BulkDeactivateRequest:
       type: object
@@ -1246,6 +1257,62 @@ paths:
         '403': { description: Not an admin }
         '409': { description: Duplicate fingerprint (job already exists) }
         '503': { description: Embedding service unavailable }
+
+  /admin/review-jobs:
+    get:
+      operationId: adminTrack4eReviewQueue
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: Jobs with is_review_required=true (Track 4e), newest first.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: per_page, in: query, schema: { type: integer, default: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminJobReviewQueue' }
+        '403': { description: Not an admin }
+
+  /admin/review-jobs/{job_id}:
+    patch:
+      operationId: adminTrack4eUpdateReviewJob
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: job_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminJobReviewUpdate' }
+      responses:
+        '200': { description: Job updated; may promote to active }
+        '403': { description: Not an admin }
+        '404': { description: Job not found }
+
+  /admin/review-jobs/bulk-mark-duplicate:
+    post:
+      operationId: adminTrack4eBulkMarkDuplicate
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewJobsBulkRequest' }
+      responses:
+        '200': { description: Jobs marked duplicate }
+
+  /admin/review-jobs/bulk-permanently-inactive:
+    post:
+      operationId: adminTrack4eBulkPermanentlyInactive
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewJobsBulkRequest' }
+      responses:
+        '200': { description: Jobs permanently hidden }
 
   /admin/jobs/review-queue:
     get:

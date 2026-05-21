@@ -224,7 +224,7 @@ describe("Apply button fallback", () => {
     renderWithProviders(<MatchesPage />);
     const link = await screen.findByRole(
       "link",
-      { name: /contact zedapply support/i },
+      { name: /contact support/i },
       { timeout: 5000 }
     );
     expect(link.getAttribute("href")).toMatch(/^mailto:support@zedapply\.com/);

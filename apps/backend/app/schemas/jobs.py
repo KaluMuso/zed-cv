@@ -359,6 +359,7 @@ class Job(BaseModel):
     company: Optional[str] = None
     location: Optional[str] = None
     description: str
+    description_markdown: Optional[str] = None
     requirements: list[str] = []
     skills_required: list[str] = []
     skills: list[str] = []  # Alias for frontend compatibility

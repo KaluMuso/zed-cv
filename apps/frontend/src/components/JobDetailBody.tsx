@@ -6,7 +6,9 @@ import { SaveJobButton } from "@/components/SaveJobButton";
 import { Avatar } from "@/components/ui/Avatar";
 import type { Job } from "@/lib/api";
 import { formatJobSource } from "@/lib/jobSource";
-import { splitDescriptionChunks } from "@/lib/jobDescription";
+import { resolveApplyAction } from "@/lib/applyLink";
+import { JobDescription } from "@/components/jobs/JobDescription";
+import { DeadlineBadge } from "@/components/jobs/DeadlineBadge";
 
 // ── task #60: small formatters for structured field display ───────────
 // Convert wire-format enum strings ("full_time", "on_site") into the
@@ -126,25 +128,6 @@ function formatSalary(min?: number | null, max?: number | null): string | null {
   return fmt(min ?? max ?? 0);
 }
 
-/**
- * Tries the employer's own apply page first; falls back to mailto;
- * returns null when neither is configured (button stays disabled).
- */
-function buildApplyHref(job: Job): string | null {
-  if (job.apply_url && /^https?:\/\//i.test(job.apply_url)) return job.apply_url;
-  if (job.apply_email) {
-    const subject = encodeURIComponent(`Application: ${job.title}`);
-    const body = encodeURIComponent(
-      `Hello${job.company ? ` ${job.company}` : ""},\n\nI'd like to apply for the ${job.title} role I saw on ZedApply.\n\n— Sent from zedapply.com`
-    );
-    return `mailto:${job.apply_email}?subject=${subject}&body=${body}`;
-  }
-  // Fall back to the scraper's source listing if everything else is missing —
-  // at least gives the user somewhere to click rather than a dead button.
-  if (job.source_url && /^https?:\/\//i.test(job.source_url)) return job.source_url;
-  return null;
-}
-
 export function JobDetailBody({
   job,
   onClose,
@@ -157,13 +140,7 @@ export function JobDetailBody({
 }: JobDetailBodyProps) {
   const postedRel = formatRelativeTime(job.posted_at);
   const salary = formatSalary(job.salary_min, job.salary_max);
-  const applyHref = buildApplyHref(job);
-  const closesIn = job.closing_date
-    ? Math.ceil(
-        (new Date(job.closing_date).getTime() - Date.now()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : null;
+  const applyAction = resolveApplyAction(job);
 
   // task #60: "More about this role" collapses the long-form structured
   // fields (reporting structure, manages_others, interview process,
@@ -265,22 +242,7 @@ export function JobDetailBody({
             )}
           </span>
         )}
-        {closesIn !== null && (
-          <span
-            className="flex items-center gap-1"
-            style={{
-              color: closesIn <= 3 ? "var(--danger)" : "var(--muted)",
-              fontWeight: closesIn <= 3 ? 600 : 400,
-            }}
-          >
-            <Icon name="clock" size={12} />
-            {closesIn <= 0
-              ? "Closed"
-              : closesIn === 1
-              ? "Closes tomorrow"
-              : `Closes in ${closesIn} days`}
-          </span>
-        )}
+        <DeadlineBadge closingDate={job.closing_date} className="flex items-center gap-1" />
         <span className="ml-auto text-[10px] opacity-60">
           {formatJobSource(job.source, job.source_url)}
         </span>
@@ -348,39 +310,15 @@ export function JobDetailBody({
         </div>
       )}
 
-      {/* Description — HTML-stripped (legacy rows can still carry tags),
-          then chunked into headings + paragraphs so section titles like
-          "Job Purpose" / "Key Responsibilities" render as bold h3s
-          instead of disappearing into the body text. */}
-      {job.description && (() => {
-        const cleaned = stripDescriptionHtml(job.description);
-        if (!cleaned) return null;
-        const chunks = splitDescriptionChunks(cleaned);
-        return (
-          <div className="mb-6">
-            <div className="eyebrow mb-3">Description</div>
-            {chunks.map((chunk, i) =>
-              chunk.type === "heading" ? (
-                <h3
-                  key={i}
-                  className="font-display text-base font-semibold mt-4 mb-2"
-                  style={{ color: "var(--ink)" }}
-                >
-                  {chunk.text}
-                </h3>
-              ) : (
-                <p
-                  key={i}
-                  className="text-sm leading-relaxed text-justify whitespace-pre-line mb-3"
-                  style={{ color: "var(--ink-2)" }}
-                >
-                  {chunk.text}
-                </p>
-              ),
-            )}
-          </div>
-        );
-      })()}
+      {(job.description || job.description_markdown) && (
+        <div className="mb-6">
+          <div className="eyebrow mb-3">Description</div>
+          <JobDescription
+            description={job.description ? stripDescriptionHtml(job.description) : null}
+            descriptionMarkdown={job.description_markdown}
+          />
+        </div>
+      )}
 
       {/* task #60: application instructions — separate from Description
           because they're action-oriented; the candidate needs to find
@@ -469,25 +407,26 @@ export function JobDetailBody({
           bottom: "calc(var(--mobile-tabbar-offset, 0px))",
         }}
       >
-        {applyHref ? (
+        <div className="flex flex-col flex-1 gap-2">
           <a
-            href={applyHref}
-            target={applyHref.startsWith("mailto:") ? undefined : "_blank"}
-            rel={applyHref.startsWith("mailto:") ? undefined : "noopener noreferrer"}
-            className="btn btn-primary flex-1"
+            href={applyAction.href}
+            target={applyAction.external ? "_blank" : undefined}
+            rel={applyAction.external ? "noopener noreferrer" : undefined}
+            className="btn btn-primary w-full"
           >
-            Apply Now <Icon name="external" size={14} />
+            {applyAction.label}
+            {applyAction.external ? <Icon name="external" size={14} /> : null}
           </a>
-        ) : (
-          <button
-            className="btn btn-primary flex-1"
-            disabled
-            title="No application link provided"
-            type="button"
-          >
-            Application link unavailable
-          </button>
-        )}
+          {applyAction.secondary ? (
+            <a
+              href={applyAction.secondary.href}
+              className="text-xs text-center underline"
+              style={{ color: "var(--copper-600)" }}
+            >
+              {applyAction.secondary.label}
+            </a>
+          ) : null}
+        </div>
         <SaveJobButton
           jobId={job.id}
           saved={jobSaved}

@@ -467,6 +467,7 @@ export interface AdminJobReviewQueue {
 export interface AdminJobReviewUpdate {
   apply_url?: string;
   apply_email?: string;
+  closing_date?: string;
   application_instructions?: string;
 }
 
@@ -593,6 +594,37 @@ export const admin = {
     if (params?.per_page) q.set("per_page", String(params.per_page));
     return apiFetch<AdminJobReviewQueue>(`/admin/jobs/review-queue?${q}`, { token });
   },
+  /** Track 4e queue: is_review_required jobs, newest first */
+  track4eReviewQueue: (
+    token: string,
+    params?: { page?: number; per_page?: number }
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set("page", String(params.page));
+    if (params?.per_page) q.set("per_page", String(params.per_page));
+    return apiFetch<AdminJobReviewQueue>(`/admin/review-jobs?${q}`, { token });
+  },
+  updateTrack4eReviewJob: (
+    token: string,
+    jobId: string,
+    data: AdminJobReviewUpdate
+  ) =>
+    apiFetch<{ id: string; is_active: boolean; is_review_required: boolean }>(
+      `/admin/review-jobs/${encodeURIComponent(jobId)}`,
+      { method: "PATCH", token, body: JSON.stringify(data) }
+    ),
+  bulkMarkReviewDuplicate: (token: string, jobIds: string[]) =>
+    apiFetch<{ updated: number }>("/admin/review-jobs/bulk-mark-duplicate", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ job_ids: jobIds }),
+    }),
+  bulkPermanentlyInactive: (token: string, jobIds: string[]) =>
+    apiFetch<{ updated: number }>("/admin/review-jobs/bulk-permanently-inactive", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ job_ids: jobIds }),
+    }),
   approveReviewJob: (token: string, jobId: string, data: AdminJobReviewUpdate) =>
     apiFetch<{ id: string; is_active: boolean; admin_reviewed_at: string }>(
       `/admin/jobs/${encodeURIComponent(jobId)}/approve`,
@@ -832,6 +864,8 @@ export interface Job {
   source_url?: string | null;
   apply_url?: string | null;
   apply_email?: string | null;
+  apply_source?: string | null;
+  description_markdown?: string | null;
 
   // ── task #60: richer job ad shape ───────────────────────────────────
   // All optional + nullable so legacy rows (pre-migration 016) still

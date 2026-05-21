@@ -22,6 +22,10 @@ from app.services.embedding import generate_embedding
 from app.services.job_enricher import enrich_job
 from app.services.job_enrichment import apply_job_enrichment
 from app.services.deep_link_enricher import schedule_deep_link_enrichment
+from app.services.description_body_extractor import merge_description_extraction
+from app.services.description_markdown import description_to_markdown
+from app.services.job_activation import apply_review_state_to_row, compute_review_state
+from app.services.job_deadline_extractor import extract_closing_date_llm
 from app.services.skill_resolver import resolve_skill_ids
 
 logger = logging.getLogger(__name__)
@@ -245,6 +249,7 @@ async def list_jobs(
         supabase.table("jobs")
         .select("*", count="estimated")
         .eq("is_active", True)
+        .eq("is_review_required", False)
     )
 
     if sort_mode == "closing":
@@ -589,16 +594,33 @@ async def _ingest_one_job(
 
         job_data = job.model_dump(exclude_none=True, mode="json")
         skills_required = job_data.pop("skills_required", [])
-        # salary_text is input-only — used by the parser above but never
-        # stored. Same goes for the empty-list fields where the model
-        # defaulted to [] and exclude_none didn't strip them: leave the
-        # explicit empty lists in place so a row with no benefits still
-        # stores benefits=[] (matches the JSONB DEFAULT in migration 016).
         job_data.pop("salary_text", None)
+        merge_description_extraction(job_data, job_data.get("description"))
+        if not job_data.get("closing_date"):
+            extracted_deadline = await extract_closing_date_llm(
+                job.description,
+                job.title,
+                job.company or "",
+            )
+            if extracted_deadline:
+                job_data["closing_date"] = extracted_deadline.isoformat()
+        job_data["description_markdown"] = description_to_markdown(
+            job_data.get("description")
+        )
         job_data["embedding"] = embedding
-        review_reasons = _job_eligibility_reasons(job)
-        job_data["is_active"] = not review_reasons
-        job_data["admin_review_reason"] = ",".join(review_reasons) if review_reasons else None
+        review = compute_review_state(
+            apply_url=job_data.get("apply_url"),
+            apply_email=job_data.get("apply_email"),
+            closing_date=job_data.get("closing_date"),
+            application_instructions=job.application_instructions,
+            instructions_have_contact=_instructions_have_contact(
+                job.application_instructions
+            ),
+        )
+        apply_review_state_to_row(job_data, review)
+        review_reasons = (
+            [p.strip() for p in (job_data.get("admin_review_reason") or "").split(",") if p.strip()]
+        )
 
         result = supabase.table("jobs").insert(job_data).execute()
         if not result.data:

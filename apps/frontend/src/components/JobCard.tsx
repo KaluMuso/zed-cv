@@ -5,6 +5,7 @@ import { SaveJobButton } from "@/components/SaveJobButton";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatJobSource } from "@/lib/jobSource";
+import { DeadlineBadge } from "@/components/jobs/DeadlineBadge";
 
 interface JobCardProps {
   /**
@@ -125,12 +126,6 @@ export function JobCard({
 }: JobCardProps) {
   const matchedSet = new Set(matchedSkills.map((s) => s.toLowerCase()));
 
-  const closesIn = closingDate
-    ? Math.ceil(
-        (new Date(closingDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      )
-    : null;
-
   const postedLabel = formatRelativeTime(postedAt);
   const salaryLabel = formatSalary(salaryMin, salaryMax);
   const sourceLabel = formatJobSource(source, sourceUrl);
@@ -224,22 +219,7 @@ export function JobCard({
             {salaryLabel}/mo
           </span>
         )}
-        {closesIn !== null && (
-          <span
-            className="flex items-center gap-1"
-            style={{
-              color: closesIn <= 3 ? "var(--danger)" : "var(--muted)",
-              fontWeight: closesIn <= 3 ? 600 : 400,
-            }}
-          >
-            <Icon name="clock" size={12} />
-            {closesIn <= 0
-              ? "Closed"
-              : closesIn === 1
-              ? "Closes tomorrow"
-              : `Closes in ${closesIn}d`}
-          </span>
-        )}
+        <DeadlineBadge closingDate={closingDate} />
         <span className="ml-auto text-[10px] opacity-60">{sourceLabel}</span>
       </div>
 

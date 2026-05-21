@@ -168,9 +168,30 @@ def job_needs_enrichment(row: dict) -> bool:
 
 
 async def enrich_job_row(supabase: Any, job_id: str, row: dict) -> bool:
-    """Fetch source_url, update jobs.apply_* when found. Always stamps attempted_at."""
-    if not job_needs_enrichment(row):
+    """Fetch source_url + description body, update jobs.apply_* when found."""
+    working = dict(row)
+    from app.services.description_body_extractor import merge_description_extraction
+
+    merge_description_extraction(working, working.get("description"))
+
+    if not job_needs_enrichment(working) and not (
+        working.get("apply_url") or working.get("apply_email")
+    ):
         return False
+
+    patch_desc: dict[str, Any] = {}
+    if working.get("apply_email") and not row.get("apply_email"):
+        patch_desc["apply_email"] = working["apply_email"]
+        patch_desc["apply_source"] = working.get("apply_source") or "description_email"
+    elif working.get("apply_url") and not row.get("apply_url"):
+        patch_desc["apply_url"] = working["apply_url"]
+        patch_desc["apply_source"] = working.get("apply_source") or "description_url"
+    if patch_desc:
+        supabase.table("jobs").update(patch_desc).eq("id", job_id).execute()
+        row.update(patch_desc)
+
+    if not job_needs_enrichment(row):
+        return bool(patch_desc)
 
     source_url = str(row.get("source_url") or "")
     now = datetime.now(timezone.utc).isoformat()

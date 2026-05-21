@@ -901,26 +901,37 @@ export default function MatchesPage() {
                       const action = resolveApplyAction(match.job);
                       if (!action) return null;
                       return (
-                        <a
-                          href={action.href}
-                          target={action.external ? "_blank" : undefined}
-                          rel={action.external ? "noopener noreferrer" : undefined}
-                          className="btn btn-primary btn-sm w-40"
-                          onClick={() => {
-                            if (token) {
-                              trackApplyClick(
-                                token,
-                                match.job.id,
-                                action.applySource
-                              );
-                            }
-                          }}
-                        >
-                          {action.label}
-                          {action.external ? (
-                            <Icon name="external" size={13} />
+                        <div className="flex flex-col items-end gap-1 w-40">
+                          <a
+                            href={action.href}
+                            target={action.external ? "_blank" : undefined}
+                            rel={action.external ? "noopener noreferrer" : undefined}
+                            className="btn btn-primary btn-sm w-full"
+                            onClick={() => {
+                              if (token) {
+                                trackApplyClick(
+                                  token,
+                                  match.job.id,
+                                  action.applySource
+                                );
+                              }
+                            }}
+                          >
+                            {action.label}
+                            {action.external ? (
+                              <Icon name="external" size={13} />
+                            ) : null}
+                          </a>
+                          {action.secondary ? (
+                            <a
+                              href={action.secondary.href}
+                              className="text-[11px] underline"
+                              style={{ color: "var(--copper-600)" }}
+                            >
+                              {action.secondary.label}
+                            </a>
                           ) : null}
-                        </a>
+                        </div>
                       );
                     })()
                   )}

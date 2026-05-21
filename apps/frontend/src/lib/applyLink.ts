@@ -1,6 +1,6 @@
-/** Apply button target + analytics source for match/job cards. */
+/** Apply button targets + analytics source for match/job cards (Track 4e). */
 
-export type ApplyClickSource = "direct" | "source_fallback" | "enriched";
+export type ApplyClickSource = "direct" | "source_fallback" | "enriched" | "description_email";
 
 export interface ApplyJobFields {
   title: string;
@@ -16,40 +16,71 @@ export interface ApplyAction {
   label: string;
   applySource: ApplyClickSource;
   external: boolean;
+  secondary?: ApplyAction;
 }
 
-const SUPPORT_MAIL = "mailto:support@zedapply.com?subject=Help%20applying%20to%20a%20job";
+const SUPPORT_MAIL =
+  "mailto:support@zedapply.com?subject=Help%20applying%20to%20a%20job";
 
 function mailtoApply(email: string, job: ApplyJobFields): string {
   const subject = encodeURIComponent(`Application: ${job.title}`);
   const body = encodeURIComponent(
-    `Hello${job.company ? ` ${job.company}` : ""},\n\nI'd like to apply for the ${job.title} role I saw on ZedApply.\n\n— Sent from zedapply.com`
+    `Dear hiring manager,\n\nI am writing to apply for the ${job.title} role${
+      job.company ? ` at ${job.company}` : ""
+    }.\n\nI found this opportunity on ZedApply and would welcome the chance to discuss my application.\n\nKind regards`
   );
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
-/** Resolve label, href, and analytics source for the Apply affordance. */
-export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
-  if (job.apply_url && /^https?:\/\//i.test(job.apply_url)) {
-    const src: ApplyClickSource =
-      job.apply_source === "enriched" ? "enriched" : "direct";
+function applySourceFromField(
+  job: ApplyJobFields,
+  field: "url" | "email"
+): ApplyClickSource {
+  if (job.apply_source === "description_email" || job.apply_source === "description_url") {
+    return "description_email";
+  }
+  if (job.apply_source === "enriched") return "enriched";
+  return field === "url" ? "direct" : "direct";
+}
+
+/** Resolve primary + optional secondary apply affordances. */
+export function resolveApplyAction(job: ApplyJobFields): ApplyAction {
+  const hasUrl = Boolean(job.apply_url && /^https?:\/\//i.test(job.apply_url));
+  const hasEmail = Boolean(job.apply_email?.trim());
+
+  if (hasUrl && hasEmail) {
     return {
-      href: job.apply_url,
+      href: job.apply_url as string,
       label: "Apply now",
-      applySource: src,
+      applySource: applySourceFromField(job, "url"),
+      external: true,
+      secondary: {
+        href: mailtoApply(job.apply_email as string, job),
+        label: "Or email instead →",
+        applySource: applySourceFromField(job, "email"),
+        external: false,
+      },
+    };
+  }
+
+  if (hasUrl) {
+    return {
+      href: job.apply_url as string,
+      label: "Apply now",
+      applySource: applySourceFromField(job, "url"),
       external: true,
     };
   }
-  if (job.apply_email) {
-    const src: ApplyClickSource =
-      job.apply_source === "enriched" ? "enriched" : "direct";
+
+  if (hasEmail) {
     return {
-      href: mailtoApply(job.apply_email, job),
-      label: "Apply now",
-      applySource: src,
+      href: mailtoApply(job.apply_email as string, job),
+      label: "Apply via email",
+      applySource: applySourceFromField(job, "email"),
       external: false,
     };
   }
+
   if (job.source_url && /^https?:\/\//i.test(job.source_url)) {
     return {
       href: job.source_url,
@@ -58,9 +89,10 @@ export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
       external: true,
     };
   }
+
   return {
     href: SUPPORT_MAIL,
-    label: "Contact ZedApply Support",
+    label: "Contact Support",
     applySource: "source_fallback",
     external: false,
   };
