@@ -52,7 +52,7 @@ export default function AdminPage() {
         </TabsList>
 
         <TabsContent className="mt-4" value="overview">
-          <OverviewTab stats={stats} breakdown={breakdown} />
+          <OverviewTab token={token} stats={stats} breakdown={breakdown} />
         </TabsContent>
         <TabsContent className="mt-4" value="jobs">
           <JobsTab token={token} />

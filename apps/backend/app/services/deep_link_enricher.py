@@ -30,6 +30,7 @@ class EnrichmentResult(BaseModel):
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
     apply_source: Optional[str] = None
+    contact_phone: Optional[str] = None
 
 
 def _is_image_source(source_url: str) -> bool:

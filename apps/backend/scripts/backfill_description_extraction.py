@@ -24,7 +24,10 @@ def run(*, limit: int | None, dry_run: bool) -> None:
 
     query = (
         supabase.table("jobs")
-        .select("id, description, apply_url, apply_email, closing_date, is_active")
+        .select(
+            "id, description, apply_url, apply_email, contact_phone, "
+            "apply_source, closing_date, is_active"
+        )
         .order("created_at", desc=True)
     )
     if limit:
@@ -33,18 +36,24 @@ def run(*, limit: int | None, dry_run: bool) -> None:
 
     updated = 0
     for row in rows:
-        if row.get("apply_url") and row.get("apply_email"):
+        if (
+            row.get("apply_url")
+            and row.get("apply_email")
+            and row.get("contact_phone")
+        ):
             continue
         patch = {
             "apply_url": row.get("apply_url"),
             "apply_email": row.get("apply_email"),
             "apply_source": row.get("apply_source"),
+            "contact_phone": row.get("contact_phone"),
         }
         merge_description_extraction(patch, row.get("description"))
         if patch == {
             "apply_url": row.get("apply_url"),
             "apply_email": row.get("apply_email"),
             "apply_source": row.get("apply_source"),
+            "contact_phone": row.get("contact_phone"),
         }:
             continue
 
