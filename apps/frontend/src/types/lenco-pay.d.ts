@@ -26,6 +26,8 @@ export interface LencoPayGlobal {
 declare global {
   interface Window {
     LencoPay?: LencoPayGlobal;
+    /** Lenco widget reads this for the merchant display name when set before getPaid */
+    label?: string;
   }
 }
 

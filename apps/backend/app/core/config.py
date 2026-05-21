@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     whatsapp_scraper_webhook_token: str = ""
     openrouter_vision_model: str = "google/gemini-2.0-flash-001"
     waha_session_name: str = "default"
+    # Admin ops alerts (review queue backlog → WhatsApp via WAHA).
+    enable_admin_whatsapp_alerts: bool = True
+    admin_alert_phone: str = "+260761359005"
 
     # Auth
     jwt_secret: str

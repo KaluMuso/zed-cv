@@ -1,0 +1,29 @@
+{
+  "name": "Zed CV - Review Queue Alert Hourly",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] } },
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/check-review-queue",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
+        }
+      },
+      "name": "Check Review Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Every Hour": { "main": [[{ "node": "Check Review Queue", "type": "main", "index": 0 }]] }
+  }
+}

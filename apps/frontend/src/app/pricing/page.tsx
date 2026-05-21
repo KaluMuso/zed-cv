@@ -165,14 +165,39 @@ function splitName(fullName: string | null): { firstName: string; lastName: stri
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
+function lencoPhone(phone: string | null | undefined): string {
+  const raw = (phone || "").trim();
+  if (!raw) return "0961111111";
+  if (raw.startsWith("+260")) return `0${raw.slice(4)}`;
+  if (raw.startsWith("260")) return `0${raw.slice(3)}`;
+  if (raw.startsWith("0")) return raw;
+  return `0${raw}`;
+}
+
+function isLencoReady(): boolean {
+  return typeof window !== "undefined" && typeof window.LencoPay?.getPaid === "function";
+}
+
 export default function PricingPage() {
   const router = useRouter();
-  const { token, isAuthenticated } = useAuth();
+  const { token, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [displayPlans, setDisplayPlans] = useState<Plan[]>(plans);
   const [tierRows, setTierRows] = useState<TierConfigRow[]>([]);
   const [payingTier, setPayingTier] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [currentTier, setCurrentTier] = useState<string>("free");
+  const [lencoReady, setLencoReady] = useState(false);
+
+  useEffect(() => {
+    if (isLencoReady()) setLencoReady(true);
+    const id = window.setInterval(() => {
+      if (isLencoReady()) {
+        setLencoReady(true);
+        window.clearInterval(id);
+      }
+    }, 200);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     tiers
@@ -220,8 +245,10 @@ export default function PricingPage() {
     return "upgrade";
   };
 
-  const openLencoCheckout = async (tier: string) => {
-    if (!token) {
+  const startLencoPayment = async (tier: string) => {
+    console.log("[upgrade-click]", tier);
+
+    if (!token || !user?.id) {
       router.push("/auth?next=/pricing");
       return;
     }
@@ -231,36 +258,44 @@ export default function PricingPage() {
       toast.error("Payments are not configured. Please try again later.");
       return;
     }
-    if (!window.LencoPay?.getPaid) {
-      toast.error("Payment widget is still loading. Please try again.");
+
+    if (!isLencoReady()) {
+      toast.error("Payment widget is loading — please wait a moment and try again.");
       return;
     }
 
     setPayingTier(tier);
     try {
-      const prof = await profile.get(token);
-      const email =
-        prof.email?.trim() || `payments+${prof.id.slice(0, 8)}@zedapply.com`;
-      const { firstName, lastName } = splitName(prof.full_name);
-      const reference = `zedapply-${crypto.randomUUID()}`;
-      const amount = amountKwacha(tier);
-      const planName =
-        displayPlans.find((p) => p.tier === tier)?.name ?? tier;
+      let prof: Awaited<ReturnType<typeof profile.get>> | null = null;
+      try {
+        prof = await profile.get(token);
+      } catch (err) {
+        console.warn("[upgrade-click] profile fetch failed, using fallbacks", err);
+      }
 
-      window.LencoPay.getPaid({
+      const email =
+        prof?.email?.trim() || `payments+${user.id.slice(0, 8)}@zedapply.com`;
+      const { firstName, lastName } = splitName(prof?.full_name ?? null);
+      const reference = `zedapply-${user.id}-${Date.now()}`;
+      const amount = amountKwacha(tier);
+
+      window.label = "ZedApply";
+
+      window.LencoPay!.getPaid({
         key: publicKey,
+        label: "ZedApply",
         reference,
         email,
         amount,
         currency: "ZMW",
-        label: `Zed CV ${planName}`,
         channels: ["card", "mobile-money"],
         customer: {
           firstName,
           lastName,
-          phone: prof.phone.replace(/^\+260/, ""),
+          phone: lencoPhone(prof?.phone),
         },
         onSuccess: async (response) => {
+          console.log("[lenco-success]", response.reference);
           try {
             const result = await subscription.verifyPayment(token, {
               reference: response.reference,
@@ -268,7 +303,7 @@ export default function PricingPage() {
             });
             if (result.status === "processing") {
               toast.info(
-                "Payment processing — you'll be upgraded shortly",
+                "Payment processing — you will be upgraded shortly",
               );
             } else {
               toast.success(
@@ -286,16 +321,18 @@ export default function PricingPage() {
           }
         },
         onClose: () => {
+          console.log("[lenco-close]");
           toast.info("Payment cancelled");
           setPayingTier(null);
         },
         onConfirmationPending: () => {
           toast.info(
-            "Payment processing — you'll be upgraded shortly",
+            "Payment processing — you will be upgraded shortly",
           );
         },
       });
     } catch (err) {
+      console.error("[upgrade-click] failed", err);
       toast.error(
         err instanceof Error ? err.message : "Could not start checkout",
       );
@@ -304,22 +341,54 @@ export default function PricingPage() {
   };
 
   const handlePlanClick = (tier: string) => {
+    console.log("[plan-click]", tier, {
+      isAuthenticated,
+      authLoading,
+      currentTier,
+      lencoReady,
+      action: planAction(tier),
+    });
+
     if (tier === "free") {
       if (!isAuthenticated) router.push("/auth?next=/pricing");
       return;
     }
+
     const action = planAction(tier);
-    if (action === "current" || action === "downgrade") return;
+    if (action === "current") {
+      toast.info("You are already on this plan.");
+      return;
+    }
+    if (action === "downgrade") {
+      toast.info("To downgrade, contact support or wait until your billing cycle ends.");
+      return;
+    }
     if (!isAuthenticated) {
       router.push("/auth?next=/pricing");
       return;
     }
-    void openLencoCheckout(tier);
+    if (authLoading) {
+      toast.info("Signing you in — try again in a moment.");
+      return;
+    }
+
+    void startLencoPayment(tier);
   };
 
   return (
     <div className="max-w-[1280px] mx-auto px-6 py-12 md:py-20">
-      <Script src={LENCO_WIDGET_URL} strategy="afterInteractive" />
+      <Script
+        src={LENCO_WIDGET_URL}
+        strategy="afterInteractive"
+        onLoad={() => {
+          console.log("[lenco-script] loaded");
+          if (isLencoReady()) setLencoReady(true);
+        }}
+        onError={() => {
+          console.error("[lenco-script] failed to load");
+          toast.error("Payment widget failed to load. Refresh and try again.");
+        }}
+      />
 
       <div className="text-center mb-12 md:mb-16">
         <div className="eyebrow mb-3">Pricing</div>
@@ -351,12 +420,16 @@ export default function PricingPage() {
           const isCurrent = action === "current";
           const isDowngrade = action === "downgrade";
           const isPaying = payingTier === plan.tier;
+          const isPaidTier = plan.tier !== "free";
+          const checkoutBlocked = isPaidTier && !lencoReady && isAuthenticated;
           const label = isCurrent
             ? "Current plan"
             : isDowngrade
             ? `Downgrade to ${plan.name}`
             : plan.tier === "free"
             ? "Get Started"
+            : checkoutBlocked
+            ? "Loading checkout…"
             : `Upgrade to ${plan.name}`;
 
           return (
@@ -415,9 +488,10 @@ export default function PricingPage() {
               </ul>
 
               <button
+                type="button"
                 onClick={() => handlePlanClick(plan.tier)}
-                disabled={isCurrent || isPaying}
-                aria-disabled={isCurrent}
+                disabled={isCurrent || isPaying || checkoutBlocked}
+                aria-disabled={isCurrent || checkoutBlocked}
                 className={`w-full ${
                   isCurrent
                     ? "btn btn-ghost btn-lg"
@@ -426,7 +500,9 @@ export default function PricingPage() {
                     : "btn btn-ghost btn-lg"
                 }`}
                 style={
-                  isCurrent ? { opacity: 0.7, cursor: "not-allowed" } : undefined
+                  isCurrent || checkoutBlocked
+                    ? { opacity: 0.7, cursor: "not-allowed" }
+                    : undefined
                 }
               >
                 {isPaying ? (
@@ -533,6 +609,7 @@ export default function PricingPage() {
           {faqs.map((faq, i) => (
             <div key={i} className="card overflow-hidden">
               <button
+                type="button"
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 className="w-full flex items-center justify-between p-5 text-left"
                 style={{ background: "none", border: "none", cursor: "pointer" }}

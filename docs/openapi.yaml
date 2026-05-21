@@ -835,6 +835,17 @@ components:
         users_processed: { type: integer }
         notifications_sent: { type: integer }
 
+    ReviewQueueAlertResponse:
+      type: object
+      properties:
+        review_count: { type: integer }
+        current_threshold: { type: integer, nullable: true }
+        last_threshold: { type: integer, nullable: true }
+        alerts_enabled: { type: boolean }
+        alerted: { type: boolean }
+        reason: { type: string }
+        threshold_alerted: { type: integer, nullable: true }
+
     ContactSubmission:
       type: object
       required: [name, email, message]
@@ -1777,6 +1788,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NotificationDigestResponse' }
+        '401': { description: Invalid ingest API key }
+
+  /admin/check-review-queue:
+    post:
+      operationId: checkReviewQueueAlert
+      summary: Cron — WhatsApp alert when review backlog crosses 10/25/50/100
+      tags: [Admin Cron]
+      parameters:
+        - { name: INGEST_API_KEY, in: header, required: true, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueueAlertResponse' }
         '401': { description: Invalid ingest API key }
 
   /interview-prep/generate:
