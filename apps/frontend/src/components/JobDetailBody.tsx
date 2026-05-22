@@ -167,13 +167,14 @@ export function JobDetailBody({
             </MetaPill>
           )}
           {jobTypeLabel && <MetaPill>{jobTypeLabel}</MetaPill>}
-          {job.work_arrangement &&
-            job.employment_type &&
-            job.work_arrangement !== job.employment_type && (
-              <MetaPill>
-                {WORK_ARRANGEMENT_LABEL[job.work_arrangement] || job.work_arrangement}
-              </MetaPill>
-            )}
+          {job.work_arrangement && job.employment_type && (
+            <MetaPill>
+              {WORK_ARRANGEMENT_LABEL[job.work_arrangement] || job.work_arrangement}
+              {job.work_arrangement === "hybrid" && job.hybrid_days_per_week && (
+                <span className="opacity-80"> · {job.hybrid_days_per_week}d/wk</span>
+              )}
+            </MetaPill>
+          )}
           {job.location && (
             <MetaPill>
               <Icon name="map" size={12} className="mr-1 opacity-70" />
