@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { BwanaChatWidget } from "@/components/BwanaChatWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -67,6 +68,7 @@ export default function RootLayout({
                   <PWAInstallPrompt />
                   <Footer />
                   <MobileTabBar />
+                  <BwanaChatWidget />
                 </PWAProvider>
               </SavedJobsProvider>
             </AuthProvider>
