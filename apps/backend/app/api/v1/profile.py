@@ -9,8 +9,8 @@ from app.schemas.cv_sections import CVSections
 from app.schemas.user import (
     UserProfile,
     UserProfileUpdate,
-    UserPreferences,
-    UserPreferencesUpdate,
+    NotificationPreferences,
+    NotificationPreferencesUpdate,
     ProfileDeleted,
     UserSkill,
     UserSkillCreate,
@@ -130,7 +130,7 @@ async def delete_profile(
     return ProfileDeleted(deleted=True, user_id=user_id)
 
 
-@router.get("/preferences", response_model=UserPreferences)
+@router.get("/preferences", response_model=NotificationPreferences)
 async def get_preferences(
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
@@ -144,16 +144,16 @@ async def get_preferences(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserPreferences(
+    return NotificationPreferences(
         whatsapp_alerts=result.data.get("whatsapp_alerts", True),
         email_notifications_enabled=result.data.get("email_notifications_enabled", True),
         language=result.data.get("language", "en"),
     )
 
 
-@router.patch("/preferences", response_model=UserPreferences)
+@router.patch("/preferences", response_model=NotificationPreferences)
 async def update_preferences(
-    body: UserPreferencesUpdate,
+    body: NotificationPreferencesUpdate,
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
 ):
@@ -171,7 +171,7 @@ async def update_preferences(
     )
     if not result.data:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserPreferences(
+    return NotificationPreferences(
         whatsapp_alerts=result.data.get("whatsapp_alerts", True),
         email_notifications_enabled=result.data.get("email_notifications_enabled", True),
         language=result.data.get("language", "en"),

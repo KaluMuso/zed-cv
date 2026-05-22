@@ -15,6 +15,7 @@ from app.services.matching import (
     credit_matches_for_cycle,
     get_credited_match_count,
     get_user_tier_limit,
+    fetch_jobs_by_ids,
 )
 from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
@@ -200,16 +201,137 @@ async def get_matches(
         explanation = m.get("explanation") or ""
         if adjustment_note and adjustment_note not in explanation:
             explanation = (explanation + " " + adjustment_note).strip()
+        semantic = float(m.get("vector_score") or 0)
+        skills = float(m.get("skill_score") or 0)
         matches.append(MatchResult(
-            id=m["id"], job=Job(**job_data), score=adjusted_score,
-            vector_score=m["vector_score"], skill_score=m["skill_score"],
+            id=m["id"],
+            job=Job(**job_data),
+            score=adjusted_score,
+            semantic_score=semantic,
+            skills_score=skills,
             bonus_score=adjusted_bonus,
+            vector_score=semantic,
+            skill_score=skills,
             experience_score=m.get("experience_score"),
-            matched_skills=m.get("matched_skills", []), missing_skills=m.get("missing_skills", []),
-            explanation=explanation or None, created_at=m["created_at"],
+            matched_skills=m.get("matched_skills", []),
+            missing_skills=m.get("missing_skills", []),
+            explanation=explanation or None,
+            created_at=m["created_at"],
         ))
 
     # Re-sort by the adjusted score and trim to the requested limit.
+    matches.sort(key=lambda mr: mr.score, reverse=True)
+    return MatchList(
+        matches=matches[:limit],
+        remaining_quota=remaining,
+        credited_count=credited_count,
+        matches_limit=matches_limit,
+    )
+
+
+@router.get("/{user_id}", response_model=MatchList)
+async def get_matches_for_user(
+    user_id: str,
+    min_score: float = Query(50, ge=0, le=100),
+    limit: int = Query(10, ge=1, le=50),
+    current_user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Live hybrid scores from match_jobs_for_user RPC (60/30/10 breakdown)."""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="Cannot view another user's matches")
+
+    _, remaining = await check_match_quota(user_id, supabase)
+    _, matches_limit, _ = await get_user_tier_limit(user_id, supabase)
+    credited_count = await get_credited_match_count(user_id, supabase)
+
+    try:
+        rpc_rows = await run_matching_for_user(
+            user_id, supabase, limit=limit, min_score=min_score
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("match_jobs_for_user RPC failed for user=%s", user_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Matching is temporarily unavailable. Try again shortly.",
+        )
+
+    job_ids = [str(row["job_id"]) for row in rpc_rows if row.get("job_id")]
+    jobs_by_id = await fetch_jobs_by_ids(job_ids, supabase)
+
+    stored_by_job: dict[str, dict] = {}
+    if job_ids:
+        stored_res = (
+            supabase.table("matches")
+            .select("id, job_id, created_at, explanation")
+            .eq("user_id", user_id)
+            .in_("job_id", job_ids)
+            .execute()
+        )
+        stored_by_job = {
+            str(row["job_id"]): row
+            for row in (stored_res.data or [])
+            if isinstance(row, dict) and row.get("job_id")
+        }
+
+    preferences = None
+    try:
+        pref_res = (
+            supabase.table("user_preferences")
+            .select(
+                "target_roles, salary_min, salary_max, salary_frequency, "
+                "preferred_work_arrangement, acceptable_regions"
+            )
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if pref_res.data:
+            preferences = pref_res.data[0]
+    except Exception:
+        logger.warning(
+            "user_preferences read failed in /matches/{user_id}", exc_info=True
+        )
+
+    matches: list[MatchResult] = []
+    for row in rpc_rows:
+        job_id = str(row.get("job_id") or "")
+        job_data = jobs_by_id.get(job_id)
+        if not job_data:
+            continue
+        stored = stored_by_job.get(job_id, {})
+        adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
+            base_score=float(row.get("final_score") or 0),
+            base_bonus=float(row.get("bonus_score") or 0),
+            job=job_data,
+            preferences=preferences,
+        )
+        explanation = stored.get("explanation") or ""
+        if adjustment_note and adjustment_note not in explanation:
+            explanation = (explanation + " " + adjustment_note).strip()
+        semantic = float(row.get("vector_score") or 0)
+        skills = float(row.get("skill_score") or 0)
+        matches.append(
+            MatchResult(
+                id=stored.get("id") or job_id,
+                job=Job(**job_data),
+                score=adjusted_score,
+                semantic_score=semantic,
+                skills_score=skills,
+                bonus_score=adjusted_bonus,
+                vector_score=semantic,
+                skill_score=skills,
+                experience_score=row.get("experience_score"),
+                matched_skills=list(row.get("matched_skills") or []),
+                missing_skills=list(row.get("missing_skills") or []),
+                explanation=explanation or None,
+                created_at=stored.get("created_at")
+                or datetime.now(timezone.utc).isoformat(),
+            )
+        )
+
     matches.sort(key=lambda mr: mr.score, reverse=True)
     return MatchList(
         matches=matches[:limit],

@@ -13,6 +13,8 @@ import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BwanaChatWidget } from "@/components/BwanaChatWidget";
+import { RouteTransitionShell } from "@/components/shared/RouteTransitionShell";
+import { Toaster } from "@/components/shared/Toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,10 +55,7 @@ export default function RootLayout({
       className={`${inter.variable} ${crimsonPro.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body
-        className="min-h-screen"
-        style={{ background: "var(--bg)", color: "var(--ink)" }}
-      >
+      <body className="min-h-screen font-sans">
         <ThemeProvider>
           <ErrorBoundary>
             <AuthProvider>
@@ -64,11 +63,12 @@ export default function RootLayout({
                 <PWAProvider>
                   <OfflineBanner />
                   <Navbar />
-                  {children}
+                  <RouteTransitionShell>{children}</RouteTransitionShell>
                   <PWAInstallPrompt />
                   <Footer />
                   <MobileTabBar />
                   <BwanaChatWidget />
+                  <Toaster />
                 </PWAProvider>
               </SavedJobsProvider>
             </AuthProvider>

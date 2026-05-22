@@ -1,9 +1,9 @@
 "use client";
 
 import { ApplyChannelsDetectedCard } from "@/components/marketing/ApplyChannelsDetectedCard";
-import { FloatingCard } from "@/components/marketing/FloatingCard";
 import { HeroCvPreviewCard } from "@/components/marketing/HeroCvPreviewCard";
 import { WhatsAppDigestCard } from "@/components/marketing/WhatsAppDigestCard";
+import { FloatingCard } from "@/components/shared/FloatingCard";
 
 /** Angled floating hero canvas: CV preview, WhatsApp digest, apply channels. */
 export function HeroVisualComposition() {
@@ -13,22 +13,24 @@ export function HeroVisualComposition() {
       aria-hidden={false}
     >
       <FloatingCard
-        variant="default"
-        className="absolute left-0 top-6 z-0 -rotate-6 sm:left-2 sm:top-4"
+        angle={-6}
+        className="absolute left-0 top-6 z-0 sm:left-2 sm:top-4"
       >
         <HeroCvPreviewCard />
       </FloatingCard>
 
       <FloatingCard
-        variant="delayed"
-        className="relative z-10 ml-auto mt-2 rotate-3 sm:mr-0 sm:mt-0"
+        delay
+        angle={3}
+        className="relative z-10 ml-auto mt-2 sm:mr-0 sm:mt-0"
       >
         <WhatsAppDigestCard />
       </FloatingCard>
 
       <FloatingCard
-        variant="delayed-2"
-        className="absolute bottom-0 right-0 z-20 rotate-2 sm:-bottom-2 sm:right-4"
+        delay2
+        angle={2}
+        className="absolute bottom-0 right-0 z-20 sm:-bottom-2 sm:right-4"
       >
         <ApplyChannelsDetectedCard />
       </FloatingCard>

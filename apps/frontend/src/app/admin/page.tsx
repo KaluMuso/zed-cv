@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { admin, type AdminStats, type AdminTierBreakdown } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 
 import { OverviewTab } from "./_tabs/OverviewTab";
 import { JobsTab } from "./_tabs/JobsTab";
@@ -24,7 +24,7 @@ export default function AdminPage() {
     admin
       .stats(token)
       .then(setStats)
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load stats"));
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load stats"));
     admin
       .subscriptions(token, { per_page: 1 })
       .then((r) => setBreakdown(r.breakdown))

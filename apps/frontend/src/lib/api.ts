@@ -227,10 +227,28 @@ export interface UserProfile {
   cv_sections?: CVSections | null;
 }
 
-export interface UserPreferences {
+// @openapi NotificationPreferences
+export interface NotificationPreferences {
   whatsapp_alerts: boolean;
   email_notifications_enabled: boolean;
   language: "en" | "bem";
+}
+
+// @openapi UserPreferences
+export interface UserPreferences {
+  whatsapp_number: string | null;
+  location: string | null;
+  currency: "ZMW" | "USD";
+  alert_frequency: "daily" | "weekly" | "muted";
+  whatsapp_verified: boolean;
+}
+
+// @openapi UserPreferencesUpdate
+export interface UserPreferencesUpdate {
+  whatsapp_number?: string;
+  location?: string;
+  currency?: "ZMW" | "USD";
+  alert_frequency?: "daily" | "weekly" | "muted";
 }
 
 export interface NotificationChannels {
@@ -244,8 +262,8 @@ export interface AutoMatchPreferences {
 }
 
 // ── Job-search preferences (Phase 2 Initiative #4) ─────────────────
-// Distinct from UserPreferences above — that one is notification prefs
-// (legacy /profile/preferences). These are job-search prefs and back
+// Distinct from NotificationPreferences (/profile/preferences) and
+// UserPreferences (/users/me/preferences). These are job-search prefs and back
 // the rewritten Preferences tab. Both endpoints live; they cover
 // orthogonal concerns.
 
@@ -352,9 +370,9 @@ export const profile = {
       token,
     }),
   getPreferences: (token: string) =>
-    apiFetch<UserPreferences>("/profile/preferences", { token }),
-  updatePreferences: (token: string, data: Partial<UserPreferences>) =>
-    apiFetch<UserPreferences>("/profile/preferences", {
+    apiFetch<NotificationPreferences>("/profile/preferences", { token }),
+  updatePreferences: (token: string, data: Partial<NotificationPreferences>) =>
+    apiFetch<NotificationPreferences>("/profile/preferences", {
       method: "PATCH",
       token,
       body: JSON.stringify(data),
@@ -376,6 +394,17 @@ export const profile = {
     apiFetch<UserSkillsList>(`/profile/skills/${encodeURIComponent(name)}`, {
       method: "DELETE",
       token,
+    }),
+};
+
+export const userPreferences = {
+  get: (token: string) =>
+    apiFetch<UserPreferences>("/users/me/preferences", { token }),
+  patch: (token: string, data: UserPreferencesUpdate) =>
+    apiFetch<UserPreferences>("/users/me/preferences", {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(data),
     }),
 };
 

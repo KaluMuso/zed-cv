@@ -2,7 +2,7 @@
 
 Backs the `user_preferences` table (migration 026) and the
 /api/v1/preferences endpoints. Kept in a dedicated module rather than
-extending `app.schemas.user` because the existing `UserPreferences` in
+extending `app.schemas.user` because the existing `NotificationPreferences` in
 that file covers notification prefs (whatsapp_alerts, language) — these
 are job-search prefs and the two shouldn't share a name.
 

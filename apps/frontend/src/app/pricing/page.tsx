@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { subscription, tiers, profile, type TierConfigRow } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Icon } from "@/components/ui/Icon";
@@ -261,12 +261,12 @@ export default function PricingPage() {
 
     const publicKey = process.env.NEXT_PUBLIC_LENCO_PUBLIC_KEY?.trim();
     if (!publicKey) {
-      toast.error("Payments are not configured. Please try again later.");
+      notify.error("Payments are not configured. Please try again later.");
       return;
     }
 
     if (!isLencoReady()) {
-      toast.error("Payment widget is loading — please wait a moment and try again.");
+      notify.error("Payment widget is loading — please wait a moment and try again.");
       return;
     }
 
@@ -308,18 +308,18 @@ export default function PricingPage() {
               tier,
             });
             if (result.status === "processing") {
-              toast.info(
+              notify.info(
                 "Payment processing — you will be upgraded shortly",
               );
             } else {
-              toast.success(
+              notify.custom.success(
                 "Payment confirmed — your tier has been upgraded",
               );
               setCurrentTier(tier);
               router.push("/matches");
             }
           } catch (err) {
-            toast.error(
+            notify.error(
               err instanceof Error ? err.message : "Payment verification failed",
             );
           } finally {
@@ -328,18 +328,18 @@ export default function PricingPage() {
         },
         onClose: () => {
           console.log("[lenco-close]");
-          toast.info("Payment cancelled");
+          notify.info("Payment cancelled");
           setPayingTier(null);
         },
         onConfirmationPending: () => {
-          toast.info(
+          notify.info(
             "Payment processing — you will be upgraded shortly",
           );
         },
       });
     } catch (err) {
       console.error("[upgrade-click] failed", err);
-      toast.error(
+      notify.error(
         err instanceof Error ? err.message : "Could not start checkout",
       );
       setPayingTier(null);
@@ -362,11 +362,11 @@ export default function PricingPage() {
 
     const action = planAction(tier);
     if (action === "current") {
-      toast.info("You are already on this plan.");
+      notify.info("You are already on this plan.");
       return;
     }
     if (action === "downgrade") {
-      toast.info("To downgrade, contact support or wait until your billing cycle ends.");
+      notify.info("To downgrade, contact support or wait until your billing cycle ends.");
       return;
     }
     if (!isAuthenticated) {
@@ -374,7 +374,7 @@ export default function PricingPage() {
       return;
     }
     if (authLoading) {
-      toast.info("Signing you in — try again in a moment.");
+      notify.info("Signing you in — try again in a moment.");
       return;
     }
 
@@ -392,7 +392,7 @@ export default function PricingPage() {
         }}
         onError={() => {
           console.error("[lenco-script] failed to load");
-          toast.error("Payment widget failed to load. Refresh and try again.");
+          notify.error("Payment widget failed to load. Refresh and try again.");
         }}
       />
 

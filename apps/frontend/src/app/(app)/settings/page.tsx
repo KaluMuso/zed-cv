@@ -7,13 +7,13 @@ import {
   autoMatchPreferences,
   profile as profileApi,
   type AutoMatchPreferences,
-  type UserPreferences,
+  type NotificationPreferences,
 } from "@/lib/api";
 import { useAppStore } from "@/lib/zustand-store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, logout, token } = useAuth();
   const { setProfile: setZust } = useAppStore();
-  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingAlerts, setSavingAlerts] = useState(false);
@@ -55,7 +55,7 @@ export default function SettingsPage() {
         if (autoRes.status === "fulfilled") setAutoPrefs(autoRes.value);
         if (prefsRes.status === "rejected") throw prefsRes.reason;
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load preferences"))
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load preferences"))
       .finally(() => setPrefsLoading(false));
   }, [isAuthenticated, isLoading, router, token]);
 
@@ -71,9 +71,9 @@ export default function SettingsPage() {
     try {
       const r = await profileApi.updatePreferences(token, { whatsapp_alerts: next });
       setPrefs(r);
-      toast.success(next ? "WhatsApp alerts on." : "WhatsApp alerts off.");
+      notify.custom.success(next ? "WhatsApp alerts on." : "WhatsApp alerts off.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      notify.error(e instanceof Error ? e.message : "Could not save");
     } finally {
       setSavingAlerts(false);
     }
@@ -87,9 +87,9 @@ export default function SettingsPage() {
     try {
       const r = await profileApi.updatePreferences(token, { language: next });
       setPrefs(r);
-      toast.success("Language preference saved.");
+      notify.custom.success("Language preference saved.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      notify.error(e instanceof Error ? e.message : "Could not save");
     } finally {
       setSavingLang(false);
     }
@@ -103,9 +103,9 @@ export default function SettingsPage() {
     try {
       const r = await autoMatchPreferences.patch(token, { auto_match_enabled: next });
       setAutoPrefs(r);
-      toast.success(next ? "Auto-match enabled." : "Auto-match disabled.");
+      notify.custom.success(next ? "Auto-match enabled." : "Auto-match disabled.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      notify.error(e instanceof Error ? e.message : "Could not save");
     } finally {
       setSavingAutoMatch(false);
     }
@@ -237,13 +237,13 @@ export default function SettingsPage() {
                 setDelLoading(true);
                 try {
                   await profileApi.remove(token);
-                  toast.success("Account deleted.");
+                  notify.custom.success("Account deleted.");
                   setOpenDelete(false);
                   logout();
                   setZust(null);
                   router.push("/");
                 } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Could not delete");
+                  notify.error(e instanceof Error ? e.message : "Could not delete");
                 } finally {
                   setDelLoading(false);
                 }

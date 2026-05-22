@@ -33,6 +33,7 @@ from app.services.description_markdown import description_to_markdown
 from app.services.job_activation import apply_review_state_to_row, compute_review_state
 from app.services.job_deadline_extractor import extract_closing_date_llm
 from app.services.skill_resolver import resolve_skill_ids
+from app.services import skills_dictionary
 
 logger = logging.getLogger(__name__)
 
@@ -696,7 +697,10 @@ async def _ingest_one_job(
         supabase.table("job_fingerprints").insert(
             {"fingerprint": fp, "job_id": job_id}
         ).execute()
-        await _attach_job_skills(supabase, job_id, skills_required)
+        skills_for_job = skills_dictionary.record_raw_skills(
+            supabase, skills_required
+        )
+        await _attach_job_skills(supabase, job_id, skills_for_job)
 
         try:
             enrichment = await enrich_job(

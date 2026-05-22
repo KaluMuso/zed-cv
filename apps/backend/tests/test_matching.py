@@ -92,6 +92,78 @@ class TestGetMatches:
         assert len(body["matches"]) == 1
         assert body["matches"][0]["score"] == 82.5
         assert body["remaining_quota"] == 3
+        assert body["matches"][0]["semantic_score"] == 78.0
+        assert body["matches"][0]["skills_score"] == 85.0
+
+
+class TestGetMatchesForUser:
+    @patch(
+        "app.api.v1.matches.check_match_quota",
+        new_callable=AsyncMock,
+        return_value=(True, 5),
+    )
+    @patch(
+        "app.api.v1.matches.run_matching_for_user",
+        new_callable=AsyncMock,
+        return_value=[
+            {
+                "job_id": "job-1",
+                "vector_score": 48.0,
+                "skill_score": 24.0,
+                "bonus_score": 10.0,
+                "final_score": 82.0,
+                "experience_score": 1.0,
+                "matched_skills": ["python"],
+                "missing_skills": [],
+            }
+        ],
+    )
+    @patch(
+        "app.api.v1.matches.fetch_jobs_by_ids",
+        new_callable=AsyncMock,
+        return_value={
+            "job-1": {
+                "id": "job-1",
+                "title": "Backend Dev",
+                "company": "TechCo",
+                "location": "Lusaka",
+                "description": "Build APIs",
+                "source": "manual",
+                "posted_at": "2025-01-01T00:00:00Z",
+                "is_active": True,
+            }
+        },
+    )
+    def test_get_matches_for_user_live_rpc(
+        self,
+        mock_jobs,
+        mock_rpc,
+        mock_quota,
+        client,
+        auth_headers,
+        fake_supabase,
+    ):
+        fake_supabase.set_table("matches", FakeSupabaseQuery(data=[]))
+        fake_supabase.set_table("user_preferences", FakeSupabaseQuery(data=[]))
+        resp = client.get(
+            "/api/v1/matches/test-user-id",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["matches"]) == 1
+        match = body["matches"][0]
+        assert match["score"] == 82.0
+        assert match["semantic_score"] == 48.0
+        assert match["skills_score"] == 24.0
+        assert match["bonus_score"] == 10.0
+
+    def test_get_matches_for_user_forbidden_other_user(self, client, auth_headers):
+        resp = client.get(
+            "/api/v1/matches/other-user-id",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 403
 
 
 class TestTriggerMatching:
