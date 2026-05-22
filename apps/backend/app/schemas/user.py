@@ -14,7 +14,7 @@ class UserProfile(BaseModel):
     years_experience: int = 0
     skills: list[str] = []
     cv_uploaded: bool = False
-    subscription_tier: str = "mwana"
+    subscription_tier: str = "free"
     role: str = "user"
     # Structured CV body extracted by the parser (task #59). Null for
     # users who haven't uploaded a CV yet, or whose upload pre-dates

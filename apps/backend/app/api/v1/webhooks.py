@@ -310,7 +310,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
         paid_tiers = {
             price: tier
             for tier, price in tier_prices.items()
-            if tier not in ("free", "mwana")
+            if tier != "free"
         }
         new_tier = paid_tiers.get(amount_ngwee)
         if new_tier is None:
@@ -321,7 +321,7 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
             sorted_paid = sorted(paid_tiers.items())  # ascending by price
             new_tier = next(
                 (tier for price, tier in reversed(sorted_paid) if price <= amount_ngwee),
-                "mwizi",
+                "starter",
             )
             # Cheap audit trail — preserved by the webhook_data update below.
             parsed["_inexact_amount_match"] = True
@@ -508,7 +508,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
         paid_tiers = {
             price: tier
             for tier, price in tier_prices.items()
-            if tier not in ("free", "mwana")
+            if tier != "free"
         }
         new_tier = paid_tiers.get(amount_ngwee)
         if new_tier is None:
@@ -519,7 +519,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             sorted_paid = sorted(paid_tiers.items())
             new_tier = next(
                 (tier for price, tier in reversed(sorted_paid) if price <= amount_ngwee),
-                "mwizi",
+                "starter",
             )
         # Atomic idempotency — see DPO handler for the full reasoning. The
         # SELECT-time check above catches the easy replay case; this

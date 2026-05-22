@@ -1,6 +1,4 @@
 """Admin tier_config and public /tiers catalog."""
-from unittest.mock import MagicMock
-
 from tests.conftest import FakeSupabaseQuery
 
 
@@ -13,27 +11,35 @@ def _superadmin_users():
 def _tier_config_rows():
     return [
         {
-            "tier": "mwana",
-            "display_name": "Mwana",
+            "tier": "free",
+            "display_name": "Free",
             "price_ngwee": 0,
-            "matches_limit": 5,
+            "matches_limit": 10,
             "sort_order": 0,
             "updated_at": None,
         },
         {
-            "tier": "mwizi",
-            "display_name": "Mwizi",
-            "price_ngwee": 7900,
-            "matches_limit": 25,
+            "tier": "starter",
+            "display_name": "Starter",
+            "price_ngwee": 12500,
+            "matches_limit": 50,
             "sort_order": 1,
             "updated_at": None,
         },
         {
-            "tier": "wino",
-            "display_name": "Wino",
-            "price_ngwee": 19900,
-            "matches_limit": 99999,
+            "tier": "professional",
+            "display_name": "Professional",
+            "price_ngwee": 25000,
+            "matches_limit": 125,
             "sort_order": 2,
+            "updated_at": None,
+        },
+        {
+            "tier": "super_standard",
+            "display_name": "Super Standard",
+            "price_ngwee": 50000,
+            "matches_limit": 99999,
+            "sort_order": 3,
             "updated_at": None,
         },
     ]
@@ -63,8 +69,8 @@ class TestPublicTiers:
         resp = client.get("/api/v1/tiers")
         assert resp.status_code == 200
         tiers = {t["tier"]: t for t in resp.json()["tiers"]}
-        assert tiers["mwizi"]["price_ngwee"] == 7900
-        assert tiers["mwizi"]["matches_limit"] == 25
+        assert tiers["starter"]["price_ngwee"] == 12500
+        assert tiers["starter"]["matches_limit"] == 50
 
 
 class TestAdminTierConfig:
@@ -81,7 +87,7 @@ class TestAdminTierConfig:
         fake_supabase.set_table("tier_config", _TierConfigQuery())
         resp = client.get("/api/v1/admin/tier-config", headers=admin_headers)
         assert resp.status_code == 200
-        assert len(resp.json()["tiers"]) == 3
+        assert len(resp.json()["tiers"]) == 4
 
     def test_update_starter_price(self, client, admin_headers, fake_supabase):
         from app.services import tier_config as tier_config_svc
@@ -94,21 +100,27 @@ class TestAdminTierConfig:
         payload = {
             "tiers": [
                 {
-                    "tier": "mwana",
-                    "display_name": "Mwana",
+                    "tier": "free",
+                    "display_name": "Free",
                     "price_ngwee": 0,
-                    "matches_limit": 5,
+                    "matches_limit": 10,
                 },
                 {
-                    "tier": "mwizi",
-                    "display_name": "Mwizi",
-                    "price_ngwee": 8500,
-                    "matches_limit": 30,
+                    "tier": "starter",
+                    "display_name": "Starter",
+                    "price_ngwee": 13000,
+                    "matches_limit": 55,
                 },
                 {
-                    "tier": "wino",
-                    "display_name": "Wino",
-                    "price_ngwee": 19900,
+                    "tier": "professional",
+                    "display_name": "Professional",
+                    "price_ngwee": 25000,
+                    "matches_limit": 125,
+                },
+                {
+                    "tier": "super_standard",
+                    "display_name": "Super Standard",
+                    "price_ngwee": 50000,
                     "matches_limit": 99999,
                 },
             ]
@@ -119,7 +131,10 @@ class TestAdminTierConfig:
             json=payload,
         )
         assert resp.status_code == 200
-        mwizi = next(t for t in resp.json()["tiers"] if t["tier"] == "mwizi")
-        assert mwizi["price_ngwee"] == 8500
-        assert mwizi["matches_limit"] == 30
-        assert any(u.get("tier") == "mwizi" and u.get("price_ngwee") == 8500 for u in spy.upserted)
+        starter = next(t for t in resp.json()["tiers"] if t["tier"] == "starter")
+        assert starter["price_ngwee"] == 13000
+        assert starter["matches_limit"] == 55
+        assert any(
+            u.get("tier") == "starter" and u.get("price_ngwee") == 13000
+            for u in spy.upserted
+        )

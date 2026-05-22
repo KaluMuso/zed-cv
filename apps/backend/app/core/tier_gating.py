@@ -1,9 +1,4 @@
-"""Subscription tier limits and feature gates (Mwana / Mwizi / Wino).
-
-Canonical tier keys: mwana, mwizi, wino. Legacy DB values (free, starter,
-professional, super_standard) are normalized via TIER_ALIASES so migrations
-and payments can transition without breaking reads.
-"""
+"""Subscription tier limits and feature gates (Free / Starter / Professional / Super Standard)."""
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -12,29 +7,19 @@ from typing import Any
 from fastapi import HTTPException, status
 from supabase import Client
 
-# Monthly match views per canonical tier (99999 = unlimited).
+# Monthly match views per tier (99999 = unlimited).
 TIER_MATCH_LIMITS: dict[str, int] = {
-    "mwana": 5,
-    "mwizi": 25,
-    "wino": 99999,
-}
-
-TIER_ALIASES: dict[str, str] = {
-    "mwana": "mwana",
-    "free": "mwana",
-    "mwizi": "mwizi",
-    "mwezi": "mwizi",
-    "starter": "mwizi",
-    "wino": "wino",
-    "bwino": "wino",
-    "professional": "wino",
-    "super_standard": "wino",
+    "free": 10,
+    "starter": 50,
+    "professional": 125,
+    "super_standard": 99999,
 }
 
 TIER_DISPLAY: dict[str, str] = {
-    "mwana": "Mwana",
-    "mwizi": "Mwizi",
-    "wino": "Wino",
+    "free": "Free",
+    "starter": "Starter",
+    "professional": "Professional",
+    "super_standard": "Super Standard",
 }
 
 UNLIMITED_MATCHES = 99999
@@ -42,15 +27,19 @@ UNLIMITED_MATCHES = 99999
 FEATURE_COVER_LETTER = "cover_letter"
 FEATURE_JOB_MATCHES = "job_matches"
 
+_COVER_LETTER_TIERS = frozenset({"professional", "super_standard"})
+
 
 def normalize_tier(raw: str | None) -> str:
-    """Map stored subscription_tier to canonical mwana | mwizi | wino."""
-    key = (raw or "mwana").strip().lower()
-    return TIER_ALIASES.get(key, "mwana")
+    """Return canonical tier key; unknown values fall back to free."""
+    key = (raw or "free").strip().lower()
+    if key in TIER_MATCH_LIMITS:
+        return key
+    return "free"
 
 
 def match_limit_for_tier(tier: str) -> int:
-    return TIER_MATCH_LIMITS.get(normalize_tier(tier), TIER_MATCH_LIMITS["mwana"])
+    return TIER_MATCH_LIMITS.get(normalize_tier(tier), TIER_MATCH_LIMITS["free"])
 
 
 def _first_of_next_month(today: date) -> date:
@@ -135,7 +124,7 @@ async def increment_matches_viewed(
 
 
 def _cover_letter_allowed(canonical: str) -> bool:
-    return canonical == "wino"
+    return canonical in _COVER_LETTER_TIERS
 
 
 def _job_matches_allowed(canonical: str, viewed: int) -> bool:
@@ -153,13 +142,9 @@ async def verify_tier_access(
     increment_match_views: int = 0,
     is_superadmin: bool = False,
 ) -> str:
-    """Enforce tier gates. Returns canonical tier when allowed.
-
-    required_feature: 'cover_letter' | 'job_matches'
-    increment_match_views: add to monthly counter after a successful match fetch.
-    """
+    """Enforce tier gates. Returns canonical tier when allowed."""
     if is_superadmin:
-        return "wino"
+        return "super_standard"
 
     row = await load_user_gating_row(user_id, supabase)
     row = await ensure_billing_cycle_current(user_id, row, supabase)
@@ -169,9 +154,9 @@ async def verify_tier_access(
     if required_feature == FEATURE_COVER_LETTER:
         if not _cover_letter_allowed(canonical):
             detail = (
-                "Upgrade to Mwizi or Wino to generate cover letters."
-                if canonical == "mwana"
-                else "Upgrade to Wino to generate cover letters."
+                "Upgrade to Professional or Super Standard to generate cover letters."
+                if canonical in ("free", "starter")
+                else "Upgrade to Professional to generate cover letters."
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -185,7 +170,7 @@ async def verify_tier_access(
                 detail=(
                     f"Monthly match limit reached ({limit} on "
                     f"{TIER_DISPLAY.get(canonical, canonical)}). "
-                    "Upgrade to Mwizi or Wino for more matches."
+                    "Upgrade for more matches."
                 ),
             )
         if increment_match_views > 0:

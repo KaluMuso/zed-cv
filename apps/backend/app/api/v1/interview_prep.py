@@ -1,7 +1,7 @@
-"""Interview prep route — Super Standard tier only (superadmin bypass)."""
+"""Interview prep — Bwana Interview (Super Standard). Stub + job-scoped generate."""
 import hashlib
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.deps import get_supabase, get_current_user, is_superadmin
@@ -9,6 +9,103 @@ from app.core.rate_limit import limiter
 from app.services.interview_prep import generate_interview_prep
 
 router = APIRouter(prefix="/interview-prep", tags=["Interview Prep"])
+
+_INTERVIEW_PREP_SECTIONS = (
+    "Quizzes",
+    "Aptitude tests",
+    "Dress code",
+    "Skill build-ups",
+)
+
+
+class InterviewPrepSection(BaseModel):
+    id: str
+    title: str
+    description: str
+    status: str = "coming_soon"
+
+
+class InterviewPrepOverview(BaseModel):
+    product_name: str = "Bwana Interview"
+    sections: list[InterviewPrepSection]
+    message: str
+
+
+class InterviewPrepStubRequest(BaseModel):
+    section_id: str = Field(..., min_length=1, max_length=64)
+
+
+class InterviewPrepStubResponse(BaseModel):
+    section_id: str
+    content: str
+    placeholder: bool = True
+
+
+def _require_super_standard(
+    current_user: dict, supabase, *, user_id: str
+) -> None:
+    if is_superadmin(current_user):
+        return
+    sub = (
+        supabase.table("subscriptions")
+        .select("tier, status")
+        .eq("user_id", user_id)
+        .eq("status", "active")
+        .limit(1)
+        .execute()
+    )
+    tier = (sub.data[0].get("tier") if sub.data else None) or "free"
+    if tier != "super_standard":
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Bwana Interview is included on the Super Standard plan (K500/mo). "
+                "Upgrade at /pricing."
+            ),
+        )
+
+
+@router.get("", response_model=InterviewPrepOverview)
+async def interview_prep_overview(
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Catalog of interview-prep modules (Super Standard)."""
+    _require_super_standard(current_user, supabase, user_id=current_user["id"])
+    sections = [
+        InterviewPrepSection(
+            id=s.lower().replace(" ", "-"),
+            title=s,
+            description=f"{s} content will be tailored to your CV and target roles.",
+        )
+        for s in _INTERVIEW_PREP_SECTIONS
+    ]
+    return InterviewPrepOverview(
+        sections=sections,
+        message="Full Bwana Interview experiences are rolling out soon.",
+    )
+
+
+@router.post("", response_model=InterviewPrepStubResponse)
+@limiter.limit("10/minute")
+async def interview_prep_placeholder(
+    request: Request,
+    body: InterviewPrepStubRequest,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Placeholder LLM response until the full Bwana Interview module ships."""
+    del request
+    _require_super_standard(current_user, supabase, user_id=current_user["id"])
+    title = body.section_id.replace("-", " ").title()
+    return InterviewPrepStubResponse(
+        section_id=body.section_id,
+        content=(
+            f"[Bwana Interview — placeholder]\n\n"
+            f"Your {title} module will include personalized guidance based on "
+            "your CV and saved jobs. Check back after the next release."
+        ),
+    )
 
 
 class InterviewPrepRequest(BaseModel):
@@ -33,23 +130,7 @@ async def generate(
 ):
     user_id = current_user["id"]
 
-    # Tier gate: Super Standard only. Superadmin bypass for testing.
-    if not is_superadmin(current_user):
-        sub = (
-            supabase.table("subscriptions")
-            .select("tier, status")
-            .eq("user_id", user_id)
-            .eq("status", "active")
-            .limit(1)
-            .execute()
-        )
-        tier = (sub.data[0].get("tier") if sub.data else None) or "free"
-        if tier != "super_standard":
-            raise HTTPException(
-                status_code=403,
-                detail="Interview prep is a Super Standard plan feature (K500/mo). "
-                       "Upgrade at /pricing.",
-            )
+    _require_super_standard(current_user, supabase, user_id=user_id)
 
     cv_res = (
         supabase.table("cvs")
