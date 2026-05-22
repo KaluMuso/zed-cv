@@ -896,9 +896,26 @@ components:
         id: { type: string, format: uuid }
         job: { $ref: '#/components/schemas/Job' }
         score: { type: number, minimum: 0, maximum: 100 }
-        vector_score: { type: number }
-        skill_score: { type: number }
-        bonus_score: { type: number }
+        semantic_score:
+          type: number
+          minimum: 0
+          description: Semantic similarity component (0–60 under 60/30/10 RPC)
+        skills_score:
+          type: number
+          minimum: 0
+          description: Skills overlap component (0–30 under 60/30/10 RPC)
+        vector_score:
+          type: number
+          minimum: 0
+          description: Legacy alias of semantic_score
+        skill_score:
+          type: number
+          minimum: 0
+          description: Legacy alias of skills_score
+        bonus_score:
+          type: number
+          minimum: 0
+          description: Location/salary bonus (0–10 under 60/30/10 RPC)
         experience_score:
           type: number
           minimum: 0.5
@@ -1925,6 +1942,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchList' }
+
+  /matches/{user_id}:
+    get:
+      operationId: getMatchesForUser
+      summary: Live hybrid match scores (60/30/10 RPC breakdown)
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: min_score, in: query, schema: { type: number, default: 50 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchList' }
+        '403':
+          description: Authenticated user cannot read another user's matches
+        '422':
+          description: No primary CV embedding available
+        '503':
+          description: Matching RPC unavailable
 
   /matches/trigger:
     post:

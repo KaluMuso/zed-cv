@@ -30,168 +30,229 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
        
       All jobs
     </button>
-    <div
-      class="eyebrow mb-3"
-    >
-      Job Details
-    </div>
-    <div
-      class="flex items-start gap-4 mb-4"
+    <header
+      class="mb-6"
     >
       <div
-        class="inline-flex items-center justify-center rounded-full font-semibold text-white shrink-0"
-        style="width: 48px; height: 48px; font-size: 18.240000000000002px; background: linear-gradient(135deg, var(--green-600), var(--copper-500));"
+        class="flex items-start gap-4 mb-4"
       >
-        AZ
+        <div
+          class="inline-flex items-center justify-center rounded-full font-semibold text-white shrink-0"
+          style="width: 56px; height: 56px; font-size: 21.28px; background: linear-gradient(135deg, var(--green-600), var(--copper-500));"
+        >
+          AZ
+        </div>
+        <div
+          class="min-w-0 flex-1"
+        >
+          <p
+            class="text-sm font-medium mb-1"
+            style="color: var(--muted);"
+          >
+            ACME Zambia
+          </p>
+          <h1
+            class="font-display text-3xl md:text-4xl"
+            style="letter-spacing: -0.015em; line-height: 1.1;"
+          >
+            Software Engineer
+          </h1>
+        </div>
       </div>
       <div
-        class="min-w-0 flex-1"
+        class="flex flex-wrap gap-2"
       >
-        <h1
-          class="font-display text-3xl md:text-4xl mb-1"
-          style="letter-spacing: -0.015em; line-height: 1.1;"
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
         >
-          Software Engineer
-        </h1>
-        <p
-          class="text-sm"
-          style="color: var(--muted);"
+          Closes in 194 days
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
         >
-          ACME Zambia
-           · 
+          Full time
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+        >
+          Hybrid
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+        >
+          <svg
+            class="mr-1 opacity-70"
+            fill="none"
+            height="12"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="12"
+          >
+            <path
+              d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0zM12 13a3 3 0 100-6 3 3 0 000 6z"
+            />
+          </svg>
           Lusaka
-        </p>
-      </div>
-    </div>
-    <div
-      class="flex flex-wrap items-center gap-1.5 mb-6"
-    >
-      <span
-        class="tag tag-mono"
-      >
-        Full time
-      </span>
-      <span
-        class="tag tag-mono"
-      >
-        Hybrid
-      </span>
-    </div>
-    <div
-      class="flex flex-wrap gap-x-5 gap-y-2 mb-6 text-xs"
-      style="color: var(--muted);"
-    >
-      <span
-        class="flex items-center gap-1"
-      >
-        <svg
-          class=""
-          fill="none"
-          height="12"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.75"
-          viewBox="0 0 24 24"
-          width="12"
-        >
-          <path
-            d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2"
-          />
-        </svg>
-         Posted 
-        2w ago
-      </span>
-      <span
-        class="rounded-full px-2.5 py-0.5 text-xs font-medium text-green-500 dark:text-green-400 flex items-center gap-1"
-      >
-        Closes in 194 days
-      </span>
-    </div>
-    <div
-      class="mb-6"
-    >
-      <div
-        class="eyebrow mb-3"
-      >
-        Required Skills
-      </div>
-      <div
-        class="flex flex-wrap gap-1.5"
-      >
-        <span
-          class="tag tag-mono"
-        >
-          python
-        </span>
-        <span
-          class="tag tag-mono"
-        >
-          fastapi
         </span>
       </div>
-    </div>
+    </header>
     <div
-      class="mb-6"
+      class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] gap-8 lg:gap-10"
     >
-      <div
-        class="eyebrow mb-3"
+      <aside
+        class="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start"
       >
-        Description
-      </div>
-      <div
-        class="job-description-markdown prose prose-sm max-w-none text-sm text-foreground/90 dark:text-foreground/90 dark:prose-invert"
-      >
-        <h3
-          class="font-bold mt-6 mb-2 text-sm text-foreground dark:text-foreground"
+        <div
+          class="rounded-2xl border p-6 text-center"
+          style="border-color: var(--line); background: var(--bg-2);"
         >
-          Role
-        </h3>
-        
+          <p
+            class="text-sm font-medium mb-2"
+            style="color: var(--ink);"
+          >
+            See your match score
+          </p>
+          <p
+            class="text-xs leading-relaxed mb-4"
+            style="color: var(--muted);"
+          >
+            Sign in and upload your CV to unlock AI match breakdowns for every role.
+          </p>
+          <a
+            class="btn btn-outline btn-sm inline-flex"
+            href="/auth"
+          >
+            Sign in
+          </a>
+        </div>
+      </aside>
+      <div
+        class="order-2 lg:order-1 min-w-0"
+      >
+        <div
+          class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
+        >
+          <button
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px]"
+            type="button"
+          >
+            Apply on company site
+            <svg
+              class=""
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path
+                d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
+              />
+            </svg>
+          </button>
+          <button
+            aria-label="Save job"
+            class="btn btn-outline btn-sm gap-1.5 flex-1 sm:flex-none justify-center"
+            style="opacity: 1;"
+            title="Save this job"
+            type="button"
+          >
+            <svg
+              class=""
+              fill="none"
+              height="16"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+              />
+            </svg>
+            <span>
+              Save
+            </span>
+          </button>
+          <button
+            class="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
+            type="button"
+          >
+            <svg
+              class=""
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path
+                d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
+              />
+            </svg>
+             Generate cover letter
+          </button>
+        </div>
+        <section
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            Required skills
+          </h3>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="tag tag-mono"
+            >
+              python
+            </span>
+            <span
+              class="tag tag-mono"
+            >
+              fastapi
+            </span>
+          </div>
+        </section>
+        <section
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            About the role
+          </h3>
+          <div
+            class="job-description-markdown prose prose-sm max-w-none text-sm text-foreground/90 dark:text-foreground/90 dark:prose-invert"
+          >
+            <h3
+              class="mt-6 mb-2 font-bold tracking-widest uppercase text-muted-foreground text-[11px] opacity-90"
+            >
+              Role
+            </h3>
+            
 
-        <p
-          class="my-2 leading-relaxed"
-        >
-          Build APIs.
-        </p>
+            <p
+              class="my-2 leading-relaxed"
+            >
+              Build APIs.
+            </p>
+          </div>
+        </section>
       </div>
-    </div>
-    <div
-      class="flex gap-3 sticky py-3"
-      style="background: linear-gradient(to top, var(--surface) 70%, transparent); bottom: calc(var(--mobile-tabbar-offset, 0px));"
-    >
-      <button
-        class="btn btn-primary flex-1"
-        type="button"
-      >
-        Apply
-      </button>
-      <button
-        aria-label="Save job"
-        class="btn btn-outline btn-sm gap-1.5"
-        style="opacity: 1;"
-        title="Save this job"
-        type="button"
-      >
-        <svg
-          class=""
-          fill="none"
-          height="16"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.75"
-          viewBox="0 0 24 24"
-          width="16"
-        >
-          <path
-            d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-          />
-        </svg>
-        <span>
-          Save job
-        </span>
-      </button>
     </div>
   </div>
 </div>
@@ -227,168 +288,229 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
        
       All jobs
     </button>
-    <div
-      class="eyebrow mb-3"
-    >
-      Job Details
-    </div>
-    <div
-      class="flex items-start gap-4 mb-4"
+    <header
+      class="mb-6"
     >
       <div
-        class="inline-flex items-center justify-center rounded-full font-semibold text-white shrink-0"
-        style="width: 48px; height: 48px; font-size: 18.240000000000002px; background: linear-gradient(135deg, var(--green-600), var(--copper-500));"
+        class="flex items-start gap-4 mb-4"
       >
-        AZ
+        <div
+          class="inline-flex items-center justify-center rounded-full font-semibold text-white shrink-0"
+          style="width: 56px; height: 56px; font-size: 21.28px; background: linear-gradient(135deg, var(--green-600), var(--copper-500));"
+        >
+          AZ
+        </div>
+        <div
+          class="min-w-0 flex-1"
+        >
+          <p
+            class="text-sm font-medium mb-1"
+            style="color: var(--muted);"
+          >
+            ACME Zambia
+          </p>
+          <h1
+            class="font-display text-3xl md:text-4xl"
+            style="letter-spacing: -0.015em; line-height: 1.1;"
+          >
+            Software Engineer
+          </h1>
+        </div>
       </div>
       <div
-        class="min-w-0 flex-1"
+        class="flex flex-wrap gap-2"
       >
-        <h1
-          class="font-display text-3xl md:text-4xl mb-1"
-          style="letter-spacing: -0.015em; line-height: 1.1;"
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
         >
-          Software Engineer
-        </h1>
-        <p
-          class="text-sm"
-          style="color: var(--muted);"
+          Closes in 194 days
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
         >
-          ACME Zambia
-           · 
+          Full time
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+        >
+          Hybrid
+        </span>
+        <span
+          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+        >
+          <svg
+            class="mr-1 opacity-70"
+            fill="none"
+            height="12"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="12"
+          >
+            <path
+              d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0zM12 13a3 3 0 100-6 3 3 0 000 6z"
+            />
+          </svg>
           Lusaka
-        </p>
-      </div>
-    </div>
-    <div
-      class="flex flex-wrap items-center gap-1.5 mb-6"
-    >
-      <span
-        class="tag tag-mono"
-      >
-        Full time
-      </span>
-      <span
-        class="tag tag-mono"
-      >
-        Hybrid
-      </span>
-    </div>
-    <div
-      class="flex flex-wrap gap-x-5 gap-y-2 mb-6 text-xs"
-      style="color: var(--muted);"
-    >
-      <span
-        class="flex items-center gap-1"
-      >
-        <svg
-          class=""
-          fill="none"
-          height="12"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.75"
-          viewBox="0 0 24 24"
-          width="12"
-        >
-          <path
-            d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2"
-          />
-        </svg>
-         Posted 
-        2w ago
-      </span>
-      <span
-        class="rounded-full px-2.5 py-0.5 text-xs font-medium text-green-500 dark:text-green-400 flex items-center gap-1"
-      >
-        Closes in 194 days
-      </span>
-    </div>
-    <div
-      class="mb-6"
-    >
-      <div
-        class="eyebrow mb-3"
-      >
-        Required Skills
-      </div>
-      <div
-        class="flex flex-wrap gap-1.5"
-      >
-        <span
-          class="tag tag-mono"
-        >
-          python
-        </span>
-        <span
-          class="tag tag-mono"
-        >
-          fastapi
         </span>
       </div>
-    </div>
+    </header>
     <div
-      class="mb-6"
+      class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] gap-8 lg:gap-10"
     >
-      <div
-        class="eyebrow mb-3"
+      <aside
+        class="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start"
       >
-        Description
-      </div>
-      <div
-        class="job-description-markdown prose prose-sm max-w-none text-sm text-foreground/90 dark:text-foreground/90 dark:prose-invert"
-      >
-        <h3
-          class="font-bold mt-6 mb-2 text-sm text-foreground dark:text-foreground"
+        <div
+          class="rounded-2xl border p-6 text-center"
+          style="border-color: var(--line); background: var(--bg-2);"
         >
-          Role
-        </h3>
-        
+          <p
+            class="text-sm font-medium mb-2"
+            style="color: var(--ink);"
+          >
+            See your match score
+          </p>
+          <p
+            class="text-xs leading-relaxed mb-4"
+            style="color: var(--muted);"
+          >
+            Sign in and upload your CV to unlock AI match breakdowns for every role.
+          </p>
+          <a
+            class="btn btn-outline btn-sm inline-flex"
+            href="/auth"
+          >
+            Sign in
+          </a>
+        </div>
+      </aside>
+      <div
+        class="order-2 lg:order-1 min-w-0"
+      >
+        <div
+          class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
+        >
+          <button
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px]"
+            type="button"
+          >
+            Apply on company site
+            <svg
+              class=""
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path
+                d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
+              />
+            </svg>
+          </button>
+          <button
+            aria-label="Save job"
+            class="btn btn-outline btn-sm gap-1.5 flex-1 sm:flex-none justify-center"
+            style="opacity: 1;"
+            title="Save this job"
+            type="button"
+          >
+            <svg
+              class=""
+              fill="none"
+              height="16"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="16"
+            >
+              <path
+                d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+              />
+            </svg>
+            <span>
+              Save
+            </span>
+          </button>
+          <button
+            class="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
+            type="button"
+          >
+            <svg
+              class=""
+              fill="none"
+              height="14"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path
+                d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
+              />
+            </svg>
+             Generate cover letter
+          </button>
+        </div>
+        <section
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            Required skills
+          </h3>
+          <div
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              class="tag tag-mono"
+            >
+              python
+            </span>
+            <span
+              class="tag tag-mono"
+            >
+              fastapi
+            </span>
+          </div>
+        </section>
+        <section
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            About the role
+          </h3>
+          <div
+            class="job-description-markdown prose prose-sm max-w-none text-sm text-foreground/90 dark:text-foreground/90 dark:prose-invert"
+          >
+            <h3
+              class="mt-6 mb-2 font-bold tracking-widest uppercase text-muted-foreground text-[11px] opacity-90"
+            >
+              Role
+            </h3>
+            
 
-        <p
-          class="my-2 leading-relaxed"
-        >
-          Build APIs.
-        </p>
+            <p
+              class="my-2 leading-relaxed"
+            >
+              Build APIs.
+            </p>
+          </div>
+        </section>
       </div>
-    </div>
-    <div
-      class="flex gap-3 sticky py-3"
-      style="background: linear-gradient(to top, var(--surface) 70%, transparent); bottom: calc(var(--mobile-tabbar-offset, 0px));"
-    >
-      <button
-        class="btn btn-primary flex-1"
-        type="button"
-      >
-        Apply
-      </button>
-      <button
-        aria-label="Save job"
-        class="btn btn-outline btn-sm gap-1.5"
-        style="opacity: 1;"
-        title="Save this job"
-        type="button"
-      >
-        <svg
-          class=""
-          fill="none"
-          height="16"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.75"
-          viewBox="0 0 24 24"
-          width="16"
-        >
-          <path
-            d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-          />
-        </svg>
-        <span>
-          Save job
-        </span>
-      </button>
     </div>
   </div>
 </div>

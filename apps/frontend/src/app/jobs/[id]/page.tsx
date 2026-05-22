@@ -245,7 +245,7 @@ export default async function JobDetailPage({ params }: PageParams) {
   const jsonLd = buildJobPostingJsonLd(job as EnrichedJob);
 
   return (
-    <article className="max-w-[820px] mx-auto px-2 sm:px-6 py-6 md:py-10">
+    <article className="max-w-6xl mx-auto px-2 sm:px-6 py-6 md:py-10">
       {/* JSON-LD JobPosting — Google's Job Search rich-results requirement.
           Server-rendered so the structured data lands in the initial HTML,
           where every crawler (including ones that don't run JS) can see it. */}

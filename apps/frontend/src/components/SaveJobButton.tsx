@@ -15,6 +15,10 @@ export interface SaveJobButtonProps {
   className?: string;
   /** Show text label beside the bookmark icon */
   showLabel?: boolean;
+  /** Override visible label when unsaved (default: "Save job") */
+  saveLabel?: string;
+  /** Override visible label when saved (default: "Saved") */
+  savedLabel?: string;
   onChange?: (jobId: string, nextSaved: boolean) => void;
 }
 
@@ -25,6 +29,8 @@ export function SaveJobButton({
   disabled,
   className,
   showLabel = false,
+  saveLabel = "Save job",
+  savedLabel = "Saved",
   onChange,
 }: SaveJobButtonProps) {
   const [busy, setBusy] = useState(false);
@@ -83,7 +89,7 @@ export function SaveJobButton({
       style={{ opacity: busy ? 0.65 : 1 }}
     >
       <Icon name="bookmark" size={16} />
-      {showLabel ? <span>{innerSaved ? "Saved" : "Save job"}</span> : null}
+      {showLabel ? <span>{innerSaved ? savedLabel : saveLabel}</span> : null}
     </button>
   );
 }

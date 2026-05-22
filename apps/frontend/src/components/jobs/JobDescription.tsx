@@ -37,8 +37,8 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h3
       className={cn(
-        "font-bold mt-6 mb-2",
-        main ? "text-base text-foreground dark:text-foreground" : "text-sm text-foreground dark:text-foreground",
+        "mt-6 mb-2 font-bold tracking-widest uppercase text-muted-foreground",
+        main ? "text-xs" : "text-[11px] opacity-90",
       )}
     >
       {children}

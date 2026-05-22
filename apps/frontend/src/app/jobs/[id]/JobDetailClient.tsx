@@ -2,20 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { savedJobs, type Job } from "@/lib/api";
+import { savedJobs, matches, type Job, type MatchData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { JobDetailBody } from "@/components/JobDetailBody";
 
 /**
  * Thin client wrapper around JobDetailBody so the parent page can stay
  * server-rendered (for proper generateMetadata + og:image / Twitter
- * preview support). Only handles the one piece of state that requires
- * a router: the "All jobs" back link.
+ * preview support). Loads saved state and personalised match breakdown.
  */
 export function JobDetailClient({ job }: { job: Job }) {
   const router = useRouter();
   const { token } = useAuth();
   const [jobSaved, setJobSaved] = useState(false);
+  const [match, setMatch] = useState<MatchData | null>(null);
+  const [similarMatches, setSimilarMatches] = useState<MatchData[]>([]);
 
   useEffect(() => {
     if (!token) {
@@ -36,6 +37,37 @@ export function JobDetailClient({ job }: { job: Job }) {
     };
   }, [token, job.id]);
 
+  useEffect(() => {
+    if (!token) {
+      setMatch(null);
+      setSimilarMatches([]);
+      return;
+    }
+    let cancelled = false;
+    matches
+      .get(token)
+      .then((res) => {
+        if (cancelled) return;
+        const forJob = res.matches.find((m) => m.job.id === job.id) ?? null;
+        setMatch(forJob);
+        setSimilarMatches(
+          [...res.matches]
+            .filter((m) => m.job.id !== job.id)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMatch(null);
+          setSimilarMatches([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, job.id]);
+
   return (
     <JobDetailBody
       job={job}
@@ -45,6 +77,8 @@ export function JobDetailClient({ job }: { job: Job }) {
       authToken={token}
       jobSaved={jobSaved}
       onSavedChange={setJobSaved}
+      match={match}
+      similarMatches={similarMatches}
     />
   );
 }

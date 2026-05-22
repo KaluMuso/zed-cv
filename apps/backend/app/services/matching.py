@@ -123,11 +123,35 @@ async def run_matching_for_user(
     user_id: str, supabase: Client, limit: int = 20, min_score: float = 50.0
 ) -> list[dict]:
     """Execute hybrid matching via the match_jobs_for_user() RPC function."""
-    result = supabase.rpc(
-        "match_jobs_for_user",
-        {"p_user_id": user_id, "p_limit": limit, "p_min_score": min_score},
-    ).execute()
+    try:
+        result = supabase.rpc(
+            "match_jobs_for_user",
+            {"p_user_id": user_id, "p_limit": limit, "p_min_score": min_score},
+        ).execute()
+    except Exception as exc:
+        message = str(exc)
+        if "no primary CV with embedding" in message.lower():
+            raise ValueError("Upload a CV with a completed embedding before matching") from exc
+        raise
     return result.data or []
+
+
+async def fetch_jobs_by_ids(job_ids: list[str], supabase: Client) -> dict[str, dict[str, Any]]:
+    """Load active job rows keyed by id for RPC match hydration."""
+    if not job_ids:
+        return {}
+    result = (
+        supabase.table("jobs")
+        .select("*")
+        .in_("id", job_ids)
+        .eq("is_active", True)
+        .execute()
+    )
+    return {
+        str(row["id"]): row
+        for row in (result.data or [])
+        if isinstance(row, dict) and row.get("id")
+    }
 
 
 def apply_preferences_to_match(
