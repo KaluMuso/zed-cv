@@ -10,6 +10,14 @@ Zed CV is an AI-powered job matching SaaS for Zambia. It scrapes/ingests job lis
 - **No fabrication**: Never invent APIs, endpoints, or libraries that don't exist
 - **Contract-first**: All API endpoints defined in `docs/openapi.yaml` BEFORE implementation
 
+## Cursor AI Rules of Engagement
+
+1. **Contract-First:** NEVER invent or modify API endpoints without updating shared types/schemas first.
+2. **Scope Limitation:** Only edit the files explicitly requested. Do not attempt global refactors.
+3. **No Auth Hacking:** Do not modify Supabase authentication logic without explicit human approval.
+4. **Diff Mode:** When proposing changes, output ONLY the code blocks that need changing, not the entire file (unless it's a new file).
+5. **Validation:** After writing code, always specify the terminal commands needed to lint and test the changes.
+
 ## Tech Stack (DO NOT CHANGE WITHOUT UPDATING THIS FILE)
 | Layer | Technology | Hosting | Tier |
 |-------|-----------|---------|------|
