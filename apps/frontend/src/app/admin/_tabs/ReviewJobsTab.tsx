@@ -5,7 +5,7 @@ import { admin, type AdminJobReviewRow } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 
 type Draft = {
   apply_url: string;
@@ -40,7 +40,7 @@ export function ReviewJobsTab({ token }: { token: string }) {
         return next;
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load review queue");
+      notify.error(e instanceof Error ? e.message : "Failed to load review queue");
     } finally {
       setLoading(false);
     }
@@ -65,10 +65,10 @@ export function ReviewJobsTab({ token }: { token: string }) {
     setSavingId(jobId);
     try {
       await admin.updateTrack4eReviewJob(token, jobId, payload);
-      toast.success("Job updated.");
+      notify.custom.success("Job updated.");
       await loadQueue();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save job");
+      notify.error(e instanceof Error ? e.message : "Could not save job");
     } finally {
       setSavingId(null);
     }
@@ -77,7 +77,7 @@ export function ReviewJobsTab({ token }: { token: string }) {
   const bulkAction = async (action: "duplicate" | "inactive") => {
     const ids = [...selected];
     if (!ids.length) {
-      toast.error("Select at least one job.");
+      notify.error("Select at least one job.");
       return;
     }
     try {
@@ -87,10 +87,10 @@ export function ReviewJobsTab({ token }: { token: string }) {
         await admin.bulkPermanentlyInactive(token, ids);
       }
       setSelected(new Set());
-      toast.success("Bulk action completed.");
+      notify.custom.success("Bulk action completed.");
       await loadQueue();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Bulk action failed");
+      notify.error(e instanceof Error ? e.message : "Bulk action failed");
     }
   };
 

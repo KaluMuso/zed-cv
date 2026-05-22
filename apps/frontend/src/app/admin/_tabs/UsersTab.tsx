@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { formatDate, SkeletonTableRows } from "./shared";
 
 import type { SubscriptionTier } from "@/lib/api";
@@ -31,7 +31,7 @@ export function UsersTab({ token }: { token: string }) {
         setData(r.users);
         setPages(r.pages);
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load users"))
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load users"))
       .finally(() => setLoading(false));
   }, [token, page, search]);
 
@@ -43,10 +43,10 @@ export function UsersTab({ token }: { token: string }) {
     setBusyId(userId);
     try {
       await admin.updateSubscription(token, userId, tier);
-      toast.success("Tier updated.");
+      notify.custom.success("Tier updated.");
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Update failed");
+      notify.error(e instanceof Error ? e.message : "Update failed");
     } finally {
       setBusyId(null);
     }

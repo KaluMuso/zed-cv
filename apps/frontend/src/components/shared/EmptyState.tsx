@@ -25,20 +25,31 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center rounded-sm border border-dashed border-line bg-surface/60 py-12 px-6 text-center",
+        "flex animate-fade-up flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-elevated/60 px-6 py-12 text-center dark:border-border-dark dark:bg-surface-dark-elevated/60",
         className
       )}
       role="status"
     >
-      <Icon className="mb-3 h-10 w-10 text-muted-foreground" strokeWidth={1.25} aria-hidden />
-      <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>
+      <Icon
+        className="mb-3 h-10 w-10 text-ink-muted dark:text-ink-dark-muted"
+        strokeWidth={1.25}
+        aria-hidden
+      />
+      <h2 className="font-serif text-lg font-semibold text-ink dark:text-ink-dark">
+        {title}
+      </h2>
       {description ? (
-        <p className="mt-2 max-w-sm text-sm text-muted-foreground">{description}</p>
+        <p className="mt-2 max-w-sm text-sm text-ink-muted dark:text-ink-dark-muted">
+          {description}
+        </p>
       ) : null}
       {ctaText && (ctaHref || onCtaClick) ? (
         <div className="mt-6">
           {ctaHref ? (
-            <Link href={ctaHref} className={cn(buttonVariants({ variant: "primary", size: "default" }))}>
+            <Link
+              href={ctaHref}
+              className={cn(buttonVariants({ variant: "primary", size: "md" }))}
+            >
               {ctaText}
             </Link>
           ) : (

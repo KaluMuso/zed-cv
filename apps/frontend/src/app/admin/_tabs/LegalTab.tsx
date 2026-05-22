@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { adminLegal, type AdminLegalDoc, type LegalSlug, ApiError } from "@/lib/api";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { LegalMarkdown } from "@/app/legal/_components/LegalMarkdown";
 
 const SLUGS: { slug: LegalSlug; label: string; description: string }[] = [
@@ -95,7 +95,7 @@ function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
         setContentMd(d.content_md || "");
       })
       .catch((e) =>
-        toast.error(
+        notify.error(
           e instanceof Error ? e.message : `Could not load /legal/${slug}`,
         ),
       )
@@ -104,7 +104,7 @@ function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
 
   const handleSave = async () => {
     if (!contentMd.trim()) {
-      toast.error("Content can't be empty.");
+      notify.error("Content can't be empty.");
       return;
     }
     setSaving(true);
@@ -128,18 +128,18 @@ function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
         // the page still updates within the ISR window. Surface a
         // warning so the operator knows propagation is slower than
         // usual, but DON'T fail the save.
-        toast.warning(
+        notify.custom.warning(
           "Saved, but couldn't trigger immediate cache refresh. Page will update within 5 minutes.",
         );
         return;
       }
 
-      toast.success(`Saved /legal/${slug}. Public page refreshed.`);
+      notify.custom.success(`Saved /legal/${slug}. Public page refreshed.`);
     } catch (e) {
       if (e instanceof ApiError && e.status === 403) {
-        toast.error("You don't have permission to edit legal pages.");
+        notify.error("You don't have permission to edit legal pages.");
       } else {
-        toast.error(e instanceof Error ? e.message : "Save failed.");
+        notify.error(e instanceof Error ? e.message : "Save failed.");
       }
     } finally {
       setSaving(false);

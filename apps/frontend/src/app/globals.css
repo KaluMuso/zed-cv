@@ -160,14 +160,17 @@
 }
 
 body {
+  @apply bg-surface text-ink antialiased;
   font-family: var(--font-body);
-  background: var(--bg);
-  color: var(--ink);
   font-size: 0.9375rem;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
+}
+
+.dark body {
+  @apply bg-surface-dark text-ink-dark;
 }
 
 @media (min-width: 768px) {
@@ -687,5 +690,5 @@ body {
 
 /* Dropzone hover */
 .dropzone-active {
-  @apply border-brand-500 bg-brand-50;
+  @apply border-primary-500 bg-primary-50;
 }

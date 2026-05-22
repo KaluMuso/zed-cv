@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AdminStats, AdminTierBreakdown } from "@/lib/api";
 import { admin } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { StatCard, formatNgwee } from "./shared";
 
@@ -24,7 +24,7 @@ export function OverviewTab({
     try {
       await admin.exportCompaniesCsv(token);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Export failed");
+      notify.error(e instanceof Error ? e.message : "Export failed");
     } finally {
       setExporting(false);
     }

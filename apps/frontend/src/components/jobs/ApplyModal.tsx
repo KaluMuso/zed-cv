@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/Icon";
-import { notifyError, notifySuccess } from "@/components/Toast";
+import { notify } from "@/lib/toast";
 import {
   buildApplyContactMethods,
   type ApplyContactKind,
@@ -42,9 +42,9 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
     setCopying(key);
     try {
       await navigator.clipboard.writeText(value);
-      notifySuccess("Copied to clipboard");
+      notify.custom.success("Copied to clipboard");
     } catch {
-      notifyError("Could not copy — try selecting the text manually");
+      notify.error("Could not copy — try selecting the text manually");
     } finally {
       setCopying(null);
     }

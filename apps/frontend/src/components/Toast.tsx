@@ -1,15 +1,18 @@
 "use client";
 
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 
+/** @deprecated Use `notify` from `@/lib/toast` directly. */
 export function notifySuccess(message: string) {
-  toast.success(message, { duration: 5000 });
+  notify.custom.success(message);
 }
 
+/** @deprecated Use `notify` from `@/lib/toast` directly. */
 export function notifyError(message: string) {
-  toast.error(message, { duration: 5000 });
+  notify.error(message);
 }
 
+/** @deprecated Use `notify` from `@/lib/toast` directly. */
 export function notifyInfo(message: string) {
-  toast.info(message, { duration: 5000 });
+  notify.info(message);
 }

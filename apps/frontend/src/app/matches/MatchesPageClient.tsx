@@ -27,7 +27,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { Counter } from "@/components/ui/Counter";
 import Link from "next/link";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
@@ -164,14 +164,14 @@ export default function MatchesPageClient() {
       setRefreshing(false);
       setRefreshRing(null);
       if (e instanceof ApiError) {
-        if (e.status === 403) toast.error("Monthly match quota used up.");
-        else if (e.status === 422) toast.error("Upload a CV first before matching.");
+        if (e.status === 403) notify.error("Monthly match quota used up.");
+        else if (e.status === 422) notify.error("Upload a CV first before matching.");
         else if (e.status === 429)
-          toast.error("Too many refreshes — try again in a minute.");
+          notify.error("Too many refreshes — try again in a minute.");
         else
-          toast.error(e.detail || "Couldn't refresh matches. Try again in a moment.");
+          notify.error(e.detail || "Couldn't refresh matches. Try again in a moment.");
       } else {
-        toast.error("Couldn't refresh matches. Try again in a moment.");
+        notify.error("Couldn't refresh matches. Try again in a moment.");
       }
       return;
     }
@@ -216,15 +216,15 @@ export default function MatchesPageClient() {
         const newOnes = next.filter((m) => !preIds.has(m.id));
         const n = newOnes.length;
         if (n > 0) {
-          toast.success(`${n} new matches scored.`);
+          notify.custom.success(`${n} new matches scored.`);
         } else {
-          toast.message("No new matches this cycle — your queue is up to date.");
+          notify.custom.message("No new matches this cycle — your queue is up to date.");
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.message === "timeout") {
-          toast.error("Still working… timed out. Try Refresh again.");
+          notify.error("Still working… timed out. Try Refresh again.");
         } else {
-          toast.error("Couldn't load refreshed matches.");
+          notify.error("Couldn't load refreshed matches.");
         }
       } finally {
         setRefreshRing(null);
@@ -271,9 +271,9 @@ export default function MatchesPageClient() {
     try {
       const saved = await autoMatchPreferences.patch(token, { auto_match_enabled: next });
       setAutoPrefs(saved);
-      toast.success(next ? "Auto-match is on." : "Auto-match is off.");
+      notify.custom.success(next ? "Auto-match is on." : "Auto-match is off.");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Could not update auto-match.");
+      notify.error(e instanceof Error ? e.message : "Could not update auto-match.");
     } finally {
       setSavingAutoPrefs(false);
     }

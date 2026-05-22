@@ -9,6 +9,7 @@ import { ChevronMotif } from "@/components/ui/ChevronMotif";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useAuth } from "@/lib/auth";
 import { publicStats, type PublicStats } from "@/lib/api";
+import { FloatingCard } from "@/components/shared/FloatingCard";
 import { cn } from "@/lib/utils";
 
 // ── Static content ──
@@ -255,8 +256,9 @@ export default function HomePageClient() {
 
             {/* RIGHT — WhatsApp-style floating digest card */}
             <div className="flex justify-center lg:justify-end">
+              <FloatingCard>
               <div
-                className="animate-float w-full max-w-[340px] sm:max-w-[380px] rounded-2xl border border-white/10 bg-[#0b141a] p-4 sm:p-5 shadow-2xl shadow-black/40 ring-1 ring-white/5"
+                className="w-full max-w-sm rounded-xl border border-white/10 bg-surface-dark p-4 shadow-raised ring-1 ring-white/5 sm:max-w-sm sm:p-5"
                 role="img"
                 aria-label="WhatsApp digest preview: Good morning Chanda, 3 new matches"
               >
@@ -296,6 +298,7 @@ export default function HomePageClient() {
                   ))}
                 </ul>
               </div>
+              </FloatingCard>
             </div>
           </div>
         </div>

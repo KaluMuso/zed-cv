@@ -5,7 +5,7 @@ import { adminTierConfig, profile, type TierConfigRow } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { UNLIMITED_MATCHES } from "@/lib/tier-config";
 
 type EditableTier = TierConfigRow & {
@@ -66,7 +66,7 @@ export function TierConfigEditor({ token }: { token: string }) {
       .get(token)
       .then((r) => setRows(r.tiers.map(toEditable)))
       .catch((e) =>
-        toast.error(e instanceof Error ? e.message : "Failed to load tier config"),
+        notify.error(e instanceof Error ? e.message : "Failed to load tier config"),
       )
       .finally(() => setLoading(false));
   }, [token, isSuperadmin]);
@@ -87,9 +87,9 @@ export function TierConfigEditor({ token }: { token: string }) {
       const payload = rows.map(fromEditable);
       const res = await adminTierConfig.update(token, payload);
       setRows(res.tiers.map(toEditable));
-      toast.success("Tier pricing and match limits saved.");
+      notify.custom.success("Tier pricing and match limits saved.");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      notify.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }

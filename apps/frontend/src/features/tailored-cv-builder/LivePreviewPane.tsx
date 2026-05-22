@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { useTailoredCvBuilderStore } from "./store";
 import { AtsLivePreview } from "./AtsLivePreview";
 
@@ -9,7 +9,7 @@ export function LivePreviewPane({ className = "" }: { className?: string }) {
   const draft = useTailoredCvBuilderStore((s) => s.draft);
 
   const onDownloadPdf = () => {
-    toast.info("PDF export is coming soon. Your live preview updates as you type.");
+    notify.info("PDF export is coming soon. Your live preview updates as you type.");
   };
 
   return (

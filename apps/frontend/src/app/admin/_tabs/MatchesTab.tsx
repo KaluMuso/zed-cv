@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { formatDate, SkeletonTableRows } from "./shared";
 
 export function MatchesTab({ token }: { token: string }) {
@@ -27,7 +27,7 @@ export function MatchesTab({ token }: { token: string }) {
         setData(r.matches);
         setPages(r.pages);
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load matches"))
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load matches"))
       .finally(() => setLoading(false));
   }, [token, page, minScore]);
 
