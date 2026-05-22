@@ -2,54 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
+import { FourStepsSection } from "@/components/marketing/FourStepsSection";
+import { HeroVisualComposition } from "@/components/marketing/HeroVisualComposition";
+import { ScoreMathSection } from "@/components/marketing/ScoreMathSection";
 import { Icon } from "@/components/ui/Icon";
 import { Counter } from "@/components/ui/Counter";
-import { ScoreRing } from "@/components/ui/ScoreRing";
-import { ChevronMotif } from "@/components/ui/ChevronMotif";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { useAuth } from "@/lib/auth";
 import { publicStats, type PublicStats } from "@/lib/api";
-import { FloatingCard } from "@/components/shared/FloatingCard";
-import { cn } from "@/lib/utils";
-
-// ── Static content ──
-
-const howItWorks = [
-  {
-    n: "01",
-    icon: "upload",
-    title: "Upload your CV",
-    description:
-      "PDF, DOC, or photo. We extract skills, experience, location in seconds.",
-  },
-  {
-    n: "02",
-    icon: "sparkle",
-    title: "AI scores every job",
-    description:
-      "Hybrid match: 60% semantic similarity + 30% skills overlap + 10% bonus signals.",
-  },
-  {
-    n: "03",
-    icon: "external",
-    title: "Multi-channel apply",
-    description:
-      "Email, WhatsApp, phone, or website — whichever the employer accepts.",
-  },
-  {
-    n: "04",
-    icon: "whatsapp",
-    title: "Daily WhatsApp digest",
-    description:
-      "Top 3 matches at 07:00. Reply YES to apply. No spam, no scrolling.",
-  },
-];
-
-const matchAnnotations: [string, string][] = [
-  ["Score", "0–100, transparent breakdown"],
-  ["Skills", "Matched + missing called out"],
-  ["Why", "Plain-English explanation"],
-];
 
 interface Plan {
   name: string;
@@ -254,52 +215,7 @@ export default function HomePageClient() {
               </div>
             </div>
 
-            {/* RIGHT — WhatsApp-style floating digest card */}
-            <div className="flex justify-center lg:justify-end">
-              <FloatingCard>
-              <div
-                className="w-full max-w-sm rounded-xl border border-white/10 bg-surface-dark p-4 shadow-raised ring-1 ring-white/5 sm:max-w-sm sm:p-5"
-                role="img"
-                aria-label="WhatsApp digest preview: Good morning Chanda, 3 new matches"
-              >
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#25D366] text-white">
-                    <Icon name="whatsapp" size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-medium text-[#8696a0]">
-                      ZedApply
-                    </div>
-                    <div className="text-[10px] text-[#667781]">07:00</div>
-                  </div>
-                </div>
-                <p className="text-[15px] sm:text-base font-medium leading-snug text-[#e9edef]">
-                  Good morning Chanda! 3 new matches:
-                </p>
-                <ul className="mt-4 flex flex-col gap-2">
-                  {(
-                    [
-                      ["Senior Accountant", "ZANACO", 92],
-                      ["Frontend Engineer", "MTN", 88],
-                    ] as [string, string, number][]
-                  ).map(([title, company, score]) => (
-                    <li
-                      key={title}
-                      className="flex items-center justify-between gap-2 rounded-xl bg-[#1f2c34] px-3 py-2.5"
-                    >
-                      <span className="min-w-0 text-[13px] text-[#d1d7db] truncate">
-                        <span className="font-semibold text-[#e9edef]">
-                          {title}
-                        </span>
-                        <span className="text-[#8696a0]"> · {company}</span>
-                        <span className="text-[#25D366]"> ({score}%)</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              </FloatingCard>
-            </div>
+            <HeroVisualComposition />
           </div>
         </div>
       </section>
@@ -345,169 +261,9 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      {/* ────────────────────── HOW IT WORKS ────────────────────── */}
-      <section
-        id="how-it-works"
-        className="bg-slate-950 border-y border-slate-800/80"
-      >
-        <div className="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="eyebrow text-emerald-400/90">§ 01 / How it works</div>
-            <h2 className="font-serif font-display mt-3 text-3xl sm:text-4xl md:text-5xl leading-tight tracking-tight text-slate-50">
-              Four steps. One coffee.
-            </h2>
-          </div>
+      <FourStepsSection />
 
-          <div className="mt-10 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {howItWorks.map((step, i) => (
-              <div
-                key={step.n}
-                className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 sm:p-7 reveal transition-shadow hover:shadow-lg hover:shadow-black/20"
-                style={{ transitionDelay: `${i * 100}ms` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
-                    <Icon name={step.icon} size={20} />
-                  </div>
-                  <span className="font-mono text-xs text-amber-500/90">
-                    {step.n}
-                  </span>
-                </div>
-                <h3 className="font-display mt-5 sm:mt-6 mb-2 text-xl text-slate-50">
-                  {step.title}
-                </h3>
-                <p className="m-0 text-sm leading-relaxed text-slate-400">
-                  {step.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ───────────── TRANSPARENT SCORING ───────────── */}
-      <section
-        style={{
-          background: "var(--bg-2)",
-          borderTop: "1px solid var(--line)",
-          borderBottom: "1px solid var(--line)",
-        }}
-      >
-        <div className="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
-          <div className="grid gap-10 lg:gap-16 lg:grid-cols-2 items-center">
-            <div>
-              <div className="eyebrow">§ 02 / Transparent scoring</div>
-              <h2
-                className="font-display mt-2 mb-5"
-                style={{
-                  fontSize: "clamp(32px, 5vw, 60px)",
-                  lineHeight: 1.05,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Every match shows{" "}
-                <span
-                  className="italic text-emerald-600 dark:text-emerald-400"
-                >
-                  its math
-                </span>
-                .
-              </h2>
-              <p
-                className="text-base leading-relaxed max-w-[520px] text-ink-2"
-                style={{ color: "var(--ink-2)" }}
-              >
-                No black box. Every score breaks down into three components,
-                and the AI writes a one-paragraph explanation in plain English
-                — like a recruiter would.
-              </p>
-              <ul className="mt-7 list-none p-0 flex flex-col gap-3.5">
-                {matchAnnotations.map(([k, v]) => (
-                  <li key={k} className="flex items-start gap-3.5">
-                    <div
-                      className="rounded-full inline-flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{
-                        width: 24,
-                        height: 24,
-                        background: "var(--green-100)",
-                        color: "var(--green-700)",
-                      }}
-                    >
-                      <Icon name="check" size={14} />
-                    </div>
-                    <div>
-                      <div className="font-semibold">{k}</div>
-                      <div
-                        className="text-sm"
-                        style={{ color: "var(--muted)" }}
-                      >
-                        {v}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Score card mockup */}
-            <div
-              className="card p-6 sm:p-8 dark:bg-card dark:border-border"
-              style={{ boxShadow: "var(--shadow-md)" }}
-            >
-              <div className="flex items-start justify-between mb-5 gap-3">
-                <div className="min-w-0">
-                  <div
-                    className="font-display text-foreground"
-                    style={{ fontSize: 22, lineHeight: 1.1 }}
-                  >
-                    Senior Accountant
-                  </div>
-                  <div className="text-[13px] mt-0.5 text-muted-foreground">
-                    ZANACO &middot; Lusaka
-                  </div>
-                </div>
-                <ScoreRing score={92} size={80} stroke={7} />
-              </div>
-              <div className="flex flex-col gap-3.5 mt-2">
-                {(
-                  [
-                    ["Semantic similarity", 60, "bg-emerald-500"],
-                    ["Skills overlap", 30, "bg-amber-500"],
-                    ["Bonus signals", 10, "bg-slate-400"],
-                  ] as [string, number, string][]
-                ).map(([label, pct, barClass]) => (
-                  <div key={label}>
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-[13px] text-ink-2 dark:text-muted-foreground">
-                        {label}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {pct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full overflow-hidden bg-bg-2 dark:bg-muted/30">
-                      <div
-                        className={cn("h-full rounded-full transition-[width] duration-1000 ease-out", barClass)}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 rounded-xl border border-border bg-muted/40 p-4 dark:bg-muted/20">
-                <div className="eyebrow mb-1.5 text-emerald-700 dark:text-emerald-400">
-                  AI explanation
-                </div>
-                <p className="m-0 text-[13px] leading-relaxed text-foreground dark:text-gray-200">
-                  Strong overlap on IFRS reporting and Excel modeling. Lusaka
-                  location matches your profile. One missing skill: SAP — minor
-                  for this role.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ScoreMathSection />
 
       {/* ─────────────────────── PRICING TEASER ─────────────────────── */}
       <section className="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
@@ -636,44 +392,7 @@ export default function HomePageClient() {
         </div>
       </section>
 
-      {/* ────────────────────── FINAL CTA ────────────────────── */}
-      <section className="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
-        <div className="grain relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 to-green-500 px-6 py-10 sm:px-10 sm:py-14 text-white">
-          <div
-            className="absolute hidden md:block"
-            style={{ right: -40, top: -40, opacity: 0.18 }}
-          >
-            <ChevronMotif w={420} h={400} />
-          </div>
-          <div className="relative">
-            <div className="eyebrow text-white/70">§ Final note</div>
-            <h2
-              className="font-display mt-3 max-w-[800px]"
-              style={{
-                fontSize: "clamp(28px, 5vw, 56px)",
-                lineHeight: 1.08,
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Your next role is already in our database.
-            </h2>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href={primaryHref}
-                className="btn btn-lg bg-white text-emerald-800 font-semibold hover:bg-white/90"
-              >
-                {primaryLabel} <Icon name="arrowRight" size={16} />
-              </Link>
-              <Link
-                href="/pricing"
-                className="btn btn-lg border border-white/30 bg-transparent text-white hover:bg-white/10"
-              >
-                See pricing
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <FinalCtaSection primaryHref={primaryHref} />
     </div>
   );
 }

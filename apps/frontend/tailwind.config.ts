@@ -145,6 +145,10 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px) rotate(1.5deg)" },
           "50%": { transform: "translateY(-6px) rotate(2deg)" },
         },
+        "float-delay-2": {
+          "0%, 100%": { transform: "translateY(0px) rotate(1deg)" },
+          "50%": { transform: "translateY(-5px) rotate(1.5deg)" },
+        },
         "fade-up": {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
@@ -165,6 +169,7 @@ const config: Config = {
       animation: {
         float: "float 6s ease-in-out infinite",
         "float-delayed": "float-delayed 7s ease-in-out infinite 0.5s",
+        "float-delay-2": "float-delay-2 7s ease-in-out infinite 1s",
         "fade-up": "fade-up 320ms cubic-bezier(0.22, 0.61, 0.36, 1)",
         "fade-in": "fade-in 200ms ease-out",
         "scale-in": "scale-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",

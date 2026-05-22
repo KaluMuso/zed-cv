@@ -54,6 +54,9 @@
   --bg: #FAFAF7;
   --bg-2: #f3f2eb;
   --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-dark-elevated: #1a2220;
+  --ink-dark: #e9edef;
   --line: #E5E5DB;
   --line-2: #d8d6c8;
   --ink: #0F172A;
@@ -114,6 +117,9 @@
   --bg: #0C0D0C;
   --bg-2: #151614;
   --surface: #141514;
+  --surface-elevated: #1c1f1e;
+  --surface-dark-elevated: #1a2220;
+  --ink-dark: #e9edef;
   --line: #1F2937;
   --line-2: #374151;
   --ink: #F8FAFC;
