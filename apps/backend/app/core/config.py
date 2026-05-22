@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     # n8n's "Zambia Job Scraper" workflow includes this as `api_key`.
     # Leave empty in dev to disable the ingest endpoint entirely.
     ingest_api_key: str = ""
+    # n8n cron endpoints (daily digest, review-queue). When empty, falls back
+    # to ingest_api_key so one shared secret can protect all service routes.
+    admin_api_key: str = ""
     # Comma-separated list of aggregator/cross-listing domains to filter
     # at the /ingest boundary. The scraper sometimes pulls in jobs that
     # were originally listed elsewhere (e.g. a Zambian-tagged role on
@@ -152,6 +155,11 @@ class Settings(BaseSettings):
         if value is None:
             return "+260761359005"
         return normalize_zambian_e164_phone(str(value))
+
+
+def resolve_admin_api_key(settings: Settings) -> str:
+    """Effective secret for /admin/* cron routes (n8n)."""
+    return settings.admin_api_key or settings.ingest_api_key
 
 
 @lru_cache

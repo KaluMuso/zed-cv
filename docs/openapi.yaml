@@ -957,6 +957,21 @@ components:
         reason: { type: string }
         threshold_alerted: { type: integer, nullable: true }
 
+    DailyDigestMessage:
+      type: object
+      required: [user_id, phone, message]
+      properties:
+        user_id: { type: string, format: uuid }
+        phone: { type: string, pattern: '^\+260[0-9]{9}$' }
+        message: { type: string }
+
+    DailyDigestBatchResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/DailyDigestMessage' }
+
     ContactSubmission:
       type: object
       required: [name, email, message]
@@ -2036,14 +2051,38 @@ paths:
       summary: Cron — WhatsApp alert when review backlog crosses 10/25/50/100
       tags: [Admin Cron]
       parameters:
-        - { name: INGEST_API_KEY, in: header, required: true, schema: { type: string } }
+        - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-ADMIN-API-KEY, in: header, required: false, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
         - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
       responses:
         '200':
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReviewQueueAlertResponse' }
-        '401': { description: Invalid ingest API key }
+        '401': { description: Invalid admin or ingest API key }
+
+  /admin/trigger-daily-digest:
+    get:
+      operationId: triggerDailyDigest
+      summary: Cron — build daily WhatsApp match digests for n8n to send
+      description: |
+        Returns one row per user with whatsapp_verified=true and alert_frequency=daily.
+        Each message lists up to three new matches from the last 24 hours that have not
+        yet been sent on the whatsapp_daily_digest channel. n8n loops the response and
+        calls WAHA sendText for each phone.
+      tags: [Admin Cron]
+      parameters:
+        - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-ADMIN-API-KEY, in: header, required: false, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyDigestBatchResponse' }
+        '401': { description: Invalid admin or ingest API key }
 
   /interview-prep/generate:
     post:

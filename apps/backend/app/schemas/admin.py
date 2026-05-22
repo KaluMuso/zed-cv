@@ -1,7 +1,8 @@
 """Schemas for admin endpoints."""
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from app.core.phone import normalize_zambian_e164_phone
 
 
 class AdminScraperStatsDay(BaseModel):
@@ -180,3 +181,18 @@ class AdminSubscriptionList(BaseModel):
 
 class AdminSubscriptionUpdate(BaseModel):
     tier: str = Field(..., pattern="^(free|starter|professional|super_standard)$")
+
+
+class DailyDigestMessage(BaseModel):
+    user_id: str
+    phone: str
+    message: str
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def _normalize_phone(cls, value: object) -> str:
+        return normalize_zambian_e164_phone(str(value))
+
+
+class DailyDigestBatchResponse(BaseModel):
+    messages: list[DailyDigestMessage] = Field(default_factory=list)
