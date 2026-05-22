@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { coverLetter, ApiError } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
-import { notifyError, notifySuccess } from "@/components/Toast";
+import { notify } from "@/lib/toast";
 
 export function CoverLetterModal({
   jobId,
@@ -33,7 +33,7 @@ export function CoverLetterModal({
 
   const generate = useCallback(async () => {
     if (!token) {
-      notifyError("Sign in to generate a cover letter.");
+      notify.error("Sign in to generate a cover letter.");
       return;
     }
     setLoading(true);
@@ -41,14 +41,14 @@ export function CoverLetterModal({
     try {
       const res = await coverLetter.generate(token, jobId);
       setLetter(res.letter);
-      notifySuccess("Cover letter ready");
+      notify.custom.success("Cover letter ready");
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 403) {
-        notifyError("Cover letters require the Professional plan.");
+        notify.error("Cover letters require the Professional plan.");
       } else if (e instanceof ApiError) {
-        notifyError(e.detail || "Could not generate cover letter.");
+        notify.error(e.detail || "Could not generate cover letter.");
       } else {
-        notifyError("Could not generate cover letter.");
+        notify.error("Could not generate cover letter.");
       }
     } finally {
       setLoading(false);
@@ -59,9 +59,9 @@ export function CoverLetterModal({
     if (!letter) return;
     try {
       await navigator.clipboard.writeText(letter);
-      notifySuccess("Copied to clipboard");
+      notify.custom.success("Copied to clipboard");
     } catch {
-      notifyError("Could not copy — select the text manually");
+      notify.error("Could not copy — select the text manually");
     }
   }, [letter]);
 

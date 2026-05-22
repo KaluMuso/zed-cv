@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 
 type Draft = {
   apply_url: string;
@@ -42,7 +42,7 @@ export default function AdminJobReviewPage() {
         return next;
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load review queue");
+      notify.error(e instanceof Error ? e.message : "Failed to load review queue");
     } finally {
       setLoading(false);
     }
@@ -68,10 +68,10 @@ export default function AdminJobReviewPage() {
     setSavingId(jobId);
     try {
       await admin.approveReviewJob(token, jobId, payload);
-      toast.success("Job approved.");
+      notify.custom.success("Job approved.");
       await loadQueue();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not approve job");
+      notify.error(e instanceof Error ? e.message : "Could not approve job");
     } finally {
       setSavingId(null);
     }
@@ -82,10 +82,10 @@ export default function AdminJobReviewPage() {
     setSavingId(jobId);
     try {
       await admin.dismissReviewJob(token, jobId);
-      toast.success("Job dismissed.");
+      notify.custom.success("Job dismissed.");
       await loadQueue();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not dismiss job");
+      notify.error(e instanceof Error ? e.message : "Could not dismiss job");
     } finally {
       setSavingId(null);
     }

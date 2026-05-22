@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
 import { TierConfigEditor } from "./TierConfigEditor";
 
@@ -40,7 +40,7 @@ export function PricingTab({
         setPages(r.pages);
         setTotalCompleted(r.total_completed_ngwee);
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load payments"))
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load payments"))
       .finally(() => setLoading(false));
   }, [token, page, statusFilter]);
 

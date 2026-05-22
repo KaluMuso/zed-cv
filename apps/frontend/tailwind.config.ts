@@ -6,132 +6,173 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          50: "#ECFDF5",
+          100: "#D1FAE5",
+          500: "#0E5C3A",
+          600: "#0A4A2F",
+          700: "#073724",
+          foreground: "#FAFAF7",
+          DEFAULT: "#0E5C3A",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          100: "#FEF3C7",
+          500: "#D97706",
+          600: "#B45309",
+          DEFAULT: "#D97706",
+          foreground: "#FAFAF7",
         },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+        surface: {
+          DEFAULT: "#FAFAF7",
+          elevated: "#FFFFFF",
+          dark: "#0C0D0C",
+          "dark-elevated": "#161816",
+        },
+        ink: {
+          DEFAULT: "#0F172A",
+          muted: "#52525B",
+          "2": "#334155",
+          dark: "#F8FAFC",
+          "dark-muted": "#A1A1AA",
+        },
+        border: {
+          DEFAULT: "#E5E5DB",
+          dark: "#1F2937",
         },
         success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+          500: "#16A34A",
+          DEFAULT: "#16A34A",
+          foreground: "#FAFAF7",
         },
         warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+          500: "#F59E0B",
+          DEFAULT: "#F59E0B",
+          foreground: "#0F172A",
         },
+        danger: {
+          500: "#DC2626",
+          DEFAULT: "#DC2626",
+          foreground: "#FFFFFF",
+        },
+        /* shadcn-style aliases → semantic tokens */
+        background: "#FAFAF7",
+        foreground: "#0F172A",
+        card: {
+          DEFAULT: "#FFFFFF",
+          foreground: "#0F172A",
+        },
+        secondary: {
+          DEFAULT: "#FFFFFF",
+          foreground: "#0F172A",
+        },
+        muted: {
+          DEFAULT: "#52525B",
+          foreground: "#52525B",
+        },
+        destructive: {
+          DEFAULT: "#DC2626",
+          foreground: "#FFFFFF",
+        },
+        input: "#E5E5DB",
+        ring: "#0E5C3A",
+        /* legacy aliases — migrate to semantic tokens over time */
         brand: {
-          DEFAULT: "#0E5C3A",
-          50: "#f0fdf6",
-          100: "#d8f0e3",
-          200: "#a9e2c5",
-          300: "#66c79a",
-          400: "#2faa6e",
+          50: "#ECFDF5",
           500: "#0E5C3A",
-          600: "#0b4a2f",
-          700: "#083d27",
-          800: "#062f1f",
-          900: "#042117",
+          DEFAULT: "#0E5C3A",
         },
-        surface: "var(--surface)",
-        "bg-2": "var(--bg-2)",
-        line: "var(--line)",
-        ink: {
-          DEFAULT: "var(--ink)",
-          2: "var(--ink-2)",
+        line: {
+          DEFAULT: "#E5E5DB",
+          dark: "#1F2937",
         },
-        cream: {
-          50: "#FAFAF7",
-          100: "#f3ede2",
-          200: "#E5E5DB",
-          300: "#d8cebb",
-          400: "#9b9485",
-          500: "#6f6a5c",
-          600: "#3a382f",
-          700: "#15140f",
-        },
+        "bg-2": "#f3f2eb",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
-        display: ["var(--font-crimson)", "Georgia", "serif"],
-        serif: ["var(--font-crimson)", "Georgia", "serif"],
-        mono: ["var(--font-jetbrains-mono)", "ui-monospace", "monospace"],
+        serif: ['"Crimson Pro"', '"Source Serif Pro"', "Georgia", "serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+        display: ['"Crimson Pro"', '"Source Serif Pro"', "Georgia", "serif"],
       },
       fontSize: {
         body: ["0.9375rem", { lineHeight: "1.6" }],
         "body-lg": ["1rem", { lineHeight: "1.6" }],
+        "display-sm": [
+          "1.875rem",
+          { lineHeight: "2.25rem", letterSpacing: "-0.01em" },
+        ],
+        "display-md": [
+          "2.5rem",
+          { lineHeight: "2.875rem", letterSpacing: "-0.015em" },
+        ],
+        "display-lg": [
+          "3.5rem",
+          { lineHeight: "3.75rem", letterSpacing: "-0.02em" },
+        ],
+        "display-xl": [
+          "4.5rem",
+          { lineHeight: "4.625rem", letterSpacing: "-0.025em" },
+        ],
       },
       borderRadius: {
-        xs: "6px",
-        sm: "10px",
-        md: "16px",
-        lg: "20px",
-        xl: "28px",
-      },
-      spacing: {
-        18: "4.5rem",
-      },
-      transitionDuration: {
-        DEFAULT: "200ms",
-      },
-      transitionTimingFunction: {
-        DEFAULT: "ease-out",
+        sm: "6px",
+        md: "10px",
+        lg: "16px",
+        xl: "24px",
       },
       boxShadow: {
-        sm: "var(--shadow-sm)",
-        md: "var(--shadow-md)",
-        lg: "var(--shadow-lg)",
-        "card-hover": "var(--shadow-md)",
+        soft: "0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)",
+        card: "0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04)",
+        raised:
+          "0 10px 32px -8px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06)",
+        ring: "0 0 0 3px rgba(14, 92, 58, 0.15)",
       },
-      animation: {
-        "fade-up": "fadeUp 600ms ease-out both",
-        "page-enter": "pageEnter 420ms ease-out both",
-        shimmer: "shimmer 1.6s linear infinite",
-        float: "float 5s ease-in-out infinite",
+      transitionDuration: {
+        fast: "150ms",
+        base: "200ms",
+        slow: "320ms",
+      },
+      transitionTimingFunction: {
+        "out-soft": "cubic-bezier(0.22, 0.61, 0.36, 1)",
+        "in-soft": "cubic-bezier(0.55, 0.06, 0.68, 0.19)",
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
       keyframes: {
-        fadeUp: {
-          from: { opacity: "0", transform: "translateY(12px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
+        float: {
+          "0%, 100%": { transform: "translateY(0px) rotate(-2deg)" },
+          "50%": { transform: "translateY(-8px) rotate(-1.5deg)" },
         },
-        pageEnter: {
-          from: { opacity: "0", transform: "translateY(8px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
+        "float-delayed": {
+          "0%, 100%": { transform: "translateY(0px) rotate(1.5deg)" },
+          "50%": { transform: "translateY(-6px) rotate(2deg)" },
+        },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
         shimmer: {
-          "0%": { backgroundPosition: "-400px 0" },
-          "100%": { backgroundPosition: "400px 0" },
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
         },
-        float: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-10px)" },
-        },
+      },
+      animation: {
+        float: "float 6s ease-in-out infinite",
+        "float-delayed": "float-delayed 7s ease-in-out infinite 0.5s",
+        "fade-up": "fade-up 320ms cubic-bezier(0.22, 0.61, 0.36, 1)",
+        "fade-in": "fade-in 200ms ease-out",
+        "scale-in": "scale-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        shimmer: "shimmer 2s linear infinite",
       },
     },
   },
   plugins: [],
 };
+
 export default config;

@@ -180,7 +180,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -354,7 +354,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border border-transparent font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent hover:brightness-95 active:brightness-90 min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent-500 text-white hover:bg-accent-600 min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -554,7 +554,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -728,7 +728,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -1854,7 +1854,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -2028,7 +2028,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border border-transparent font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent hover:brightness-95 active:brightness-90 min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent-500 text-white hover:bg-accent-600 min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -2228,7 +2228,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"
@@ -2402,7 +2402,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </li>
         </ul>
         <button
-          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-sm border font-medium whitespace-nowrap transition-all duration-200 ease-out outline-none select-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted min-h-[44px] h-12 px-6 text-body-lg sm:min-h-0 w-full"
+          class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
           data-slot="button"
           tabindex="0"
           type="button"

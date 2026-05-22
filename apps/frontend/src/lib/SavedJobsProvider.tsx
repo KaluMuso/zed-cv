@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { savedJobs as savedJobsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -57,7 +57,7 @@ export function SavedJobsProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(
     async (jobId: string) => {
       if (!token) {
-        toast.error("Sign in to save jobs.");
+        notify.error("Sign in to save jobs.");
         return;
       }
       const wasSaved = savedIds.has(jobId);
@@ -70,10 +70,10 @@ export function SavedJobsProvider({ children }: { children: ReactNode }) {
       try {
         if (wasSaved) {
           await savedJobsApi.unsave(token, jobId);
-          toast.success("Removed from saved.");
+          notify.unsaved("Removed from saved.");
         } else {
           await savedJobsApi.save(token, jobId);
-          toast.success("Saved.");
+          notify.saved("Saved.");
         }
       } catch {
         setSavedIds((prev) => {
@@ -82,7 +82,7 @@ export function SavedJobsProvider({ children }: { children: ReactNode }) {
           else next.delete(jobId);
           return next;
         });
-        toast.error("Could not update saved jobs.");
+        notify.error("Could not update saved jobs.");
       }
     },
     [token, savedIds]

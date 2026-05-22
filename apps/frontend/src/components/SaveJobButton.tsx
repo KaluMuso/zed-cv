@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { savedJobs, ApiError } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
-import { notifyError, notifySuccess } from "@/components/Toast";
+import { notify } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export interface SaveJobButtonProps {
@@ -42,7 +42,7 @@ export function SaveJobButton({
 
   const toggle = useCallback(async () => {
     if (!token) {
-      notifyError("Sign in to save jobs.");
+      notify.error("Sign in to save jobs.");
       return;
     }
     if (disabled || busy) return;
@@ -53,19 +53,19 @@ export function SaveJobButton({
         await savedJobs.unsave(token, jobId);
         setInnerSaved(false);
         onChange?.(jobId, false);
-        notifyError("Job unsaved");
+        notify.unsaved("Job unsaved");
       } else {
         await savedJobs.save(token, jobId);
         setInnerSaved(true);
         onChange?.(jobId, true);
-        notifySuccess("Job saved successfully");
+        notify.saved("Job saved successfully");
       }
     } catch (e: unknown) {
       setInnerSaved(wasSaved);
       if (e instanceof ApiError) {
-        notifyError(e.detail || "Could not update saved jobs.");
+        notify.error(e.detail || "Could not update saved jobs.");
       } else {
-        notifyError("Could not update saved jobs.");
+        notify.error("Could not update saved jobs.");
       }
     } finally {
       setBusy(false);

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { formatDate, SkeletonTableRows } from "./shared";
 
@@ -58,7 +58,7 @@ export function JobsTab({ token }: { token: string }) {
         setData(r.jobs);
         setPages(r.pages);
       })
-      .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load jobs"))
+      .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load jobs"))
       .finally(() => setLoading(false));
   }, [token, page, filter]);
 
@@ -70,10 +70,10 @@ export function JobsTab({ token }: { token: string }) {
     setBulkLoading(true);
     try {
       const r = await admin.bulkDeactivate(token, { expired_only: true });
-      toast.success(`Deactivated ${r.deactivated} expired job(s).`);
+      notify.custom.success(`Deactivated ${r.deactivated} expired job(s).`);
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Bulk action failed");
+      notify.error(e instanceof Error ? e.message : "Bulk action failed");
     } finally {
       setBulkLoading(false);
     }
@@ -82,11 +82,11 @@ export function JobsTab({ token }: { token: string }) {
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || form.title.length < 5) {
-      toast.error("Title must be at least 5 characters");
+      notify.error("Title must be at least 5 characters");
       return;
     }
     if (!form.description || form.description.length < 20) {
-      toast.error("Description must be at least 20 characters");
+      notify.error("Description must be at least 20 characters");
       return;
     }
     setCreating(true);
@@ -97,12 +97,12 @@ export function JobsTab({ token }: { token: string }) {
         if (payload[k] === "") delete payload[k as keyof AdminJobCreate];
       });
       await admin.createJob(token, payload);
-      toast.success("Job posted.");
+      notify.custom.success("Job posted.");
       setForm(EMPTY_FORM);
       setShowForm(false);
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create job");
+      notify.error(e instanceof Error ? e.message : "Failed to create job");
     } finally {
       setCreating(false);
     }
@@ -128,7 +128,7 @@ export function JobsTab({ token }: { token: string }) {
         closing_date: full.closing_date ? full.closing_date.slice(0, 10) : "",
       });
     } catch (e) {
-      toast.error(
+      notify.error(
         e instanceof Error ? e.message : "Failed to load job for editing"
       );
       setEditingId(null);
@@ -141,11 +141,11 @@ export function JobsTab({ token }: { token: string }) {
     e.preventDefault();
     if (!editingId) return;
     if (!editForm.title || editForm.title.length < 5) {
-      toast.error("Title must be at least 5 characters");
+      notify.error("Title must be at least 5 characters");
       return;
     }
     if (!editForm.description || editForm.description.length < 20) {
-      toast.error("Description must be at least 20 characters");
+      notify.error("Description must be at least 20 characters");
       return;
     }
     setEditSaving(true);
@@ -158,12 +158,12 @@ export function JobsTab({ token }: { token: string }) {
         if (payload[k] === "") delete payload[k];
       });
       await admin.updateJob(token, editingId, payload);
-      toast.success("Job updated.");
+      notify.custom.success("Job updated.");
       setEditingId(null);
       setEditForm(EMPTY_FORM);
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Update failed");
+      notify.error(err instanceof Error ? err.message : "Update failed");
     } finally {
       setEditSaving(false);
     }
@@ -173,10 +173,10 @@ export function JobsTab({ token }: { token: string }) {
     setBusyId(job.id);
     try {
       await admin.updateJob(token, job.id, { is_active: !job.is_active });
-      toast.success(job.is_active ? "Deactivated" : "Activated");
+      notify.custom.success(job.is_active ? "Deactivated" : "Activated");
       load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Toggle failed");
+      notify.error(e instanceof Error ? e.message : "Toggle failed");
     } finally {
       setBusyId(null);
     }
