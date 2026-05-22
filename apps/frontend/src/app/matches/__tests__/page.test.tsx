@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import MatchesPage from "../page";
+import MatchesPageClient from "../MatchesPageClient";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
@@ -137,7 +137,7 @@ afterEach(() => {
 describe("Refresh button", () => {
   it("renders when matches exist", async () => {
     withHandlers({ matches: [MATCH_OBJ], cvUploaded: false });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const buttons = await screen.findAllByRole("button", { name: /refresh matches/i }, { timeout: 5000 });
     expect(buttons.length).toBeGreaterThan(0);
   });
@@ -145,7 +145,7 @@ describe("Refresh button", () => {
   it("calls trigger on click", async () => {
     let triggered = false;
     withHandlers({ matches: [MATCH_OBJ], onTrigger: () => { triggered = true; } });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const buttons = await screen.findAllByRole("button", { name: /refresh matches/i }, { timeout: 5000 });
     await userEvent.click(buttons[0]);
     await waitFor(() => expect(triggered).toBe(true));
@@ -159,7 +159,7 @@ describe("Refresh button", () => {
         return HttpResponse.json({ message: "ok", estimated_seconds: 2 });
       }),
     );
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const buttons = await screen.findAllByRole("button", { name: /refresh matches/i }, { timeout: 5000 });
     await userEvent.click(buttons[0]);
     const refreshingBtns = screen.getAllByRole("button", { name: /refreshing/i });
@@ -171,14 +171,14 @@ describe("Auto-trigger", () => {
   it("fires when empty matches + CV uploaded", async () => {
     let triggered = false;
     withHandlers({ matches: [], cvUploaded: true, onTrigger: () => { triggered = true; } });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     await waitFor(() => expect(triggered).toBe(true), { timeout: 5000 });
   });
 
   it("does NOT fire when no CV", async () => {
     let triggered = false;
     withHandlers({ matches: [], cvUploaded: false, onTrigger: () => { triggered = true; } });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     await screen.findByText("No matches yet", {}, { timeout: 5000 });
     expect(triggered).toBe(false);
   });
@@ -186,7 +186,7 @@ describe("Auto-trigger", () => {
   it("does NOT fire when matches exist", async () => {
     let triggered = false;
     withHandlers({ matches: [MATCH_OBJ], cvUploaded: true, onTrigger: () => { triggered = true; } });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     await screen.findByText("Engineer", {}, { timeout: 5000 });
     expect(triggered).toBe(false);
   });
@@ -204,7 +204,7 @@ describe("Apply button fallback", () => {
       },
     };
     withHandlers({ matches: [noApply] });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const link = await screen.findByRole("link", { name: /apply via source/i }, { timeout: 5000 });
     expect(link).toHaveAttribute("href", "https://example.com/jobs/123");
     expect(link).toHaveAttribute("target", "_blank");
@@ -221,7 +221,7 @@ describe("Apply button fallback", () => {
       },
     };
     withHandlers({ matches: [deadEnd] });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const link = await screen.findByRole(
       "link",
       { name: /contact support/i },
@@ -240,7 +240,7 @@ describe("Auto-match toggle", () => {
         patched = body;
       },
     });
-    renderWithProviders(<MatchesPage />);
+    renderWithProviders(<MatchesPageClient />);
     const toggle = await screen.findByLabelText("Auto-match", {}, { timeout: 5000 });
     await userEvent.click(toggle);
     await waitFor(() => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 
-import MatchesPage from "../page";
+import MatchesPageClient from "../MatchesPageClient";
 import { server } from "@/test/msw/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
@@ -65,7 +65,7 @@ beforeEach(() => {
 function atWidth(width: number) {
   return renderWithProviders(
     <div style={{ width, maxWidth: width }} data-testid="viewport-root">
-      <MatchesPage />
+      <MatchesPageClient />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import JobsPage from "../page";
+import JobsPageClient from "../JobsPageClient";
 import { AuthProvider } from "@/lib/auth";
 import { server } from "@/test/msw/server";
 
@@ -88,7 +88,7 @@ afterEach(() => {
 function renderJobsPage() {
   return render(
     <AuthProvider>
-      <JobsPage />
+      <JobsPageClient />
     </AuthProvider>,
   );
 }

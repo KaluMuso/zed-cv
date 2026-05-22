@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JobDetailClient } from "../JobDetailClient";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -8,6 +8,19 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => "/jobs/j1",
 }));
+
+/** Frozen "now" so Posted / Closes-in labels stay stable across CI runs. */
+const SNAPSHOT_NOW = new Date("2026-05-21T12:00:00.000Z");
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.useFakeTimers();
+  vi.setSystemTime(SNAPSHOT_NOW);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const JOB: Job = {
   id: "j1",
