@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from typing import Optional, Literal
 
+from app.core.phone import normalize_zambian_e164_phone
 from app.schemas.cv_sections import CVSections
 
 
@@ -28,16 +29,45 @@ class UserProfileUpdate(BaseModel):
     years_experience: Optional[int] = Field(None, ge=0)
 
 
-class UserPreferences(BaseModel):
+class NotificationPreferences(BaseModel):
+    """Notification toggles — GET/PATCH /api/v1/profile/preferences."""
+
     whatsapp_alerts: bool = True
     email_notifications_enabled: bool = True
     language: Literal["en", "bem"] = "en"
 
 
-class UserPreferencesUpdate(BaseModel):
+class NotificationPreferencesUpdate(BaseModel):
     whatsapp_alerts: Optional[bool] = None
     email_notifications_enabled: Optional[bool] = None
     language: Optional[Literal["en", "bem"]] = None
+
+
+class UserPreferences(BaseModel):
+    """Dashboard settings — GET/PATCH /api/v1/users/me/preferences."""
+
+    whatsapp_number: Optional[str] = None
+    location: Optional[str] = None
+    currency: Literal["ZMW", "USD"] = "ZMW"
+    alert_frequency: Literal["daily", "weekly", "muted"] = "daily"
+    whatsapp_verified: bool = False
+
+
+class UserPreferencesUpdate(BaseModel):
+    whatsapp_number: Optional[str] = Field(
+        None,
+        description="Zambian mobile in E.164 (+260 plus 9 digits).",
+    )
+    location: Optional[str] = Field(None, max_length=100)
+    currency: Optional[Literal["ZMW", "USD"]] = None
+    alert_frequency: Optional[Literal["daily", "weekly", "muted"]] = None
+
+    @field_validator("whatsapp_number")
+    @classmethod
+    def _validate_whatsapp_number(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return value
+        return normalize_zambian_e164_phone(value)
 
 
 class NotificationChannels(BaseModel):

@@ -1,13 +1,53 @@
 """User account preference routes."""
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
 
 from app.core.deps import get_current_user_id, get_supabase
 from app.schemas.saved_jobs import SavedJobsList
-from app.schemas.user import AutoMatchPreferences, AutoMatchPreferencesUpdate, NotificationChannels
+from app.schemas.user import (
+    AutoMatchPreferences,
+    AutoMatchPreferencesUpdate,
+    NotificationChannels,
+    UserPreferences,
+    UserPreferencesUpdate,
+)
 from app.services.job_hydration import hydrate_job_row
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+_SETTINGS_SELECT = (
+    "phone, whatsapp_number, location, currency, alert_frequency, whatsapp_verified"
+)
+
+
+def _effective_whatsapp_number(row: dict[str, Any]) -> str | None:
+    """Delivery number; falls back to auth phone when unset."""
+    return row.get("whatsapp_number") or row.get("phone")
+
+
+def _row_to_user_preferences(row: dict[str, Any]) -> UserPreferences:
+    return UserPreferences(
+        whatsapp_number=_effective_whatsapp_number(row),
+        location=row.get("location"),
+        currency=row.get("currency") or "ZMW",
+        alert_frequency=row.get("alert_frequency") or "daily",
+        whatsapp_verified=bool(row.get("whatsapp_verified", False)),
+    )
+
+
+async def _fetch_user_settings_row(user_id: str, supabase) -> dict[str, Any]:
+    result = (
+        supabase.table("users")
+        .select(_SETTINGS_SELECT)
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    return result.data
 
 
 @router.get("/me/saved-jobs", response_model=SavedJobsList)
@@ -40,6 +80,38 @@ def _channels(raw: object) -> NotificationChannels:
             email=bool(raw.get("email", True)),
         )
     return NotificationChannels()
+
+
+@router.get("/me/preferences", response_model=UserPreferences)
+async def get_user_preferences(
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    row = await _fetch_user_settings_row(user_id, supabase)
+    return _row_to_user_preferences(row)
+
+
+@router.patch("/me/preferences", response_model=UserPreferences)
+async def update_user_preferences(
+    body: UserPreferencesUpdate,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    update_data = body.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=422, detail="No fields to update")
+
+    existing = await _fetch_user_settings_row(user_id, supabase)
+
+    if "whatsapp_number" in update_data:
+        new_number = update_data["whatsapp_number"]
+        prior = _effective_whatsapp_number(existing)
+        if new_number != prior:
+            update_data["whatsapp_verified"] = False
+
+    supabase.table("users").update(update_data).eq("id", user_id).execute()
+    refreshed = await _fetch_user_settings_row(user_id, supabase)
+    return _row_to_user_preferences(refreshed)
 
 
 @router.get("/me/preferences/auto-match", response_model=AutoMatchPreferences)
