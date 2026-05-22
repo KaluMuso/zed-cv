@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import {
   jobs as jobsApi,
   savedJobs,
@@ -12,7 +11,6 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { JobCard } from "@/components/JobCard";
-import { JobDetailBody } from "@/components/JobDetailBody";
 import { Icon } from "@/components/ui/Icon";
 import { isJobHiddenFromUserFeed } from "@/lib/isJobHiddenFromUserFeed";
 import { Counter } from "@/components/ui/Counter";
@@ -125,11 +123,6 @@ export default function JobsPageClient() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [drawerLoading, setDrawerLoading] = useState(false);
-
-  const drawerRef = useRef<HTMLDivElement>(null);
-  const lastTriggerRef = useRef<HTMLElement | null>(null);
   const urlHydratedRef = useRef(false);
   const lastUrlSyncRef = useRef("");
 
@@ -159,7 +152,7 @@ export default function JobsPageClient() {
     urlHydratedRef.current = true;
   }, [searchParams]);
 
-  // Sync filters → URL (keep drawer ?j= param intact).
+  // Sync filters → URL.
   useEffect(() => {
     if (!syncFiltersToUrl || !urlHydratedRef.current) return;
     const sp = new URLSearchParams(searchParams?.toString() ?? "");
@@ -233,82 +226,12 @@ export default function JobsPageClient() {
     fetchJobs();
   }, [fetchJobs]);
 
-  // ── Drawer URL sync ──
-  // ?j=<id> drives the drawer so back-button closes it and links to
-  // /jobs?j=X are shareable. Deep linking via the standalone /jobs/[id]
-  // route remains available for SEO and external sharing.
-  const activeJobId = searchParams?.get("j") ?? null;
-
+  // Legacy share links used ?j=<id> on /jobs — redirect to the standalone page.
+  const legacyDrawerJobId = searchParams?.get("j") ?? null;
   useEffect(() => {
-    if (!activeJobId) {
-      setSelectedJob(null);
-      return;
-    }
-    // If the job is already in the loaded list, use it; otherwise fetch.
-    const inList = jobsList.find((j) => j.id === activeJobId);
-    if (inList) {
-      setSelectedJob(inList);
-      return;
-    }
-    let cancelled = false;
-    setDrawerLoading(true);
-    jobsApi
-      .get(activeJobId)
-      .then((j) => {
-        if (!cancelled) setSelectedJob(j);
-      })
-      .catch(() => {
-        if (!cancelled) setSelectedJob(null);
-      })
-      .finally(() => {
-        if (!cancelled) setDrawerLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeJobId, jobsList]);
-
-  const openJob = (job: Job, trigger: HTMLElement | null) => {
-    lastTriggerRef.current = trigger;
-    const sp = new URLSearchParams(searchParams?.toString() ?? "");
-    sp.set("j", job.id);
-    router.replace(`${pathname}?${sp.toString()}`, { scroll: false });
-  };
-
-  const closeJob = useCallback(() => {
-    const sp = new URLSearchParams(searchParams?.toString() ?? "");
-    sp.delete("j");
-    const next = sp.toString();
-    router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
-    // Return focus to the card that opened the drawer (a11y best practice).
-    requestAnimationFrame(() => {
-      lastTriggerRef.current?.focus();
-    });
-  }, [pathname, router, searchParams]);
-
-  // ESC closes the drawer.
-  useEffect(() => {
-    if (!selectedJob) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeJob();
-    };
-    window.addEventListener("keydown", onKey);
-    // Move focus inside the drawer when it opens.
-    requestAnimationFrame(() => {
-      drawerRef.current?.focus();
-    });
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectedJob, closeJob]);
-
-  // Lock body scroll while drawer is open.
-  useEffect(() => {
-    if (!selectedJob) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [selectedJob]);
+    if (!legacyDrawerJobId || !urlHydratedRef.current) return;
+    router.replace(`/jobs/${legacyDrawerJobId}`);
+  }, [legacyDrawerJobId, router]);
 
   const hasActiveFilters =
     Boolean(searchQuery || searchInput || location) ||
@@ -579,6 +502,10 @@ export default function JobsPageClient() {
                 postedAt={job.posted_at}
                 salaryMin={job.salary_min}
                 salaryMax={job.salary_max}
+                employmentType={job.employment_type}
+                workArrangement={job.work_arrangement}
+                hybridDaysPerWeek={job.hybrid_days_per_week}
+                payFrequency={job.pay_frequency}
                 saveToken={token}
                 jobSaved={savedJobIds.has(job.id)}
                 onSaveChange={(jobId, next) => {
@@ -589,16 +516,6 @@ export default function JobsPageClient() {
                     return n;
                   });
                 }}
-                onClick={() =>
-                  // For keyboard a11y: stash the currently-focused element
-                  // (which IS the card the user just activated via Enter/
-                  // Space) so we can restore focus when the drawer closes.
-                  // Mouse users won't notice; keyboard users will.
-                  openJob(
-                    job,
-                    (document.activeElement as HTMLElement | null) ?? null
-                  )
-                }
               />
             ))}
           </div>
@@ -614,74 +531,6 @@ export default function JobsPageClient() {
         </>
       )}
 
-      {/* Job Drawer */}
-      {selectedJob && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            style={{
-              background: "rgba(0,0,0,0.4)",
-              backdropFilter: "blur(4px)",
-            }}
-            onClick={closeJob}
-            aria-hidden="true"
-          />
-          <div
-            ref={drawerRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="job-drawer-title"
-            className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-[640px] overflow-y-auto scroll-thin focus:outline-none"
-            style={{
-              background: "var(--surface)",
-              borderLeft: "1px solid var(--line)",
-              boxShadow: "var(--shadow-lg)",
-              animation: "slideRight 300ms ease both",
-            }}
-          >
-            {/* sr-only title for screen readers (visible h1 is in body) */}
-            <h2 id="job-drawer-title" className="sr-only">
-              {selectedJob.title}
-            </h2>
-
-            {drawerLoading ? (
-              <div className="p-8">
-                <div className="skeleton h-10 w-3/4 mb-4" />
-                <div className="skeleton h-5 w-1/2 mb-6" />
-                <div className="skeleton h-32 w-full" />
-              </div>
-            ) : (
-              <>
-                <JobDetailBody
-                  job={selectedJob}
-                  onClose={closeJob}
-                  authToken={token}
-                  jobSaved={savedJobIds.has(selectedJob.id)}
-                  onSavedChange={(next) => {
-                    setSavedJobIds((prev) => {
-                      const n = new Set(prev);
-                      if (next) n.add(selectedJob.id);
-                      else n.delete(selectedJob.id);
-                      return n;
-                    });
-                  }}
-                />
-                {/* Shareable permalink — styled as a ghost button so it
-                    reads as a real action, not legalese small-print. */}
-                <div className="px-6 md:px-8 pb-8 -mt-2">
-                  <Link
-                    href={`/jobs/${selectedJob.id}`}
-                    className="btn btn-ghost btn-sm"
-                  >
-                    <Icon name="external" size={14} /> Open as standalone page
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
