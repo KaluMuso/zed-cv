@@ -7,7 +7,7 @@ import {
   autoMatchPreferences,
   profile as profileApi,
   type AutoMatchPreferences,
-  type UserPreferences,
+  type NotificationPreferences,
 } from "@/lib/api";
 import { useAppStore } from "@/lib/zustand-store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, logout, token } = useAuth();
   const { setProfile: setZust } = useAppStore();
-  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingAlerts, setSavingAlerts] = useState(false);
