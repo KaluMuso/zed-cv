@@ -148,6 +148,27 @@ class MatchList(BaseModel):
     remaining_quota: int
     credited_count: int = 0
     matches_limit: int = 10
+    last_batch_run_at: datetime | None = None
+    from_cache: bool = False
+
+
+class MatchRefreshResponse(MatchList):
+    """POST /matches/refresh — cached nightly batch or onboarding fallback."""
+
+    message: str | None = None
+
+
+class BatchMatchAcceptedResponse(BaseModel):
+    batch_run_id: str
+    message: str = "Batch matching started"
+
+
+class BatchMatchResultResponse(BaseModel):
+    batch_run_id: str
+    users_processed: int
+    matches_created: int
+    error_count: int
+    pruned_rows: int = 0
 
 
 class CronTickResponse(BaseModel):

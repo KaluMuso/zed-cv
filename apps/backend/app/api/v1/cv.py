@@ -5,7 +5,7 @@ import uuid
 from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
 
 from app.core.deps import get_supabase, get_current_user, get_current_user_id, is_superadmin
 from app.core.config import get_settings
@@ -301,9 +301,27 @@ def _queue_for_later(
     )
 
 
+async def _match_after_cv_upload(user_id: str, cv_id: str, supabase) -> None:
+    import logging
+
+    from app.services.batch_matching import run_on_demand_match_for_user
+
+    log = logging.getLogger(__name__)
+    try:
+        await run_on_demand_match_for_user(user_id, cv_id, supabase)
+    except Exception:
+        log.exception("post-upload match failed user=%s cv=%s", user_id, cv_id)
+
+
 @router.post("/upload")
 @limiter.limit("5/minute")
-async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str = Depends(get_current_user_id), supabase=Depends(get_supabase)):
+async def upload_cv(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
     content_type = file.content_type or ""
     if content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=422, detail=f"Unsupported file type: {content_type}. Accepted: PDF, DOCX, JPG, PNG")
@@ -502,6 +520,8 @@ async def upload_cv(request: Request, file: UploadFile = File(...), user_id: str
             await send_welcome_email(user_id, supabase)
         except Exception:
             pass
+
+    background_tasks.add_task(_match_after_cv_upload, user_id, cv_id, supabase)
 
     return {"cv_id": cv_id, "parsed_skills": parsed.get("skills", []), "experience_summary": parsed.get("experience_summary", ""), "parsing_confidence": parsed.get("confidence", 0)}
 

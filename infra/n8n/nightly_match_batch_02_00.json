@@ -1,0 +1,38 @@
+{
+  "name": "ZedApply - Nightly Match Batch",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 0 * * *" }]
+        }
+      },
+      "name": "Daily 02:00 CAT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "02:00 Central Africa Time (UTC+2) = 00:00 UTC"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/batch-match",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+          ]
+        }
+      },
+      "name": "Run Nightly Batch Match",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Daily 02:00 CAT": {
+      "main": [[{ "node": "Run Nightly Batch Match", "type": "main", "index": 0 }]]
+    }
+  }
+}

@@ -12,7 +12,18 @@ from app.core.deps import (
 )
 from app.core.tier_gating import FEATURE_JOB_MATCHES, verify_tier_access
 from app.core.rate_limit import limiter
-from app.schemas.matching import MatchResult, MatchList, CronTickResponse, NotificationDigestResponse
+from app.schemas.matching import (
+    MatchResult,
+    MatchList,
+    MatchRefreshResponse,
+    CronTickResponse,
+    NotificationDigestResponse,
+)
+from app.services.batch_matching import (
+    fetch_cached_batch_matches,
+    get_latest_batch_for_user,
+    run_on_demand_match_for_user,
+)
 from app.schemas.jobs import Job
 from app.services.matching import (
     run_matching_for_user,
@@ -85,6 +96,80 @@ def _row_needs_auto_match(row: dict, now: datetime) -> bool:
 def _notification_due(row: dict, now: datetime) -> bool:
     last = _parse_dt(row.get("last_notification_at"))
     return last is None or last <= now - timedelta(hours=24)
+
+
+async def _load_user_preferences(user_id: str, supabase) -> dict | None:
+    try:
+        pref_res = (
+            supabase.table("user_preferences")
+            .select(
+                "target_roles, salary_min, salary_max, salary_frequency, "
+                "preferred_work_arrangement, acceptable_regions"
+            )
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if pref_res.data:
+            return pref_res.data[0]
+    except Exception:
+        logger.warning("user_preferences read failed", exc_info=True)
+    return None
+
+
+def _rows_to_match_results(
+    rows: list[dict],
+    preferences: dict | None,
+) -> list[MatchResult]:
+    matches: list[MatchResult] = []
+    for raw in rows:
+        m = dict(raw)
+        job_data = m.pop("jobs", {}) if isinstance(m, dict) else {}
+        adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
+            base_score=m["score"],
+            base_bonus=float(m.get("bonus_score") or 0),
+            job=job_data,
+            preferences=preferences,
+        )
+        explanation = m.get("explanation") or ""
+        if adjustment_note and adjustment_note not in explanation:
+            explanation = (explanation + " " + adjustment_note).strip()
+        matches.append(
+            MatchResult.from_stored_row(
+                job=Job(**job_data),
+                row=m,
+                adjusted_score=adjusted_score,
+                adjusted_bonus=adjusted_bonus,
+                explanation=explanation or None,
+            )
+        )
+    matches.sort(key=lambda mr: mr.score, reverse=True)
+    return matches
+
+
+async def _build_match_list_response(
+    user_id: str,
+    supabase,
+    *,
+    stored_rows: list[dict],
+    last_batch_run_at: str | None = None,
+    from_cache: bool = False,
+    limit: int = 50,
+) -> MatchList:
+    _, remaining = await check_match_quota(user_id, supabase)
+    _, matches_limit, _ = await get_user_tier_limit(user_id, supabase)
+    credited_count = await get_credited_match_count(user_id, supabase)
+    preferences = await _load_user_preferences(user_id, supabase)
+    matches = _rows_to_match_results(list(stored_rows), preferences)
+    parsed_batch_at = _parse_dt(last_batch_run_at)
+    return MatchList(
+        matches=matches[:limit],
+        remaining_quota=remaining,
+        credited_count=credited_count,
+        matches_limit=matches_limit,
+        last_batch_run_at=parsed_batch_at,
+        from_cache=from_cache,
+    )
 
 
 async def _primary_cv_id(user_id: str, supabase) -> str | None:
@@ -176,49 +261,8 @@ async def get_matches(
         .gte("score", min_score).order("score", desc=True).limit(candidate_limit).execute()
     )
 
-    # Phase 2 Initiative #4 — preference-aware re-rank. Read the user's
-    # row (None on fresh accounts; harmless — apply_preferences_to_match
-    # treats None as no adjustment). Wrapped so a DB hiccup on the
-    # preferences table never breaks /matches itself.
-    preferences = None
-    try:
-        pref_res = (
-            supabase.table("user_preferences")
-            .select("target_roles, salary_min, salary_max, salary_frequency, "
-                    "preferred_work_arrangement, acceptable_regions")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-        )
-        if pref_res.data:
-            preferences = pref_res.data[0]
-    except Exception:
-        logger.warning("user_preferences read failed in /matches", exc_info=True)
-
-    matches: list[MatchResult] = []
-    for m in result.data or []:
-        job_data = m.pop("jobs", {})
-        adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
-            base_score=m["score"],
-            base_bonus=float(m.get("bonus_score") or 0),
-            job=job_data,
-            preferences=preferences,
-        )
-        explanation = m.get("explanation") or ""
-        if adjustment_note and adjustment_note not in explanation:
-            explanation = (explanation + " " + adjustment_note).strip()
-        matches.append(
-            MatchResult.from_stored_row(
-                job=Job(**job_data),
-                row=m,
-                adjusted_score=adjusted_score,
-                adjusted_bonus=adjusted_bonus,
-                explanation=explanation or None,
-            )
-        )
-
-    # Re-sort by the adjusted score and trim to the requested limit.
-    matches.sort(key=lambda mr: mr.score, reverse=True)
+    preferences = await _load_user_preferences(user_id, supabase)
+    matches = _rows_to_match_results(list(result.data or []), preferences)
     return MatchList(
         matches=matches[:limit],
         remaining_quota=remaining,
@@ -344,6 +388,72 @@ async def get_matches_for_user(
         remaining_quota=remaining,
         credited_count=credited_count,
         matches_limit=matches_limit,
+    )
+
+
+@router.post("/refresh", response_model=MatchRefreshResponse)
+@limiter.limit("5/minute")
+async def refresh_matches(
+    request: Request,
+    min_score: float = Query(50, ge=0, le=100),
+    limit: int = Query(50, ge=1, le=50),
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Return cached nightly batch matches; live RPC only when none exist yet."""
+    batch_id, batch_at = await get_latest_batch_for_user(user_id, supabase)
+    if batch_id:
+        rows = await fetch_cached_batch_matches(
+            user_id,
+            supabase,
+            batch_run_id=batch_id,
+            min_score=min_score,
+            limit=limit,
+        )
+        body = await _build_match_list_response(
+            user_id,
+            supabase,
+            stored_rows=rows,
+            last_batch_run_at=batch_at,
+            from_cache=True,
+            limit=limit,
+        )
+        return MatchRefreshResponse(**body.model_dump(), message=None)
+
+    cv_id = await _primary_cv_id(user_id, supabase)
+    if not cv_id:
+        raise HTTPException(status_code=422, detail="Upload a CV first before matching")
+
+    try:
+        await run_on_demand_match_for_user(user_id, cv_id, supabase, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("on-demand match fallback failed for user=%s", user_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Matching is temporarily unavailable. Try again shortly.",
+        )
+
+    batch_id, batch_at = await get_latest_batch_for_user(user_id, supabase)
+    rows = await fetch_cached_batch_matches(
+        user_id,
+        supabase,
+        batch_run_id=batch_id or "",
+        min_score=min_score,
+        limit=limit,
+    )
+    body = await _build_match_list_response(
+        user_id,
+        supabase,
+        stored_rows=rows,
+        last_batch_run_at=batch_at,
+        from_cache=False,
+        limit=limit,
+    )
+    return MatchRefreshResponse(
+        **body.model_dump(),
+        message="Your first matches are computing — check back in a moment.",
     )
 
 
