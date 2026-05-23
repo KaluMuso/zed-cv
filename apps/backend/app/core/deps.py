@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from supabase import Client, create_client
 
+from app.core.admin_auth import _admin_key_matches
 from app.core.config import Settings, get_settings
 from app.core.tier_gating import verify_tier_access
 
@@ -87,6 +88,59 @@ def _ingest_key_matches(
 ) -> bool:
     supplied = ingest_api_key or x_ingest_api_key
     return bool(settings.ingest_api_key and supplied == settings.ingest_api_key)
+
+
+async def require_admin_api_key_or_superadmin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
+    admin_api_key: str | None = Header(None, alias="ADMIN_API_KEY"),
+    x_admin_api_key: str | None = Header(None, alias="X-ADMIN-API-KEY"),
+    ingest_api_key: str | None = Header(None, alias="INGEST_API_KEY"),
+    x_ingest_api_key: str | None = Header(None, alias="X-INGEST-API-KEY"),
+    settings: Settings = Depends(get_settings),
+    supabase: Client = Depends(get_supabase),
+) -> dict:
+    """Superadmin Bearer JWT or admin/service API key (ADMIN_API_KEY / INGEST_API_KEY)."""
+    if _admin_key_matches(
+        settings,
+        admin_api_key,
+        x_admin_api_key,
+        ingest_api_key,
+        x_ingest_api_key,
+    ):
+        return {"auth": "api_key", "id": None, "role": "service"}
+
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Superadmin token or admin API key required",
+        )
+
+    try:
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+        user_id: str | None = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            )
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {str(e)}"
+        )
+
+    result = (
+        supabase.table("users").select("id, phone, role").eq("id", user_id).limit(1).execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    user = result.data[0]
+    if not is_superadmin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Superadmin only")
+    return user
 
 
 async def require_admin_or_ingest_key(

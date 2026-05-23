@@ -17,6 +17,13 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    adminApiKey:
+      type: apiKey
+      in: header
+      name: X-ADMIN-API-KEY
+      description: >
+        Admin or ingest service key (ADMIN_API_KEY, X-ADMIN-API-KEY, INGEST_API_KEY,
+        or X-INGEST-API-KEY). Alternative to superadmin Bearer JWT.
 
   schemas:
     ProblemDetail:
@@ -648,6 +655,13 @@ components:
           minItems: 4
           maxItems: 4
           items: { $ref: '#/components/schemas/TierConfigUpdateItem' }
+
+    TierConfigPatch:
+      type: object
+      required: [price_ngwee, matches_limit]
+      properties:
+        price_ngwee: { type: integer, minimum: 0, description: 'Monthly price in ngwee (K125 = 12500)' }
+        matches_limit: { type: integer, minimum: 0, maximum: 999999, description: 'Monthly match quota; 99999 = unlimited' }
 
     AdminSubscriptionUpdate:
       type: object
@@ -1744,12 +1758,55 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TierConfigList' }
 
+  /admin/tiers:
+    get:
+      operationId: adminListTiers
+      tags: [Admin]
+      security: [{ bearerAuth: [] }, { adminApiKey: [] }]
+      summary: List tier pricing and match quotas (superadmin JWT or admin API key)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TierConfigList' }
+        '401': { description: Missing or invalid credentials }
+        '403': { description: Superadmin only (JWT path) }
+
+  /admin/tiers/{tier_name}:
+    patch:
+      operationId: adminPatchTier
+      tags: [Admin]
+      security: [{ bearerAuth: [] }, { adminApiKey: [] }]
+      summary: Update price and match quota for one tier
+      parameters:
+        - name: tier_name
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [free, starter, professional, super_standard]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TierConfigPatch' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TierConfigRow' }
+        '401': { description: Missing or invalid credentials }
+        '403': { description: Superadmin only (JWT path) }
+        '404': { description: Unknown tier }
+        '422': { description: Validation error }
+
   /admin/tier-config:
     get:
       operationId: adminGetTierConfig
       tags: [Admin]
       security: [{ bearerAuth: [] }]
-      summary: Read tier pricing and match quotas (superadmin)
+      summary: Read tier pricing and match quotas (superadmin, legacy path)
+      deprecated: true
       responses:
         '200':
           content:
@@ -1760,7 +1817,8 @@ paths:
       operationId: adminUpdateTierConfig
       tags: [Admin]
       security: [{ bearerAuth: [] }]
-      summary: Update tier pricing and match quotas (superadmin)
+      summary: Bulk-update tier pricing and match quotas (superadmin, legacy path)
+      deprecated: true
       requestBody:
         required: true
         content:

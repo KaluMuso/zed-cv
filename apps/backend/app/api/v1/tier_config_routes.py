@@ -4,11 +4,17 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.core.deps import get_supabase, require_superadmin, security_optional
+from app.core.deps import (
+    get_supabase,
+    require_admin_api_key_or_superadmin,
+    require_superadmin,
+    security_optional,
+)
 from app.core.config import get_settings, Settings
 from app.schemas.tier_config import (
     TierConfigBulkUpdate,
     TierConfigList,
+    TierConfigPatch,
     TierConfigRow,
     VALID_TIERS,
 )
@@ -30,6 +36,14 @@ admin_router = APIRouter(
     tags=["Admin"],
     dependencies=[Depends(require_superadmin)],
 )
+
+admin_tiers_router = APIRouter(
+    prefix="/admin/tiers",
+    tags=["Admin"],
+    dependencies=[Depends(require_admin_api_key_or_superadmin)],
+)
+
+_TIER_SORT_ORDER = {"free": 0, "starter": 1, "professional": 2, "super_standard": 3}
 
 
 async def _optional_user_id(
@@ -91,6 +105,59 @@ async def list_public_tiers(
     return _rows_to_response(rows, promotion_until=promo_until)
 
 
+@admin_tiers_router.get("", response_model=TierConfigList)
+async def list_admin_tiers(supabase=Depends(get_supabase)):
+    """Admin: list tier pricing and match quotas (API key or superadmin JWT)."""
+    rows = await fetch_tier_config_rows(supabase, force=True)
+    return _rows_to_response(rows)
+
+
+@admin_tiers_router.patch("/{tier_name}", response_model=TierConfigRow)
+async def patch_admin_tier(
+    tier_name: str,
+    body: TierConfigPatch,
+    auth: dict = Depends(require_admin_api_key_or_superadmin),
+    supabase=Depends(get_supabase),
+):
+    """Admin: update price and match quota for one tier."""
+    if tier_name not in VALID_TIERS:
+        raise HTTPException(status_code=404, detail=f"Unknown tier: {tier_name}")
+    if tier_name == "free" and body.price_ngwee != 0:
+        raise HTTPException(
+            status_code=422,
+            detail="Free tier price must be K0 (price_ngwee=0).",
+        )
+
+    existing = (
+        supabase.table("tier_config")
+        .select("tier, display_name")
+        .eq("tier", tier_name)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail=f"Tier not configured: {tier_name}")
+
+    now = datetime.now(timezone.utc).isoformat()
+    user_id = auth.get("id")
+    row = {
+        "tier": tier_name,
+        "display_name": existing.data[0]["display_name"],
+        "price_ngwee": body.price_ngwee,
+        "matches_limit": body.matches_limit,
+        "sort_order": _TIER_SORT_ORDER[tier_name],
+        "updated_at": now,
+        "updated_by": user_id,
+    }
+    supabase.table("tier_config").upsert(row, on_conflict="tier").execute()
+    clear_tier_config_cache()
+    rows = await fetch_tier_config_rows(supabase, force=True)
+    updated = next((r for r in rows if r["tier"] == tier_name), None)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Tier update failed")
+    return _rows_to_response([updated]).tiers[0]
+
+
 @admin_router.get("", response_model=TierConfigList)
 async def get_admin_tier_config(supabase=Depends(get_supabase)):
     """Superadmin: read current tier pricing and match quotas."""
@@ -130,15 +197,14 @@ async def update_admin_tier_config(
             ),
         )
 
-    order = {"free": 0, "starter": 1, "professional": 2, "super_standard": 3}
-    for item in sorted(body.tiers, key=lambda t: order[t.tier]):
+    for item in sorted(body.tiers, key=lambda t: _TIER_SORT_ORDER[t.tier]):
         supabase.table("tier_config").upsert(
             {
                 "tier": item.tier,
                 "display_name": item.display_name.strip(),
                 "price_ngwee": item.price_ngwee,
                 "matches_limit": item.matches_limit,
-                "sort_order": order[item.tier],
+                "sort_order": _TIER_SORT_ORDER[item.tier],
                 "updated_at": now,
                 "updated_by": user_id,
             },

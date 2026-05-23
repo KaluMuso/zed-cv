@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminTierConfig, profile, type TierConfigRow } from "@/lib/api";
+import { adminTiers, profile, type TierConfigRow } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,29 +10,23 @@ import { UNLIMITED_MATCHES } from "@/lib/tier-config";
 
 type EditableTier = TierConfigRow & {
   price_kwacha: string;
-  unlimited_matches: boolean;
+  matches_input: string;
 };
 
 function toEditable(row: TierConfigRow): EditableTier {
   return {
     ...row,
     price_kwacha: String(row.price_ngwee / 100),
-    unlimited_matches: row.matches_limit >= UNLIMITED_MATCHES,
+    matches_input: String(row.matches_limit),
   };
 }
 
-function fromEditable(row: EditableTier): TierConfigRow {
+function toPatchBody(row: EditableTier): { price_ngwee: number; matches_limit: number } {
   const priceKwacha = Math.max(0, parseInt(row.price_kwacha, 10) || 0);
-  const matches = row.unlimited_matches
-    ? UNLIMITED_MATCHES
-    : Math.max(0, parseInt(String(row.matches_limit), 10) || 0);
+  const matches = Math.max(0, parseInt(row.matches_input, 10) || 0);
   return {
-    tier: row.tier,
-    display_name: row.display_name.trim(),
     price_ngwee: row.tier === "free" ? 0 : priceKwacha * 100,
     matches_limit: matches,
-    sort_order: row.sort_order,
-    updated_at: row.updated_at,
   };
 }
 
@@ -43,11 +37,18 @@ const TIER_LABELS: Record<string, string> = {
   super_standard: "Super Standard",
 };
 
+const CANONICAL_TIER_ORDER = [
+  "free",
+  "starter",
+  "professional",
+  "super_standard",
+] as const;
+
 export function TierConfigEditor({ token }: { token: string }) {
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [rows, setRows] = useState<EditableTier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [savingTier, setSavingTier] = useState<string | null>(null);
 
   useEffect(() => {
     profile
@@ -62,9 +63,21 @@ export function TierConfigEditor({ token }: { token: string }) {
       return;
     }
     setLoading(true);
-    adminTierConfig
-      .get(token)
-      .then((r) => setRows(r.tiers.map(toEditable)))
+    adminTiers
+      .list(token)
+      .then((r) => {
+        const byTier = Object.fromEntries(r.tiers.map((t) => [t.tier, t]));
+        const ordered = CANONICAL_TIER_ORDER.map(
+          (tier) => byTier[tier] ?? {
+            tier,
+            display_name: TIER_LABELS[tier] ?? tier,
+            price_ngwee: 0,
+            matches_limit: 0,
+            sort_order: 0,
+          },
+        );
+        setRows(ordered.map(toEditable));
+      })
       .catch((e) =>
         notify.error(e instanceof Error ? e.message : "Failed to load tier config"),
       )
@@ -72,7 +85,11 @@ export function TierConfigEditor({ token }: { token: string }) {
   }, [token, isSuperadmin]);
 
   if (!isSuperadmin) {
-    return null;
+    return (
+      <p className="text-sm text-muted-foreground">
+        Tier configuration is available to superadmin accounts only.
+      </p>
+    );
   }
 
   const updateRow = (tier: string, patch: Partial<EditableTier>) => {
@@ -81,17 +98,18 @@ export function TierConfigEditor({ token }: { token: string }) {
     );
   };
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSaveRow = async (row: EditableTier) => {
+    setSavingTier(row.tier);
     try {
-      const payload = rows.map(fromEditable);
-      const res = await adminTierConfig.update(token, payload);
-      setRows(res.tiers.map(toEditable));
-      notify.custom.success("Tier pricing and match limits saved.");
+      const updated = await adminTiers.patch(token, row.tier, toPatchBody(row));
+      setRows((prev) =>
+        prev.map((r) => (r.tier === row.tier ? toEditable(updated) : r)),
+      );
+      notify.custom.success("Tier updated successfully");
     } catch (e) {
       notify.error(e instanceof Error ? e.message : "Save failed");
     } finally {
-      setSaving(false);
+      setSavingTier(null);
     }
   };
 
@@ -99,11 +117,11 @@ export function TierConfigEditor({ token }: { token: string }) {
     <Card>
       <CardContent className="p-4 space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Tier pricing &amp; match limits</h2>
+          <h2 className="text-lg font-semibold">Tier Config</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Superadmin only. Changes apply to new payments, subscription quotas, and
-            the public pricing page. Prices are in ZMW (kwacha); stored as ngwee in the
-            database. Use unlimited for Super Standard (99999).
+            Adjust match limits and monthly prices for each plan. Prices are in ZMW;
+            stored as ngwee in the database. Use {UNLIMITED_MATCHES} for unlimited
+            matches (Super Standard).
           </p>
         </div>
 
@@ -115,25 +133,27 @@ export function TierConfigEditor({ token }: { token: string }) {
               <thead>
                 <tr className="border-b border-border text-left">
                   <th className="py-2 pr-3 font-medium">Tier</th>
-                  <th className="py-2 pr-3 font-medium">Display name</th>
-                  <th className="py-2 pr-3 font-medium">Price (ZMW/mo)</th>
-                  <th className="py-2 pr-3 font-medium">Matches / month</th>
-                  <th className="py-2 font-medium">Unlimited</th>
+                  <th className="py-2 pr-3 font-medium">Matches Limit</th>
+                  <th className="py-2 pr-3 font-medium">Price (ZMW)</th>
+                  <th className="py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.tier} className="border-b border-border/60">
-                    <td className="py-3 pr-3 capitalize text-muted-foreground">
+                    <td className="py-3 pr-3 text-muted-foreground">
                       {TIER_LABELS[row.tier] ?? row.tier}
                     </td>
                     <td className="py-3 pr-3">
                       <Input
-                        value={row.display_name}
+                        type="number"
+                        min={0}
+                        value={row.matches_input}
                         onChange={(e) =>
-                          updateRow(row.tier, { display_name: e.target.value })
+                          updateRow(row.tier, { matches_input: e.target.value })
                         }
-                        className="min-h-9"
+                        className="min-h-9 w-32"
+                        aria-label={`Matches limit for ${row.tier}`}
                       />
                     </td>
                     <td className="py-3 pr-3">
@@ -145,39 +165,19 @@ export function TierConfigEditor({ token }: { token: string }) {
                         onChange={(e) =>
                           updateRow(row.tier, { price_kwacha: e.target.value })
                         }
-                        className="min-h-9 w-28"
+                        className="min-h-9 w-32"
+                        aria-label={`Price for ${row.tier}`}
                       />
                     </td>
-                    <td className="py-3 pr-3">
-                      <Input
-                        type="number"
-                        min={0}
-                        disabled={row.unlimited_matches}
-                        value={row.unlimited_matches ? "—" : String(row.matches_limit)}
-                        onChange={(e) =>
-                          updateRow(row.tier, {
-                            matches_limit: parseInt(e.target.value, 10) || 0,
-                          })
-                        }
-                        className="min-h-9 w-28"
-                      />
-                    </td>
-                    <td className="py-3">
-                      <input
-                        type="checkbox"
-                        checked={row.unlimited_matches}
-                        onChange={(e) =>
-                          updateRow(row.tier, {
-                            unlimited_matches: e.target.checked,
-                            matches_limit: e.target.checked
-                              ? UNLIMITED_MATCHES
-                              : row.matches_limit >= UNLIMITED_MATCHES
-                                ? 125
-                                : row.matches_limit,
-                          })
-                        }
-                        aria-label={`Unlimited matches for ${row.tier}`}
-                      />
+                    <td className="py-3 text-right">
+                      <Button
+                        className="min-h-9"
+                        size="sm"
+                        disabled={savingTier === row.tier}
+                        onClick={() => void handleSaveRow(row)}
+                      >
+                        {savingTier === row.tier ? "Saving…" : "Save"}
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -185,16 +185,6 @@ export function TierConfigEditor({ token }: { token: string }) {
             </table>
           </div>
         )}
-
-        <div className="flex justify-end">
-          <Button
-            className="min-h-9"
-            disabled={loading || saving}
-            onClick={() => void handleSave()}
-          >
-            {saving ? "Saving…" : "Save tier config"}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

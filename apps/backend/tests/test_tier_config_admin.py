@@ -55,6 +55,9 @@ class _TierConfigQuery(FakeSupabaseQuery):
     def order(self, *args, **kwargs):
         return self
 
+    def limit(self, *args, **kwargs):
+        return self
+
     def upsert(self, data, **kwargs):
         if isinstance(data, dict):
             self.upserted.append(data)
@@ -138,3 +141,62 @@ class TestAdminTierConfig:
             u.get("tier") == "starter" and u.get("price_ngwee") == 13000
             for u in spy.upserted
         )
+
+
+class TestAdminTiersRoutes:
+    def test_list_requires_auth(self, client, fake_supabase):
+        fake_supabase.set_table("tier_config", _TierConfigQuery())
+        resp = client.get("/api/v1/admin/tiers")
+        assert resp.status_code == 401
+
+    def test_list_with_admin_api_key(self, client, fake_supabase):
+        fake_supabase.set_table("tier_config", _TierConfigQuery())
+        resp = client.get(
+            "/api/v1/admin/tiers",
+            headers={"X-INGEST-API-KEY": "test-ingest-key"},
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["tiers"]) == 4
+
+    def test_patch_starter_with_superadmin(self, client, admin_headers, fake_supabase):
+        from app.services import tier_config as tier_config_svc
+
+        tier_config_svc.clear_tier_config_cache()
+        fake_supabase.set_table("users", _superadmin_users())
+        spy = _TierConfigQuery()
+        fake_supabase.set_table("tier_config", spy)
+
+        resp = client.patch(
+            "/api/v1/admin/tiers/starter",
+            headers=admin_headers,
+            json={"price_ngwee": 14000, "matches_limit": 60},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["tier"] == "starter"
+        assert body["price_ngwee"] == 14000
+        assert body["matches_limit"] == 60
+        assert any(
+            u.get("tier") == "starter" and u.get("price_ngwee") == 14000
+            for u in spy.upserted
+        )
+
+    def test_patch_free_price_must_be_zero(self, client, admin_headers, fake_supabase):
+        fake_supabase.set_table("users", _superadmin_users())
+        fake_supabase.set_table("tier_config", _TierConfigQuery())
+        resp = client.patch(
+            "/api/v1/admin/tiers/free",
+            headers=admin_headers,
+            json={"price_ngwee": 100, "matches_limit": 10},
+        )
+        assert resp.status_code == 422
+
+    def test_patch_unknown_tier(self, client, admin_headers, fake_supabase):
+        fake_supabase.set_table("users", _superadmin_users())
+        fake_supabase.set_table("tier_config", _TierConfigQuery())
+        resp = client.patch(
+            "/api/v1/admin/tiers/enterprise",
+            headers=admin_headers,
+            json={"price_ngwee": 10000, "matches_limit": 50},
+        )
+        assert resp.status_code == 404

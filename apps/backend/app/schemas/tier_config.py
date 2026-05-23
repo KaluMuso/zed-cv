@@ -43,3 +43,10 @@ class TierConfigUpdateItem(BaseModel):
 
 class TierConfigBulkUpdate(BaseModel):
     tiers: list[TierConfigUpdateItem] = Field(..., min_length=4, max_length=4)
+
+
+class TierConfigPatch(BaseModel):
+    """Partial update for a single tier (admin PATCH /admin/tiers/{tier_name})."""
+
+    price_ngwee: int = Field(..., ge=0)
+    matches_limit: int = Field(..., ge=0, le=999999)

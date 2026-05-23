@@ -121,6 +121,7 @@ def create_app() -> FastAPI:
     application.include_router(legal.admin_router, prefix="/api/v1")
     application.include_router(tier_config_routes.public_router, prefix="/api/v1")
     application.include_router(tier_config_routes.admin_router, prefix="/api/v1")
+    application.include_router(tier_config_routes.admin_tiers_router, prefix="/api/v1")
 
     @application.on_event("startup")
     async def bootstrap_waha_session() -> None:

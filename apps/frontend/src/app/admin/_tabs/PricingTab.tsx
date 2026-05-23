@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { notify } from "@/lib/toast";
 import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
-import { TierConfigEditor } from "./TierConfigEditor";
 
 export function PricingTab({
   token,
@@ -46,8 +45,6 @@ export function PricingTab({
 
   return (
     <div className="space-y-4">
-      <TierConfigEditor token={token} />
-
       <div className="grid sm:grid-cols-2 gap-3">
         <StatCard
           label="Revenue (30d)"
