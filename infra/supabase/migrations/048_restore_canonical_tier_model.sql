@@ -14,6 +14,11 @@ UPDATE public.users
 SET promotion_applied_until = created_at + INTERVAL '2 months'
 WHERE promotion_applied_until IS NULL;
 
+-- Drop tier CHECK constraints before renaming keys (047 only allows mwana/mwizi/wino).
+ALTER TABLE public.tier_config DROP CONSTRAINT IF EXISTS tier_config_tier_check;
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_subscription_tier_check;
+ALTER TABLE public.subscriptions DROP CONSTRAINT IF EXISTS subscriptions_tier_check;
+
 -- Restore tier_config rows (rename mwana/mwizi/wino keys back to canonical).
 UPDATE public.tier_config SET tier = 'free', display_name = 'Free', price_ngwee = 0, matches_limit = 10, sort_order = 1
 WHERE tier = 'mwana';
@@ -45,15 +50,12 @@ UPDATE public.subscriptions SET tier = 'professional' WHERE tier = 'wino';
 ALTER TABLE public.users
     ALTER COLUMN subscription_tier SET DEFAULT 'free';
 
-ALTER TABLE public.tier_config DROP CONSTRAINT IF EXISTS tier_config_tier_check;
 ALTER TABLE public.tier_config ADD CONSTRAINT tier_config_tier_check
     CHECK (tier IN ('free', 'starter', 'professional', 'super_standard'));
 
-ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_subscription_tier_check;
 ALTER TABLE public.users ADD CONSTRAINT users_subscription_tier_check
     CHECK (subscription_tier IN ('free', 'starter', 'professional', 'super_standard'));
 
-ALTER TABLE public.subscriptions DROP CONSTRAINT IF EXISTS subscriptions_tier_check;
 ALTER TABLE public.subscriptions ADD CONSTRAINT subscriptions_tier_check
     CHECK (tier IN ('free', 'starter', 'professional', 'super_standard'));
 
