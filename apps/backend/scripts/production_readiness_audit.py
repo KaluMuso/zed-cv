@@ -17,22 +17,29 @@ sys.path.insert(0, str(_BACKEND_ROOT))
 Status = Literal["green", "yellow", "red"]
 
 _REPO_MARKERS = ("CLAUDE.md", "docs/openapi.yaml", "AGENTS.md")
+_BACKEND_MARKERS = ("main.py", "requirements.txt", "Dockerfile")
 
 
-def _find_repo_root(start: Path | None = None) -> Path:
-    """Walk upward from this script until the monorepo root is found."""
+def _find_repo_or_backend_root(start: Path | None = None) -> Path:
+    """Walk upward until monorepo root or backend root (container) is found."""
     anchor = (start or Path(__file__)).resolve()
+
+    # 1. Try repo root first (CLAUDE.md, docs/openapi.yaml, AGENTS.md)
     for directory in (anchor.parent, *anchor.parents):
         if any((directory / marker).is_file() for marker in _REPO_MARKERS):
             return directory
-    raise RuntimeError(
-        f"Could not locate repo root from {anchor} "
-        f"(expected one of {_REPO_MARKERS})"
-    )
+
+    # 2. Container fallback: find backend root via main.py + requirements.txt
+    for directory in (anchor.parent, *anchor.parents):
+        if all((directory / marker).is_file() for marker in ("main.py", "requirements.txt")):
+            return directory
+
+    raise RuntimeError(f"Could not locate repo or backend root from {anchor}")
 
 
-REPO_ROOT = _find_repo_root()
-MIGRATIONS_DIR = REPO_ROOT / "infra" / "supabase" / "migrations"
+REPO_ROOT = _find_repo_or_backend_root()
+_migrations_path = REPO_ROOT / "infra" / "supabase" / "migrations"
+MIGRATIONS_DIR = _migrations_path if _migrations_path.is_dir() else None
 EXPECTED_TIERS = ("free", "starter", "professional", "super_standard")
 RLS_TABLES = (
     "otp_codes",
@@ -123,6 +130,12 @@ def check_lenco_key(settings: Any | None) -> CheckResult:
 
 
 def check_migration_files() -> CheckResult:
+    if MIGRATIONS_DIR is None:
+        return CheckResult(
+            "Migrations on disk",
+            "yellow",
+            "check from repo (not container)",
+        )
     files = sorted(MIGRATIONS_DIR.glob("*.sql"))
     if not files:
         return CheckResult("Migrations on disk", "red", f"no SQL in {MIGRATIONS_DIR}")
@@ -156,6 +169,12 @@ def check_schema_sentinels(supabase) -> CheckResult:
             "DB schema sentinels (migrations applied)",
             "red",
             f"missing: {', '.join(missing)} — apply pending migrations",
+        )
+    if MIGRATIONS_DIR is None:
+        return CheckResult(
+            "DB schema sentinels (migrations applied)",
+            "green",
+            "probes OK (migration files not on disk in container)",
         )
     latest = sorted(MIGRATIONS_DIR.glob("*.sql"))[-1].name
     return CheckResult(
