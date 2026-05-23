@@ -1156,6 +1156,119 @@ components:
         company: { type: string }
         cached: { type: boolean }
 
+    MockInterviewStartRequest:
+      type: object
+      required: [role_label]
+      properties:
+        role_label: { type: string, maxLength: 200 }
+
+    MockInterviewStartResponse:
+      type: object
+      properties:
+        session_id: { type: string, format: uuid }
+        question: { type: string }
+        question_number: { type: integer }
+        total_questions: { type: integer }
+
+    MockInterviewAnswerRequest:
+      type: object
+      required: [session_id, answer]
+      properties:
+        session_id: { type: string, format: uuid }
+        answer: { type: string, maxLength: 8000 }
+
+    MockInterviewAnswerResponse:
+      type: object
+      properties:
+        session_id: { type: string, format: uuid }
+        progress:
+          type: object
+          nullable: true
+          properties:
+            star_score: { type: number }
+            feedback: { type: string }
+            question_number: { type: integer }
+            total_questions: { type: integer }
+        next_question: { type: string, nullable: true }
+        final_summary:
+          type: object
+          nullable: true
+          properties:
+            overall_score: { type: number }
+            strengths: { type: array, items: { type: string } }
+            improvements: { type: array, items: { type: string } }
+            practice_areas: { type: array, items: { type: string } }
+
+    AptitudePackResponse:
+      type: object
+      properties:
+        pack: { type: string, enum: [numerical, verbal, abstract] }
+        time_limit_seconds: { type: integer }
+        questions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              question_text: { type: string }
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    label: { type: string }
+                    value: { type: string }
+
+    AptitudeScoreRequest:
+      type: object
+      required: [pack, answers, elapsed_seconds]
+      properties:
+        pack: { type: string, enum: [numerical, verbal, abstract] }
+        answers:
+          type: array
+          minItems: 20
+          maxItems: 20
+          items:
+            type: object
+            required: [question_id, value]
+            properties:
+              question_id: { type: string, format: uuid }
+              value: { type: string }
+        elapsed_seconds: { type: integer, minimum: 0, maximum: 7200 }
+
+    AptitudeScoreResponse:
+      type: object
+      properties:
+        pack: { type: string }
+        score: { type: number }
+        percentile: { type: number }
+        correct_count: { type: integer }
+        total_questions: { type: integer }
+
+    InterviewHistoryResponse:
+      type: object
+      properties:
+        mock_sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              role_label: { type: string }
+              overall_score: { type: number, nullable: true }
+              created_at: { type: string, format: date-time, nullable: true }
+        aptitude_scores:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              pack: { type: string }
+              score: { type: number }
+              percentile: { type: number, nullable: true }
+              elapsed_seconds: { type: integer, nullable: true }
+              completed_at: { type: string, format: date-time, nullable: true }
+
     PaymentInitiateResponse:
       type: object
       properties:
@@ -2355,6 +2468,95 @@ paths:
         '403': { description: Super Standard tier required }
         '404': { description: Job not found }
         '422': { description: No CV uploaded }
+
+  /interview/mock/start:
+    post:
+      operationId: mockInterviewStart
+      summary: Start a mock STAR interview session (Super Standard)
+      tags: [Interview]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MockInterviewStartRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MockInterviewStartResponse' }
+        '403': { description: Super Standard tier required }
+        '503': { description: AI unavailable }
+
+  /interview/mock/answer:
+    post:
+      operationId: mockInterviewAnswer
+      summary: Submit an answer; score and return next question or summary
+      tags: [Interview]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MockInterviewAnswerRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MockInterviewAnswerResponse' }
+        '403': { description: Super Standard tier required }
+        '404': { description: Session not found }
+
+  /interview/aptitude/pack/{pack}:
+    get:
+      operationId: getAptitudePack
+      summary: Random 20-question aptitude pack
+      tags: [Interview]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: pack
+          in: path
+          required: true
+          schema: { type: string, enum: [numerical, verbal, abstract] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AptitudePackResponse' }
+        '403': { description: Super Standard tier required }
+        '503': { description: Bank not seeded }
+
+  /interview/aptitude/score:
+    post:
+      operationId: scoreAptitudePack
+      summary: Score completed aptitude test
+      tags: [Interview]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AptitudeScoreRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AptitudeScoreResponse' }
+        '403': { description: Super Standard tier required }
+        '422': { description: Invalid answer count }
+
+  /interview/history:
+    get:
+      operationId: getInterviewHistory
+      summary: Past mock sessions and aptitude scores
+      tags: [Interview]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InterviewHistoryResponse' }
+        '403': { description: Super Standard tier required }
 
   /cover-letter/generate:
     post:

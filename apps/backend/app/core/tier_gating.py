@@ -29,8 +29,15 @@ UNLIMITED_MATCHES = 99999
 
 FEATURE_COVER_LETTER = "cover_letter"
 FEATURE_JOB_MATCHES = "job_matches"
+FEATURE_INTERVIEW_PREP = "interview_prep"
 
 _COVER_LETTER_TIERS = frozenset({"professional", "super_standard"})
+_INTERVIEW_PREP_TIERS = frozenset({"super_standard"})
+
+TIER_FEATURE_GATES: dict[str, frozenset[str]] = {
+    FEATURE_COVER_LETTER: _COVER_LETTER_TIERS,
+    FEATURE_INTERVIEW_PREP: _INTERVIEW_PREP_TIERS,
+}
 
 
 def normalize_tier(raw: str | None) -> str:
@@ -233,6 +240,16 @@ async def verify_tier_access(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=detail,
+            )
+    elif required_feature == FEATURE_INTERVIEW_PREP:
+        allowed = TIER_FEATURE_GATES.get(FEATURE_INTERVIEW_PREP, frozenset())
+        if canonical not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Bwana Interview is included on the Super Standard plan (K500/mo). "
+                    "Upgrade at /pricing."
+                ),
             )
     elif required_feature == FEATURE_JOB_MATCHES:
         limit = await get_effective_match_limit(user_id, supabase)

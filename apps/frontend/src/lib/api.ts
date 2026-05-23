@@ -1167,6 +1167,104 @@ export const interviewPrep = {
     }),
 };
 
+// ── Bwana Interview (mock + aptitude) ──
+export type AptitudePack = "numerical" | "verbal" | "abstract";
+
+export interface MockInterviewStartResult {
+  session_id: string;
+  question: string;
+  question_number: number;
+  total_questions: number;
+}
+
+export interface MockInterviewAnswerResult {
+  session_id: string;
+  progress: {
+    star_score: number;
+    feedback: string;
+    question_number: number;
+    total_questions: number;
+  } | null;
+  next_question: string | null;
+  final_summary: {
+    overall_score: number;
+    strengths: string[];
+    improvements: string[];
+    practice_areas: string[];
+  } | null;
+}
+
+export interface AptitudeQuestion {
+  id: string;
+  question_text: string;
+  options: { label: string; value: string }[];
+}
+
+export interface AptitudePackResult {
+  pack: AptitudePack;
+  time_limit_seconds: number;
+  questions: AptitudeQuestion[];
+}
+
+export interface AptitudeScoreResult {
+  pack: AptitudePack;
+  score: number;
+  percentile: number;
+  correct_count: number;
+  total_questions: number;
+}
+
+export interface InterviewHistoryResult {
+  mock_sessions: {
+    id: string;
+    role_label: string;
+    overall_score: number | null;
+    created_at: string | null;
+  }[];
+  aptitude_scores: {
+    id: string;
+    pack: string;
+    score: number;
+    percentile: number | null;
+    elapsed_seconds: number | null;
+    completed_at: string | null;
+  }[];
+}
+
+export const bwanaInterview = {
+  mockStart: (token: string, roleLabel: string) =>
+    apiFetch<MockInterviewStartResult>("/interview/mock/start", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ role_label: roleLabel }),
+    }),
+  mockAnswer: (token: string, sessionId: string, answer: string) =>
+    apiFetch<MockInterviewAnswerResult>("/interview/mock/answer", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ session_id: sessionId, answer }),
+    }),
+  aptitudePack: (token: string, pack: AptitudePack) =>
+    apiFetch<AptitudePackResult>(`/interview/aptitude/pack/${pack}`, { token }),
+  aptitudeScore: (
+    token: string,
+    pack: AptitudePack,
+    answers: { question_id: string; value: string }[],
+    elapsedSeconds: number,
+  ) =>
+    apiFetch<AptitudeScoreResult>("/interview/aptitude/score", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        pack,
+        answers,
+        elapsed_seconds: elapsedSeconds,
+      }),
+    }),
+  history: (token: string) =>
+    apiFetch<InterviewHistoryResult>("/interview/history", { token }),
+};
+
 // ── Data-subject rights (task #63) ──
 export interface AccountDeletionResult {
   deleted: boolean;

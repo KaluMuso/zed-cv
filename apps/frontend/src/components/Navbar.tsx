@@ -48,10 +48,16 @@ export function Navbar() {
     { href: "/jobs", label: "Jobs" },
     { href: "/matches", label: "Matches" },
     { href: "/pricing", label: "Pricing" },
-    ...(subscriptionTier === "super_standard"
-      ? [{ href: "/interview-prep", label: "Bwana Interview" }]
-      : []),
   ];
+
+  const interviewPrepSubLinks =
+    subscriptionTier === "super_standard"
+      ? [
+          { href: "/interview-prep/mock", label: "Mock Interview" },
+          { href: "/interview-prep/aptitude", label: "Aptitude Tests" },
+          { href: "/interview-prep/history", label: "History" },
+        ]
+      : [];
 
   return (
     <>
@@ -82,6 +88,42 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {interviewPrepSubLinks.length > 0 && (
+              <div className="relative group">
+                <Link
+                  href="/interview-prep"
+                  className={`nav-link ${
+                    pathname.startsWith("/interview-prep") ? "active" : ""
+                  }`}
+                >
+                  Interview Prep
+                </Link>
+                <div
+                  className="absolute left-0 top-full pt-2 hidden group-hover:block z-50"
+                  role="menu"
+                >
+                  <div
+                    className="min-w-[180px] py-2 rounded-xl"
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--line)",
+                      boxShadow: "var(--shadow-lg)",
+                    }}
+                  >
+                    {interviewPrepSubLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className="block px-4 py-2 text-sm hover:bg-[var(--bg-2)] transition-colors"
+                        style={{ color: "var(--ink-2)" }}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -216,6 +258,20 @@ export function Navbar() {
                       pathname === link.href
                         ? "var(--green-700)"
                         : "var(--ink)",
+                    borderBottom: "1px solid var(--line)",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {interviewPrepSubLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="font-display text-2xl py-2 transition-colors pl-4"
+                  style={{
+                    color: pathname === link.href ? "var(--green-700)" : "var(--ink-2)",
                     borderBottom: "1px solid var(--line)",
                   }}
                 >
