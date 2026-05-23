@@ -4,8 +4,9 @@ from tests.conftest import FakeSupabaseQuery
 
 
 class TestOTPRequest:
+    @patch("app.api.v1.auth.ensure_session_started", new_callable=AsyncMock, return_value=True)
     @patch("app.api.v1.auth.send_whatsapp_otp", new_callable=AsyncMock)
-    def test_request_otp_success(self, mock_wa, client, fake_supabase):
+    def test_request_otp_success(self, mock_wa, mock_ensure, client, fake_supabase):
         """OTP request sends WhatsApp message."""
         fake_supabase.set_table("otp_codes", FakeSupabaseQuery(data=[]))
         resp = client.post(
@@ -13,9 +14,24 @@ class TestOTPRequest:
         )
         assert resp.status_code == 200
         assert "OTP sent" in resp.json()["message"]
+        mock_ensure.assert_awaited_once()
 
+    @patch("app.api.v1.auth.ensure_session_started", new_callable=AsyncMock, return_value=False)
     @patch("app.api.v1.auth.send_whatsapp_otp", new_callable=AsyncMock)
-    def test_request_otp_rate_limited(self, mock_wa, client, fake_supabase):
+    def test_request_otp_waha_not_working_returns_503(
+        self, mock_wa, mock_ensure, client, fake_supabase
+    ):
+        """When WAHA session is down, return 503 instead of storing a dead OTP."""
+        fake_supabase.set_table("otp_codes", FakeSupabaseQuery(data=[]))
+        resp = client.post(
+            "/api/v1/auth/otp/request", json={"phone": "+260971234567"}
+        )
+        assert resp.status_code == 503
+        mock_wa.assert_not_called()
+
+    @patch("app.api.v1.auth.ensure_session_started", new_callable=AsyncMock, return_value=True)
+    @patch("app.api.v1.auth.send_whatsapp_otp", new_callable=AsyncMock)
+    def test_request_otp_rate_limited(self, mock_wa, mock_ensure, client, fake_supabase):
         """Rejects rapid re-requests."""
         fake_supabase.set_table(
             "otp_codes",
