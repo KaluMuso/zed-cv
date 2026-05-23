@@ -66,4 +66,4 @@ service sales, mobile-money scams, and bulk promos (`Take advantage of`,
 - Classifier: `apps/backend/app/services/whatsapp_classifier.py`
 - Pre-filter: `apps/backend/app/services/whatsapp_classifier_prefilter.py`
 - Webhook: `apps/backend/app/api/v1/whatsapp_scraper_webhook.py`
-- Migration: `infra/supabase/migrations/044_ai_cache_classifier_metadata.sql`
+- Migration: `infra/supabase/migrations/045_ai_cache_classifier_metadata.sql`

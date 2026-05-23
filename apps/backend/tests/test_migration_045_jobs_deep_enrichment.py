@@ -1,4 +1,4 @@
-"""Pin migration 045 deep-scrape enrichment columns."""
+"""Pin migration 046 deep-scrape enrichment columns."""
 from pathlib import Path
 
 MIGRATION_PATH = (
@@ -6,7 +6,7 @@ MIGRATION_PATH = (
     / "infra"
     / "supabase"
     / "migrations"
-    / "045_jobs_deep_scrape_enrichment.sql"
+    / "046_jobs_deep_scrape_enrichment.sql"
 )
 
 

@@ -1,4 +1,4 @@
--- 046 — Dashboard user settings on users table
+-- 049 — Dashboard user settings on users table
 --
 -- Backs PATCH /api/v1/users/me/preferences (WhatsApp delivery number,
 -- location, display currency, alert cadence). whatsapp_verified is a

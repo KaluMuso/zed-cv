@@ -1,9 +1,9 @@
--- 047_subscription_tier_gating.sql
+-- 052_subscription_tier_gating.sql
 --
 -- Monthly match-view counters on users + Zambian tier keys (mwana/mwizi/wino).
 -- Product limits: Mwana 5/mo, Mwizi 25/mo, Wino unlimited. Cover letters: Wino only.
 --
--- Apply ordering: 047 after 046_* migrations.
+-- Apply ordering: 052 after 047–051 migrations.
 
 BEGIN;
 

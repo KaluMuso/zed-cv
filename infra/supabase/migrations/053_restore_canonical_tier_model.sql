@@ -1,4 +1,4 @@
--- 048_restore_canonical_tier_model.sql
+-- 053_restore_canonical_tier_model.sql
 -- Revert mwana/mwizi/wino to free/starter/professional/super_standard.
 -- Restore K125/K250/K500 pricing and match quotas from tier_config.
 
@@ -48,7 +48,7 @@ VALUES
     ('professional', 'Professional', 25000, 125, 3),
     ('super_standard', 'Super Standard', 50000, 99999, 4);
 
--- Reverse-migrate users and subscriptions that were auto-flipped in 047.
+-- Reverse-migrate users and subscriptions that were auto-flipped in 052.
 UPDATE public.users SET subscription_tier = 'free' WHERE subscription_tier = 'mwana';
 UPDATE public.users SET subscription_tier = 'starter' WHERE subscription_tier = 'mwizi';
 UPDATE public.users SET subscription_tier = 'professional' WHERE subscription_tier = 'wino';

@@ -1,4 +1,4 @@
-"""Pin the 60/30/10 scoring formula in migration 046."""
+"""Pin the 60/30/10 scoring formula in migration 048."""
 from pathlib import Path
 
 
@@ -7,7 +7,7 @@ MIGRATION_PATH = (
     / "infra"
     / "supabase"
     / "migrations"
-    / "046_match_jobs_60_30_10_scoring.sql"
+    / "048_match_jobs_60_30_10_scoring.sql"
 )
 
 

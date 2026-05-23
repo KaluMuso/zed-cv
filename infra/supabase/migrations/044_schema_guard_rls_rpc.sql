@@ -1,4 +1,4 @@
--- 043: RPC for production_readiness_audit.py — RLS status on audited tables
+-- 044: RPC for production_readiness_audit.py — RLS status on audited tables
 
 BEGIN;
 

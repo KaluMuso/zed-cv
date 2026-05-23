@@ -1,4 +1,4 @@
--- 047: Track WhatsApp (and other) job digests sent per user
+-- 050: Track WhatsApp (and other) job digests sent per user
 --
 -- Prevents the same job from appearing in consecutive daily digests.
 -- Backend inserts rows when GET /admin/trigger-daily-digest builds a batch.

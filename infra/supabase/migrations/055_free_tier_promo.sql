@@ -1,4 +1,4 @@
--- 053_free_tier_promo.sql
+-- 055_free_tier_promo.sql
 -- Free tier baseline 10 → 3; welcome 7 matches/mo for first 2 months on free tier.
 
 BEGIN;

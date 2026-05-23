@@ -1,4 +1,4 @@
--- 046_create_skills_dictionary.sql
+-- 047_create_skills_dictionary.sql
 --
 -- Admin skill canonicalization: map messy scraper strings (e.g. "ms excel")
 -- to curated display names (e.g. "Microsoft Excel") before job ingest links

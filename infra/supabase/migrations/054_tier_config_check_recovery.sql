@@ -1,6 +1,6 @@
--- 049_tier_config_check_recovery.sql
--- Recovery when 048 fails: tier_config may still have a CHECK that only allows
--- mwana/mwizi/wino (047) while 048 tries to write free/starter/...
+-- 054_tier_config_check_recovery.sql
+-- Recovery when 053 fails: tier_config may still have a CHECK that only allows
+-- mwana/mwizi/wino (052) while 053 tries to write free/starter/...
 -- Drops every CHECK on tier_config, rebuilds rows, re-adds canonical constraint.
 
 BEGIN;

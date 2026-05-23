@@ -4,9 +4,10 @@ Move from sandbox integrations to production credentials and soft launch.
 Run `python scripts/production_readiness_audit.py` from `apps/backend/` before
 each phase and after deploys.
 
-**Repo migrations:** `001`–`043` under `infra/supabase/migrations/` (latest:
-`043_schema_guard_rls_rpc.sql` for the production audit RLS check). Apply any
-pending SQL in the Supabase dashboard or CLI before Phase 1.
+**Repo migrations:** `001`–`055` under `infra/supabase/migrations/` (latest
+schema: `055_free_tier_promo.sql`). If prod already has that schema under
+**old** duplicate prefixes, run **only** `059_audit_idempotent.sql` to verify —
+see `docs/migrations.md`. Do not re-apply renumbered files.
 
 ---
 

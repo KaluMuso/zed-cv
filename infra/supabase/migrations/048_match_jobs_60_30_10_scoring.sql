@@ -1,4 +1,4 @@
--- 046: Transparent 60/30/10 hybrid matching scores
+-- 048: Transparent 60/30/10 hybrid matching scores
 --
 -- Components (additive, max 100 total):
 --   Semantic:  (1 - cosine_distance) * 60
