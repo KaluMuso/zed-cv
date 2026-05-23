@@ -45,6 +45,8 @@ def _seed_users(fake_supabase):
                     "currency": "ZMW",
                     "alert_frequency": "daily",
                     "whatsapp_verified": True,
+                    "preferred_notification_channel": "email",
+                    "subscription_tier": "free",
                 }
             ]
         ),
@@ -64,6 +66,19 @@ class TestUserDashboardPreferences:
         assert body["currency"] == "ZMW"
         assert body["alert_frequency"] == "daily"
         assert body["whatsapp_verified"] is True
+        assert body["preferred_notification_channel"] == "email"
+        assert body["whatsapp_digest_available"] is False
+
+    def test_patch_whatsapp_channel_requires_paid_tier(
+        self, client, auth_headers, fake_supabase
+    ):
+        _seed_users(fake_supabase)
+        resp = client.patch(
+            "/api/v1/users/me/preferences",
+            headers=auth_headers,
+            json={"preferred_notification_channel": "whatsapp"},
+        )
+        assert resp.status_code == 403
 
     def test_patch_location_and_currency(self, client, auth_headers, fake_supabase):
         _seed_users(fake_supabase)

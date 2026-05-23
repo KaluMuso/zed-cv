@@ -95,13 +95,16 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ phone }),
     }),
-  verifyOTP: (phone: string, code: string, consentAccepted?: boolean) =>
+  verifyOTP: (phone: string, code: string, options?: { consentAccepted?: boolean; email?: string }) =>
     apiFetch<AuthTokens>("/auth/otp/verify", {
       method: "POST",
       body: JSON.stringify({
         phone,
         code,
-        ...(consentAccepted !== undefined && { consent_accepted: consentAccepted }),
+        ...(options?.consentAccepted !== undefined && {
+          consent_accepted: options.consentAccepted,
+        }),
+        ...(options?.email && { email: options.email }),
       }),
     }),
 };
@@ -235,12 +238,16 @@ export interface NotificationPreferences {
 }
 
 // @openapi UserPreferences
+export type PreferredNotificationChannel = "email" | "whatsapp" | "both";
+
 export interface UserPreferences {
   whatsapp_number: string | null;
   location: string | null;
   currency: "ZMW" | "USD";
   alert_frequency: "daily" | "weekly" | "muted";
   whatsapp_verified: boolean;
+  preferred_notification_channel: PreferredNotificationChannel;
+  whatsapp_digest_available: boolean;
 }
 
 // @openapi UserPreferencesUpdate
@@ -249,6 +256,7 @@ export interface UserPreferencesUpdate {
   location?: string;
   currency?: "ZMW" | "USD";
   alert_frequency?: "daily" | "weekly" | "muted";
+  preferred_notification_channel?: PreferredNotificationChannel;
 }
 
 export interface NotificationChannels {

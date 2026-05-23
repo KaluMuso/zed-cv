@@ -142,6 +142,8 @@ class Settings(BaseSettings):
     # Email (Resend)
     resend_api_key: str = ""
     resend_from_email: str = "Zed CV <noreply@zedcv.com>"
+    # Published Resend template alias/id for daily match digests ({{{USER_NAME}}}, etc.).
+    resend_daily_digest_template_id: str = "daily-job-matches"
     # Inbox the /contact form delivers to (task #65). Defaults to the
     # operator address that already appears in the footer + auth page.
     contact_email: str = "convergeozambia@gmail.com"

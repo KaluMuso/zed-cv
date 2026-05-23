@@ -36,6 +36,7 @@ from app.services.matching import (
 )
 from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
+from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
 from app.services.whatsapp import send_match_digest
 
 logger = logging.getLogger(__name__)
@@ -210,12 +211,13 @@ async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:
     if not matches:
         return False
 
-    channels = _channels(user)
+    legacy = _channels(user)
     sent = False
-    if channels["whatsapp"] and user.get("phone"):
+    phone = (user.get("whatsapp_number") or user.get("phone") or "").strip()
+    if wants_whatsapp_digest(user) and phone and legacy.get("whatsapp", True):
         try:
             await send_match_digest(
-                user["phone"],
+                phone,
                 [
                     {
                         "title": (m.get("jobs") or {}).get("title"),
@@ -229,7 +231,7 @@ async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:
             sent = True
         except Exception:
             logger.warning("auto-match WhatsApp digest failed for user=%s", user["id"], exc_info=True)
-    if channels["email"]:
+    if wants_email_digest(user) and legacy.get("email", True):
         try:
             sent = bool(await send_match_digest_email(user["id"], matches[:5], supabase)) or sent
         except Exception:
@@ -519,7 +521,12 @@ async def cron_tick(
     now = datetime.now(timezone.utc)
     users_res = (
         supabase.table("users")
-        .select("id, subscription_tier, last_auto_match_at, auto_match_enabled, notification_channels, last_notification_at, phone")
+        .select(
+            "id, subscription_tier, last_auto_match_at, auto_match_enabled, "
+            "notification_channels, last_notification_at, phone, email, "
+            "whatsapp_number, whatsapp_verified, email_notifications_enabled, "
+            "preferred_notification_channel"
+        )
         .eq("auto_match_enabled", True)
         .neq("subscription_tier", "free")
         .limit(limit)
@@ -561,7 +568,11 @@ async def send_notifications(
     now = datetime.now(timezone.utc)
     users_res = (
         supabase.table("users")
-        .select("id, phone, auto_match_enabled, notification_channels, last_notification_at")
+        .select(
+            "id, phone, email, subscription_tier, auto_match_enabled, "
+            "notification_channels, last_notification_at, whatsapp_number, "
+            "whatsapp_verified, email_notifications_enabled, preferred_notification_channel"
+        )
         .eq("auto_match_enabled", True)
         .limit(limit)
         .execute()

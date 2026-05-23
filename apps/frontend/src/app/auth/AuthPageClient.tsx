@@ -17,6 +17,7 @@ import { StepProgress } from "@/components/shared/StepProgress";
 const phoneSchema = z
   .string()
   .regex(/^\+260[0-9]{9}$/, "Enter a valid Zambian number");
+const emailSchema = z.string().email("Enter a valid email address");
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 export default function AuthPageClient() {
@@ -25,6 +26,7 @@ export default function AuthPageClient() {
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
   const [phoneDigits, setPhoneDigits] = useState("");
+  const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [resendIn, setResendIn] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -62,9 +64,14 @@ export default function AuthPageClient() {
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!consentChecked) return;
-    const result = phoneSchema.safeParse(fullPhone);
-    if (!result.success) {
+    const phoneResult = phoneSchema.safeParse(fullPhone);
+    const emailResult = emailSchema.safeParse(email.trim());
+    if (!phoneResult.success) {
       setError("Enter a valid Zambian number (9 digits after +260)");
+      return;
+    }
+    if (!emailResult.success) {
+      setError(emailResult.error.issues[0]?.message ?? "Enter a valid email");
       return;
     }
     setError("");
@@ -88,7 +95,10 @@ export default function AuthPageClient() {
       setLoading(true);
       setError("");
       try {
-        const tokens = await auth.verifyOTP(fullPhone, code, consentChecked);
+        const tokens = await auth.verifyOTP(fullPhone, code, {
+          consentAccepted: consentChecked,
+          email: email.trim(),
+        });
         login(tokens.access_token, tokens.user_id);
         setStep("success");
         setTimeout(() => router.push(safeNext), 1400);
@@ -97,7 +107,7 @@ export default function AuthPageClient() {
         setLoading(false);
       }
     },
-    [consentChecked, fullPhone, login, router, safeNext]
+    [consentChecked, email, fullPhone, login, router, safeNext]
   );
 
   useEffect(() => {
@@ -233,7 +243,7 @@ export default function AuthPageClient() {
                 className="text-sm mb-8"
                 style={{ color: "var(--muted)" }}
               >
-                We&apos;ll WhatsApp you a 6-digit code.
+                We&apos;ll WhatsApp you a 6-digit code. Your email receives daily match digests.
               </p>
 
               <form onSubmit={handlePhoneSubmit}>
@@ -246,6 +256,21 @@ export default function AuthPageClient() {
                   onDigitsChange={setPhoneDigits}
                   error={error}
                   disabled={loading}
+                />
+
+                <label htmlFor="auth-email" className="mb-2 mt-5 block text-sm font-medium text-ink-2">
+                  Email address
+                </label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  placeholder="you@example.com"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 />
 
                 <label
@@ -290,7 +315,7 @@ export default function AuthPageClient() {
                   size="lg"
                   className="mt-6 w-full"
                   loading={loading}
-                  disabled={!consentChecked || phoneDigits.length < 9}
+                  disabled={!consentChecked || phoneDigits.length < 9 || !email.trim()}
                 >
                   Send code <Icon name="arrowRight" size={16} />
                 </Button>

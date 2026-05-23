@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.services.daily_digest import (
+    WHATSAPP_DAILY_DIGEST_CHANNEL,
     format_daily_digest_message,
     build_daily_digest_batch,
     _select_digest_matches,
@@ -98,7 +99,11 @@ class TestSelectDigestMatches:
             return_value=rpc_rows,
         ):
             selected = await _select_digest_matches(
-                user_id, fake_supabase, now=NOW, min_score=50.0
+                user_id,
+                "whatsapp_daily_digest",
+                fake_supabase,
+                now=NOW,
+                min_score=50.0,
             )
 
         assert len(selected) == 1
@@ -119,6 +124,9 @@ class TestTriggerDailyDigestEndpoint:
                         "full_name": "Jane Banda",
                         "whatsapp_verified": True,
                         "alert_frequency": "daily",
+                        "preferred_notification_channel": "whatsapp",
+                        "subscription_tier": "starter",
+                        "email_notifications_enabled": True,
                     }
                 ]
             ),
@@ -164,6 +172,8 @@ class TestBuildDailyDigestBatch:
                         "full_name": "Jane",
                         "whatsapp_verified": True,
                         "alert_frequency": "daily",
+                        "preferred_notification_channel": "whatsapp",
+                        "subscription_tier": "starter",
                     }
                 ]
             ),
@@ -189,6 +199,8 @@ class TestBuildDailyDigestBatch:
                         "full_name": "Jane",
                         "whatsapp_verified": True,
                         "alert_frequency": "daily",
+                        "preferred_notification_channel": "whatsapp",
+                        "subscription_tier": "starter",
                     }
                 ]
             ),
@@ -219,3 +231,4 @@ class TestBuildDailyDigestBatch:
         mock_record.assert_awaited_once()
         assert mock_record.await_args.args[0] == "u1"
         assert mock_record.await_args.args[1] == ["j1"]
+        assert mock_record.await_args.args[2] == WHATSAPP_DAILY_DIGEST_CHANNEL

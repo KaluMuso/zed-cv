@@ -6,8 +6,10 @@ import { useAuth } from "@/lib/auth";
 import {
   autoMatchPreferences,
   profile as profileApi,
+  userPreferences,
   type AutoMatchPreferences,
-  type NotificationPreferences,
+  type PreferredNotificationChannel,
+  type UserPreferences,
 } from "@/lib/api";
 import { useAppStore } from "@/lib/zustand-store";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,16 +26,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const CHANNEL_OPTIONS: { value: PreferredNotificationChannel; label: string; hint: string }[] = [
+  { value: "email", label: "Email only", hint: "Daily digests to your inbox (default)." },
+  {
+    value: "whatsapp",
+    label: "WhatsApp only",
+    hint: "Starter plan or higher. Requires a verified WhatsApp number.",
+  },
+  { value: "both", label: "Email and WhatsApp", hint: "Starter plan or higher." },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, logout, token } = useAuth();
   const { setProfile: setZust } = useAppStore();
-  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [dashPrefs, setDashPrefs] = useState<UserPreferences | null>(null);
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
-  const [savingAlerts, setSavingAlerts] = useState(false);
+  const [savingChannel, setSavingChannel] = useState(false);
   const [savingAutoMatch, setSavingAutoMatch] = useState(false);
-  const [savingLang, setSavingLang] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [delConfirm, setDelConfirm] = useState("");
   const [delLoading, setDelLoading] = useState(false);
@@ -46,14 +57,11 @@ export default function SettingsPage() {
       router.push("/auth");
       return;
     }
-    Promise.allSettled([
-      profileApi.getPreferences(token),
-      autoMatchPreferences.get(token),
-    ])
-      .then(([prefsRes, autoRes]) => {
-        if (prefsRes.status === "fulfilled") setPrefs(prefsRes.value);
+    Promise.allSettled([userPreferences.get(token), autoMatchPreferences.get(token)])
+      .then(([dashRes, autoRes]) => {
+        if (dashRes.status === "fulfilled") setDashPrefs(dashRes.value);
         if (autoRes.status === "fulfilled") setAutoPrefs(autoRes.value);
-        if (prefsRes.status === "rejected") throw prefsRes.reason;
+        if (dashRes.status === "rejected") throw dashRes.reason;
       })
       .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load preferences"))
       .finally(() => setPrefsLoading(false));
@@ -63,35 +71,23 @@ export default function SettingsPage() {
     return <p className="text-sm text-muted-foreground">…</p>;
   }
 
-  const updateAlerts = async (next: boolean) => {
-    if (!token || !prefs) {
+  const updateChannel = async (next: PreferredNotificationChannel) => {
+    if (!token || !dashPrefs) {
       return;
     }
-    setSavingAlerts(true);
+    if (!dashPrefs.whatsapp_digest_available && next !== "email") {
+      notify.error("Upgrade to Starter or higher for WhatsApp digests.");
+      return;
+    }
+    setSavingChannel(true);
     try {
-      const r = await profileApi.updatePreferences(token, { whatsapp_alerts: next });
-      setPrefs(r);
-      notify.custom.success(next ? "WhatsApp alerts on." : "WhatsApp alerts off.");
+      const r = await userPreferences.patch(token, { preferred_notification_channel: next });
+      setDashPrefs(r);
+      notify.custom.success("Notification preference saved.");
     } catch (e) {
       notify.error(e instanceof Error ? e.message : "Could not save");
     } finally {
-      setSavingAlerts(false);
-    }
-  };
-
-  const updateLanguage = async (next: "en" | "bem") => {
-    if (!token) {
-      return;
-    }
-    setSavingLang(true);
-    try {
-      const r = await profileApi.updatePreferences(token, { language: next });
-      setPrefs(r);
-      notify.custom.success("Language preference saved.");
-    } catch (e) {
-      notify.error(e instanceof Error ? e.message : "Could not save");
-    } finally {
-      setSavingLang(false);
+      setSavingChannel(false);
     }
   };
 
@@ -111,6 +107,9 @@ export default function SettingsPage() {
     }
   };
 
+  const channel = dashPrefs?.preferred_notification_channel ?? "email";
+  const paidWhatsApp = dashPrefs?.whatsapp_digest_available ?? false;
+
   return (
     <div>
       <h1 className="text-2xl sm:text-3xl font-bold mb-2">Settings</h1>
@@ -118,24 +117,46 @@ export default function SettingsPage() {
 
       <Card className="mb-4">
         <CardHeader>
-          <CardTitle>WhatsApp & alerts</CardTitle>
-          <CardDescription>Control daily nudges and match alerts to your WhatsApp.</CardDescription>
+          <CardTitle>Daily match digests</CardTitle>
+          <CardDescription>
+            Email is the default for all plans. WhatsApp digests are available on Starter and above.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between gap-4 min-h-11">
-            <span className="text-sm">Daily job alerts on WhatsApp</span>
-            {prefsLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : (
-              <input
-                type="checkbox"
-                className="h-5 w-5 rounded border-input"
-                checked={prefs?.whatsapp_alerts ?? true}
-                disabled={savingAlerts}
-                onChange={(e) => updateAlerts(e.target.checked)}
-              />
-            )}
-          </div>
+          {prefsLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : (
+            CHANNEL_OPTIONS.map((opt) => {
+              const disabled =
+                savingChannel || (!paidWhatsApp && opt.value !== "email");
+              return (
+                <label
+                  key={opt.value}
+                  className={`flex gap-3 rounded-lg border p-3 cursor-pointer ${
+                    disabled ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="digest-channel"
+                    className="mt-1"
+                    checked={channel === opt.value}
+                    disabled={disabled}
+                    onChange={() => updateChannel(opt.value)}
+                  />
+                  <span>
+                    <span className="text-sm font-medium block">{opt.label}</span>
+                    <span className="text-xs text-muted-foreground">{opt.hint}</span>
+                  </span>
+                </label>
+              );
+            })
+          )}
+          {!prefsLoading && !paidWhatsApp && (
+            <p className="text-xs text-muted-foreground">
+              Upgrade to Starter to enable WhatsApp or both channels.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -159,28 +180,6 @@ export default function SettingsPage() {
               />
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Language</CardTitle>
-          <CardDescription>Bemba is partially supported. WhatsApp messages will switch to Bemba where available.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {prefsLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : (
-            <select
-              className="h-10 min-h-10 rounded-md border border-input bg-background px-3 text-sm"
-              value={prefs?.language ?? "en"}
-              disabled={savingLang}
-              onChange={(e) => updateLanguage(e.target.value as "en" | "bem")}
-            >
-              <option value="en">English (Zambia)</option>
-              <option value="bem">Bemba (icibemba)</option>
-            </select>
-          )}
         </CardContent>
       </Card>
 

@@ -133,6 +133,7 @@ class TestOTPVerify:
                 "phone": "+260971234567",
                 "code": "123456",
                 "consent_accepted": True,
+                "email": "newuser@example.com",
             },
         )
         assert resp.status_code == 200
@@ -140,6 +141,20 @@ class TestOTPVerify:
         assert "access_token" in body
         assert "refresh_token" in body
         assert "user_id" in body
+
+    def test_verify_new_user_missing_email_rejected(self, client, fake_supabase):
+        """New signups must include an email for digest delivery."""
+        self._seed_new_user_verify(fake_supabase)
+        resp = client.post(
+            "/api/v1/auth/otp/verify",
+            json={
+                "phone": "+260971234567",
+                "code": "123456",
+                "consent_accepted": True,
+            },
+        )
+        assert resp.status_code == 400
+        assert "Email" in resp.json()["detail"]
 
     def test_verify_new_user_missing_consent_rejected(self, client, fake_supabase):
         """New user signup without consent_accepted in the payload returns 400.
