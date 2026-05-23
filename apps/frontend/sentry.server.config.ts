@@ -2,7 +2,10 @@ import * as Sentry from "@sentry/nextjs";
 import { getSentryInitOptions } from "./sentry.shared";
 
 const { dsn, ...options } = getSentryInitOptions();
+const enabled = Boolean(
+  process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
+);
 
-if (dsn) {
-  Sentry.init({ dsn, ...options });
+if (dsn && enabled) {
+  Sentry.init({ dsn, ...options, enabled });
 }

@@ -1,4 +1,4 @@
--- 054_canonical_skills_parent_notes.sql
+-- 056_canonical_skills_parent_notes.sql
 -- Optional grouping (parent_skill) and admin notes on curated dictionary rows.
 
 BEGIN;

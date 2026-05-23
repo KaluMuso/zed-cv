@@ -21,6 +21,7 @@ Several features landed with conflicting `043_*` / `046_*` / `047_*` filenames. 
 | `053_restore_canonical_tier_model.sql` | Revert to free/starter/professional/super_standard |
 | `054_tier_config_check_recovery.sql` | Recovery when tier_config CHECK blocks 053 |
 | `055_free_tier_promo.sql` | Free tier 3 matches + welcome 7/mo bonus |
+| `056_canonical_skills_parent_notes.sql` | `canonical_skills.parent_skill` + `notes` columns |
 | `057_interview_prep.sql` | Bwana Interview: mock sessions, aptitude bank, scores |
 | `059_audit_idempotent.sql` | **Verification only** — assertions, no DDL |
 | `060_match_jobs_v2_weighted.sql` | Weighted v2 hybrid matching (50/20/15/10/5) + 35 floor |
@@ -41,9 +42,10 @@ Several features landed with conflicting `043_*` / `046_*` / `047_*` filenames. 
 | `048_restore_canonical_tier_model.sql` | `053_restore_canonical_tier_model.sql` |
 | `049_tier_config_check_recovery.sql` | `054_tier_config_check_recovery.sql` |
 | `053_free_tier_promo.sql` | `055_free_tier_promo.sql` |
+| `054_canonical_skills_parent_notes.sql` | `056_canonical_skills_parent_notes.sql` |
 | `060_interview_prep.sql` | `057_interview_prep.sql` |
 
-Slots **056** and **058** remain reserved for future migrations. After PR #101 renumbered 043–055, **057** is the first open slot; interview prep was moved here so **060** is exclusively `match_jobs_v2_weighted`.
+Slot **058** remains reserved for a future migration. After PR #101 renumbered 043–055, **056** was the first open slot used for canonical skills parent/notes; interview prep lives at **057** so **060** is exclusively `match_jobs_v2_weighted`.
 
 ## Verifying prod (Supabase SQL Editor)
 
@@ -76,6 +78,7 @@ For drift repair on `supabase_migrations.schema_migrations`, see comments at the
 
 | Order | File | Notes |
 |-------|------|-------|
-| 1 | `057_interview_prep.sql` | DDL — apply once on fresh DBs; prod may already have this schema under the old `060_interview_prep` filename |
-| 2 | `059_audit_idempotent.sql` | Safe to re-run — verification only |
-| 3 | `060_match_jobs_v2_weighted.sql` | DDL — weighted matching RPC |
+| 1 | `056_canonical_skills_parent_notes.sql` | DDL — `parent_skill` + `notes` on `canonical_skills` |
+| 2 | `057_interview_prep.sql` | DDL — apply once on fresh DBs; prod may already have this schema under the old `060_interview_prep` filename |
+| 3 | `059_audit_idempotent.sql` | Safe to re-run — verification only |
+| 4 | `060_match_jobs_v2_weighted.sql` | DDL — weighted matching RPC |
