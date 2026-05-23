@@ -264,9 +264,8 @@ class TestMigration061:
     def test_migration_defines_batch_columns(self):
         from pathlib import Path
 
-        sql = Path(
-            "/workspace/infra/supabase/migrations/061_match_batches.sql"
-        ).read_text()
+        repo_root = Path(__file__).resolve().parents[3]
+        sql = (repo_root / "infra/supabase/migrations/061_match_batches.sql").read_text()
         assert "batch_run_id" in sql
         assert "match_batch_runs" in sql
         assert "idx_matches_user_batch" in sql

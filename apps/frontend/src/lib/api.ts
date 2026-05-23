@@ -1079,6 +1079,10 @@ export interface MatchListResponse {
   matches_limit?: number;
   last_batch_run_at?: string | null;
   from_cache?: boolean;
+}
+
+/** POST /matches/refresh — MatchList plus optional onboarding message. */
+export interface MatchRefreshResponse extends MatchListResponse {
   message?: string | null;
 }
 
@@ -1089,7 +1093,7 @@ export const matches = {
       { token }
     ),
   refresh: (token: string, minScore?: number) =>
-    apiFetch<MatchListResponse>(
+    apiFetch<MatchRefreshResponse>(
       `/matches/refresh${minScore ? `?min_score=${minScore}` : ""}`,
       { method: "POST", token }
     ),
