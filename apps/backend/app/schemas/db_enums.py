@@ -37,6 +37,7 @@ class CacheType(str, Enum):
     whatsapp_classify = "whatsapp_classify"  # whatsapp_classifier.py — Track 4c
     whatsapp_split = "whatsapp_split"        # job_splitter.py — Track 4d
     admin_alert = "admin_alert"              # admin_alerts.py — ops WhatsApp alerts
+    bwana_chat = "bwana_chat"                # bwana.py — in-widget assistant history
 
 
 class QueueStatus(str, Enum):

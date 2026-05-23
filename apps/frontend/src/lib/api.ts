@@ -1181,6 +1181,28 @@ export const me = {
     }),
 };
 
+// ── Bwana chat assistant ──
+export type BwanaChatSource = "faq" | "llm" | "escalated";
+
+export interface BwanaChatResponse {
+  response: string;
+  source: BwanaChatSource;
+  took_ms: number;
+  session_id: string;
+}
+
+export const bwana = {
+  chat: (message: string, sessionId?: string) =>
+    apiFetch<BwanaChatResponse>("/bwana/chat", {
+      method: "POST",
+      token: getToken(),
+      body: {
+        message,
+        ...(sessionId ? { session_id: sessionId } : {}),
+      },
+    }),
+};
+
 // ── Contact form (task #65) ──
 export interface ContactSubmission {
   name: string;

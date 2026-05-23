@@ -20,6 +20,7 @@ from app.api.v1 import (
     cover_letter,
     admin,
     interview_prep,
+    bwana,
     me,
     contact,
     stats,
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     application.include_router(admin_ingest.router, prefix="/api/v1")
     application.include_router(admin_review_jobs.router, prefix="/api/v1")
     application.include_router(interview_prep.router, prefix="/api/v1")
+    application.include_router(bwana.router, prefix="/api/v1")
     application.include_router(me.router, prefix="/api/v1")
     application.include_router(contact.router, prefix="/api/v1")
     application.include_router(stats.router, prefix="/api/v1")

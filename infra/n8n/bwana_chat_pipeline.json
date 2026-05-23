@@ -1,0 +1,175 @@
+{
+  "name": "ZedApply - Bwana Chat Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bwana-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-bwana",
+      "name": "Bwana Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "zedapply-bwana-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst message = String(body.message || '').trim();\nconst userId = String(body.user_id || 'unknown');\nconst sessionId = String(body.session_id || '');\nconst history = Array.isArray(body.history) ? body.history : [];\nconst norm = message.toLowerCase();\n\nconst escalatePhrases = ['talk to human','speak to a human','human support','real person','support agent','customer support','kaluba'];\nconst isEscalate = escalatePhrases.some(p => norm.includes(p)) || /\\b(support|agent)\\b/i.test(norm);\n\nfunction pricing() {\n  return 'ZedApply plans (ZMW/month):\\n• Free — K0, 10 matches/mo\\n• Starter — K125, 50 matches/mo\\n• Professional — K250, 125 matches/mo (+ cover letters)\\n• Super Standard — K500, unlimited matches + Bwana Interview\\nUpgrade at /pricing. Pay with MTN/Airtel (Lenco) or card (DPO).';\n}\n\nlet source = 'llm';\nlet response = '';\n\nif (!message) {\n  return [{ json: { user_id: userId, session_id: sessionId, message, history, source: 'faq', response: 'Please type a question.', took_ms: 0 } }];\n}\n\nif (norm.includes('price') || norm.includes('pricing') || norm.includes('cost') || norm.includes('how much') || norm.includes('k125') || norm.includes('k250') || norm.includes('k500')) {\n  source = 'faq';\n  response = pricing();\n} else if (norm.includes('how do i apply') || norm.includes('how to apply')) {\n  source = 'faq';\n  response = 'Upload your CV on /profile, then check /matches. Reply to your WhatsApp digest (07:00) with 1–5 for job details.';\n} else if (norm.includes('cancel') || norm.includes('unsubscribe')) {\n  source = 'faq';\n  response = 'Manage your plan in /settings → Subscription. Type \"talk to human\" for billing help.';\n} else if (norm.includes('where is my cv') || norm.includes('my cv') || norm.includes('upload cv')) {\n  source = 'faq';\n  response = 'Your CV is on /profile → CV & Skills. Upload PDF or DOCX there.';\n} else if (isEscalate) {\n  source = 'escalated';\n  response = \"I've flagged this for Kaluba — he'll WhatsApp you within 24h.\";\n}\n\nreturn [{ json: { user_id: userId, session_id: sessionId, message, history, source, response, took_ms: 0, escalate: source === 'escalated' } }];"
+      },
+      "id": "code-route",
+      "name": "FAQ and Escalation Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "faq-branch",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "faq",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-faq",
+      "name": "FAQ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "esc-branch",
+              "leftValue": "={{ $json.escalate }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-escalate",
+      "name": "Escalate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WAHA_API_URL }}/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "={{ $env.WAHA_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatId: ($env.ADMIN_ALERT_PHONE || '+260761359005').replace('+','') + '@c.us', text: 'Bwana escalation from user ' + $json.user_id + ': ' + $json.message, session: 'default' }) }}"
+      },
+      "id": "waha-escalate",
+      "name": "WhatsApp Kaluba",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-001', max_tokens: 400, messages: [{ role: 'system', content: 'You are Bwana, ZedApply\\'s AI career assistant for Zambian professionals. Matching: 60% semantic + 30% skills + 10% bonus. Tiers: Free 10/mo, Starter K125 50/mo, Professional K250 125/mo, Super Standard K500 unlimited. Lenco MTN/Airtel, digest 07:00. Under 150 words.' }, ...($json.history || []).map(h => ({ role: h.role, content: h.content })), { role: 'user', content: $json.message }] }) }}"
+      },
+      "id": "openrouter-llm",
+      "name": "OpenRouter Bwana LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet response = item.response || '';\nlet source = item.source || 'llm';\nif (item.choices) {\n  response = item.choices?.[0]?.message?.content || response;\n  source = 'llm';\n}\nconst start = item.took_ms || 0;\nreturn [{ json: { response: String(response).trim(), source, took_ms: start } }];"
+      },
+      "id": "code-format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1400, 400]
+    }
+  ],
+  "connections": {
+    "Bwana Webhook": {
+      "main": [[{ "node": "FAQ and Escalation Router", "type": "main", "index": 0 }]]
+    },
+    "FAQ and Escalation Router": {
+      "main": [
+        [
+          { "node": "FAQ?", "type": "main", "index": 0 },
+          { "node": "Escalate?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "FAQ?": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }],
+        [{ "node": "Escalate?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Escalate?": {
+      "main": [
+        [
+          { "node": "WhatsApp Kaluba", "type": "main", "index": 0 },
+          { "node": "Format Response", "type": "main", "index": 0 }
+        ],
+        [{ "node": "OpenRouter Bwana LLM", "type": "main", "index": 0 }]
+      ]
+    },
+    "WhatsApp Kaluba": {
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    },
+    "OpenRouter Bwana LLM": {
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "description": "Clone of Portfolio Vergeo chat pattern: FAQ fast path, WAHA escalation to Kaluba, OpenRouter LLM fallback. Webhook body: { user_id, message, session_id, history? }."
+  }
+}

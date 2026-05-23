@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     # Admin ops alerts (review queue backlog → WhatsApp via WAHA).
     enable_admin_whatsapp_alerts: bool = True
     admin_alert_phone: str = "+260761359005"
+    # Bwana chat escalation (defaults to admin_alert_phone / Kaluba).
+    bwana_escalation_phone: str = ""
+    # n8n "ZedApply - Bwana Chat Pipeline" production webhook URL.
+    # When empty, FAQ/escalate/LLM run in-process on the backend.
+    bwana_n8n_webhook_url: str = ""
 
     # Auth
     jwt_secret: str
