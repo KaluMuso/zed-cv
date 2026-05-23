@@ -1009,6 +1009,22 @@ components:
         remaining_quota: { type: integer }
         credited_count: { type: integer }
         matches_limit: { type: integer }
+        last_batch_run_at: { type: string, format: date-time, nullable: true }
+        from_cache: { type: boolean, default: false }
+
+    MatchRefreshResponse:
+      allOf:
+        - { $ref: '#/components/schemas/MatchList' }
+        - type: object
+          properties:
+            message: { type: string, nullable: true }
+
+    BatchMatchAcceptedResponse:
+      type: object
+      required: [batch_run_id]
+      properties:
+        batch_run_id: { type: string, format: uuid }
+        message: { type: string }
 
     CronTickResponse:
       type: object
@@ -2329,9 +2345,29 @@ paths:
         '503':
           description: Matching RPC unavailable
 
+  /matches/refresh:
+    post:
+      operationId: refreshMatches
+      summary: Return cached nightly batch matches (live RPC fallback if none)
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: min_score, in: query, schema: { type: number, default: 50 } }
+        - { name: limit, in: query, schema: { type: integer, default: 50, maximum: 50 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchRefreshResponse' }
+        '422':
+          description: No primary CV
+        '503':
+          description: Matching unavailable
+
   /matches/trigger:
     post:
       operationId: triggerMatching
+      summary: Legacy on-demand match (prefer POST /matches/refresh)
       tags: [Matching]
       security: [{ bearerAuth: [] }]
       responses:
@@ -2362,6 +2398,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NotificationDigestResponse' }
         '401': { description: Invalid ingest API key }
+
+  /admin/batch-match:
+    post:
+      operationId: batchMatchNightly
+      summary: Cron — precompute matches for all active users (02:00 CAT)
+      tags: [Admin Cron]
+      parameters:
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '202':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BatchMatchAcceptedResponse' }
+        '401': { description: Invalid admin or ingest API key }
 
   /admin/check-review-queue:
     post:

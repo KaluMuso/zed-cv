@@ -112,10 +112,15 @@ function withHandlers(opts: {
         subscription_tier: "starter",
       })
     ),
-    http.post(`${API}/matches/trigger`, () => {
+    http.post(`${API}/matches/refresh`, () => {
       onTrigger?.();
       return HttpResponse.json(
-        { message: "ok", estimated_seconds: 0 },
+        {
+          matches,
+          remaining_quota: 10,
+          from_cache: true,
+          last_batch_run_at: "2026-05-22T10:00:00Z",
+        },
         { status: triggerStatus }
       );
     }),
@@ -142,7 +147,7 @@ describe("Refresh button", () => {
     expect(buttons.length).toBeGreaterThan(0);
   });
 
-  it("calls trigger on click", async () => {
+  it("calls refresh on click", async () => {
     let triggered = false;
     withHandlers({ matches: [MATCH_OBJ], onTrigger: () => { triggered = true; } });
     renderWithProviders(<MatchesPageClient />);
@@ -154,9 +159,13 @@ describe("Refresh button", () => {
   it("disables button while refreshing", async () => {
     withHandlers({ matches: [MATCH_OBJ] });
     server.use(
-      http.post(`${API}/matches/trigger`, async () => {
+      http.post(`${API}/matches/refresh`, async () => {
         await new Promise((r) => setTimeout(r, 400));
-        return HttpResponse.json({ message: "ok", estimated_seconds: 2 });
+        return HttpResponse.json({
+          matches: [MATCH_OBJ],
+          remaining_quota: 10,
+          from_cache: true,
+        });
       }),
     );
     renderWithProviders(<MatchesPageClient />);

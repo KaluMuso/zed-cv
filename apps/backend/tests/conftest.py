@@ -71,6 +71,9 @@ class FakeSupabaseQuery:
     def gte(self, *a):
         return self
 
+    def lt(self, *a):
+        return self
+
     def lte(self, *a):
         return self
 

@@ -289,7 +289,13 @@ def apply_preferences_to_match(
 
 
 async def store_matches(
-    user_id: str, cv_id: str, matches: list[dict], supabase: Client
+    user_id: str,
+    cv_id: str,
+    matches: list[dict],
+    supabase: Client,
+    *,
+    batch_run_id: str | None = None,
+    batch_run_at: str | None = None,
 ) -> int:
     """Upsert match results (handles re-matching after CV updates)."""
     rows = [
@@ -308,6 +314,11 @@ async def store_matches(
             "missing_skills": m.get("missing_skills", []),
             "explanation": m.get("explanation"),
             "status": "new",
+            **(
+                {"batch_run_id": batch_run_id, "batch_run_at": batch_run_at}
+                if batch_run_id
+                else {}
+            ),
         }
         for m in matches
     ]

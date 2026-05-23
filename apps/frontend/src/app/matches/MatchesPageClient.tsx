@@ -16,6 +16,7 @@ import {
   ApiError,
   type MatchData,
   type MatchListResponse,
+  type MatchRefreshResponse,
   type Subscription,
   type JobPreferences,
   type AutoMatchPreferences,
@@ -45,6 +46,18 @@ const MATCHES_CACHE_KEY = "zedapply_matches_cache_v1";
 const DEFAULT_REFRESH_COUNTDOWN_SECONDS = 30;
 const REFRESH_MAX_WAIT_MS = 30_000;
 
+function formatLastBatchRun(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return null;
+  const hours = Math.floor((Date.now() - at.getTime()) / (1000 * 60 * 60));
+  if (hours < 1) return "less than 1h ago";
+  if (hours === 1) return "1h ago";
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
 const TIER_LABELS: Record<string, string> = {
   free: "Free",
   starter: "Starter",
@@ -55,7 +68,7 @@ const TIER_LABELS: Record<string, string> = {
 export default function MatchesPageClient() {
   const router = useRouter();
   const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
-  const [data, setData] = useState<MatchListResponse | null>(null);
+  const [data, setData] = useState<MatchRefreshResponse | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
   const [prefs, setPrefs] = useState<JobPreferences | null>(null);
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
@@ -148,22 +161,19 @@ export default function MatchesPageClient() {
 
     setRefreshing(true);
     setRefreshRing(null);
-    if (refreshTimersRef.current.tick) {
-      clearInterval(refreshTimersRef.current.tick);
-      refreshTimersRef.current.tick = undefined;
-    }
-    if (refreshTimersRef.current.watchdog) {
-      clearTimeout(refreshTimersRef.current.watchdog);
-      refreshTimersRef.current.watchdog = undefined;
-    }
-
-    let total = DEFAULT_REFRESH_COUNTDOWN_SECONDS;
     try {
-      const res = await matchesApi.trigger(token);
-      total = Math.max(0, res.estimated_seconds ?? DEFAULT_REFRESH_COUNTDOWN_SECONDS);
+      const refreshed = await matchesApi.refresh(token);
+      setData(refreshed);
+      const next = refreshed.matches ?? [];
+      const newOnes = next.filter((m) => !preIds.has(m.id));
+      if (refreshed.message) {
+        notify.custom.message(refreshed.message);
+      } else if (newOnes.length > 0) {
+        notify.custom.success(`${newOnes.length} new matches scored.`);
+      } else {
+        notify.custom.message("Your queue is up to date with the latest nightly batch.");
+      }
     } catch (e: unknown) {
-      setRefreshing(false);
-      setRefreshRing(null);
       if (e instanceof ApiError) {
         if (e.status === 403) notify.error("Monthly match quota used up.");
         else if (e.status === 422) notify.error("Upload a CV first before matching.");
@@ -174,96 +184,12 @@ export default function MatchesPageClient() {
       } else {
         notify.error("Couldn't refresh matches. Try again in a moment.");
       }
-      return;
+    } finally {
+      setRefreshing(false);
+      setRefreshCooldown(true);
+      setTimeout(() => setRefreshCooldown(false), 60_000);
     }
-
-    const runAfterCountdown = async () => {
-      setRefreshRing({
-        phase: "working",
-        total: total || DEFAULT_REFRESH_COUNTDOWN_SECONDS,
-        secondsLeft: 0,
-      });
-
-      const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
-        new Promise((resolve, reject) => {
-          const to = setTimeout(() => reject(new Error("timeout")), ms);
-          refreshTimersRef.current.watchdog = to;
-          p.then(
-            (v) => {
-              clearTimeout(to);
-              if (refreshTimersRef.current.watchdog === to) {
-                refreshTimersRef.current.watchdog = undefined;
-              }
-              resolve(v);
-            },
-            (err) => {
-              clearTimeout(to);
-              if (refreshTimersRef.current.watchdog === to) {
-                refreshTimersRef.current.watchdog = undefined;
-              }
-              reject(err);
-            },
-          );
-        });
-
-      try {
-        const result = await withTimeout(loadMatches(token), REFRESH_MAX_WAIT_MS);
-        if (result.unauthorized) {
-          logout();
-          router.replace("/auth?next=/matches");
-          return;
-        }
-        const next = result.matches?.matches ?? [];
-        const newOnes = next.filter((m) => !preIds.has(m.id));
-        const n = newOnes.length;
-        if (n > 0) {
-          notify.custom.success(`${n} new matches scored.`);
-        } else {
-          notify.custom.message("No new matches this cycle — your queue is up to date.");
-        }
-      } catch (err: unknown) {
-        if (err instanceof Error && err.message === "timeout") {
-          notify.error("Still working… timed out. Try Refresh again.");
-        } else {
-          notify.error("Couldn't load refreshed matches.");
-        }
-      } finally {
-        setRefreshRing(null);
-        setRefreshing(false);
-        setRefreshCooldown(true);
-        setTimeout(() => setRefreshCooldown(false), 60_000);
-      }
-    };
-
-    if (total <= 0) {
-      setRefreshRing({
-        phase: "working",
-        total: DEFAULT_REFRESH_COUNTDOWN_SECONDS,
-        secondsLeft: 0,
-      });
-      await runAfterCountdown();
-      return;
-    }
-
-    let elapsed = 0;
-    setRefreshRing({ phase: "countdown", total, secondsLeft: total });
-    await new Promise<void>((resolve) => {
-      refreshTimersRef.current.tick = setInterval(() => {
-        elapsed += 1;
-        const left = Math.max(0, total - elapsed);
-        setRefreshRing({ phase: left > 0 ? "countdown" : "working", total, secondsLeft: left });
-        if (elapsed >= total) {
-          if (refreshTimersRef.current.tick) {
-            clearInterval(refreshTimersRef.current.tick);
-            refreshTimersRef.current.tick = undefined;
-          }
-          resolve();
-        }
-      }, 1000);
-    });
-
-    await runAfterCountdown();
-  }, [token, refreshing, refreshCooldown, data, loadMatches, logout, router]);
+  }, [token, refreshing, refreshCooldown, data]);
 
   const toggleAutoMatch = useCallback(async () => {
     if (!token || !autoPrefs || savingAutoPrefs) return;
@@ -301,7 +227,7 @@ export default function MatchesPageClient() {
         router.replace("/auth?next=/matches");
         return;
       }
-      // Auto-trigger: if matches empty AND user has a CV, fire trigger once
+      // First visit with CV but no rows yet: pull cached batch or onboarding fallback
       if (
         result.matches &&
         result.matches.matches.length === 0 &&
@@ -312,10 +238,8 @@ export default function MatchesPageClient() {
           const userProfile = await profileApi.get(token);
           if (userProfile.cv_uploaded) {
             setAutoTriggering(true);
-            const triggerRes = await matchesApi.trigger(token);
-            const waitMs = (triggerRes.estimated_seconds ?? DEFAULT_REFRESH_COUNTDOWN_SECONDS) * 1000;
-            if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
-            await loadMatches(token);
+            const refreshed = await matchesApi.refresh(token);
+            setData(refreshed);
             setAutoTriggering(false);
           }
         } catch {
@@ -489,6 +413,12 @@ export default function MatchesPageClient() {
     refreshing && refreshRing?.phase === "countdown" ? refreshRing.secondsLeft : null;
   const refreshCountdownTotal =
     refreshRing?.total ?? DEFAULT_REFRESH_COUNTDOWN_SECONDS;
+  const lastBatchLabel = formatLastBatchRun(data?.last_batch_run_at);
+  const refreshTitle =
+    data?.message ??
+    (lastBatchLabel
+      ? `Last refreshed ${lastBatchLabel}. Matches update nightly at 02:00.`
+      : "Your first matches are computing — check back in a moment. After that, matches refresh nightly at 02:00.");
 
   return (
     <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
@@ -712,6 +642,7 @@ export default function MatchesPageClient() {
           <button
             onClick={handleRefreshMatches}
             disabled={refreshing || refreshCooldown}
+            title={refreshTitle}
             className="btn btn-sm flex items-center gap-2"
             style={{
               background: "var(--green-700)",
@@ -740,6 +671,15 @@ export default function MatchesPageClient() {
               )}
             </span>
           </button>
+          {lastBatchLabel && !refreshing && (
+            <p
+              className="text-[11px] text-right col-span-full sm:col-span-1"
+              style={{ color: "var(--muted)", maxWidth: 220 }}
+            >
+              Last refreshed {lastBatchLabel}
+              <span className="block">Nightly update 02:00 CAT</span>
+            </p>
+          )}
         </div>
       </div>
 
