@@ -43,6 +43,9 @@ class NotificationPreferencesUpdate(BaseModel):
     language: Optional[Literal["en", "bem"]] = None
 
 
+PreferredNotificationChannel = Literal["email", "whatsapp", "both"]
+
+
 class UserPreferences(BaseModel):
     """Dashboard settings — GET/PATCH /api/v1/users/me/preferences."""
 
@@ -51,16 +54,19 @@ class UserPreferences(BaseModel):
     currency: Literal["ZMW", "USD"] = "ZMW"
     alert_frequency: Literal["daily", "weekly", "muted"] = "daily"
     whatsapp_verified: bool = False
+    preferred_notification_channel: PreferredNotificationChannel = "email"
+    whatsapp_digest_available: bool = False
 
 
 class UserPreferencesUpdate(BaseModel):
     whatsapp_number: Optional[str] = Field(
         None,
-        description="Zambian mobile in E.164 (+260 plus 9 digits).",
+        description="Zambian mobile in E.164 (+260 plus 9 digits). Optional delivery number.",
     )
     location: Optional[str] = Field(None, max_length=100)
     currency: Optional[Literal["ZMW", "USD"]] = None
     alert_frequency: Optional[Literal["daily", "weekly", "muted"]] = None
+    preferred_notification_channel: Optional[PreferredNotificationChannel] = None
 
     @field_validator("whatsapp_number")
     @classmethod

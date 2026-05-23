@@ -1,0 +1,58 @@
+{
+  "name": "Zed CV - Daily Digest (Email + WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      },
+      "name": "Every Day at 7AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-daily-digest-email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+          ]
+        }
+      },
+      "name": "Send Email Digests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-daily-digest-whatsapp",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+          ]
+        }
+      },
+      "name": "Send WhatsApp Digests",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 380]
+    }
+  ],
+  "connections": {
+    "Every Day at 7AM": {
+      "main": [
+        [
+          { "node": "Send Email Digests", "type": "main", "index": 0 },
+          { "node": "Send WhatsApp Digests", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}

@@ -120,21 +120,39 @@ async def verify_otp(request: Request, body: OTPVerify, settings: Settings = Dep
     if otp["attempts"] >= settings.max_otp_attempts:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Too many attempts. Request a new OTP.")
 
-    user_result = supabase.table("users").select("id, role").eq("phone", body.phone).limit(1).execute()
+    user_result = (
+        supabase.table("users")
+        .select("id, role, email")
+        .eq("phone", body.phone)
+        .limit(1)
+        .execute()
+    )
     if user_result.data:
         # Existing user — they consented at original signup; don't re-prompt.
         user_id = user_result.data[0]["id"]
         supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
+        if body.email and not user_result.data[0].get("email"):
+            supabase.table("users").update({"email": str(body.email)}).eq("id", user_id).execute()
     else:
         # New user — require explicit consent before creating the account.
         # Done before the OTP is marked verified so a forgotten checkbox
         # doesn't burn the code; the user can re-submit with consent=true.
         if body.consent_accepted is not True:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Consent required")
+        if not body.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email is required to create an account",
+            )
         supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
         # Auto-assign superadmin role if phone matches SUPERADMIN_PHONE env var
         role = "superadmin" if (settings.superadmin_phone and body.phone == settings.superadmin_phone) else "user"
-        new_user = supabase.table("users").insert({"phone": body.phone, "role": role}).execute()
+        new_user = supabase.table("users").insert({
+            "phone": body.phone,
+            "email": str(body.email),
+            "role": role,
+            "preferred_notification_channel": "email",
+        }).execute()
         user_id = new_user.data[0]["id"]
 
         # Superadmin gets top tier; regular users start on free

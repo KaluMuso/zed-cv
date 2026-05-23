@@ -47,6 +47,10 @@ components:
       properties:
         phone: { type: string, pattern: '^\+260[0-9]{9}$' }
         code: { type: string, minLength: 6, maxLength: 6 }
+        email:
+          type: string
+          format: email
+          description: Required when creating a new account; stored for match digests.
 
     AuthTokens:
       type: object
@@ -143,6 +147,15 @@ components:
         currency: { type: string, enum: [ZMW, USD], default: ZMW }
         alert_frequency: { type: string, enum: [daily, weekly, muted], default: daily }
         whatsapp_verified: { type: boolean, default: false }
+        preferred_notification_channel:
+          type: string
+          enum: [email, whatsapp, both]
+          default: email
+          description: Daily digest channel. WhatsApp/both require Starter+.
+        whatsapp_digest_available:
+          type: boolean
+          default: false
+          description: True when subscription tier allows WhatsApp digests.
 
     UserPreferencesUpdate:
       type: object
@@ -153,6 +166,9 @@ components:
         location: { type: string, maxLength: 100 }
         currency: { type: string, enum: [ZMW, USD] }
         alert_frequency: { type: string, enum: [daily, weekly, muted] }
+        preferred_notification_channel:
+          type: string
+          enum: [email, whatsapp, both]
 
     NotificationChannels:
       type: object
@@ -1047,6 +1063,13 @@ components:
         messages:
           type: array
           items: { $ref: '#/components/schemas/DailyDigestMessage' }
+
+    DailyDigestSendResponse:
+      type: object
+      properties:
+        sent: { type: integer, minimum: 0 }
+        skipped: { type: integer, minimum: 0 }
+        failed: { type: integer, minimum: 0 }
 
     ContactSubmission:
       type: object
@@ -2380,15 +2403,54 @@ paths:
               schema: { $ref: '#/components/schemas/ReviewQueueAlertResponse' }
         '401': { description: Invalid admin or ingest API key }
 
+  /admin/trigger-daily-digest-email:
+    post:
+      operationId: triggerDailyDigestEmail
+      summary: Cron — send daily match digests via Resend (email channel)
+      description: |
+        Sends HTML digests for users with preferred_notification_channel email or both,
+        alert_frequency=daily, and a verified email address. Uses the Resend template
+        configured as RESEND_DAILY_DIGEST_TEMPLATE_ID (default alias daily-job-matches).
+      tags: [Admin Cron]
+      parameters:
+        - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-ADMIN-API-KEY, in: header, required: false, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyDigestSendResponse' }
+        '401': { description: Invalid admin or ingest API key }
+
+  /admin/trigger-daily-digest-whatsapp:
+    post:
+      operationId: triggerDailyDigestWhatsapp
+      summary: Cron — send daily match digests via WAHA (Starter+ WhatsApp channel)
+      description: |
+        Sends WhatsApp digests for paid users with preferred_notification_channel
+        whatsapp or both, whatsapp_verified=true, and alert_frequency=daily.
+      tags: [Admin Cron]
+      parameters:
+        - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-ADMIN-API-KEY, in: header, required: false, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyDigestSendResponse' }
+        '401': { description: Invalid admin or ingest API key }
+
   /admin/trigger-daily-digest:
     get:
       operationId: triggerDailyDigest
-      summary: Cron — build daily WhatsApp match digests for n8n to send
+      summary: Cron (legacy) — build WhatsApp digest payloads without sending
       description: |
-        Returns one row per user with whatsapp_verified=true and alert_frequency=daily.
-        Each message lists up to three new matches from the last 24 hours that have not
-        yet been sent on the whatsapp_daily_digest channel. n8n loops the response and
-        calls WAHA sendText for each phone.
+        Prefer POST /admin/trigger-daily-digest-email and POST /admin/trigger-daily-digest-whatsapp.
+        Legacy endpoint returns payloads for n8n+WAHA loops; new crons send from the backend.
       tags: [Admin Cron]
       parameters:
         - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }

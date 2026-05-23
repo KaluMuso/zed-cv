@@ -14,11 +14,16 @@ from app.schemas.user import (
     UserPreferencesUpdate,
 )
 from app.services.job_hydration import hydrate_job_row
+from app.services.notification_channels import (
+    validate_channel_update,
+    whatsapp_digest_allowed,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
 _SETTINGS_SELECT = (
-    "phone, whatsapp_number, location, currency, alert_frequency, whatsapp_verified"
+    "phone, whatsapp_number, location, currency, alert_frequency, whatsapp_verified, "
+    "preferred_notification_channel, subscription_tier"
 )
 
 
@@ -28,12 +33,15 @@ def _effective_whatsapp_number(row: dict[str, Any]) -> str | None:
 
 
 def _row_to_user_preferences(row: dict[str, Any]) -> UserPreferences:
+    tier = (row.get("subscription_tier") or "free").strip().lower()
     return UserPreferences(
         whatsapp_number=_effective_whatsapp_number(row),
         location=row.get("location"),
         currency=row.get("currency") or "ZMW",
         alert_frequency=row.get("alert_frequency") or "daily",
         whatsapp_verified=bool(row.get("whatsapp_verified", False)),
+        preferred_notification_channel=row.get("preferred_notification_channel") or "email",
+        whatsapp_digest_available=whatsapp_digest_allowed(row),
     )
 
 
@@ -108,6 +116,16 @@ async def update_user_preferences(
         prior = _effective_whatsapp_number(existing)
         if new_number != prior:
             update_data["whatsapp_verified"] = False
+
+    if "preferred_notification_channel" in update_data:
+        tier = (existing.get("subscription_tier") or "free").strip().lower()
+        try:
+            update_data["preferred_notification_channel"] = validate_channel_update(
+                update_data["preferred_notification_channel"],
+                tier,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     supabase.table("users").update(update_data).eq("id", user_id).execute()
     refreshed = await _fetch_user_settings_row(user_id, supabase)

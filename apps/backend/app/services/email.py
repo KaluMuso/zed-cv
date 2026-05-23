@@ -4,10 +4,13 @@ All sends respect the user's `email_notifications_enabled` flag and silently
 no-op when RESEND_API_KEY is unset, so this is safe to deploy before keys are
 provisioned. The OTP fallback skips the per-user pref check (it's an auth
 delivery channel, not a marketing message).
+
+Daily digests prefer a published Resend template (`resend_daily_digest_template_id`)
+with variables USER_NAME, MATCH_COUNT, MATCHES_HTML, APP_URL.
 """
 import logging
 from html import escape
-from typing import Optional
+from typing import Any, Optional
 
 import resend
 
@@ -40,22 +43,74 @@ async def _resolve_recipient(user_id: str, supabase) -> tuple[bool, Optional[str
     return bool(enabled and email), email
 
 
-def _send(to: str, subject: str, html: str) -> bool:
+def _send(to: str, subject: str, html: str, *, idempotency_key: str | None = None) -> bool:
     if not _api_ready():
         logger.info(f"[email skipped: no api key] to={to} subject={subject}")
         return False
     settings = get_settings()
+    payload: dict[str, object] = {
+        "from": settings.resend_from_email,
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
     try:
-        resend.Emails.send({
-            "from": settings.resend_from_email,
-            "to": [to],
-            "subject": subject,
-            "html": html,
-        })
+        if idempotency_key:
+            resend.Emails.send(payload, idempotency_key=idempotency_key)
+        else:
+            resend.Emails.send(payload)
         return True
     except Exception as e:
         logger.error(f"resend send failed: to={to} subject={subject} err={e}")
         return False
+
+
+def _send_with_template(
+    to: str,
+    *,
+    template_id: str,
+    variables: dict[str, str],
+    subject: str,
+    idempotency_key: str | None = None,
+) -> bool:
+    if not _api_ready():
+        logger.info(f"[email skipped: no api key] to={to} template={template_id}")
+        return False
+    settings = get_settings()
+    payload: dict[str, object] = {
+        "from": settings.resend_from_email,
+        "to": [to],
+        "subject": subject,
+        "template": {"id": template_id, "variables": variables},
+    }
+    try:
+        if idempotency_key:
+            resend.Emails.send(payload, idempotency_key=idempotency_key)
+        else:
+            resend.Emails.send(payload)
+        return True
+    except Exception as e:
+        logger.error(
+            "resend template send failed: to=%s template=%s err=%s",
+            to,
+            template_id,
+            e,
+        )
+        return False
+
+
+def _digest_matches_html(matches: list[dict[str, Any]]) -> str:
+    settings = get_settings()
+    rows: list[str] = []
+    for m in matches[:5]:
+        title = escape(str(m.get("job_title") or "Job"))
+        company = escape(str(m.get("job_company") or ""))
+        score = int(round(float(m.get("final_score") or m.get("score") or 0)))
+        href = escape(str(m.get("apply_url") or settings.app_url), quote=True)
+        rows.append(
+            f'<li><a href="{href}"><strong>{title}</strong></a> at {company} — {score}% match</li>'
+        )
+    return f"<ol>{''.join(rows)}</ol>"
 
 
 async def send_welcome_email(user_id: str, supabase) -> bool:
@@ -75,6 +130,52 @@ async def send_welcome_email(user_id: str, supabase) -> bool:
     <p>— The Zed CV team</p>
     """
     return _send(email, "Welcome to Zed CV", html)
+
+
+async def send_daily_digest_email(
+    user_id: str,
+    email: str,
+    display_name: str,
+    matches: list[dict[str, Any]],
+    supabase,
+    *,
+    digest_date: str,
+) -> bool:
+    """Daily cron digest via Resend template (falls back to inline HTML)."""
+    if not matches or not email:
+        return False
+    enabled, resolved = await _resolve_recipient(user_id, supabase)
+    if not enabled:
+        return False
+    to = email or resolved
+    if not to:
+        return False
+
+    settings = get_settings()
+    subject = f"{len(matches)} new job matches for you"
+    idempotency_key = f"daily-digest-email/{user_id}/{digest_date}"
+    template_id = (settings.resend_daily_digest_template_id or "").strip()
+    if template_id:
+        return _send_with_template(
+            to,
+            template_id=template_id,
+            variables={
+                "USER_NAME": display_name,
+                "MATCH_COUNT": str(len(matches)),
+                "MATCHES_HTML": _digest_matches_html(matches),
+                "APP_URL": settings.app_url,
+            },
+            subject=subject,
+            idempotency_key=idempotency_key,
+        )
+
+    html = f"""
+    <h2>Good morning {escape(display_name)}!</h2>
+    <p>Here are your {len(matches)} new matches for today:</p>
+    {_digest_matches_html(matches)}
+    <p><a href="{settings.app_url}/matches">View all matches</a></p>
+    """
+    return _send(to, subject, html, idempotency_key=idempotency_key)
 
 
 async def send_match_digest_email(user_id: str, matches: list[dict], supabase) -> bool:

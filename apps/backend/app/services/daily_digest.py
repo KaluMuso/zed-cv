@@ -1,4 +1,4 @@
-"""Daily WhatsApp digest batch builder for n8n cron."""
+"""Daily match digest batching — email (Resend) and WhatsApp (Starter+)."""
 from __future__ import annotations
 
 import logging
@@ -8,14 +8,24 @@ from typing import Any
 from supabase import Client
 
 from app.core.config import get_settings
+from app.services.email import send_daily_digest_email
 from app.services.matching import run_matching_for_user
+from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
+from app.services.whatsapp import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
-DAILY_DIGEST_CHANNEL = "whatsapp_daily_digest"
+EMAIL_DAILY_DIGEST_CHANNEL = "email_digest"
+WHATSAPP_DAILY_DIGEST_CHANNEL = "whatsapp_daily_digest"
 DIGEST_MATCH_LIMIT = 15
 DIGEST_TOP_N = 3
 JOB_RECENCY_HOURS = 24
+
+_USER_SELECT = (
+    "id, phone, email, full_name, whatsapp_number, whatsapp_verified, "
+    "alert_frequency, email_notifications_enabled, preferred_notification_channel, "
+    "subscription_tier"
+)
 
 
 def _display_name(row: dict[str, Any]) -> str:
@@ -34,7 +44,7 @@ def _delivery_phone(row: dict[str, Any]) -> str | None:
 
 
 def format_daily_digest_message(name: str, matches: list[dict[str, Any]]) -> str:
-    """WhatsApp-friendly digest text for n8n to send via WAHA."""
+    """WhatsApp-friendly digest text."""
     lines = [
         f"Good morning {name}! Here are your {len(matches)} new matches for today:\n",
     ]
@@ -49,12 +59,12 @@ def format_daily_digest_message(name: str, matches: list[dict[str, Any]]) -> str
     return "\n".join(lines)
 
 
-async def _fetch_sent_job_ids(user_id: str, supabase: Client) -> set[str]:
+async def _fetch_sent_job_ids(user_id: str, channel: str, supabase: Client) -> set[str]:
     result = (
         supabase.table("user_notifications")
         .select("job_id")
         .eq("user_id", user_id)
-        .eq("channel", DAILY_DIGEST_CHANNEL)
+        .eq("channel", channel)
         .execute()
     )
     return {
@@ -104,12 +114,13 @@ def _job_within_recency(
 
 async def _select_digest_matches(
     user_id: str,
+    channel: str,
     supabase: Client,
     *,
     now: datetime,
     min_score: float,
 ) -> list[dict[str, Any]]:
-    """Top N RPC matches from the last 24h not yet sent on the daily channel."""
+    """Top N RPC matches from the last 24h not yet sent on the given channel."""
     try:
         rpc_rows = await run_matching_for_user(
             user_id,
@@ -126,7 +137,7 @@ async def _select_digest_matches(
     if not rpc_rows:
         return []
 
-    sent_ids = await _fetch_sent_job_ids(user_id, supabase)
+    sent_ids = await _fetch_sent_job_ids(user_id, channel, supabase)
     candidate_ids = [
         str(row["job_id"])
         for row in rpc_rows
@@ -153,11 +164,11 @@ async def _select_digest_matches(
 async def record_digest_notifications(
     user_id: str,
     job_ids: list[str],
+    channel: str,
     supabase: Client,
     *,
     now: datetime | None = None,
 ) -> None:
-    """Persist sent jobs so the next digest skips them."""
     unique_ids = list(dict.fromkeys(jid for jid in job_ids if jid))
     if not unique_ids:
         return
@@ -166,7 +177,7 @@ async def record_digest_notifications(
         {
             "user_id": user_id,
             "job_id": job_id,
-            "channel": DAILY_DIGEST_CHANNEL,
+            "channel": channel,
             "sent_at": sent_at,
         }
         for job_id in unique_ids
@@ -177,21 +188,112 @@ async def record_digest_notifications(
     ).execute()
 
 
-async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
-    """Return WhatsApp payloads for n8n to send (does not call WAHA)."""
-    settings = get_settings()
+async def _eligible_daily_users(supabase: Client) -> list[dict[str, Any]]:
     users_res = (
         supabase.table("users")
-        .select("id, phone, whatsapp_number, full_name, whatsapp_verified, alert_frequency")
-        .eq("whatsapp_verified", True)
+        .select(_USER_SELECT)
         .eq("alert_frequency", "daily")
         .execute()
     )
+    return [row for row in (users_res.data or []) if isinstance(row, dict)]
+
+
+async def run_email_daily_digest(supabase: Client) -> dict[str, int]:
+    """Send daily digests via Resend for users on the email channel."""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    sent = skipped = failed = 0
+
+    for user in await _eligible_daily_users(supabase):
+        user_id = user.get("id")
+        if not user_id or not wants_email_digest(user):
+            continue
+
+        matches = await _select_digest_matches(
+            str(user_id),
+            EMAIL_DAILY_DIGEST_CHANNEL,
+            supabase,
+            now=now,
+            min_score=settings.min_match_score,
+        )
+        if not matches:
+            skipped += 1
+            continue
+
+        ok = await send_daily_digest_email(
+            str(user_id),
+            user.get("email") or "",
+            _display_name(user),
+            matches,
+            supabase,
+            digest_date=now.date().isoformat(),
+        )
+        if ok:
+            await record_digest_notifications(
+                str(user_id),
+                [str(m["job_id"]) for m in matches if m.get("job_id")],
+                EMAIL_DAILY_DIGEST_CHANNEL,
+                supabase,
+                now=now,
+            )
+            sent += 1
+        else:
+            failed += 1
+
+    return {"sent": sent, "skipped": skipped, "failed": failed}
+
+
+async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
+    """Send daily digests via WAHA for Starter+ users on the WhatsApp channel."""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    sent = skipped = failed = 0
+
+    for user in await _eligible_daily_users(supabase):
+        user_id = user.get("id")
+        phone = _delivery_phone(user) if user_id else None
+        if not user_id or not phone or not wants_whatsapp_digest(user):
+            continue
+
+        matches = await _select_digest_matches(
+            str(user_id),
+            WHATSAPP_DAILY_DIGEST_CHANNEL,
+            supabase,
+            now=now,
+            min_score=settings.min_match_score,
+        )
+        if not matches:
+            skipped += 1
+            continue
+
+        message = format_daily_digest_message(_display_name(user), matches)
+        try:
+            await send_whatsapp_message(phone, message)
+        except Exception:
+            logger.warning("WhatsApp daily digest failed for user=%s", user_id, exc_info=True)
+            failed += 1
+            continue
+
+        await record_digest_notifications(
+            str(user_id),
+            [str(m["job_id"]) for m in matches if m.get("job_id")],
+            WHATSAPP_DAILY_DIGEST_CHANNEL,
+            supabase,
+            now=now,
+        )
+        sent += 1
+
+    return {"sent": sent, "skipped": skipped, "failed": failed}
+
+
+async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
+    """Legacy n8n shape: WhatsApp payloads without sending (prefer run_whatsapp_daily_digest)."""
+    settings = get_settings()
     now = datetime.now(timezone.utc)
     payloads: list[dict[str, str]] = []
 
-    for user in users_res.data or []:
-        if not isinstance(user, dict):
+    for user in await _eligible_daily_users(supabase):
+        if not wants_whatsapp_digest(user):
             continue
         user_id = user.get("id")
         phone = _delivery_phone(user)
@@ -200,6 +302,7 @@ async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
 
         matches = await _select_digest_matches(
             str(user_id),
+            WHATSAPP_DAILY_DIGEST_CHANNEL,
             supabase,
             now=now,
             min_score=settings.min_match_score,
@@ -207,17 +310,17 @@ async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
         if not matches:
             continue
 
-        message = format_daily_digest_message(_display_name(user), matches)
         payloads.append(
             {
                 "user_id": str(user_id),
                 "phone": phone,
-                "message": message,
+                "message": format_daily_digest_message(_display_name(user), matches),
             }
         )
         await record_digest_notifications(
             str(user_id),
             [str(m["job_id"]) for m in matches if m.get("job_id")],
+            WHATSAPP_DAILY_DIGEST_CHANNEL,
             supabase,
             now=now,
         )

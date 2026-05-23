@@ -212,3 +212,11 @@ class DailyDigestMessage(BaseModel):
 
 class DailyDigestBatchResponse(BaseModel):
     messages: list[DailyDigestMessage] = Field(default_factory=list)
+
+
+class DailyDigestSendResponse(BaseModel):
+    """Summary after the backend sends a daily digest batch (email or WhatsApp)."""
+
+    sent: int = 0
+    skipped: int = 0
+    failed: int = 0
