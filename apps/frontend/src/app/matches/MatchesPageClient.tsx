@@ -16,6 +16,7 @@ import {
   ApiError,
   type MatchData,
   type MatchListResponse,
+  type MatchRefreshResponse,
   type Subscription,
   type JobPreferences,
   type AutoMatchPreferences,
@@ -67,7 +68,7 @@ const TIER_LABELS: Record<string, string> = {
 export default function MatchesPageClient() {
   const router = useRouter();
   const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
-  const [data, setData] = useState<MatchListResponse | null>(null);
+  const [data, setData] = useState<MatchRefreshResponse | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
   const [prefs, setPrefs] = useState<JobPreferences | null>(null);
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
