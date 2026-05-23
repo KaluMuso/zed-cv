@@ -23,7 +23,7 @@ class _SingleQuery(FakeSupabaseQuery):
 def _seed_subscription(fake_supabase):
     fake_supabase.set_table(
         "subscriptions",
-        _SingleQuery(data=[{"id": "sub-1", "user_id": "test-user-id", "tier": "mwana"}]),
+        _SingleQuery(data=[{"id": "sub-1", "user_id": "test-user-id", "tier": "free"}]),
     )
 
 
@@ -68,12 +68,12 @@ class TestVerifyPaymentEndpoint:
         resp = client.post(
             "/api/v1/subscription/verify-payment",
             headers=auth_headers,
-            json={"reference": "zedapply-abc", "tier": "mwizi"},
+            json={"reference": "zedapply-abc", "tier": "starter"},
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["status"] == "completed"
-        assert body["tier"] == "mwizi"
+        assert body["tier"] == "starter"
         assert body["reference"] == "zedapply-abc"
         _mock_activate.assert_called_once()
 
@@ -104,7 +104,7 @@ class TestVerifyPaymentEndpoint:
         resp = client.post(
             "/api/v1/subscription/verify-payment",
             headers=auth_headers,
-            json={"reference": "zedapply-fail", "tier": "mwizi"},
+            json={"reference": "zedapply-fail", "tier": "starter"},
         )
         assert resp.status_code == 402
 
@@ -122,7 +122,7 @@ class TestVerifyPaymentEndpoint:
         resp = client.post(
             "/api/v1/subscription/verify-payment",
             headers=auth_headers,
-            json={"reference": "zedapply-pending", "tier": "mwizi"},
+            json={"reference": "zedapply-pending", "tier": "starter"},
         )
         assert resp.status_code == 202
         assert resp.json()["status"] == "processing"
@@ -141,7 +141,7 @@ class TestVerifyPaymentEndpoint:
         resp = client.post(
             "/api/v1/subscription/verify-payment",
             headers=auth_headers,
-            json={"reference": "zedapply-missing", "tier": "mwizi"},
+            json={"reference": "zedapply-missing", "tier": "starter"},
         )
         assert resp.status_code == 502
 
@@ -176,7 +176,7 @@ class TestVerifyPaymentEndpoint:
         resp = client.post(
             "/api/v1/subscription/verify-payment",
             headers=auth_headers,
-            json={"reference": "zedapply-dup", "tier": "mwizi"},
+            json={"reference": "zedapply-dup", "tier": "starter"},
         )
         assert resp.status_code == 200
         assert resp.json()["message"] == "Payment already verified."

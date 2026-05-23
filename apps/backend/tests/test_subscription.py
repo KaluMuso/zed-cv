@@ -57,9 +57,9 @@ class TestGetSubscription:
                     {
                         "id": "sub-1",
                         "user_id": "test-user-id",
-                        "tier": "mwana",
+                        "tier": "free",
                         "matches_used": 2,
-                        "matches_limit": 5,
+                        "matches_limit": 10,
                         "status": "active",
                         "current_period_end": None,
                     }
@@ -79,6 +79,10 @@ class TestGetSubscription:
         self, _mock_credited, client, auth_headers, fake_supabase
     ):
         """Regression: dropped matches_limit column must not KeyError on GET."""
+        from app.services import tier_config as tier_config_svc
+
+        tier_config_svc.clear_tier_config_cache()
+        fake_supabase.set_table("tier_config", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
             "subscriptions",
             _SingleQuery(
@@ -86,7 +90,7 @@ class TestGetSubscription:
                     {
                         "id": "sub-1",
                         "user_id": "test-user-id",
-                        "tier": "mwizi",
+                        "tier": "starter",
                         "status": "active",
                         "current_period_end": None,
                     }
@@ -96,9 +100,9 @@ class TestGetSubscription:
         resp = client.get("/api/v1/subscription", headers=auth_headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert body["matches_limit"] == 25
+        assert body["matches_limit"] == 50
         assert body["matches_used"] == 3
-        assert body["tier"] == "mwizi"
+        assert body["tier"] == "starter"
 
     @patch(
         "app.api.v1.subscription.get_credited_match_count",
@@ -108,7 +112,7 @@ class TestGetSubscription:
     def test_get_subscription_free_tier_limit_is_10(
         self, _mock_credited, client, auth_headers, fake_supabase
     ):
-        """Mwana tier quota (5 matches/month)."""
+        """Free tier quota (10 matches/month)."""
         fake_supabase.set_table(
             "subscriptions",
             _SingleQuery(
@@ -116,7 +120,7 @@ class TestGetSubscription:
                     {
                         "id": "sub-free",
                         "user_id": "test-user-id",
-                        "tier": "mwana",
+                        "tier": "free",
                         "status": "active",
                         "current_period_end": None,
                     }
@@ -125,7 +129,7 @@ class TestGetSubscription:
         )
         resp = client.get("/api/v1/subscription", headers=auth_headers)
         assert resp.status_code == 200
-        assert resp.json()["matches_limit"] == 5
+        assert resp.json()["matches_limit"] == 10
 
 
 class TestPaymentInitiate:
@@ -135,7 +139,7 @@ class TestPaymentInitiate:
             "/api/v1/subscription/pay",
             headers=auth_headers,
             json={
-                "tier": "mwizi",
+                "tier": "starter",
                 "payment_method": "lenco_mtn_money",
                 "phone": "+260971234567",
             },

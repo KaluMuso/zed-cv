@@ -11,7 +11,7 @@ from app.schemas.tier_config import UNLIMITED_MATCHES
 
 logger = logging.getLogger(__name__)
 
-_TIER_ORDER = ("mwana", "mwizi", "wino")
+_TIER_ORDER = ("free", "starter", "professional", "super_standard")
 _cache_rows: list[dict[str, Any]] | None = None
 
 
@@ -23,9 +23,10 @@ def clear_tier_config_cache() -> None:
 
 def _default_rows() -> list[dict[str, Any]]:
     names = {
-        "mwana": "Mwana",
-        "mwizi": "Mwizi",
-        "wino": "Wino",
+        "free": "Free",
+        "starter": "Starter",
+        "professional": "Professional",
+        "super_standard": "Super Standard",
     }
     return [
         {
@@ -101,7 +102,7 @@ async def build_tier_display_names(supabase: Client) -> dict[str, str]:
     out: dict[str, str] = {}
     for row in rows:
         tier = row["tier"]
-        if tier == "mwana":
+        if tier == "free":
             out[tier] = f"{row['display_name']} ({price_to_kwacha_label(row['price_ngwee'])})"
         else:
             out[tier] = (
@@ -122,7 +123,7 @@ async def build_plan_info_by_tier(supabase: Client) -> dict[str, str]:
             else f"{limit} matches/month"
         )
         price = price_to_kwacha_label(int(row["price_ngwee"]))
-        if tier == "mwana":
+        if tier == "free":
             out[tier] = f"{row['display_name']} - {limit_txt}"
         else:
             out[tier] = f"{row['display_name']} ({price}/mo) - {limit_txt}"

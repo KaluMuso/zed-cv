@@ -1,6 +1,5 @@
-"""Unit tests for subscription tier gating (Mwana / Mwizi / Wino)."""
+"""Unit tests for subscription tier gating (canonical tier keys)."""
 from datetime import date, timedelta
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -34,50 +33,55 @@ def _seed_gating_user(fake_supabase, *, tier: str, viewed: int = 0, role: str = 
 
 
 class TestNormalizeTier:
-    def test_legacy_free_maps_to_mwana(self):
-        assert normalize_tier("free") == "mwana"
+    def test_unknown_falls_back_to_free(self):
+        assert normalize_tier("legacy_bwino") == "free"
 
-    def test_legacy_starter_maps_to_mwizi(self):
-        assert normalize_tier("starter") == "mwizi"
-
-    def test_legacy_professional_maps_to_wino(self):
-        assert normalize_tier("professional") == "wino"
+    def test_canonical_tiers_unchanged(self):
+        assert normalize_tier("starter") == "starter"
+        assert normalize_tier("super_standard") == "super_standard"
 
 
 class TestVerifyTierAccessCoverLetter:
     @pytest.mark.asyncio
-    async def test_mwana_blocked(self, fake_supabase):
-        _seed_gating_user(fake_supabase, tier="mwana")
+    async def test_free_blocked(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="free")
         with pytest.raises(HTTPException) as exc:
             await verify_tier_access(
                 FEATURE_COVER_LETTER, "test-user-id", fake_supabase
             )
         assert exc.value.status_code == 403
-        assert "Mwizi or Wino" in exc.value.detail
+        assert "Professional" in exc.value.detail
 
     @pytest.mark.asyncio
-    async def test_mwizi_blocked(self, fake_supabase):
-        _seed_gating_user(fake_supabase, tier="mwizi")
+    async def test_starter_blocked(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="starter")
         with pytest.raises(HTTPException) as exc:
             await verify_tier_access(
                 FEATURE_COVER_LETTER, "test-user-id", fake_supabase
             )
         assert exc.value.status_code == 403
-        assert "Wino" in exc.value.detail
 
     @pytest.mark.asyncio
-    async def test_wino_allowed(self, fake_supabase):
-        _seed_gating_user(fake_supabase, tier="wino")
+    async def test_professional_allowed(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="professional")
         tier = await verify_tier_access(
             FEATURE_COVER_LETTER, "test-user-id", fake_supabase
         )
-        assert tier == "wino"
+        assert tier == "professional"
+
+    @pytest.mark.asyncio
+    async def test_super_standard_allowed(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="super_standard")
+        tier = await verify_tier_access(
+            FEATURE_COVER_LETTER, "test-user-id", fake_supabase
+        )
+        assert tier == "super_standard"
 
 
 class TestVerifyTierAccessJobMatches:
     @pytest.mark.asyncio
-    async def test_mwana_at_limit_blocked(self, fake_supabase):
-        _seed_gating_user(fake_supabase, tier="mwana", viewed=5)
+    async def test_free_at_limit_blocked(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="free", viewed=10)
         with pytest.raises(HTTPException) as exc:
             await verify_tier_access(
                 FEATURE_JOB_MATCHES, "test-user-id", fake_supabase
@@ -86,8 +90,8 @@ class TestVerifyTierAccessJobMatches:
         assert "limit" in exc.value.detail.lower()
 
     @pytest.mark.asyncio
-    async def test_mwana_increment_over_limit_blocked(self, fake_supabase):
-        _seed_gating_user(fake_supabase, tier="mwana", viewed=4)
+    async def test_free_increment_over_limit_blocked(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="free", viewed=9)
         with pytest.raises(HTTPException) as exc:
             await verify_tier_access(
                 FEATURE_JOB_MATCHES,

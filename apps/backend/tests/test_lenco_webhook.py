@@ -211,7 +211,7 @@ class TestLencoWebhookRoute:
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "completed"
-        assert subs_spy.update_calls[0]["tier"] == "mwizi"
+        assert subs_spy.update_calls[0]["tier"] == "starter"
         assert users_spy.update_calls[0]["subscription_started_at"]
 
     def test_webhook_collection_failed_marks_payment_failed(

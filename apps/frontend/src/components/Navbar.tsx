@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { profile as profileApi } from "@/lib/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Icon } from "@/components/ui/Icon";
@@ -15,7 +16,8 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout, user, token } = useAuth();
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
 
@@ -31,10 +33,24 @@ export function Navbar() {
     setDropdownOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!token) {
+      setSubscriptionTier(null);
+      return;
+    }
+    profileApi
+      .get(token)
+      .then((p) => setSubscriptionTier(p.subscription_tier))
+      .catch(() => setSubscriptionTier(null));
+  }, [token]);
+
   const navLinks = [
     { href: "/jobs", label: "Jobs" },
     { href: "/matches", label: "Matches" },
     { href: "/pricing", label: "Pricing" },
+    ...(subscriptionTier === "super_standard"
+      ? [{ href: "/interview-prep", label: "Bwana Interview" }]
+      : []),
   ];
 
   return (

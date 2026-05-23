@@ -767,6 +767,8 @@ export interface TierConfigRow {
   tier: string;
   display_name: string;
   price_ngwee: number;
+  checkout_price_ngwee?: number | null;
+  promotion_active?: boolean | null;
   matches_limit: number;
   sort_order?: number;
   updated_at?: string | null;
@@ -776,9 +778,10 @@ export interface TierConfigList {
   tiers: TierConfigRow[];
 }
 
-/** Public pricing catalog (no auth). */
+/** Public pricing catalog; pass token for personalized checkout prices. */
 export const tiers = {
-  list: () => apiFetch<TierConfigList>("/tiers"),
+  list: (token?: string | null) =>
+    apiFetch<TierConfigList>("/tiers", token ? { token } : undefined),
 };
 
 /** Superadmin tier pricing editor. */

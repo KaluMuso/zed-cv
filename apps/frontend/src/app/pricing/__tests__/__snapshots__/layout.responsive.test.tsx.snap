@@ -59,17 +59,19 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K0
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            forever
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K0
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              forever
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -207,17 +209,19 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K125
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K125
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -381,17 +385,19 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K250
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K250
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -581,17 +587,19 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K500
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K500
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -1733,17 +1741,19 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K0
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            forever
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K0
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              forever
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -1881,17 +1891,19 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K125
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K125
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -2055,17 +2067,19 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K250
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K250
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"
@@ -2255,17 +2269,19 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         <div
           class="mt-5 mb-6"
         >
-          <span
-            class="font-display text-5xl"
-          >
-            K500
-          </span>
-          <span
-            class="text-sm ml-1"
-            style="color: var(--muted);"
-          >
-            /month
-          </span>
+          <div>
+            <span
+              class="font-display text-5xl"
+            >
+              K500
+            </span>
+            <span
+              class="text-sm ml-1"
+              style="color: var(--muted);"
+            >
+              /month
+            </span>
+          </div>
         </div>
         <ul
           class="space-y-3 mb-8"

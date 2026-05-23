@@ -14,6 +14,10 @@ from app.services.lenco import (
     map_lenco_payment_method,
     normalize_collection_status,
 )
+from app.services.pricing import (
+    effective_checkout_price_ngwee,
+    load_user_promotion_until,
+)
 from app.services.subscription_billing import activate_subscription_after_payment
 from app.services.tier_config import get_tier_prices
 
@@ -61,7 +65,12 @@ async def verify_lenco_widget_payment(
     if tier not in tier_prices or tier == "free":
         return 422, {"detail": "Invalid tier. Choose starter, professional, or super_standard."}
 
-    expected_ngwee = tier_prices[tier]
+    now = datetime.now(timezone.utc)
+    list_price_ngwee = tier_prices[tier]
+    promo_until = await load_user_promotion_until(supabase, user_id)
+    expected_ngwee = effective_checkout_price_ngwee(
+        list_price_ngwee, promo_until, now=now
+    )
     payment = _find_payment_by_reference(supabase, user_id, reference)
 
     if payment and payment.get("status") == "completed":
@@ -86,7 +95,6 @@ async def verify_lenco_widget_payment(
     method_label = map_lenco_payment_method(collection)
     amount_ngwee = amount_to_ngwee(collection) or expected_ngwee
     lenco_ref = collection.get("lencoReference") or collection.get("id")
-    now = datetime.now(timezone.utc)
 
     if lenco_status == "failed":
         if payment:

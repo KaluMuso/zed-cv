@@ -12,8 +12,10 @@ beforeEach(() => {
     http.get(`${API}/tiers`, () =>
       HttpResponse.json({
         tiers: [
-          { tier: "free", display_name: "Free", price_ngwee: 0, matches_limit: 10 },
-          { tier: "starter", display_name: "Starter", price_ngwee: 12500, matches_limit: 50 },
+          { tier: "free", display_name: "Free", price_ngwee: 0, matches_limit: 10, sort_order: 0 },
+          { tier: "starter", display_name: "Starter", price_ngwee: 12500, matches_limit: 50, sort_order: 1 },
+          { tier: "professional", display_name: "Professional", price_ngwee: 25000, matches_limit: 125, sort_order: 2 },
+          { tier: "super_standard", display_name: "Super Standard", price_ngwee: 50000, matches_limit: 99999, sort_order: 3 },
         ],
       })
     )

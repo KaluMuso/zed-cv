@@ -4,9 +4,10 @@ from typing import Optional
 from enum import Enum
 
 class SubscriptionTier(str, Enum):
-    mwana = "mwana"
-    mwizi = "mwizi"
-    wino = "wino"
+    free = "free"
+    starter = "starter"
+    professional = "professional"
+    super_standard = "super_standard"
 
 class PaymentMethod(str, Enum):
     mtn_money = "mtn_money"
@@ -18,16 +19,18 @@ class PaymentMethod(str, Enum):
 # sentinel so existing quota arithmetic doesn't need a NULL branch (matches
 # migration 005).
 TIER_LIMITS: dict[str, int] = {
-    "mwana": 5,
-    "mwizi": 25,
-    "wino": 99999,
+    "free": 10,
+    "starter": 50,
+    "professional": 125,
+    "super_standard": 99999,
 }
 
 # Prices in ngwee (1 ZMW = 100 ngwee).
 TIER_PRICES: dict[str, int] = {
-    "mwana": 0,
-    "mwizi": 7900,
-    "wino": 19900,
+    "free": 0,
+    "starter": 12500,
+    "professional": 25000,
+    "super_standard": 50000,
 }
 
 

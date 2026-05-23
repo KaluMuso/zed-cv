@@ -32,11 +32,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/matches", tags=["Matching"])
 
 _AUTO_MATCH_CADENCE_HOURS: dict[str, int | None] = {
-    "mwana": None,
     "free": None,
-    "mwizi": 24,
     "starter": 24,
-    "wino": 12,
     "professional": 12,
     "super_standard": 12,
 }

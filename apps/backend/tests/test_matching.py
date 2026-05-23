@@ -151,7 +151,7 @@ class TestGetMatchesForUser:
                         "id": "test-user-id",
                         "phone": "+260971234567",
                         "role": "user",
-                        "subscription_tier": "wino",
+                        "subscription_tier": "professional",
                         "matches_viewed_this_month": 0,
                         "billing_cycle_reset": "2099-06-01",
                     }
@@ -184,7 +184,7 @@ class TestGetMatchesForUser:
                         "id": "test-user-id",
                         "phone": "+260971234567",
                         "role": "user",
-                        "subscription_tier": "mwana",
+                        "subscription_tier": "free",
                         "matches_viewed_this_month": 0,
                         "billing_cycle_reset": "2099-06-01",
                     }

@@ -207,13 +207,13 @@ export default function PricingPage() {
 
   useEffect(() => {
     tiers
-      .list()
+      .list(token ?? undefined)
       .then((r) => {
         setTierRows(r.tiers);
         setDisplayPlans(applyTierConfig(plans, r.tiers));
       })
       .catch(() => setDisplayPlans(plans));
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!token) {
@@ -229,13 +229,25 @@ export default function PricingPage() {
   const amountKwacha = useCallback(
     (tier: string): number => {
       const row = tierRows.find((t) => t.tier === tier);
-      if (row) return row.price_ngwee / 100;
+      if (row) {
+        const ngwee = row.checkout_price_ngwee ?? row.price_ngwee;
+        return ngwee / 100;
+      }
       const fallback: Record<string, number> = {
         starter: 125,
         professional: 250,
         super_standard: 500,
       };
       return fallback[tier] ?? 0;
+    },
+    [tierRows],
+  );
+
+  const showPromoBadge = useCallback(
+    (tier: string): boolean => {
+      if (tier === "free") return false;
+      const row = tierRows.find((t) => t.tier === tier);
+      return row?.promotion_active === true;
     },
     [tierRows],
   );
@@ -469,10 +481,25 @@ export default function PricingPage() {
               )}
 
               <div className="mt-5 mb-6">
-                <span className="font-display text-5xl">{plan.price}</span>
-                <span className="text-sm ml-1" style={{ color: "var(--muted)" }}>
-                  {plan.period}
-                </span>
+                {showPromoBadge(plan.tier) && (
+                  <span
+                    className="tag tag-copper text-xs font-semibold mb-2 inline-block"
+                  >
+                    First 2 months: 50% off
+                  </span>
+                )}
+                <div>
+                  <span className="font-display text-5xl">{plan.price}</span>
+                  <span className="text-sm ml-1" style={{ color: "var(--muted)" }}>
+                    {plan.period}
+                  </span>
+                </div>
+                {showPromoBadge(plan.tier) && (
+                  <p className="text-xs mt-1" style={{ color: "var(--copper-600)" }}>
+                    You pay K{amountKwacha(plan.tier)} at checkout while your launch
+                    discount is active.
+                  </p>
+                )}
               </div>
 
               <ul className="space-y-3 mb-8">
