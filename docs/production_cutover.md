@@ -99,6 +99,7 @@ curl -s https://api.zedcv.com/api/v1/health | jq .
 
 ## Related docs
 
+- `docs/lenco_production_cutover.md` — Lenco sandbox → production (env swap + smoke test)
 - `DEPLOY.md` — routine deploy steps
 - `AGENTS.md` §3 — known failure modes (CORS, WAHA, matching)
 - `docs/CI_SCHEMA_GUARD.md` — schema drift guards
