@@ -951,11 +951,28 @@ components:
         semantic_score:
           type: number
           minimum: 0
-          description: Semantic similarity component (0–60 under 60/30/10 RPC)
+          maximum: 50
+          description: Semantic similarity component (0–50 under v2 RPC)
         skills_score:
           type: number
           minimum: 0
-          description: Skills overlap component (0–30 under 60/30/10 RPC)
+          maximum: 20
+          description: Required skills overlap (0–20 under v2 RPC)
+        experience_score:
+          type: number
+          minimum: 0
+          maximum: 15
+          description: Experience fit component (0–15 under v2 RPC)
+        location_score:
+          type: number
+          minimum: 0
+          maximum: 10
+          description: Location or remote/hybrid fit (0–10 under v2 RPC)
+        recency_score:
+          type: number
+          minimum: 0
+          maximum: 5
+          description: Posting recency component (0–5 under v2 RPC)
         vector_score:
           type: number
           minimum: 0
@@ -967,12 +984,7 @@ components:
         bonus_score:
           type: number
           minimum: 0
-          description: Location/salary bonus (0–10 under 60/30/10 RPC)
-        experience_score:
-          type: number
-          minimum: 0.5
-          maximum: 1
-          description: Experience-gap multiplier applied to final score (1.0 = no penalty)
+          description: Legacy alias of location_score + recency_score
         matched_skills: { type: array, items: { type: string } }
         missing_skills: { type: array, items: { type: string } }
         explanation: { type: string }

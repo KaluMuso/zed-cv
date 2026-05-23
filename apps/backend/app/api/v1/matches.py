@@ -200,30 +200,22 @@ async def get_matches(
         job_data = m.pop("jobs", {})
         adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
             base_score=m["score"],
-            base_bonus=m["bonus_score"],
+            base_bonus=float(m.get("bonus_score") or 0),
             job=job_data,
             preferences=preferences,
         )
         explanation = m.get("explanation") or ""
         if adjustment_note and adjustment_note not in explanation:
             explanation = (explanation + " " + adjustment_note).strip()
-        semantic = float(m.get("vector_score") or 0)
-        skills = float(m.get("skill_score") or 0)
-        matches.append(MatchResult(
-            id=m["id"],
-            job=Job(**job_data),
-            score=adjusted_score,
-            semantic_score=semantic,
-            skills_score=skills,
-            bonus_score=adjusted_bonus,
-            vector_score=semantic,
-            skill_score=skills,
-            experience_score=m.get("experience_score"),
-            matched_skills=m.get("matched_skills", []),
-            missing_skills=m.get("missing_skills", []),
-            explanation=explanation or None,
-            created_at=m["created_at"],
-        ))
+        matches.append(
+            MatchResult.from_stored_row(
+                job=Job(**job_data),
+                row=m,
+                adjusted_score=adjusted_score,
+                adjusted_bonus=adjusted_bonus,
+                explanation=explanation or None,
+            )
+        )
 
     # Re-sort by the adjusted score and trim to the requested limit.
     matches.sort(key=lambda mr: mr.score, reverse=True)
@@ -244,7 +236,7 @@ async def get_matches_for_user(
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase),
 ):
-    """Live hybrid scores from match_jobs_for_user RPC (60/30/10 breakdown)."""
+    """Live hybrid scores from match_jobs_for_user RPC (50/20/15/10/5 breakdown)."""
     if user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Cannot view another user's matches")
 
@@ -317,32 +309,24 @@ async def get_matches_for_user(
             continue
         stored = stored_by_job.get(job_id, {})
         adjusted_score, adjusted_bonus, adjustment_note = apply_preferences_to_match(
-            base_score=float(row.get("final_score") or 0),
+            base_score=float(row.get("final_score") or row.get("score") or 0),
             base_bonus=float(row.get("bonus_score") or 0),
             job=job_data,
             preferences=preferences,
         )
-        explanation = stored.get("explanation") or ""
+        explanation = stored.get("explanation") or row.get("explanation") or ""
         if adjustment_note and adjustment_note not in explanation:
             explanation = (explanation + " " + adjustment_note).strip()
-        semantic = float(row.get("vector_score") or 0)
-        skills = float(row.get("skill_score") or 0)
         matches.append(
-            MatchResult(
-                id=stored.get("id") or job_id,
+            MatchResult.from_rpc_row(
                 job=Job(**job_data),
-                score=adjusted_score,
-                semantic_score=semantic,
-                skills_score=skills,
-                bonus_score=adjusted_bonus,
-                vector_score=semantic,
-                skill_score=skills,
-                experience_score=row.get("experience_score"),
-                matched_skills=list(row.get("matched_skills") or []),
-                missing_skills=list(row.get("missing_skills") or []),
-                explanation=explanation or None,
+                row=row,
+                match_id=stored.get("id") or job_id,
                 created_at=stored.get("created_at")
-                or datetime.now(timezone.utc).isoformat(),
+                or datetime.now(timezone.utc),
+                explanation=explanation or None,
+                adjusted_score=adjusted_score,
+                adjusted_bonus=adjusted_bonus,
             )
         )
 

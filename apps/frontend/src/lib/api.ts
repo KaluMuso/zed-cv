@@ -1035,8 +1035,12 @@ export interface MatchData {
   vector_score: number;
   skill_score: number;
   bonus_score: number;
-  /** Experience-gap multiplier (0.5–1.0) applied when the match was scored. */
+  semantic_score?: number;
+  skills_score?: number;
+  /** Experience fit component (0–15 under v2 scoring). */
   experience_score?: number | null;
+  location_score?: number | null;
+  recency_score?: number | null;
   matched_skills: string[];
   missing_skills: string[];
   explanation: string | null;

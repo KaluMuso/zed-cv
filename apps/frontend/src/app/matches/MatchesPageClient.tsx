@@ -22,6 +22,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { MatchScore } from "@/components/MatchScore";
+import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
@@ -975,7 +976,7 @@ export default function MatchesPageClient() {
               <div
                 className="overflow-hidden transition-all duration-300"
                 style={{
-                  maxHeight: expanded === match.id ? 480 : 0,
+                  maxHeight: expanded === match.id ? 560 : 0,
                   borderTop:
                     expanded === match.id
                       ? "1px solid var(--line)"
@@ -989,41 +990,7 @@ export default function MatchesPageClient() {
                 >
                   <div>
                     <div className="eyebrow mb-4">Score breakdown</div>
-                    {[
-                      ["Relevance", match.vector_score, "green"],
-                      ["Skills overlap", match.skill_score, "copper"],
-                      ["Bonus fit", match.bonus_score, "green"],
-                    ].map(([label, val, tone]) => (
-                      <div key={label as string} className="mb-3.5">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <span className="text-sm font-medium">
-                            {label as string}
-                          </span>
-                          <span
-                            className="font-mono text-xs"
-                            style={{ color: "var(--muted)" }}
-                          >
-                            {Math.round(val as number)}/100
-                          </span>
-                        </div>
-                        <div
-                          className="h-1.5 rounded-full overflow-hidden"
-                          style={{ background: "var(--bg)" }}
-                        >
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${val}%`,
-                              background:
-                                tone === "green"
-                                  ? "var(--green-500)"
-                                  : "var(--copper-500)",
-                              transition: "width 800ms ease",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                    <MatchScoreBreakdown match={match} />
                   </div>
                   <div>
                     <div className="eyebrow mb-4">AI explanation</div>

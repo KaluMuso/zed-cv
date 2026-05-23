@@ -5,6 +5,7 @@ from typing import Any, Optional
 from supabase import Client
 from app.core.config import get_settings
 from app.core.tier_gating import get_effective_match_limit
+from app.services.match_explanation import build_match_explanation
 
 
 # Phase 2 Initiative #4 — preference-aware re-rank weights.
@@ -118,8 +119,50 @@ async def get_credited_match_count(
     return len(result.data or [])
 
 
+def normalize_rpc_match_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Map match_jobs_for_user RPC output to persisted match row shape."""
+    semantic = float(row.get("semantic_score") or row.get("vector_score") or 0)
+    skills = float(row.get("skills_score") or row.get("skill_score") or 0)
+    experience = float(row.get("experience_score") or 0)
+    location = float(row.get("location_score") or 0)
+    recency = float(row.get("recency_score") or 0)
+    if location == 0 and recency == 0:
+        legacy_bonus = float(row.get("bonus_score") or 0)
+        location = legacy_bonus
+    final = float(
+        row.get("score")
+        or row.get("final_score")
+        or semantic + skills + experience + location + recency
+    )
+    matched = list(row.get("matched_skills") or [])
+    missing = list(row.get("missing_skills") or [])
+    explanation = row.get("explanation") or build_match_explanation(
+        semantic_score=semantic,
+        skills_score=skills,
+        experience_score=experience,
+        location_score=location,
+        recency_score=recency,
+        matched_skills=matched,
+    )
+    return {
+        "job_id": row["job_id"],
+        "final_score": final,
+        "vector_score": semantic,
+        "skill_score": skills,
+        "bonus_score": location + recency,
+        "experience_score": experience,
+        "location_score": location,
+        "recency_score": recency,
+        "semantic_score": semantic,
+        "skills_score": skills,
+        "matched_skills": matched,
+        "missing_skills": missing,
+        "explanation": explanation,
+    }
+
+
 async def run_matching_for_user(
-    user_id: str, supabase: Client, limit: int = 20, min_score: float = 50.0
+    user_id: str, supabase: Client, limit: int = 50, min_score: float = 50.0
 ) -> list[dict]:
     """Execute hybrid matching via the match_jobs_for_user() RPC function."""
     try:
@@ -132,7 +175,7 @@ async def run_matching_for_user(
         if "no primary CV with embedding" in message.lower():
             raise ValueError("Upload a CV with a completed embedding before matching") from exc
         raise
-    return result.data or []
+    return [normalize_rpc_match_row(row) for row in (result.data or [])]
 
 
 async def fetch_jobs_by_ids(job_ids: list[str], supabase: Client) -> dict[str, dict[str, Any]]:
@@ -259,8 +302,11 @@ async def store_matches(
             "skill_score": m["skill_score"],
             "bonus_score": m["bonus_score"],
             "experience_score": m.get("experience_score"),
+            "location_score": m.get("location_score"),
+            "recency_score": m.get("recency_score"),
             "matched_skills": m.get("matched_skills", []),
             "missing_skills": m.get("missing_skills", []),
+            "explanation": m.get("explanation"),
             "status": "new",
         }
         for m in matches

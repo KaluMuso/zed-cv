@@ -41,8 +41,8 @@ change to any of these:
 | Embedding dim | 768 | pgvector column type is fixed to `vector(768)` in migration 007. Bigger needs a migration + HNSW index rebuild. |
 | Phone format | `+260XXXXXXXXX` | E.164 with country code. WAHA expects this; OTP cooldown is keyed on it; users table has a UNIQUE constraint on this column. |
 | Currency unit | Ngwee (integer) | All amounts in DB are integer ngwee (1 ZMW = 100 ngwee). The `// 100` in payment confirmations relies on this. Don't introduce float kwacha anywhere. |
-| Matching weights | 60% vector / 30% skill / 10% bonus | Embedded in the `match_jobs_for_user` RPC. See migration 009 for the function definition. Changing weights without updating the RPC silently uses old weights. |
-| RPC return shape | `match_jobs_for_user` returns `(job_id, vector_score, score, matched_skills)` | Touched on 2026-05-11. Frontend reads these field names directly. Renaming any column breaks `/matches`. |
+| Matching weights | 50% semantic / 20% skills / 15% experience / 10% location / 5% recency | Embedded in `match_jobs_for_user` (migration 060). Hard floor 35 before storage. Changing weights without updating the RPC silently uses old weights. |
+| RPC return shape | `match_jobs_for_user` returns `(job_id, score, semantic_score, skills_score, experience_score, location_score, recency_score, matched_skills, missing_skills, explanation)` plus legacy aliases | Frontend and `store_matches` read these fields. Renaming columns breaks `/matches`. |
 | OpenAPI is source of truth | `docs/openapi.yaml` | Backend Pydantic schemas and frontend Zod schemas both derive from it. Add an endpoint without updating it and the contract drifts; the frontend will type-check against a stale spec. |
 | Migration files are immutable | `infra/supabase/migrations/NNN_*.sql` | Never edit an existing migration. Always create a new one. Prod has applied the originals — editing them desyncs prod from the file. |
 | Free-tier heartbeat | n8n pings Supabase every 6h | Removing this lets Supabase pause the project after 7 days of inactivity. Don't disable the n8n workflow even if it looks pointless. |

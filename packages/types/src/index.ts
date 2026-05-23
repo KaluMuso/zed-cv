@@ -40,7 +40,10 @@ export interface JobCreate {
 export interface JobList { jobs: Job[]; total: number; page: number; per_page: number; }
 
 export interface MatchResult {
-  id: string; job: Job; score: number; vector_score: number; skill_score: number; bonus_score: number;
+  id: string; job: Job; score: number;
+  semantic_score?: number; skills_score?: number;
+  vector_score: number; skill_score: number; bonus_score: number;
+  experience_score?: number; location_score?: number; recency_score?: number;
   matched_skills: string[]; missing_skills: string[]; explanation: string | null; created_at: string;
 }
 export interface MatchList { matches: MatchResult[]; remaining_quota: number; }

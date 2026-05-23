@@ -65,9 +65,12 @@ class TestGetMatches:
                         "id": "match-1",
                         "user_id": "test-user-id",
                         "score": 82.5,
-                        "vector_score": 78.0,
-                        "skill_score": 85.0,
-                        "bonus_score": 84.5,
+                        "vector_score": 40.0,
+                        "skill_score": 16.0,
+                        "experience_score": 12.0,
+                        "location_score": 10.0,
+                        "recency_score": 4.5,
+                        "bonus_score": 14.5,
                         "matched_skills": ["python", "fastapi"],
                         "missing_skills": ["kubernetes"],
                         "explanation": "Strong backend fit",
@@ -92,8 +95,8 @@ class TestGetMatches:
         assert len(body["matches"]) == 1
         assert body["matches"][0]["score"] == 82.5
         assert body["remaining_quota"] == 3
-        assert body["matches"][0]["semantic_score"] == 78.0
-        assert body["matches"][0]["skills_score"] == 85.0
+        assert body["matches"][0]["semantic_score"] == 40.0
+        assert body["matches"][0]["skills_score"] == 16.0
 
 
 class TestGetMatchesForUser:
@@ -108,13 +111,15 @@ class TestGetMatchesForUser:
         return_value=[
             {
                 "job_id": "job-1",
-                "vector_score": 48.0,
-                "skill_score": 24.0,
-                "bonus_score": 10.0,
-                "final_score": 82.0,
-                "experience_score": 1.0,
+                "semantic_score": 40.0,
+                "skills_score": 16.0,
+                "experience_score": 12.0,
+                "location_score": 10.0,
+                "recency_score": 4.0,
+                "score": 82.0,
                 "matched_skills": ["python"],
                 "missing_skills": [],
+                "explanation": "Semantic 40/50, skills 16/20, experience 12/15, location 10/10, recency 4/5.",
             }
         ],
     )
@@ -169,9 +174,11 @@ class TestGetMatchesForUser:
         assert len(body["matches"]) == 1
         match = body["matches"][0]
         assert match["score"] == 82.0
-        assert match["semantic_score"] == 48.0
-        assert match["skills_score"] == 24.0
-        assert match["bonus_score"] == 10.0
+        assert match["semantic_score"] == 40.0
+        assert match["skills_score"] == 16.0
+        assert match["experience_score"] == 12.0
+        assert match["location_score"] == 10.0
+        assert match["recency_score"] == 4.0
 
     def test_get_matches_for_user_forbidden_other_user(
         self, client, auth_headers, fake_supabase

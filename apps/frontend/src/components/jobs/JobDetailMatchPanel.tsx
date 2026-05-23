@@ -4,34 +4,8 @@ import type { MatchData } from "@/lib/api";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { SkillBadge } from "@/components/SkillBadge";
 import { matchStrengthCopy } from "@/components/jobs/jobDetailFormatters";
+import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
 import Link from "next/link";
-
-interface ScoreBarProps {
-  label: string;
-  value: number;
-  tone?: "green" | "copper";
-}
-
-function ScoreBar({ label, value, tone = "green" }: ScoreBarProps) {
-  const pct = Math.min(100, Math.max(0, Math.round(value)));
-  return (
-    <div className="mb-3.5 last:mb-0">
-      <div className="flex justify-between items-baseline mb-1.5">
-        <span className="text-sm font-medium text-foreground">{label}</span>
-        <span className="font-mono text-xs text-muted-foreground">{pct}/100</span>
-      </div>
-      <div className="h-2 rounded-full overflow-hidden bg-muted/60">
-        <div
-          className="h-full rounded-full transition-[width] duration-700 ease-out"
-          style={{
-            width: `${pct}%`,
-            background: tone === "green" ? "var(--green-500)" : "var(--copper-500)",
-          }}
-        />
-      </div>
-    </div>
-  );
-}
 
 function MatchPanelPlaceholder({ signedIn }: { signedIn: boolean }) {
   return (
@@ -94,9 +68,7 @@ export function JobDetailMatchPanel({
       </div>
 
       <div className="mb-6 pb-6 border-b" style={{ borderColor: "var(--line)" }}>
-        <ScoreBar label="Relevance" value={match.vector_score} tone="green" />
-        <ScoreBar label="Skills overlap" value={match.skill_score} tone="copper" />
-        <ScoreBar label="Local fit" value={match.bonus_score} tone="green" />
+        <MatchScoreBreakdown match={match} />
       </div>
 
       <div>
