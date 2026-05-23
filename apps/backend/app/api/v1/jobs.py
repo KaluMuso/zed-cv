@@ -3,7 +3,7 @@ import hashlib
 import html as _html
 import logging
 import re as _re
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from app.core.config import Settings, get_settings
 from app.core.deps import (
     get_current_user_id,
@@ -20,6 +20,7 @@ from app.schemas.jobs import (
     JobIngestResponse,
     JobIngestErrorItem,
     JobEnrichPatch,
+    DeepEnrichTickResponse,
     _parse_salary_to_ngwee,
 )
 from app.schemas.saved_jobs import SaveJobResponse
@@ -28,6 +29,7 @@ from app.services.embedding import generate_embedding
 from app.services.job_enricher import enrich_job
 from app.services.job_enrichment import apply_job_enrichment
 from app.services.deep_link_enricher import schedule_deep_link_enrichment
+from app.services.deep_scrape_tick import run_deep_enrich_tick
 from app.services.description_body_extractor import merge_description_extraction
 from app.services.description_markdown import description_to_markdown
 from app.services.job_activation import apply_review_state_to_row, compute_review_state
@@ -38,6 +40,16 @@ from app.services import skills_dictionary
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
+
+
+def _require_ingest_header(
+    settings: Settings,
+    ingest_api_key: str | None,
+    x_ingest_api_key: str | None,
+) -> None:
+    supplied = ingest_api_key or x_ingest_api_key
+    if not settings.ingest_api_key or supplied != settings.ingest_api_key:
+        raise HTTPException(status_code=401, detail="Invalid ingest API key")
 
 _EMAIL_RE = _re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", _re.IGNORECASE)
 _URL_RE = _re.compile(r"\b(?:https?://|www\.)\S+|\b[A-Z0-9.-]+\.[A-Z]{2,}(?:/\S*)?", _re.IGNORECASE)
@@ -787,3 +799,24 @@ async def ingest_jobs(
         skipped=skipped,
         errors=errors[:50],  # cap to keep response size bounded
     )
+
+
+@router.post("/deep-enrich-tick", response_model=DeepEnrichTickResponse)
+@limiter.limit("30/minute")
+async def deep_enrich_tick(
+    request: Request,
+    limit: int = Query(25, ge=1, le=100),
+    ingest_api_key: str | None = Header(None, alias="INGEST_API_KEY"),
+    x_ingest_api_key: str | None = Header(None, alias="X-INGEST-API-KEY"),
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Secondary scrape batch: fetch HTTP source_url pages and set apply contacts.
+
+    Intended for n8n cron (every 6h). Complements fire-and-forget
+    ``schedule_deep_link_enrichment`` on ingest and manual PATCH
+    ``/jobs/{job_id}/enrich`` callbacks from browser-based scrapers.
+    """
+    _require_ingest_header(settings, ingest_api_key, x_ingest_api_key)
+    stats = await run_deep_enrich_tick(supabase, limit=limit)
+    return DeepEnrichTickResponse(**stats)

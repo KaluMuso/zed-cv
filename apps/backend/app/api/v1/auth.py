@@ -9,7 +9,7 @@ from app.core.config import get_settings, Settings
 from app.core.deps import get_supabase
 from app.core.rate_limit import limiter
 from app.schemas.auth import OTPRequest, OTPVerify, AuthTokens
-from app.services.whatsapp import send_whatsapp_otp
+from app.services.whatsapp import ensure_session_started, send_whatsapp_otp
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -69,6 +69,11 @@ async def request_otp(request: Request, body: OTPRequest, settings: Settings = D
         "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=settings.otp_expire_minutes)).isoformat(),
     }).execute()
     try:
+        # Re-bootstrap WAHA if the session went STOPPED after backend boot
+        # (common after `docker compose restart waha` without restarting backend).
+        session_ok = await ensure_session_started("default", timeout_seconds=20)
+        if not session_ok:
+            raise RuntimeError("WAHA session not WORKING")
         await send_whatsapp_otp(body.phone, code)
     except Exception as e:
         # Log but don't fail — the OTP is already stored, user can re-request if they don't get it.

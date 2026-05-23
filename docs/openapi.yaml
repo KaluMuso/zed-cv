@@ -775,6 +775,14 @@ components:
         apply_email: { type: string, format: email }
         is_enriched: { type: boolean, default: true }
 
+    DeepEnrichTickResponse:
+      type: object
+      required: [processed, enriched, unchanged]
+      properties:
+        processed: { type: integer, minimum: 0 }
+        enriched: { type: integer, minimum: 0 }
+        unchanged: { type: integer, minimum: 0 }
+
     JobCreate:
       type: object
       required: [title, description, source]
@@ -1993,6 +2001,26 @@ paths:
         '403': { description: Authenticated user is not admin }
         '404': { description: Job not found }
         '422': { description: Validation error or empty patch }
+
+  /jobs/deep-enrich-tick:
+    post:
+      operationId: deepEnrichTick
+      tags: [Jobs]
+      description: |
+        Secondary scrape batch (n8n cron). Fetches HTTP source_url pages for jobs
+        with is_enriched=false, discovers apply_url/apply_email, and sets migration-045
+        contact fields. Auth via INGEST_API_KEY / X-INGEST-API-KEY (same as bulk ingest).
+      security: []
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - { name: X-INGEST-API-KEY, in: header, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeepEnrichTickResponse' }
+        '401': { description: Invalid ingest API key }
 
   /jobs/{job_id}/generate-cover-letter:
     post:

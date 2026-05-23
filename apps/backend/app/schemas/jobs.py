@@ -539,6 +539,14 @@ class JobIngestResponse(BaseModel):
     errors: list[JobIngestErrorItem] = []
 
 
+class DeepEnrichTickResponse(BaseModel):
+    """POST /jobs/deep-enrich-tick — secondary scrape batch result."""
+
+    processed: int
+    enriched: int
+    unchanged: int
+
+
 # ── Admin CRUD (Wave 4 PR 2) ──────────────────────────────────────────
 # AdminJobCreate / AdminJobUpdate back the /api/v1/admin/jobs POST and
 # PATCH endpoints. They diverge from JobCreate in three ways:

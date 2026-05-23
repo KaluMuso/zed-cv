@@ -71,8 +71,12 @@ class TestOTPRequestStoresHash:
     otp_codes.code must be a hash, not the plaintext code."""
 
     def test_request_stores_hashed_code(self, client, fake_supabase, monkeypatch):
-        # Patch the WAHA call so we don't need a real service.
+        # Patch WAHA bootstrap + send so CI does not need a live session.
         from unittest.mock import AsyncMock
+        monkeypatch.setattr(
+            "app.api.v1.auth.ensure_session_started",
+            AsyncMock(return_value=True),
+        )
         monkeypatch.setattr(
             "app.api.v1.auth.send_whatsapp_otp",
             AsyncMock(return_value={"id": "msg-1"}),
