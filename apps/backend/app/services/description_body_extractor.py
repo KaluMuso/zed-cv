@@ -5,7 +5,7 @@ import re
 from typing import Optional
 from urllib.parse import urlparse
 
-from app.services.deep_link_enricher import EnrichmentResult
+from app.services.deep_link_parsers import EnrichmentResult
 
 _EMAIL_RE = re.compile(
     r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",

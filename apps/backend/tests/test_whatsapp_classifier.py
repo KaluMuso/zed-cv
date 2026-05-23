@@ -219,3 +219,49 @@ class TestAdminScraperStats:
         assert body["rejected_as_promo"] == 1
         assert body["rejected_as_other"] == 1
         assert len(body["days"]) == 2
+
+    def test_scraper_stats_includes_parser_telemetry(self, client, auth_headers, fake_supabase):
+        fake_supabase.set_table(
+            "users",
+            FakeSupabaseQuery(data=[{"id": "test-user-id", "role": "admin"}]),
+        )
+        fake_supabase.set_table(
+            "ai_cache",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "metadata": {"classifier_decision": "accepted_as_job"},
+                        "created_at": "2026-05-20T10:00:00+00:00",
+                    },
+                    {
+                        "metadata": {
+                            "parser": "gozambiajobs",
+                            "outcome": "found_email",
+                        },
+                        "created_at": "2026-05-20T12:00:00+00:00",
+                    },
+                    {
+                        "metadata": {
+                            "parser": "gozambiajobs",
+                            "outcome": "failed",
+                        },
+                        "created_at": "2026-05-21T09:00:00+00:00",
+                    },
+                    {
+                        "metadata": {
+                            "parser": "jobwebzambia",
+                            "outcome": "found_phone",
+                        },
+                        "created_at": "2026-05-21T10:00:00+00:00",
+                    },
+                ]
+            ),
+        )
+
+        resp = client.get("/api/v1/admin/scraper-stats?days=7", headers=auth_headers)
+        assert resp.status_code == 200
+        parsers = {row["parser"]: row for row in resp.json()["parsers"]}
+        assert parsers["gozambiajobs"]["attempted"] == 2
+        assert parsers["gozambiajobs"]["found_email"] == 1
+        assert parsers["gozambiajobs"]["failed"] == 1
+        assert parsers["jobwebzambia"]["found_phone"] == 1

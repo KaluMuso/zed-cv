@@ -338,6 +338,15 @@ components:
         rejected_as_promo: { type: integer }
         rejected_as_other: { type: integer }
 
+    AdminParserStats:
+      type: object
+      properties:
+        parser: { type: string }
+        attempted: { type: integer }
+        found_email: { type: integer }
+        found_phone: { type: integer }
+        failed: { type: integer }
+
     AdminScraperStats:
       type: object
       properties:
@@ -347,6 +356,9 @@ components:
         accepted_as_job: { type: integer }
         rejected_as_promo: { type: integer }
         rejected_as_other: { type: integer }
+        parsers:
+          type: array
+          items: { $ref: '#/components/schemas/AdminParserStats' }
 
     AdminStats:
       type: object
@@ -1474,7 +1486,9 @@ paths:
       security: [{ bearerAuth: [] }]
       description: |
         Daily WhatsApp classifier outcomes from ai_cache.metadata
-        (classifier_decision: accepted_as_job | rejected_as_promo | rejected_as_other).
+        (classifier_decision: accepted_as_job | rejected_as_promo | rejected_as_other),
+        plus deep-link parser telemetry (parser → attempted / found_email /
+        found_phone / failed) from ai_cache cache_type deep_link_parser.
       parameters:
         - name: days
           in: query

@@ -12,11 +12,20 @@ class AdminScraperStatsDay(BaseModel):
     rejected_as_other: int = 0
 
 
+class AdminParserStats(BaseModel):
+    parser: str
+    attempted: int = 0
+    found_email: int = 0
+    found_phone: int = 0
+    failed: int = 0
+
+
 class AdminScraperStats(BaseModel):
     days: list[AdminScraperStatsDay] = Field(default_factory=list)
     accepted_as_job: int = 0
     rejected_as_promo: int = 0
     rejected_as_other: int = 0
+    parsers: list[AdminParserStats] = Field(default_factory=list)
 
 
 class AdminStats(BaseModel):

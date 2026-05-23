@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from app.core.deps import get_supabase, require_admin
 from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
+    AdminParserStats,
     AdminScraperStats,
     AdminScraperStatsDay,
     AdminStats,
@@ -177,7 +178,48 @@ async def get_scraper_stats(
         accepted_as_job=totals["accepted_as_job"],
         rejected_as_promo=totals["rejected_as_promo"],
         rejected_as_other=totals["rejected_as_other"],
+        parsers=_aggregate_parser_stats(supabase, since_iso),
     )
+
+
+def _aggregate_parser_stats(supabase, since_iso: str) -> list[AdminParserStats]:
+    """Roll up deep-link parser telemetry from ai_cache metadata."""
+    try:
+        rows_res = (
+            supabase.table("ai_cache")
+            .select("metadata, created_at")
+            .eq("cache_type", "deep_link_parser")
+            .gte("created_at", since_iso)
+            .execute()
+        )
+        rows = rows_res.data or []
+    except Exception as exc:
+        logger.warning("scraper-stats parser query failed: %s", exc)
+        return []
+
+    buckets: dict[str, dict[str, int]] = {}
+    for row in rows:
+        meta = row.get("metadata") or {}
+        if not isinstance(meta, dict):
+            continue
+        parser = str(meta.get("parser") or "generic")
+        outcome = str(meta.get("outcome") or "failed")
+        bucket = buckets.setdefault(
+            parser,
+            {"attempted": 0, "found_email": 0, "found_phone": 0, "failed": 0},
+        )
+        bucket["attempted"] += 1
+        if outcome in ("found_email", "found_both"):
+            bucket["found_email"] += 1
+        if outcome in ("found_phone", "found_both"):
+            bucket["found_phone"] += 1
+        if outcome == "failed":
+            bucket["failed"] += 1
+
+    return [
+        AdminParserStats(parser=parser, **counts)
+        for parser, counts in sorted(buckets.items())
+    ]
 
 
 @router.post("/cv-queue/drain")
