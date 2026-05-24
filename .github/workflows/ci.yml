@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master, develop]
 
 jobs:
   backend-test:
@@ -32,6 +32,52 @@ jobs:
           OPENROUTER_API_KEY: fake-key
           JWT_SECRET: test-secret
 
+  # Strictest gate: live staging DB probes only when promoting develop → master.
+  backend-test-staging-db:
+    if: github.event_name == 'pull_request' && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+      - name: Run tests against staging Supabase
+        env:
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_SERVICE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_KEY }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: fake-key
+          OPENROUTER_API_KEY: fake-key
+          JWT_SECRET: test-secret-ci-staging
+        run: |
+          if [ -z "$STAGING_SUPABASE_URL" ] || [ -z "$STAGING_SUPABASE_SERVICE_KEY" ]; then
+            echo "::warning::STAGING_SUPABASE_URL / STAGING_SUPABASE_SERVICE_KEY not set — skipping live DB pytest gate"
+            exit 0
+          fi
+          pytest tests/ -q --tb=short
+
+  openapi-ts-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install guard deps
+        run: pip install pyyaml
+      - name: OpenAPI ↔ TypeScript contract guard
+        run: python scripts/ci_openapi_ts_guard.py
+
   frontend-build:
     runs-on: ubuntu-latest
     defaults:
@@ -50,10 +96,33 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          NEXT_PUBLIC_API_URL: https://api.zedcv.com/api/v1
-          NEXT_PUBLIC_SUPABASE_URL: https://chnesgmcuxyhwhzomdov.supabase.co
-          # These can be fake for build time if not used in getStaticProps/getServerSideProps
+          NEXT_PUBLIC_API_URL: https://api.zedapply.com/api/v1
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: fake-key
+
+  frontend-build-staging:
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build (staging env shape)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://staging-api.zedapply.com/api/v1
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: fake-key
+          NEXT_PUBLIC_ENV: staging
 
   backend-docker:
     runs-on: ubuntu-latest

@@ -92,24 +92,35 @@ def check_debug(settings: Any | None) -> CheckResult:
     return CheckResult("DEBUG=false", "red", "DEBUG=true — disable in production .env")
 
 
-def check_lenco_url(settings: Any | None) -> CheckResult:
+def check_lenco_url(
+    settings: Any | None,
+    *,
+    target_env: Literal["production", "staging"] = "production",
+) -> CheckResult:
+    label = (
+        "LENCO_API_URL (staging sandbox)"
+        if target_env == "staging"
+        else "LENCO_API_URL (production)"
+    )
     url = (
         (settings.lenco_api_url if settings else None)
         or os.getenv("LENCO_API_URL", "")
     ).lower()
     lenco_display = settings.lenco_api_url if settings else os.getenv("LENCO_API_URL", "")
+    if target_env == "staging" and "sandbox.lenco.co" in url:
+        return CheckResult(label, "green", lenco_display)
     if "api.lenco.co" in url:
-        return CheckResult("LENCO_API_URL (production)", "green", lenco_display)
+        return CheckResult(label, "green", lenco_display)
     if "sandbox.lenco.co" in url:
         return CheckResult(
-            "LENCO_API_URL (production)",
+            label,
             "yellow",
             f"still sandbox: {lenco_display}",
         )
     if not url:
-        return CheckResult("LENCO_API_URL (production)", "yellow", "LENCO_API_URL unset")
+        return CheckResult(label, "yellow", "LENCO_API_URL unset")
     return CheckResult(
-        "LENCO_API_URL (production)",
+        label,
         "yellow",
         f"unexpected host: {lenco_display}",
     )
@@ -276,11 +287,48 @@ def _load_settings() -> Any | None:
         return None
 
 
-def run_audit(*, skip_db: bool) -> list[CheckResult]:
+def check_supabase_project_isolation(
+    settings: Any | None,
+    *,
+    target_env: Literal["production", "staging"] = "production",
+) -> CheckResult:
+    """Staging must not point at the production Supabase project ref."""
+    url = (
+        (settings.supabase_url if settings else None)
+        or os.getenv("SUPABASE_URL", "")
+    ).lower()
+    prod_ref = "chnesgmcuxyhwhzomdov"
+    if not url:
+        return CheckResult("Supabase project isolation", "yellow", "SUPABASE_URL unset")
+    if target_env == "staging" and prod_ref in url:
+        return CheckResult(
+            "Supabase project isolation",
+            "red",
+            f"staging env still targets production project ({prod_ref})",
+        )
+    if target_env == "production" and prod_ref not in url:
+        return CheckResult(
+            "Supabase project isolation",
+            "yellow",
+            f"production audit on non-canonical host: {url}",
+        )
+    return CheckResult(
+        "Supabase project isolation",
+        "green",
+        "Supabase URL matches expected slice",
+    )
+
+
+def run_audit(
+    *,
+    skip_db: bool,
+    target_env: Literal["production", "staging"] = "production",
+) -> list[CheckResult]:
     settings = _load_settings()
     results: list[CheckResult] = [
         check_debug(settings),
-        check_lenco_url(settings),
+        check_supabase_project_isolation(settings, target_env=target_env),
+        check_lenco_url(settings, target_env=target_env),
         check_lenco_key(settings),
         check_sentry(settings),
         check_migration_files(),
@@ -310,7 +358,17 @@ def run_audit(*, skip_db: bool) -> list[CheckResult]:
         )
 
     if settings is not None:
-        results.append(asyncio.run(check_waha()))
+        waha = asyncio.run(check_waha())
+        if target_env == "staging" and waha.status == "red":
+            results.append(
+                CheckResult(
+                    waha.name,
+                    "yellow",
+                    waha.detail + " (acceptable on staging if WAHA unpaired)",
+                )
+            )
+        else:
+            results.append(waha)
     else:
         results.append(
             CheckResult(
@@ -325,13 +383,20 @@ def run_audit(*, skip_db: bool) -> list[CheckResult]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="ZedApply production readiness audit")
     parser.add_argument(
+        "--env",
+        choices=("production", "staging"),
+        default="production",
+        help="Which deployment slice to validate (default: production)",
+    )
+    parser.add_argument(
         "--skip-db",
         action="store_true",
         help="Only env/file checks (no Supabase queries)",
     )
     args = parser.parse_args()
-    print("ZedApply production readiness audit\n")
-    results = run_audit(skip_db=args.skip_db)
+    title = "staging" if args.env == "staging" else "production"
+    print(f"ZedApply {title} readiness audit\n")
+    results = run_audit(skip_db=args.skip_db, target_env=args.env)
     _print_results(results)
     return 1 if any(r.status == "red" for r in results) else 0
 

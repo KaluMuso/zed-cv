@@ -1,0 +1,8 @@
+# Append to the existing Caddyfile on the OCI host (alongside api.zedapply.com).
+# Caddy obtains and renews TLS for staging-api.zedapply.com automatically.
+#
+# DNS (Porkbun): A record staging-api → OCI public IP (same host as production API).
+
+staging-api.zedapply.com {
+    reverse_proxy 127.0.0.1:8001
+}

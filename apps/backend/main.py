@@ -35,10 +35,13 @@ from app.api.v1 import (
 
 TRUSTED_HOSTS = [
     "api.zedapply.com",
+    "staging-api.zedapply.com",
+    "preview.zedapply.com",
     "*.zedapply.com",
     "localhost",
     "127.0.0.1",
     "zedcv-backend",
+    "zedcv-backend-staging",
 ]
 
 
@@ -62,14 +65,21 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(application)
 
+    extra_cors = [
+        o.strip()
+        for o in settings.cors_allowed_origins.split(",")
+        if o.strip()
+    ]
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[
             "http://localhost:3000",
             "https://www.zedapply.com",
             "https://zedapply.com",
+            "https://preview.zedapply.com",
             "https://zed-cv.vercel.app",
             "https://zedcv.vercel.app",
+            *extra_cors,
         ],
         allow_origin_regex=(
             r"https://zed-cv-[a-z0-9-]+-vergeo-projects\.vercel\.app"

@@ -1,0 +1,67 @@
+# Staging OCI stack — checked-in template for ~/n8n-docker-staging on the prod VM.
+#
+# Copy to the server:
+#   mkdir -p ~/n8n-docker-staging/data/{waha,backend}
+#   cp infra/staging/docker-compose.yml ~/n8n-docker-staging/
+#   cp infra/staging/.env.example ~/n8n-docker-staging/.env   # fill secrets locally
+#   ln -sf ~/n8n-docker-staging/.env apps/backend/.env        # or use env_file path below
+#
+# Production n8n is intentionally omitted — workflows stay on ~/n8n-docker (prod).
+# WAHA may stay unpaired on staging; never route OTP/digests to real users.
+#
+# Host port 8001 → Caddy/Nginx → https://staging-api.zedapply.com
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ../../apps/backend
+      dockerfile: Dockerfile
+    container_name: zedcv-backend-staging
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env
+    environment:
+      WAHA_API_URL: http://waha-staging:3000
+      ENVIRONMENT: staging
+      DEBUG: "false"
+      WAHA_SESSION_NAME: default-staging
+      ENABLE_ADMIN_WHATSAPP_ALERTS: "false"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - waha-staging
+    networks:
+      - zedcv-staging
+
+  waha-staging:
+    image: devlikeapro/waha:latest
+    container_name: zedcv-waha-staging
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      WHATSAPP_API_KEY: ${WAHA_API_KEY}
+      WHATSAPP_HOOK_URL: http://backend:8000/api/v1/webhooks/whatsapp
+      WHATSAPP_HOOK_EVENTS: "message,message.ack,session.status"
+      WHATSAPP_DEFAULT_ENGINE: WEBJS
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"
+    volumes:
+      - ./data/waha:/app/.waha
+    networks:
+      - zedcv-staging
+
+networks:
+  zedcv-staging:
+    driver: bridge

@@ -2,9 +2,9 @@ name: drift-guards
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 permissions:
   contents: read

@@ -154,6 +154,14 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
     sentry_environment: str = "production"
 
+    # Deployment slice (production | staging | development). Informational for
+    # logs/health; staging stacks set ENVIRONMENT=staging in ~/n8n-docker-staging/.env.
+    environment: str = "development"
+
+    # Optional comma-separated extra CORS origins (staging preview domain, etc.).
+    # Parsed in main.py; production Vercel previews still use allow_origin_regex.
+    cors_allowed_origins: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("admin_alert_phone", mode="before")
