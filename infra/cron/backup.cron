@@ -1,0 +1,21 @@
+# ZedApply database backups — install on the OCI VM (Ubuntu).
+#
+#   sudo cp infra/cron/backup.cron /etc/cron.d/zedapply-backup
+#   sudo chmod 644 /etc/cron.d/zedapply-backup
+#
+# Times below assume the VM system clock is UTC (default on Oracle Cloud).
+# Central Africa Time (CAT, UTC+2):
+#   02:30 CAT nightly backup  → 00:30 UTC
+#   03:30 CAT Sunday test     → 01:30 UTC Sunday
+#
+# Env file: /etc/zedapply/backup.env (see scripts/backup.env.example)
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+BACKUP_ENV_FILE=/etc/zedapply/backup.env
+
+# Nightly pg_dump after the 02:00 CAT match batch (00:00 UTC).
+30 0 * * * ubuntu /home/ubuntu/zedcv/scripts/backup_database.sh >> /var/log/zedapply-backup.log 2>&1
+
+# Weekly test-restore to staging (skipped when STAGING_SUPABASE_DB_URL is unset).
+30 1 * * 0 ubuntu /home/ubuntu/zedcv/scripts/test_backup_restore.sh >> /var/log/zedapply-backup.log 2>&1
