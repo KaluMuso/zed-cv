@@ -75,7 +75,7 @@ const faqs: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. Cancel from your account settings — your paid features stay active until the end of your current billing period, and no further charges are made. New ZedApply subscriptions also come with a 14-day money-back guarantee on the first paid month.",
+    a: "Yes. Cancel from your account settings — your paid features stay active until the end of your current billing period, and no further charges are made. New paid subscriptions also include a 7-day money-back guarantee if you have not used AI document generation — see our Refund Policy.",
   },
   {
     q: "Is it free?",

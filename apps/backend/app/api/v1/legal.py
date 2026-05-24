@@ -19,7 +19,7 @@ rendered to HTML with the `markdown` library, and that HTML is then
 sanitised with `bleach`. Two layers, both server-side, both running
 before the row lands in storage.
 
-Slug whitelist is `{"privacy", "terms", "cookies"}` — the editor can't
+Slug whitelist is `{"privacy", "terms", "cookies", "refund"}` — the editor can't
 create new legal pages from the API; routing is owned by code under
 apps/frontend/src/app/legal/<slug>/page.tsx.
 """
@@ -47,8 +47,8 @@ admin_router = APIRouter(
 
 
 # Allowed slugs. Matches /apps/frontend/src/app/legal/<slug>/ directories.
-LegalSlug = Literal["privacy", "terms", "cookies"]
-_ALLOWED_SLUGS = {"privacy", "terms", "cookies"}
+LegalSlug = Literal["privacy", "terms", "cookies", "refund"]
+_ALLOWED_SLUGS = {"privacy", "terms", "cookies", "refund"}
 
 
 # ── sanitiser policy ──
@@ -141,7 +141,7 @@ def _row_to_doc(row: dict) -> LegalDoc:
 # ── public read ──
 @public_router.get("/{slug}", response_model=LegalDoc)
 async def get_public_legal_doc(
-    slug: str = Path(..., description="One of: privacy, terms, cookies"),
+    slug: str = Path(..., description="One of: privacy, terms, cookies, refund"),
     supabase=Depends(get_supabase),
 ) -> LegalDoc:
     """Public read for the /legal/<slug> page renderer's DB-fallback path.
@@ -166,7 +166,7 @@ async def get_public_legal_doc(
 # ── admin read ──
 @admin_router.get("/{slug}", response_model=LegalDoc)
 async def get_admin_legal_doc(
-    slug: str = Path(..., description="One of: privacy, terms, cookies"),
+    slug: str = Path(..., description="One of: privacy, terms, cookies, refund"),
     supabase=Depends(get_supabase),
 ) -> LegalDoc:
     """Admin read for the WYSIWYG editor. Same shape as the public
@@ -190,7 +190,7 @@ async def get_admin_legal_doc(
 @admin_router.patch("/{slug}", response_model=LegalDoc)
 async def upsert_admin_legal_doc(
     body: LegalDocUpdate,
-    slug: str = Path(..., description="One of: privacy, terms, cookies"),
+    slug: str = Path(..., description="One of: privacy, terms, cookies, refund"),
     current_user: dict = Depends(require_admin),
     supabase=Depends(get_supabase),
 ) -> LegalDoc:

@@ -1395,7 +1395,7 @@ export const publicStats = {
 };
 
 // ── Legal docs (task #62) ──
-export type LegalSlug = "privacy" | "terms" | "cookies";
+export type LegalSlug = "privacy" | "terms" | "cookies" | "refund";
 
 export interface AdminLegalDoc {
   slug: string;

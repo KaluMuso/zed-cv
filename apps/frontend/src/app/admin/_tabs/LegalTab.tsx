@@ -21,6 +21,11 @@ const SLUGS: { slug: LegalSlug; label: string; description: string }[] = [
     label: "Cookie Policy",
     description: "/legal/cookies — strictly-necessary + preferences + opt-in",
   },
+  {
+    slug: "refund",
+    label: "Refund Policy",
+    description: "/legal/refund — 7-day guarantee, Lenco/DPO billing disputes",
+  },
 ];
 
 export function LegalTab({ token }: { token: string }) {
@@ -35,7 +40,7 @@ export function LegalTab({ token }: { token: string }) {
       </p>
 
       {/* List of pages */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {SLUGS.map((s) => (
           <button
             key={s.slug}

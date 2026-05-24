@@ -25,9 +25,9 @@ export async function POST(req: Request) {
   // Whitelist mirrors the backend (/api/v1/admin/legal allowed slugs)
   // so a typo or hostile slug can't trigger revalidation of an
   // unrelated path.
-  if (!slug || !["privacy", "terms", "cookies"].includes(slug)) {
+  if (!slug || !["privacy", "terms", "cookies", "refund"].includes(slug)) {
     return NextResponse.json(
-      { error: "Unknown slug. Accepted: privacy, terms, cookies." },
+      { error: "Unknown slug. Accepted: privacy, terms, cookies, refund." },
       { status: 400 },
     );
   }

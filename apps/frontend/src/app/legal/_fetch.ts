@@ -23,7 +23,7 @@ export interface LegalDocFromDB {
 }
 
 export async function fetchLegalDocFromDB(
-  slug: "privacy" | "terms" | "cookies",
+  slug: "privacy" | "terms" | "cookies" | "refund",
 ): Promise<LegalDocFromDB | null> {
   try {
     const res = await fetch(`${API_BASE}/legal/${slug}`, {

@@ -147,6 +147,26 @@ class TestPublicGet:
         assert body["content_md"] == "# Updated"
         assert "<h1>" in body["content_html"]
 
+    def test_refund_slug_allowed(self, client, fake_supabase):
+        fake_supabase.set_table(
+            "legal_docs",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "slug": "refund",
+                        "version": "1.0.0",
+                        "content_md": "# Refund",
+                        "content_html": "<h1>Refund</h1>",
+                        "last_modified_by": None,
+                        "last_modified_at": "2026-05-24T12:00:00Z",
+                    }
+                ]
+            ),
+        )
+        resp = client.get("/api/v1/legal/refund")
+        assert resp.status_code == 200
+        assert resp.json()["slug"] == "refund"
+
     def test_unknown_slug_404s(self, client, fake_supabase):
         resp = client.get("/api/v1/legal/not-a-real-slug")
         assert resp.status_code == 404
