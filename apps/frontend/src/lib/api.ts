@@ -486,6 +486,34 @@ export interface AdminStats {
   pending_review_count: number;
 }
 
+export interface AdminLlmCostByModel {
+  model: string;
+  cost_usd: number;
+  request_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+export interface AdminLlmCostByFeature {
+  feature: string;
+  cost_usd: number;
+  request_count: number;
+}
+
+export interface AdminLlmCostDay {
+  date: string;
+  cost_usd: number;
+}
+
+export interface AdminLlmCostStats {
+  days: number;
+  total_cost_usd: number;
+  total_requests: number;
+  by_model: AdminLlmCostByModel[];
+  by_feature: AdminLlmCostByFeature[];
+  daily: AdminLlmCostDay[];
+}
+
 export interface AdminUserRow {
   id: string;
   phone: string;
@@ -645,6 +673,15 @@ export interface AdminJobCreate {
 
 export const admin = {
   stats: (token: string) => apiFetch<AdminStats>("/admin/stats", { token }),
+  llmCostStats: (token: string, params?: { days?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.days) q.set("days", String(params.days));
+    const qs = q.toString();
+    return apiFetch<AdminLlmCostStats>(
+      `/admin/llm-cost-stats${qs ? `?${qs}` : ""}`,
+      { token }
+    );
+  },
   /** GET /admin/export/companies.csv — authenticated CSV download */
   exportCompaniesCsv: async (token: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/admin/export/companies.csv`, {

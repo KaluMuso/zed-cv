@@ -15,6 +15,10 @@ from app.core.deps import get_supabase, require_admin
 from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
     AdminParserStats,
+    AdminLlmCostStats,
+    AdminLlmCostByModel,
+    AdminLlmCostByFeature,
+    AdminLlmCostDay,
     AdminScraperStats,
     AdminScraperStatsDay,
     AdminStats,
@@ -42,6 +46,7 @@ from app.core.tier_gating import get_effective_match_limit
 from app.services.tier_config import get_tier_limits
 from app.schemas.db_enums import QueueStatus
 from app.services.embedding import generate_embedding
+from app.services.llm import DASHBOARD_FEATURES
 from app.services.skill_resolver import resolve_skill_id, resolve_skill_ids
 
 logger = logging.getLogger(__name__)
@@ -112,6 +117,105 @@ async def get_stats(supabase=Depends(get_supabase)):
     except Exception:
         logger.warning("admin pending review count failed", exc_info=True)
     return AdminStats(**data)
+
+
+def _aggregate_llm_cost_rows(rows: list[dict], *, days: int) -> AdminLlmCostStats:
+    """Roll up llm_usage_log rows for the admin cost panel."""
+    by_model: dict[str, dict[str, float | int]] = {}
+    by_feature: dict[str, dict[str, float | int]] = {}
+    by_day: dict[str, float] = {}
+    total_cost = 0.0
+    total_requests = 0
+
+    for row in rows:
+        cost = float(row.get("cost_usd") or 0)
+        prompt = int(row.get("prompt_tokens") or 0)
+        completion = int(row.get("completion_tokens") or 0)
+        model = str(row.get("model") or "unknown")
+        feature = str(row.get("feature") or "other")
+        created = row.get("created_at")
+        day_key = str(created)[:10] if created else ""
+
+        total_cost += cost
+        total_requests += 1
+        by_day[day_key] = by_day.get(day_key, 0.0) + cost
+
+        mb = by_model.setdefault(
+            model,
+            {"cost_usd": 0.0, "request_count": 0, "prompt_tokens": 0, "completion_tokens": 0},
+        )
+        mb["cost_usd"] = float(mb["cost_usd"]) + cost
+        mb["request_count"] = int(mb["request_count"]) + 1
+        mb["prompt_tokens"] = int(mb["prompt_tokens"]) + prompt
+        mb["completion_tokens"] = int(mb["completion_tokens"]) + completion
+
+        fb = by_feature.setdefault(feature, {"cost_usd": 0.0, "request_count": 0})
+        fb["cost_usd"] = float(fb["cost_usd"]) + cost
+        fb["request_count"] = int(fb["request_count"]) + 1
+
+    model_rows = [
+        AdminLlmCostByModel(
+            model=m,
+            cost_usd=round(float(v["cost_usd"]), 6),
+            request_count=int(v["request_count"]),
+            prompt_tokens=int(v["prompt_tokens"]),
+            completion_tokens=int(v["completion_tokens"]),
+        )
+        for m, v in sorted(by_model.items(), key=lambda x: -float(x[1]["cost_usd"]))
+    ]
+
+    feature_order = {f: i for i, f in enumerate(DASHBOARD_FEATURES)}
+    feature_rows = [
+        AdminLlmCostByFeature(
+            feature=f,
+            cost_usd=round(float(v["cost_usd"]), 6),
+            request_count=int(v["request_count"]),
+        )
+        for f, v in sorted(
+            by_feature.items(),
+            key=lambda x: (feature_order.get(x[0], 99), -float(x[1]["cost_usd"])),
+        )
+    ]
+
+    daily_rows = [
+        AdminLlmCostDay(date=day, cost_usd=round(cost, 6))
+        for day, cost in sorted(by_day.items())
+    ]
+
+    return AdminLlmCostStats(
+        days=days,
+        total_cost_usd=round(total_cost, 6),
+        total_requests=total_requests,
+        by_model=model_rows,
+        by_feature=feature_rows,
+        daily=daily_rows,
+    )
+
+
+@router.get("/llm-cost-stats", response_model=AdminLlmCostStats)
+async def get_llm_cost_stats(
+    supabase=Depends(get_supabase),
+    days: int = Query(7, ge=1, le=90, description="Rolling window in calendar days"),
+):
+    """Rolling LLM cost by model and product feature (llm_usage_log)."""
+    since = datetime.now(timezone.utc) - timedelta(days=days - 1)
+    since_iso = since.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+    try:
+        rows_res = (
+            supabase.table("llm_usage_log")
+            .select(
+                "feature, model, prompt_tokens, completion_tokens, cost_usd, created_at"
+            )
+            .gte("created_at", since_iso)
+            .execute()
+        )
+        rows = rows_res.data or []
+    except Exception as exc:
+        logger.warning("llm-cost-stats query failed: %s", exc)
+        rows = []
+
+    return _aggregate_llm_cost_rows(rows, days=days)
 
 
 @router.get("/scraper-stats", response_model=AdminScraperStats)
@@ -554,11 +658,22 @@ async def get_capacity(supabase=Depends(get_supabase)):
     CVS_CEILING = 10_000           # Supabase free disk + storage bucket
     GEMINI_DAILY_TOKENS = 1_000_000  # Gemini 2.5 Flash free daily allowance
 
-    # Gemini-tokens-used today: tracked elsewhere if we wire a counter.
-    # For now we expose 0 with a note so the frontend can show the gauge
-    # at zero rather than missing it. Task #45 follow-up: wire an actual
-    # token-spend counter in ai_cache or a sidecar table.
     gemini_tokens_today = 0
+    try:
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        ).isoformat()
+        usage_res = (
+            supabase.table("llm_usage_log")
+            .select("prompt_tokens, completion_tokens")
+            .gte("created_at", today_start)
+            .execute()
+        )
+        for row in usage_res.data or []:
+            gemini_tokens_today += int(row.get("prompt_tokens") or 0)
+            gemini_tokens_today += int(row.get("completion_tokens") or 0)
+    except Exception:
+        logger.debug("capacity gemini token rollup failed", exc_info=True)
 
     def gauge(used: int, ceiling: int) -> dict:
         pct = (used / ceiling * 100.0) if ceiling > 0 else 0.0
@@ -582,8 +697,7 @@ async def get_capacity(supabase=Depends(get_supabase)):
         "gemini_tokens_today": gauge(gemini_tokens_today, GEMINI_DAILY_TOKENS),
         "notes": {
             "gemini": (
-                "Token spend tracker not yet wired — gauge is a placeholder. "
-                "Follow-up in task #45."
+                "Token counts from llm_usage_log (all providers) for today UTC."
             ),
         },
     }

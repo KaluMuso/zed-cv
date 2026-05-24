@@ -12,6 +12,7 @@ from functools import lru_cache
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 from app.core.config import get_settings
+from app.services.llm import FEATURE_INTERVIEW_PREP, LlmLogContext, record_openrouter_completion
 from app.services.openrouter_helpers import get_completion_content
 
 logger = logging.getLogger(__name__)
@@ -98,6 +99,14 @@ async def generate_interview_prep(
                     {"role": "system", "content": INTERVIEW_PREP_SYSTEM_PROMPT},
                     {"role": "user", "content": user_prompt},
                 ],
+            )
+            record_openrouter_completion(
+                response,
+                model=settings.llm_model,
+                context=LlmLogContext(
+                    feature=FEATURE_INTERVIEW_PREP,
+                    route="POST /api/v1/interview-prep/generate",
+                ),
             )
             content = get_completion_content(response, default="")
             if content is None:

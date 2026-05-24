@@ -18,6 +18,7 @@ from docx import Document
 
 from app.core.config import get_settings
 from app.schemas.cv_sections import CVSections
+from app.services.llm import FEATURE_CV_PARSING, LlmLogContext, record_openrouter_completion
 from app.services.openrouter_helpers import get_completion_content
 
 logger = logging.getLogger(__name__)
@@ -215,6 +216,14 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
                 ],
                 response_format={"type": "json_object"},
             )
+            record_openrouter_completion(
+                response,
+                model=settings.llm_model,
+                context=LlmLogContext(
+                    feature=FEATURE_CV_PARSING,
+                    route="POST /api/v1/cv/upload",
+                ),
+            )
 
             text = get_completion_content(response, default="")
             if text is None:
@@ -285,6 +294,14 @@ async def _ocr_with_vision(image_bytes: bytes, file_type: str) -> str:
                         ],
                     },
                 ],
+            )
+            record_openrouter_completion(
+                response,
+                model=settings.llm_model,
+                context=LlmLogContext(
+                    feature=FEATURE_CV_PARSING,
+                    route="POST /api/v1/cv/upload",
+                ),
             )
             content = get_completion_content(response, default="")
             if content is None:

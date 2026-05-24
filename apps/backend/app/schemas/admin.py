@@ -28,6 +28,36 @@ class AdminScraperStats(BaseModel):
     parsers: list[AdminParserStats] = Field(default_factory=list)
 
 
+class AdminLlmCostByModel(BaseModel):
+    model: str
+    cost_usd: float = 0.0
+    request_count: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+
+
+class AdminLlmCostByFeature(BaseModel):
+    feature: str
+    cost_usd: float = 0.0
+    request_count: int = 0
+
+
+class AdminLlmCostDay(BaseModel):
+    date: str
+    cost_usd: float = 0.0
+
+
+class AdminLlmCostStats(BaseModel):
+    """Rolling LLM inference cost (OpenRouter + Gemini + OpenAI)."""
+
+    days: int = 7
+    total_cost_usd: float = 0.0
+    total_requests: int = 0
+    by_model: list[AdminLlmCostByModel] = Field(default_factory=list)
+    by_feature: list[AdminLlmCostByFeature] = Field(default_factory=list)
+    daily: list[AdminLlmCostDay] = Field(default_factory=list)
+
+
 class AdminStats(BaseModel):
     users_total: int = 0
     users_active_30d: int = 0

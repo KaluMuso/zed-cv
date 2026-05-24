@@ -159,7 +159,7 @@ async def mock_start(
     user_id = current_user["id"]
     role = body.role_label.strip()
     try:
-        first_q = await generate_first_question(role)
+        first_q = await generate_first_question(role, user_id=user_id)
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -227,6 +227,7 @@ async def mock_answer(
             answer=body.answer.strip(),
             question_number=q_num,
             prior_turns=prior_turns,
+            user_id=user_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -243,7 +244,9 @@ async def mock_answer(
 
     if q_num >= MOCK_QUESTION_COUNT:
         try:
-            summary = await generate_final_summary(role=role, transcript=questions)
+            summary = await generate_final_summary(
+                role=role, transcript=questions, user_id=user_id
+            )
         except ValueError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         supabase.table("interview_sessions").update(
@@ -275,6 +278,7 @@ async def mock_answer(
                 {"role": "assistant", "content": f"Question: {pending['question']}"},
                 {"role": "user", "content": body.answer.strip()},
             ],
+            user_id=user_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

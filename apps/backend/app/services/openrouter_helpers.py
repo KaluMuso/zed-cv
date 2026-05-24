@@ -6,6 +6,9 @@ import time
 from typing import Any
 
 from openai import APIError, OpenAI, RateLimitError
+from supabase import Client
+
+from app.services.llm import LlmLogContext, record_openrouter_completion
 
 logger = logging.getLogger(__name__)
 
@@ -49,13 +52,24 @@ def create_chat_completion_with_retries(
     client: OpenAI,
     *,
     log_prefix: str = "openrouter",
+    log_context: LlmLogContext | None = None,
+    supabase: Client | None = None,
     **kwargs: Any,
 ) -> Any:
     """Call chat.completions.create with up to 3 retries on 429 / 5xx."""
+    model = str(kwargs.get("model") or "")
     last_error: BaseException | None = None
     for attempt in range(MAX_RETRY_ATTEMPTS + 1):
         try:
-            return client.chat.completions.create(**kwargs)
+            response = client.chat.completions.create(**kwargs)
+            if model:
+                record_openrouter_completion(
+                    response,
+                    model=model,
+                    context=log_context,
+                    supabase=supabase,
+                )
+            return response
         except Exception as exc:
             last_error = exc
             if attempt >= MAX_RETRY_ATTEMPTS or not is_retryable_openrouter_error(exc):

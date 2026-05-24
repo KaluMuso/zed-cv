@@ -476,6 +476,44 @@ components:
           type: array
           items: { $ref: '#/components/schemas/AdminParserStats' }
 
+    AdminLlmCostByModel:
+      type: object
+      properties:
+        model: { type: string }
+        cost_usd: { type: number, format: float }
+        request_count: { type: integer }
+        prompt_tokens: { type: integer }
+        completion_tokens: { type: integer }
+
+    AdminLlmCostByFeature:
+      type: object
+      properties:
+        feature: { type: string }
+        cost_usd: { type: number, format: float }
+        request_count: { type: integer }
+
+    AdminLlmCostDay:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        cost_usd: { type: number, format: float }
+
+    AdminLlmCostStats:
+      type: object
+      properties:
+        days: { type: integer }
+        total_cost_usd: { type: number, format: float }
+        total_requests: { type: integer }
+        by_model:
+          type: array
+          items: { $ref: '#/components/schemas/AdminLlmCostByModel' }
+        by_feature:
+          type: array
+          items: { $ref: '#/components/schemas/AdminLlmCostByFeature' }
+        daily:
+          type: array
+          items: { $ref: '#/components/schemas/AdminLlmCostDay' }
+
     AdminStats:
       type: object
       properties:
@@ -1861,6 +1899,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminStats' }
         '403': { description: Superadmin only }
+
+  /admin/llm-cost-stats:
+    get:
+      operationId: adminLlmCostStats
+      tags: [Admin]
+      summary: Rolling LLM inference cost by model and feature
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 7, minimum: 1, maximum: 90 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminLlmCostStats' }
+        '403': { description: Admin only }
 
   /admin/scraper-stats:
     get:
