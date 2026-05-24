@@ -13,6 +13,7 @@ from openai import APIError, OpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.lib.retry import circuit_is_open
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -87,6 +88,8 @@ async def extract_closing_date_llm(
     """LLM extraction; returns None on refusal, parse error, or missing API key."""
     settings = get_settings()
     if not settings.openrouter_api_key:
+        return extract_deadline_from_text_regex(description)
+    if circuit_is_open():
         return extract_deadline_from_text_regex(description)
 
     snippet = (description or "")[:8000]

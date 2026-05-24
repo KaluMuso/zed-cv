@@ -14,7 +14,11 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import circuit_is_open
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 from app.schemas.db_enums import CacheType, validate_cache_type
 from app.schemas.jobs import JobCreate
 from app.services.seniority import normalize_qualifications, normalize_seniority_level
@@ -234,8 +238,13 @@ async def split_message_with_llm(
         f"apply_email: {classification.apply_email or 'null'}"
     )
 
+    if circuit_is_open():
+        raise ValueError("Job splitter is temporarily unavailable.")
+
     def _call() -> SplitJobsResult:
-        response = client.chat.completions.create(
+        response = create_chat_completion_with_retries(
+            client,
+            log_prefix="job_splitter",
             model=model,
             max_tokens=4096,
             messages=[

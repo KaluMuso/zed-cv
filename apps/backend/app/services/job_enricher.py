@@ -16,7 +16,11 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import circuit_is_open
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 from app.services.seniority import (
     SeniorityLevelLiteral,
     normalize_experience_years,
@@ -204,9 +208,14 @@ async def enrich_job(
         f"Description:\n{description[:12000]}"
     )
 
+    if circuit_is_open():
+        return JobEnrichment()
+
     def _call() -> JobEnrichment:
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="job_enricher",
                 model=settings.llm_model,
                 max_tokens=768,
                 messages=[
@@ -275,9 +284,14 @@ async def enrich_job_for_backfill(
         f"Description:\n{description[:12000]}"
     )
 
+    if circuit_is_open():
+        return EnrichJobOutcome(enrichment=JobEnrichment(), completed=False)
+
     def _call() -> EnrichJobOutcome:
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="job_enricher_backfill",
                 model=settings.llm_model,
                 max_tokens=768,
                 messages=[

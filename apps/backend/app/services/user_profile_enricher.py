@@ -11,7 +11,11 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import circuit_is_open
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 from app.services.seniority import (
     SeniorityLevelLiteral,
     normalize_experience_years,
@@ -112,13 +116,18 @@ def _strip_fences(text: str) -> str:
 
 async def enrich_user_profile(*, cv_text: str) -> UserProfileEnrichment:
     """Call Gemini Flash via OpenRouter; return empty enrichment on failure."""
+    if circuit_is_open():
+        return UserProfileEnrichment()
+
     settings = get_settings()
     client = _client()
     user_prompt = f"CV text:\n{cv_text[:12000]}"
 
     def _call() -> UserProfileEnrichment:
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="user_profile_enricher",
                 model=settings.llm_model,
                 max_tokens=512,
                 messages=[

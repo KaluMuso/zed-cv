@@ -1226,6 +1226,10 @@ components:
         job_title: { type: string }
         company: { type: string }
         cached: { type: boolean }
+        degraded:
+          type: boolean
+          default: false
+          description: True when the LLM circuit breaker skipped the provider call
 
     MockInterviewStartRequest:
       type: object

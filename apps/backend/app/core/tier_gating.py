@@ -219,6 +219,7 @@ async def verify_tier_access(
     supabase: Client,
     *,
     increment_match_views: int = 0,
+    defer_match_view_increment: bool = False,
     is_superadmin: bool = False,
 ) -> str:
     """Enforce tier gates. Returns canonical tier when allowed."""
@@ -272,9 +273,10 @@ async def verify_tier_access(
                         f"{TIER_DISPLAY.get(canonical, canonical)})."
                     ),
                 )
-            await increment_matches_viewed(
-                user_id, supabase, count=increment_match_views
-            )
+            if not defer_match_view_increment:
+                await increment_matches_viewed(
+                    user_id, supabase, count=increment_match_views
+                )
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -31,7 +31,11 @@ from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import circuit_is_open
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 from app.schemas.db_enums import CacheType
 
 logger = logging.getLogger(__name__)
@@ -283,11 +287,16 @@ async def extract_job_from_message(
             # Stale/garbage cache row — fall through to a real call.
             logger.warning("job_extractor: cached row failed validation; re-extracting")
 
+    if circuit_is_open():
+        return None
+
     client = _client()
 
     def _call() -> Optional[ExtractedJob]:
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="job_extractor",
                 model=settings.llm_model,
                 # 2048 to accommodate the richer structured output added
                 # in task #60. 1024 occasionally truncated mid-JSON on

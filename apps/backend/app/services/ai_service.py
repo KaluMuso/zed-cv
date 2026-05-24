@@ -10,6 +10,7 @@ from functools import lru_cache
 from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 
 from app.core.config import get_settings
+from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, call_with_llm_retry
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,12 @@ async def generate_tailored_cover_letter(
         raise ValueError(
             "Cover letter service is not configured. Please contact support."
         )
+    if circuit_is_open():
+        return {
+            "content": DEGRADED_LLM_USER_MESSAGE,
+            "word_count": 0,
+            "degraded": True,
+        }
 
     company_line = f" at {company_name}" if company_name else ""
     user_prompt = (
@@ -60,14 +67,17 @@ async def generate_tailored_cover_letter(
     def _call() -> dict:
         client = _get_openai_client()
         try:
-            response = client.chat.completions.create(
-                model=COVER_LETTER_MODEL,
-                max_tokens=600,
-                temperature=0.4,
-                messages=[
-                    {"role": "system", "content": COVER_LETTER_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
+            response = call_with_llm_retry(
+                lambda: client.chat.completions.create(
+                    model=COVER_LETTER_MODEL,
+                    max_tokens=600,
+                    temperature=0.4,
+                    messages=[
+                        {"role": "system", "content": COVER_LETTER_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                ),
+                log_prefix="openai_cover_letter",
             )
             content = (response.choices[0].message.content or "").strip()
             if not content:

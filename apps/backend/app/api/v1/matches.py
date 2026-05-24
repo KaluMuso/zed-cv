@@ -273,8 +273,28 @@ async def get_matches(
     )
 
 
+async def _increment_match_views_after_response(
+    user_id: str, count: int, supabase
+) -> None:
+    """Background quota decrement — runs after the HTTP response is sent."""
+    if count <= 0:
+        return
+    try:
+        from app.core.tier_gating import increment_matches_viewed
+
+        await increment_matches_viewed(user_id, supabase, count=count)
+    except Exception:
+        logger.warning(
+            "deferred match view increment failed user=%s count=%s",
+            user_id,
+            count,
+            exc_info=True,
+        )
+
+
 @router.get("/{user_id}", response_model=MatchList)
 async def get_matches_for_user(
+    background_tasks: BackgroundTasks,
     user_id: str,
     min_score: float = Query(50, ge=0, le=100),
     limit: int = Query(10, ge=1, le=50),
@@ -378,13 +398,22 @@ async def get_matches_for_user(
 
     matches.sort(key=lambda mr: mr.score, reverse=True)
     delivered = matches[:limit]
+    view_count = len(delivered)
     await verify_tier_access(
         FEATURE_JOB_MATCHES,
         user_id,
         supabase,
-        increment_match_views=len(delivered),
+        increment_match_views=view_count,
+        defer_match_view_increment=True,
         is_superadmin=is_superadmin(current_user),
     )
+    if view_count > 0 and not is_superadmin(current_user):
+        background_tasks.add_task(
+            _increment_match_views_after_response,
+            user_id,
+            view_count,
+            supabase,
+        )
     return MatchList(
         matches=delivered,
         remaining_quota=remaining,

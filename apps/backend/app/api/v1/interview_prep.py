@@ -118,6 +118,7 @@ class InterviewPrepResponse(BaseModel):
     job_title: str
     company: str | None = None
     cached: bool = False
+    degraded: bool = False
 
 
 @router.post("/generate", response_model=InterviewPrepResponse)
@@ -206,4 +207,5 @@ async def generate(
         word_count=result["word_count"],
         job_title=job["title"],
         company=job.get("company"),
+        degraded=bool(result.get("degraded")),
     )

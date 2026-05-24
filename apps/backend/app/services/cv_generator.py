@@ -17,7 +17,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
 from app.schemas.cv_sections import CVSections
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, degraded_llm_result
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,12 +127,22 @@ def _clamp(n, lo=0, hi=100) -> int:
 
 async def analyze_cv(cv_text: str) -> dict:
     """Score a CV and surface strengths/improvements via Gemini Flash."""
+    if circuit_is_open():
+        return degraded_llm_result(
+            overall=0,
+            strengths=[],
+            improvements=[],
+            summary=DEGRADED_LLM_USER_MESSAGE,
+        )
+
     settings = get_settings()
     client = _client()
 
     def _call():
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="cv_generator",
                 model=settings.llm_model,
                 max_tokens=1024,
                 messages=[
@@ -394,6 +408,13 @@ async def generate_cv_structured(
     for backwards compat. Failures (too short, refusal, prompt-echo) raise
     ValueError which the endpoint maps to 503.
     """
+    if circuit_is_open():
+        return degraded_llm_result(
+            sections=None,
+            content=DEGRADED_LLM_USER_MESSAGE,
+            word_count=0,
+        )
+
     settings = get_settings()
     client = _client()
 
@@ -406,7 +427,9 @@ async def generate_cv_structured(
 
     def _call():
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="cv_generator_structured",
                 model=settings.llm_model,
                 # 4096 to fit the structured shape; 1500 (used by the
                 # plain-text path) frequently truncated mid-array.
@@ -477,6 +500,12 @@ async def generate_cv(
     Output is validated through GeneratedCV — failures (too short, refusal,
     prompt-echo) raise ValueError which the upload route maps to 503/422.
     """
+    if circuit_is_open():
+        return degraded_llm_result(
+            content=DEGRADED_LLM_USER_MESSAGE,
+            word_count=0,
+        )
+
     settings = get_settings()
     client = _client()
 
@@ -489,7 +518,9 @@ async def generate_cv(
 
     def _call():
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="cv_generator_prose",
                 model=settings.llm_model,
                 max_tokens=1500,
                 messages=[

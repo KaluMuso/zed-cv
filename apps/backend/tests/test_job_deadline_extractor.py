@@ -35,52 +35,22 @@ async def test_deadline_extractor_handles_none_response():
 
 
 @pytest.mark.asyncio
-async def test_deadline_extractor_retries_on_429():
-    mock_resp = MagicMock()
-    mock_resp.choices = [
-        MagicMock(message=MagicMock(content='{"closing_date": "2026-09-01"}'))
-    ]
-
+async def test_deadline_extractor_does_not_retry_on_429():
     client = MagicMock()
     rate_err = RateLimitError(
         "rate limited",
         response=MagicMock(status_code=429),
         body=None,
     )
-    client.chat.completions.create = MagicMock(
-        side_effect=[rate_err, rate_err, mock_resp]
-    )
+    client.chat.completions.create = MagicMock(side_effect=rate_err)
 
     with patch.object(mod, "_client", return_value=client):
         with patch.object(mod.get_settings(), "openrouter_api_key", "test-key"):
-            with patch("app.services.openrouter_helpers.time.sleep"):
-                result = await mod.extract_closing_date_llm(
-                    "Closing 1 September 2026",
-                    title="Analyst",
-                    company="ACME",
-                )
+            result = await mod.extract_closing_date_llm(
+                "Closing 1 September 2026",
+                title="Analyst",
+                company="ACME",
+            )
 
-    assert result == date(2026, 9, 1)
-    assert client.chat.completions.create.call_count == 3
-
-
-def test_create_chat_completion_with_retries_on_429():
-    client = MagicMock()
-    ok = MagicMock(choices=[MagicMock(message=MagicMock(content="ok"))])
-    err = RateLimitError(
-        "rate limited",
-        response=MagicMock(status_code=429),
-        body=None,
-    )
-    client.chat.completions.create = MagicMock(side_effect=[err, ok])
-
-    with patch("app.services.openrouter_helpers.time.sleep"):
-        out = create_chat_completion_with_retries(
-            client,
-            log_prefix="test",
-            model="test-model",
-            messages=[],
-        )
-
-    assert out is ok
-    assert client.chat.completions.create.call_count == 2
+    assert result is None
+    assert client.chat.completions.create.call_count == 1

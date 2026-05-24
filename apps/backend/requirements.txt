@@ -59,3 +59,4 @@ markdown>=3.6
 bleach>=6.1.0
 # HTML parsing for deep-link apply enrichment (Track 4d).
 beautifulsoup4>=4.12.0
+tenacity>=8.2.0,<9.0.0

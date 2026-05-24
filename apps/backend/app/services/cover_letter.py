@@ -10,7 +10,11 @@ from functools import lru_cache
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 from app.core.config import get_settings
-from app.services.openrouter_helpers import get_completion_content
+from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, degraded_llm_result
+from app.services.openrouter_helpers import (
+    create_chat_completion_with_retries,
+    get_completion_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +62,15 @@ async def generate_cover_letter(
 ) -> dict:
     """Generate a tailored cover letter using Gemini Flash via OpenRouter.
 
-    Returns: {"letter": str, "word_count": int, "tone": str}
+    Returns: {"letter": str, "word_count": int, "tone": str, "degraded": bool}
     """
+    if circuit_is_open():
+        return degraded_llm_result(
+            letter=DEGRADED_LLM_USER_MESSAGE,
+            word_count=0,
+            tone=tone,
+        )
+
     settings = get_settings()
     client = _get_openrouter_client()
 
@@ -73,7 +84,9 @@ async def generate_cover_letter(
 
     def _call():
         try:
-            response = client.chat.completions.create(
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="cover_letter",
                 model=settings.llm_model,
                 max_tokens=1024,
                 messages=[
