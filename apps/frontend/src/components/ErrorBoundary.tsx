@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ZedApply] Uncaught error:", error, info.componentStack);
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      Sentry.captureException(error, {
+        contexts: { react: { componentStack: info.componentStack } },
+        tags: { boundary: "layout-error-boundary" },
+      });
+    }
   }
 
   render() {
