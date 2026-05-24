@@ -157,6 +157,74 @@ components:
           default: false
           description: True when subscription tier allows WhatsApp digests.
 
+    SensitiveActionBody:
+      type: object
+      required: [otp_code]
+      properties:
+        otp_code:
+          type: string
+          pattern: '^\d{6}$'
+          description: Fresh OTP from /auth/otp/request (required even on trusted devices).
+
+    DeletionRequestResponse:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid, nullable: true }
+        status: { type: string }
+        scheduled_at: { type: string, format: date-time }
+
+    DeletionCancelResponse:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid }
+        status: { type: string }
+
+    ExportRequestResponse:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid, nullable: true }
+        status: { type: string }
+
+    ExportStatusResponse:
+      type: object
+      properties:
+        request_id: { type: string, format: uuid }
+        status: { type: string, enum: [pending, generating, ready, expired, failed] }
+        download_url: { type: string, nullable: true }
+        download_expires_at: { type: string, format: date-time, nullable: true }
+        generated_at: { type: string, format: date-time, nullable: true }
+        failure_reason: { type: string, nullable: true }
+
+    ConsentType:
+      type: string
+      enum:
+        - terms_of_service
+        - privacy_policy
+        - marketing_email
+        - marketing_whatsapp
+        - analytics_cookies
+        - third_party_data_sharing
+
+    ConsentUpdateBody:
+      type: object
+      required: [consent_type, granted]
+      properties:
+        consent_type: { $ref: '#/components/schemas/ConsentType' }
+        granted: { type: boolean }
+
+    ConsentRecordResponse:
+      type: object
+      properties:
+        consent_type: { $ref: '#/components/schemas/ConsentType' }
+        granted: { type: boolean }
+        granted_at: { type: string, format: date-time }
+        legal_doc_version: { type: string, nullable: true }
+
+    ConsentUpdateResponse:
+      type: object
+      properties:
+        consent: { $ref: '#/components/schemas/ConsentRecordResponse' }
+
     UserPreferencesUpdate:
       type: object
       properties:
@@ -1548,6 +1616,96 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SavedJobsList' }
+
+  /users/me/delete-request:
+    post:
+      operationId: requestAccountDeletion
+      summary: Schedule account erasure after 7-day grace (ZDPA). Requires fresh OTP.
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SensitiveActionBody' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeletionRequestResponse' }
+        '401': { description: Invalid or expired OTP }
+        '409': { description: Pending deletion already exists or account deleted }
+
+  /users/me/delete-cancel/{request_id}:
+    post:
+      operationId: cancelAccountDeletion
+      summary: Cancel a pending deletion within the grace window.
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: request_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeletionCancelResponse' }
+        '404': { description: Request not found }
+
+  /users/me/export-request:
+    post:
+      operationId: requestDataExport
+      summary: Start portable ZIP export (ZDPA). Requires fresh OTP.
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SensitiveActionBody' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportRequestResponse' }
+        '401': { description: Invalid or expired OTP }
+
+  /users/me/export-status/{request_id}:
+    get:
+      operationId: getDataExportStatus
+      summary: Poll export job; returns signed download URL when ready.
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: request_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExportStatusResponse' }
+        '404': { description: Request not found }
+
+  /users/me/consent:
+    post:
+      operationId: recordUserConsent
+      summary: Append consent_log entry for a toggle change.
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentUpdateBody' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentUpdateResponse' }
 
   /preferences:
     get:

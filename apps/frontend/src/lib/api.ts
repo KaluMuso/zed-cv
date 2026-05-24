@@ -1285,7 +1285,71 @@ export const bwanaInterview = {
     apiFetch<InterviewHistoryResult>("/interview/history", { token }),
 };
 
-// ── Data-subject rights (task #63) ──
+// ── Data rights: scheduled deletion, ZIP export, consent (Bucket 9) ──
+export type ConsentType =
+  | "terms_of_service"
+  | "privacy_policy"
+  | "marketing_email"
+  | "marketing_whatsapp"
+  | "analytics_cookies"
+  | "third_party_data_sharing";
+
+export interface DeletionRequestResponse {
+  request_id: string | null;
+  status: string;
+  scheduled_at: string;
+}
+
+export interface ExportRequestResponse {
+  request_id: string | null;
+  status: string;
+}
+
+export interface ExportStatusResponse {
+  request_id: string;
+  status: string;
+  download_url?: string | null;
+  download_expires_at?: string | null;
+  generated_at?: string | null;
+  failure_reason?: string | null;
+}
+
+export interface ConsentRecordResponse {
+  consent_type: ConsentType;
+  granted: boolean;
+  granted_at: string;
+  legal_doc_version?: string | null;
+}
+
+export const dataRights = {
+  requestDeletion: (token: string, otpCode: string) =>
+    apiFetch<DeletionRequestResponse>("/users/me/delete-request", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ otp_code: otpCode }),
+    }),
+  cancelDeletion: (token: string, requestId: string) =>
+    apiFetch<{ request_id: string; status: string }>(
+      `/users/me/delete-cancel/${requestId}`,
+      { method: "POST", token }
+    ),
+  requestExport: (token: string, otpCode: string) =>
+    apiFetch<ExportRequestResponse>("/users/me/export-request", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ otp_code: otpCode }),
+    }),
+  exportStatus: (token: string, requestId: string) =>
+    apiFetch<ExportStatusResponse>(`/users/me/export-status/${requestId}`, { token }),
+  recordConsent: (token: string, consentType: ConsentType, granted: boolean) =>
+    apiFetch<{ consent: ConsentRecordResponse }>("/users/me/consent", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ consent_type: consentType, granted }),
+    }),
+};
+
+// ── Data-subject rights (task #63) — legacy immediate delete / JSON export ──
 export interface AccountDeletionResult {
   deleted: boolean;
   already_deleted: boolean;

@@ -1,10 +1,25 @@
-"""User account preference routes."""
+"""User account preference and data-rights routes."""
+from __future__ import annotations
+
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import ValidationError
 
+from app.core.config import Settings, get_settings
 from app.core.deps import get_current_user_id, get_supabase
+from app.schemas.data_rights import (
+    ConsentRecordResponse,
+    ConsentUpdateBody,
+    ConsentUpdateResponse,
+    DeletionCancelResponse,
+    DeletionRequestResponse,
+    ExportRequestResponse,
+    ExportStatusResponse,
+    SensitiveActionBody,
+)
+from app.services.deletion import cancel_deletion, request_deletion
+from app.services.export import generate_export, get_export_status, request_export
 from app.schemas.saved_jobs import SavedJobsList
 from app.schemas.user import (
     AutoMatchPreferences,
@@ -163,3 +178,128 @@ async def update_auto_match_preferences(
         raise HTTPException(status_code=422, detail="No fields to update")
     supabase.table("users").update(update_data).eq("id", user_id).execute()
     return await get_auto_match_preferences(user_id, supabase)
+
+
+# ── ZDPA: scheduled deletion, portable export, consent log (Bucket 9) ──
+
+
+def _client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
+
+
+def _legal_doc_version(consent_type: str, supabase) -> str | None:
+    slug = None
+    if consent_type == "terms_of_service":
+        slug = "terms"
+    elif consent_type == "privacy_policy":
+        slug = "privacy"
+    if not slug:
+        return None
+    row = (
+        supabase.table("legal_docs")
+        .select("version")
+        .eq("slug", slug)
+        .limit(1)
+        .execute()
+    )
+    if row.data:
+        return row.data[0].get("version")
+    return None
+
+
+@router.post("/me/delete-request", response_model=DeletionRequestResponse)
+async def create_delete_request(
+    body: SensitiveActionBody,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Schedule account erasure after 7-day grace (requires fresh OTP)."""
+    result = request_deletion(
+        user_id,
+        otp_code=body.otp_code,
+        supabase=supabase,
+        settings=settings,
+    )
+    return DeletionRequestResponse(**result)
+
+
+@router.post("/me/delete-cancel/{request_id}", response_model=DeletionCancelResponse)
+async def cancel_delete_request(
+    request_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    result = cancel_deletion(user_id, request_id, supabase)
+    return DeletionCancelResponse(**result)
+
+
+@router.post("/me/export-request", response_model=ExportRequestResponse)
+async def create_export_request(
+    body: SensitiveActionBody,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Start a ZIP data export (requires fresh OTP). Generation runs in background."""
+    result = request_export(
+        user_id,
+        otp_code=body.otp_code,
+        supabase=supabase,
+        settings=settings,
+    )
+    request_id = result.get("request_id")
+    if request_id and result.get("status") == "pending":
+        background_tasks.add_task(generate_export, request_id, supabase)
+    return ExportRequestResponse(**result)
+
+
+@router.get("/me/export-status/{request_id}", response_model=ExportStatusResponse)
+async def read_export_status(
+    request_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    result = get_export_status(user_id, request_id, supabase)
+    return ExportStatusResponse(**result)
+
+
+@router.post("/me/consent", response_model=ConsentUpdateResponse)
+async def record_consent(
+    body: ConsentUpdateBody,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Append an immutable consent_log row (service role insert)."""
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    version = _legal_doc_version(body.consent_type, supabase)
+    inserted = (
+        supabase.table("consent_log")
+        .insert({
+            "user_id": user_id,
+            "consent_type": body.consent_type,
+            "granted": body.granted,
+            "granted_at": now.isoformat(),
+            "legal_doc_version": version,
+            "ip_address": _client_ip(request),
+            "user_agent": (request.headers.get("user-agent") or "")[:500] or None,
+        })
+        .execute()
+    )
+    row = inserted.data[0] if inserted.data else {}
+    record = ConsentRecordResponse(
+        consent_type=body.consent_type,
+        granted=body.granted,
+        granted_at=row.get("granted_at") or now.isoformat(),
+        legal_doc_version=version,
+    )
+    return ConsentUpdateResponse(consent=record)
