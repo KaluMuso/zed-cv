@@ -82,3 +82,22 @@ For drift repair on `supabase_migrations.schema_migrations`, see comments at the
 | 2 | `057_interview_prep.sql` | DDL — apply once on fresh DBs; prod may already have this schema under the old `060_interview_prep` filename |
 | 3 | `059_audit_idempotent.sql` | Safe to re-run — verification only |
 | 4 | `060_match_jobs_v2_weighted.sql` | DDL — weighted matching RPC |
+
+## Registry backfill 2026-05-24
+
+**What happened:** On prod (`chnesgmcuxyhwhzomdov`), `supabase_migrations.schema_migrations` had only ~12 rows, with the latest name `025_canonicalize_skill_refs` (2026-05-17). Migrations `026`–`062` were applied to the database schema manually or outside the CLI registry, but never recorded. The repo has **60** `.sql` files under `infra/supabase/migrations/` (slots **028** and **058** are reserved — no files on disk).
+
+**Risk if ignored:** The next `supabase db push` or migration deploy may attempt to re-apply `026`–`062` and fail with duplicate-object or duplicate-key errors mid-deploy.
+
+**Fix:** Run the one-time script [`scripts/backfill_supabase_migrations.sql`](../scripts/backfill_supabase_migrations.sql) in the Supabase SQL Editor. It inserts **35** registry rows (`026` through `062`, skipping reserved slots) with synthetic `version` timestamps starting at `20260517130000` (+1 minute per file). It does **not** re-run migration SQL — only metadata. Idempotent via `WHERE NOT EXISTS` on `name`.
+
+**Do not** re-run `043`–`055` bodies on prod; schema is already there (see [Verifying prod](#verifying-prod-supabase-sql-editor) above).
+
+**Verify after run:**
+
+```sql
+SELECT COUNT(*) FROM supabase_migrations.schema_migrations;
+SELECT name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;
+```
+
+Expect the five highest names on disk: `062_dual_channel_notifications`, `061_match_batches`, `060_match_jobs_v2_weighted`, `059_audit_idempotent`, `057_interview_prep`. Total `COUNT(*)` should equal **60** when every repo migration name is registered; if `COUNT` is **47** (12 existing + 35 backfilled), the registry still lacks some `001`–`024` names and needs a separate pass — this script intentionally skips `001`–`025` rows that are already present.
