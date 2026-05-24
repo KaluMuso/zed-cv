@@ -1,7 +1,6 @@
 """Zed CV API entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -9,6 +8,10 @@ from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import (
+    rate_limit_exceeded_handler,
+    register_rate_limit_middleware,
+)
 from app.api.v1 import (
     auth,
     jobs,
@@ -61,9 +64,10 @@ def create_app() -> FastAPI:
     )
     application.state.limiter = limiter
     application.add_exception_handler(
-        RateLimitExceeded, _rate_limit_exceeded_handler
+        RateLimitExceeded, rate_limit_exceeded_handler
     )
     register_exception_handlers(application)
+    register_rate_limit_middleware(application)
 
     extra_cors = [
         o.strip()

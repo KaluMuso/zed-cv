@@ -2,61 +2,55 @@
 
 Usage in route files:
     from app.core.rate_limit import limiter
+    from app.dependencies.rate_limit import apply_rate_limits, client_ip_key
 
     @router.post("/endpoint")
-    @limiter.limit("5/minute")
+    @apply_rate_limits(("5/hour", client_ip_key),))
     async def my_endpoint(request: Request, ...):
         ...
-
-Note: The `request: Request` parameter is required by slowapi
-even if FastAPI doesn't need it for the route logic.
 
 Storage backend:
 - If REDIS_URL is set, slowapi uses Redis as shared storage. Survives
   `docker compose up -d --force-recreate` and works across replicas.
-  Use an Upstash REST URL (rediss://default:<token>@<host>:6379) for
-  the free serverless option — 10k commands/day covers typical rate-
-  limit traffic for this app several times over.
 - If REDIS_URL is unset, falls back to in-memory storage. State is
-  lost on restart and not shared across replicas — fine for solo dev
-  but means a `force-recreate` resets every IP's rate limit. The
-  fallback is intentional so a misconfigured prod doesn't crash, but
-  health checks should warn when running in production without Redis.
+  lost on restart and not shared across replicas.
 """
 import logging
 import os
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+
+from app.dependencies.rate_limit import client_ip_key
 
 logger = logging.getLogger(__name__)
 
 
 def _build_limiter() -> Limiter:
-    """Construct the limiter with Redis if REDIS_URL is set, else in-memory.
-
-    Kept as a function so tests can re-import after monkeypatching env. The
-    module-level `limiter` below calls this once at import time.
-    """
+    """Construct the limiter with Redis if REDIS_URL is set, else in-memory."""
     redis_url = os.environ.get("REDIS_URL", "").strip()
     if redis_url:
         try:
             return Limiter(
-                key_func=get_remote_address,
+                key_func=client_ip_key,
                 default_limits=["200/minute"],
                 storage_uri=redis_url,
-                # in_memory_fallback_enabled: if Redis goes down mid-request,
-                # don't 503 — fall back to local memory for that request.
-                # Limits will be soft until Redis returns, which is the
-                # right trade for "don't break the app".
                 in_memory_fallback_enabled=True,
+                # False: FastAPI routes often return plain dicts; slowapi would
+                # 500 trying to inject X-RateLimit-* on non-Response objects.
+                # Retry-After is added in rate_limit_exceeded_handler instead.
+                headers_enabled=False,
             )
         except Exception as exc:
-            # Misconfigured Redis URL: log and fall through to in-memory
-            # so the app still boots. Better than crashing on import.
-            logger.error("Rate limiter Redis init failed (%s) — using in-memory fallback", exc)
+            logger.error(
+                "Rate limiter Redis init failed (%s) — using in-memory fallback",
+                exc,
+            )
 
-    return Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+    return Limiter(
+        key_func=client_ip_key,
+        default_limits=["200/minute"],
+        headers_enabled=False,
+    )
 
 
 limiter = _build_limiter()

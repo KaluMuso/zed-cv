@@ -12,6 +12,7 @@ from app.core.deps import (
 )
 from app.core.tier_gating import FEATURE_JOB_MATCHES, verify_tier_access
 from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import apply_rate_limits, per_user_key
 from app.schemas.matching import (
     MatchResult,
     MatchList,
@@ -394,7 +395,7 @@ async def get_matches_for_user(
 
 
 @router.post("/refresh", response_model=MatchRefreshResponse)
-@limiter.limit("5/minute")
+@apply_rate_limits(("10/day", per_user_key))
 async def refresh_matches(
     request: Request,
     min_score: float = Query(50, ge=0, le=100),

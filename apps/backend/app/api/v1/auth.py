@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from jose import jwt
 from app.core.config import get_settings, Settings
 from app.core.deps import get_supabase
-from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import (
+    apply_rate_limits,
+    client_ip_key,
+    otp_phone_key,
+)
 from app.schemas.auth import OTPRequest, OTPVerify, AuthTokens
 from app.services.whatsapp import ensure_session_started, send_whatsapp_otp
 
@@ -50,7 +54,10 @@ def _hash_otp(code: str, phone: str, secret: str) -> str:
 
 
 @router.post("/otp/request")
-@limiter.limit("3/minute")
+@apply_rate_limits(
+    ("5/hour", otp_phone_key),
+    ("20/hour", client_ip_key),
+)
 async def request_otp(request: Request, body: OTPRequest, settings: Settings = Depends(get_settings), supabase=Depends(get_supabase)):
     recent = (
         supabase.table("otp_codes").select("created_at").eq("phone", body.phone)
@@ -88,7 +95,10 @@ async def request_otp(request: Request, body: OTPRequest, settings: Settings = D
 
 
 @router.post("/otp/verify", response_model=AuthTokens)
-@limiter.limit("10/minute")
+@apply_rate_limits(
+    ("10/hour", otp_phone_key),
+    ("30/hour", client_ip_key),
+)
 async def verify_otp(request: Request, body: OTPVerify, settings: Settings = Depends(get_settings), supabase=Depends(get_supabase)):
     now_iso = datetime.now(timezone.utc).isoformat()
     # Compare the hash of the user-supplied code against the stored hash.

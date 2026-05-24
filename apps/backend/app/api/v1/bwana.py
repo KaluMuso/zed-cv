@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.core.deps import get_current_user, get_supabase
-from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import apply_rate_limits, per_user_key
 from app.services.bwana_chat import handle_bwana_chat
 
 router = APIRouter(prefix="/bwana", tags=["Bwana"])
@@ -31,7 +31,10 @@ class BwanaChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=BwanaChatResponse)
-@limiter.limit("30/minute")
+@apply_rate_limits(
+    ("30/hour", per_user_key),
+    ("5/minute", per_user_key),
+)
 async def bwana_chat(
     request: Request,
     body: BwanaChatRequest,

@@ -15,44 +15,15 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from jose import jwt, JWTError
-from slowapi.util import get_remote_address
-
 from app.core.config import get_settings
 from app.core.deps import get_current_user_id, get_supabase
 from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import per_user_key
 from app.schemas.me import AccountDeletionRequest, AccountDeletionResult
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/me", tags=["DataRights"])
-
-
-# ── rate-limit key: per user, not per IP ──
-# The data export is bounded "1/hour per user" by spec. The shared
-# slowapi limiter uses get_remote_address by default, which would let
-# someone on a shared NAT exhaust the limit for an unrelated user. We
-# pull the JWT.sub instead so the bucket is keyed to the authenticated
-# user; fall back to IP only if the token can't be decoded (which on
-# this authenticated route is also caught by Depends(get_current_user_id),
-# so the fallback is purely defence-in-depth).
-def _per_user_key(request: Request) -> str:
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.lower().startswith("bearer "):
-        token = auth_header[7:]
-        settings = get_settings()
-        try:
-            payload = jwt.decode(
-                token,
-                settings.jwt_secret,
-                algorithms=[settings.jwt_algorithm],
-            )
-            sub = payload.get("sub")
-            if sub:
-                return f"user:{sub}"
-        except JWTError:
-            pass
-    return get_remote_address(request)
 
 
 # ───────────────────────────── EXPORT ─────────────────────────────
@@ -207,7 +178,7 @@ def _build_export_bundle(user_id: str, supabase) -> dict[str, Any]:
 
 
 @router.get("/export")
-@limiter.limit("1/hour", key_func=_per_user_key)
+@limiter.limit("1/hour", key_func=per_user_key)
 async def export_my_data(
     request: Request,
     user_id: str = Depends(get_current_user_id),

@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.deps import get_supabase, get_current_user_id
 from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import apply_rate_limits, per_user_key
 from app.schemas.subscription import (
     Subscription,
     PaymentInitiate,
@@ -93,7 +94,7 @@ async def initiate_payment(
         502: {"description": "Lenco upstream error"},
     },
 )
-@limiter.limit("10/minute")
+@apply_rate_limits(("30/hour", per_user_key))
 async def verify_payment(
     request: Request,
     body: PaymentVerifyRequest,

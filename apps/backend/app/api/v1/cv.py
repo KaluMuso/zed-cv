@@ -10,6 +10,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from app.core.deps import get_supabase, get_current_user, get_current_user_id, is_superadmin
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
+from app.dependencies.rate_limit import apply_rate_limits, client_ip_key, per_user_key
 from app.schemas.cv_sections import CVSections
 from app.services.cv_parser import extract_text_from_file, parse_cv_with_llm
 from app.services.cv_generator import analyze_cv, generate_cv_structured
@@ -314,7 +315,10 @@ async def _match_after_cv_upload(user_id: str, cv_id: str, supabase) -> None:
 
 
 @router.post("/upload")
-@limiter.limit("5/minute")
+@apply_rate_limits(
+    ("3/day", per_user_key),
+    ("5/day", client_ip_key),
+)
 async def upload_cv(
     request: Request,
     background_tasks: BackgroundTasks,
