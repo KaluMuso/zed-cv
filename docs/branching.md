@@ -31,15 +31,15 @@ gh api repos/KaluMuso/zed-cv -X PATCH -f default_branch=develop
 
 # 3. Protect master — PRs only, CI required, no direct pushes
 gh api repos/KaluMuso/zed-cv/branches/master/protection -X PUT \
-  -f required_status_checks='{"strict":true,"contexts":["backend-test","openapi-ts-guard","frontend-build","guards"]}' \
+  -f required_status_checks='{"strict":true,"contexts":["enforce-promotion-from-develop","backend-test","openapi-ts-guard","frontend-build","guards"]}' \
   -F enforce_admins=true \
   -F required_pull_request_reviews='{"required_approving_review_count":1}' \
   -F restrictions='{"users":[],"teams":[],"apps":[],"enforce_admins":false}' \
   -F allow_force_pushes=false \
   -F allow_deletions=false
 
-# 4. Restrict master merges to develop only (ruleset — GitHub UI recommended)
-#    Settings → Rules → Rulesets → target master → restrict merge source to develop
+# 4. Require the promotion guard on master (see "How the promotion guard works" below)
+#    Add check name: enforce-promotion-from-develop
 
 # 5. Protect develop — PR + CI, squash merge only
 gh api repos/KaluMuso/zed-cv/branches/develop/protection -X PUT \
@@ -53,6 +53,14 @@ gh api repos/KaluMuso/zed-cv/branches/develop/protection -X PUT \
 In the GitHub UI, also enable for **`develop`**: **Allow squash merging** only (disable merge commits and rebase merge if you want a linear staging history).
 
 > **Note:** Exact required status check names must match what appears on a green PR after CI runs once. Adjust the `contexts` array if job names differ (e.g. `drift-guards` workflow job is named `guards`).
+
+## How the promotion guard works
+
+GitHub Rulesets that restrict merge sources (e.g. “only `develop` may target `master`”) require **GitHub Team** on private repositories. As a free-tier workaround, we enforce the promotion ritual with [`.github/workflows/promotion-guard.yml`](../.github/workflows/promotion-guard.yml).
+
+On every pull request targeting `master`, the `enforce-promotion-from-develop` job runs. If the PR head branch is not `develop`, the job fails and blocks merge. If the head branch is `develop`, the job passes.
+
+Combined with **Require status checks to pass before merging** on `master` (classic branch protection), this prevents direct feature → `master` merges without paying for Team. After the workflow has run once on a PR, add **`enforce-promotion-from-develop`** to the required checks list for `master` (Settings → Branches → Branch protection rules → `master` → edit → Status checks).
 
 ## Promotion ritual
 

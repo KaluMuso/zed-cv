@@ -1,0 +1,16 @@
+name: Promotion guard
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  enforce-promotion-from-develop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce develop → master promotion
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "PRs to master must come from develop. You're attempting to merge ${{ github.head_ref }} directly to master, which is not allowed."
+            exit 1
+          fi
