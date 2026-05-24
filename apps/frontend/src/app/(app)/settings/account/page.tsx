@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth";
 import { dataRights, profile as profileApi } from "@/lib/api";
 import { SensitiveActionOtpDialog } from "@/components/settings/SensitiveActionOtpDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { notify } from "@/lib/toast";
 
@@ -111,11 +112,14 @@ export default function AccountSettingsPage() {
           {exportJob?.status === "ready" && exportJob.downloadUrl ? (
             <div className="space-y-2">
               <p className="text-sm text-green-700 dark:text-green-400">Your export is ready.</p>
-              <Button asChild>
-                <a href={exportJob.downloadUrl} download rel="noopener noreferrer">
-                  Download ZIP
-                </a>
-              </Button>
+              <a
+                href={exportJob.downloadUrl}
+                download
+                rel="noopener noreferrer"
+                className={cn(buttonVariants())}
+              >
+                Download ZIP
+              </a>
               {exportJob.expiresAt && (
                 <p className="text-xs text-muted-foreground">
                   Link expires {new Date(exportJob.expiresAt).toLocaleString()}

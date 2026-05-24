@@ -12,7 +12,8 @@ import {
   type UserPreferences,
 } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 
@@ -106,12 +107,18 @@ export default function SettingsPage() {
           <CardDescription>Data export, scheduled deletion, and consent preferences (ZDPA).</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 sm:flex-row">
-          <Button variant="outline" asChild>
-            <Link href="/settings/account">Account &amp; data</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/settings/privacy">Privacy &amp; consent</Link>
-          </Button>
+          <Link
+            href="/settings/account"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Account &amp; data
+          </Link>
+          <Link
+            href="/settings/privacy"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Privacy &amp; consent
+          </Link>
         </CardContent>
       </Card>
 
