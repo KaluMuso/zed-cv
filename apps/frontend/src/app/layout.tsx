@@ -15,6 +15,7 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BwanaChatWidget } from "@/components/BwanaChatWidget";
 import { RouteTransitionShell } from "@/components/shared/RouteTransitionShell";
 import { Toaster } from "@/components/shared/Toaster";
+import { PlausibleAnalytics } from "@/components/PlausibleAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -56,6 +57,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans">
+        <PlausibleAnalytics />
         <ThemeProvider>
           <ErrorBoundary>
             <AuthProvider>

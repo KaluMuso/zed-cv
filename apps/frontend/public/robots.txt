@@ -1,0 +1,11 @@
+# Static fallback for crawlers that read /robots.txt before the Next.js route.
+# Canonical dynamic rules live in src/app/robots.ts (disallow admin/profile/auth/api).
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /profile/
+Disallow: /auth/
+Disallow: /api/
+
+Host: https://www.zedapply.com
+Sitemap: https://www.zedapply.com/sitemap.xml
