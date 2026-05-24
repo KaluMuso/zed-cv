@@ -3,7 +3,6 @@
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "@/components/shared/Toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Analytics } from "./analytics-placeholder";
 import { RegisterServiceWorker } from "./register-service-worker";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
@@ -13,7 +12,6 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         {children}
         <Toaster />
         <RegisterServiceWorker />
-        <Analytics />
       </TooltipProvider>
     </ThemeProvider>
   );
