@@ -198,18 +198,9 @@ def create_app() -> FastAPI:
 
 
 # ── Observability: Sentry (no-op if SENTRY_DSN is empty) ──
-_settings = get_settings()
-if _settings.sentry_dsn:
-    import sentry_sdk
-    from app.core.sentry_redaction import before_send as _sentry_before_send
+from app.observability.sentry import init_sentry
 
-    sentry_sdk.init(
-        dsn=_settings.sentry_dsn,
-        environment=_settings.sentry_environment,
-        traces_sample_rate=0.1,
-        send_default_pii=False,
-        before_send=_sentry_before_send,
-    )
+init_sentry(get_settings())
 
 app = create_app()
 
@@ -221,5 +212,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=_settings.debug,
+        reload=get_settings().debug,
     )
