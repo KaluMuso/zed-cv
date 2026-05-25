@@ -16,6 +16,10 @@ from app.services.canonical_skills_seed_data import (
     PARENT_BY_CANONICAL,
 )
 from app.services.skill_resolver import SKILL_ALIASES
+from app.services.canonical_skills_seed_validation import (
+    log_skipped_candidate,
+    reject_seed_candidate,
+)
 from app.services.skills_dictionary import normalize_raw_skill
 
 logger = logging.getLogger(__name__)
@@ -92,8 +96,16 @@ def parent_and_notes_for(name: str) -> tuple[str | None, str | None]:
 
 
 def build_seed_row_from_raw(raw: str) -> CanonicalSeedRow | None:
+    reason = reject_seed_candidate(raw)
+    if reason:
+        log_skipped_candidate(raw, reason)
+        return None
     name = raw_to_canonical_display(raw)
     if not name:
+        return None
+    display_reason = reject_seed_candidate(name)
+    if display_reason:
+        log_skipped_candidate(name, f"display {display_reason}")
         return None
     parent, notes = parent_and_notes_for(name)
     return CanonicalSeedRow(name=name, parent_skill=parent, notes=notes)
@@ -115,8 +127,13 @@ def collect_raw_skill_counts(supabase: Any) -> Counter[str]:
             break
         for row in rows:
             for item in row.get("requirements") or []:
-                if isinstance(item, str) and item.strip():
-                    counts[normalize_raw_skill(item)] += 1
+                if not isinstance(item, str) or not item.strip():
+                    continue
+                reason = reject_seed_candidate(item)
+                if reason:
+                    log_skipped_candidate(item, reason)
+                    continue
+                counts[normalize_raw_skill(item)] += 1
         if len(rows) < _PAGE_SIZE:
             break
         offset += _PAGE_SIZE
@@ -136,6 +153,10 @@ def collect_raw_skill_counts(supabase: Any) -> Counter[str]:
             skill_obj = row.get("skills") or {}
             name = skill_obj.get("name") if isinstance(skill_obj, dict) else None
             if isinstance(name, str) and name.strip():
+                reason = reject_seed_candidate(name)
+                if reason:
+                    log_skipped_candidate(name, reason)
+                    continue
                 counts[normalize_raw_skill(name)] += 1
         if len(rows) < _PAGE_SIZE:
             break
@@ -188,6 +209,10 @@ def seed_canonical_skills(
 
     inserted: list[CanonicalSeedRow] = []
     for row in rows:
+        reason = reject_seed_candidate(row.name)
+        if reason:
+            log_skipped_candidate(row.name, f"insert {reason}")
+            continue
         payload = {
             "name": row.name,
             "parent_skill": row.parent_skill,
