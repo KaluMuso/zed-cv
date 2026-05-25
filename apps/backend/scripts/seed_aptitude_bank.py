@@ -45,14 +45,18 @@ RETRY_MODELS = (
     "anthropic/claude-3-haiku",
 )
 
+VALID_DIFFICULTIES = frozenset({"easy", "medium", "hard"})
+VERBAL_OPTION_VALUES = frozenset({"true", "false", "cannot_say"})
+
 PACK_PROMPTS = {
     "numerical": (
         "Generate SHL-style numerical reasoning MCQs for African job seekers. "
         "Use charts, percentages, ratios, currency (ZMW). "
     ),
     "verbal": (
-        "Generate SHL-style verbal reasoning MCQs: short passages, inference, "
-        "true/false/cannot say style as multiple choice."
+        "Generate SHL-style verbal reasoning MCQs: short passages with inference. "
+        "Respond with EXACTLY 3 options: 'true', 'false', 'cannot_say'. "
+        "No other options."
     ),
     "abstract": (
         "Generate SHL-style abstract reasoning: pattern series, odd-one-out, "
@@ -60,12 +64,32 @@ PACK_PROMPTS = {
     ),
 }
 
+_JSON_SCHEMA_BY_PACK = {
+    "numerical": (
+        '{"questions": [{"question_text": "...", "options": '
+        '[{"label":"A","value":"a"},...4 options], "correct_value": "a", '
+        '"difficulty": "medium"}]}'
+    ),
+    "verbal": (
+        '{"questions": [{"question_text": "...", "options": '
+        '[{"label":"T","value":"true"},{"label":"F","value":"false"},'
+        '{"label":"C","value":"cannot_say"}], "correct_value": "true", '
+        '"difficulty": "medium"}]}'
+    ),
+    "abstract": (
+        '{"questions": [{"question_text": "...", "options": '
+        '[{"label":"A","value":"a"},...4 options], "correct_value": "a", '
+        '"difficulty": "medium"}]}'
+    ),
+}
+
 VERBAL_EXAMPLE_BLOCK = (
     "\n\nExample format:\n"
     'Passage: "All interns must submit timesheets by Friday."\n'
     "Question: Can we infer that interns work five days a week?\n"
-    'Options: A) Yes B) No C) Cannot say D) Only if approved\n'
-    'correct_value: "c"\n'
+    'Options: [{"label":"T","value":"true"},{"label":"F","value":"false"},'
+    '{"label":"C","value":"cannot_say"}]\n'
+    'correct_value: "cannot_say"\n'
 )
 
 ABSTRACT_EXAMPLE_BLOCK = (
@@ -102,18 +126,52 @@ def _parse_questions_payload(text: str) -> list[dict[str, Any]]:
     return items
 
 
-def _quality_ok(item: dict[str, Any]) -> bool:
-    opts = item.get("options")
-    if not isinstance(opts, list) or len(opts) < 4:
-        return False
-    if not str(item.get("question_text") or "").strip():
-        return False
-    if not str(item.get("correct_value") or "").strip():
-        return False
+def _normalized_option_values(opts: list[Any]) -> list[str]:
+    values: list[str] = []
     for opt in opts:
         if not isinstance(opt, dict) or not opt.get("label") or not opt.get("value"):
+            return []
+        values.append(str(opt["value"]).strip().lower())
+    return values
+
+
+def _quality_ok(item: dict[str, Any], pack: str) -> bool:
+    if not str(item.get("question_text") or "").strip():
+        return False
+
+    difficulty = str(item.get("difficulty") or "medium").strip().lower()
+    if difficulty not in VALID_DIFFICULTIES:
+        return False
+
+    opts = item.get("options")
+    if not isinstance(opts, list):
+        return False
+
+    option_values = _normalized_option_values(opts)
+    if len(option_values) != len(opts):
+        return False
+
+    correct = str(item.get("correct_value") or "").strip().lower()
+    if not correct:
+        return False
+
+    if pack == "verbal":
+        if len(opts) != 3:
             return False
-    return True
+        if set(option_values) != VERBAL_OPTION_VALUES:
+            return False
+        return correct in VERBAL_OPTION_VALUES
+
+    if pack == "numerical":
+        expected_len = 4
+    elif pack == "abstract":
+        expected_len = 4
+    else:
+        return False
+
+    if len(opts) != expected_len:
+        return False
+    return correct in option_values
 
 
 def _question_text_hash(question_text: str) -> str:
@@ -149,12 +207,10 @@ def _build_user_prompt(
             extra = VERBAL_EXAMPLE_BLOCK
         elif pack == "abstract":
             extra = ABSTRACT_EXAMPLE_BLOCK
+    schema_hint = _JSON_SCHEMA_BY_PACK.get(pack, _JSON_SCHEMA_BY_PACK["numerical"])
     return (
-        f"{base}{extra} Return JSON only: "
-        '{"questions": [{"question_text": "...", "options": '
-        '[{"label":"A","value":"a"},...4 options], "correct_value": "a", '
-        '"difficulty": "medium"}]}'
-        f" Generate exactly {count} unique questions."
+        f"{base}{extra} Return JSON only: {schema_hint} "
+        f"Generate exactly {count} unique questions."
     )
 
 
@@ -190,7 +246,7 @@ def _generate_pack_questions_sync(
     )
     content = get_completion_content(response, default="{}")
     raw = _parse_questions_payload(str(content or "{}"))
-    return [q for q in raw if _quality_ok(q)]
+    return [q for q in raw if _quality_ok(q, pack)]
 
 
 async def _generate_pack_questions(
@@ -325,7 +381,7 @@ async def _seed_pack_once(
                     "question_text": text,
                     "options": q["options"],
                     "correct_value": q["correct_value"],
-                    "difficulty": q.get("difficulty") or "medium",
+                    "difficulty": str(q.get("difficulty") or "medium").strip().lower(),
                 }
             )
 
