@@ -254,7 +254,7 @@ class TestAptitudeSeedScript:
         )
 
         async def _noop_generate(*_a, **_k):
-            return []
+            return [], []
 
         monkeypatch.setattr(mod, "_generate_pack_questions", _noop_generate)
         monkeypatch.setattr(mod, "get_supabase", lambda: fake_supabase)

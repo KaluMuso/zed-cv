@@ -20,7 +20,7 @@ from typing import Any
 # Allow `python scripts/seed_aptitude_bank.py` from apps/backend
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from openai import OpenAI
+from openai import APIError, OpenAI
 
 from app.core.config import get_settings
 from app.core.deps import get_supabase
@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 PACKS = ("numerical", "verbal", "abstract")
 TARGET_PER_PACK = 60
-BATCH_SIZE = 10
+DEFAULT_BATCH_SIZE = 50
+JSON_RETRY_BATCH_SIZES = (50, 25, 10)
+TOKENS_PER_QUESTION = 400
 MODEL = "google/gemini-2.0-flash-001"
 
 PACK_PROMPTS = {
@@ -58,10 +60,15 @@ def _strip_json_fences(text: str) -> str:
 
 
 def _parse_questions_payload(text: str) -> list[dict[str, Any]]:
-    data = json.loads(_strip_json_fences(text))
+    try:
+        data = json.loads(_strip_json_fences(text))
+    except json.JSONDecodeError as exc:
+        logger.warning("Aptitude seed JSON decode failed: %s", exc)
+        return []
     items = data.get("questions") if isinstance(data, dict) else data
     if not isinstance(items, list):
-        raise ValueError("Expected questions array in LLM JSON")
+        logger.warning("Aptitude seed: expected questions array in LLM JSON")
+        return []
     return items
 
 
@@ -79,7 +86,68 @@ def _quality_ok(item: dict[str, Any]) -> bool:
     return True
 
 
-async def _generate_pack_questions(pack: str, count: int) -> list[dict[str, Any]]:
+def _json_retry_sizes(requested: int) -> list[int]:
+    """Batch sizes to try after JSON parse failures (largest first)."""
+    if requested <= 0:
+        return []
+    ladder = list(JSON_RETRY_BATCH_SIZES)
+    if requested > ladder[0]:
+        return [requested, *ladder]
+    if requested in ladder:
+        start = ladder.index(requested)
+        return ladder[start:]
+    smaller = [s for s in ladder if s < requested]
+    return [requested, *smaller]
+
+
+def _is_response_format_rejected(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "response_format" in msg or "json_object" in msg
+
+
+def _completion_create(
+    client: OpenAI,
+    *,
+    prompt: str,
+    max_tokens: int,
+    use_json_mode: bool,
+) -> str:
+    kwargs: dict[str, Any] = {
+        "model": MODEL,
+        "max_tokens": max_tokens,
+        "temperature": 0.5,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You write fair psychometric test items. Output valid JSON only.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+    }
+    if use_json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    try:
+        response = client.chat.completions.create(**kwargs)
+    except APIError as exc:
+        if use_json_mode and _is_response_format_rejected(exc):
+            logger.warning(
+                "OpenRouter rejected response_format=json_object (%s); retrying without",
+                exc,
+            )
+            kwargs.pop("response_format", None)
+            response = client.chat.completions.create(**kwargs)
+            return get_completion_content(response, default="{}")
+        raise
+
+    return get_completion_content(response, default="{}")
+
+
+async def _generate_pack_questions(
+    pack: str,
+    count: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Generate questions; returns (valid_questions, attempt_log)."""
     settings = get_settings()
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY is required to seed aptitude bank")
@@ -88,32 +156,60 @@ async def _generate_pack_questions(pack: str, count: int) -> list[dict[str, Any]
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
     )
-    prompt = (
-        f"{PACK_PROMPTS[pack]} Return JSON only: "
-        '{"questions": [{"question_text": "...", "options": '
-        '[{"label":"A","value":"a"},...4 options], "correct_value": "a", '
-        '"difficulty": "medium"}]}'
-        f" Generate exactly {count} unique questions."
-    )
+    attempt_log: list[dict[str, Any]] = []
 
     def _sync() -> list[dict[str, Any]]:
-        response = client.chat.completions.create(
-            model=MODEL,
-            max_tokens=8000,
-            temperature=0.5,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You write fair psychometric test items. Output valid JSON only.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-        )
-        content = get_completion_content(response, default="{}")
-        raw = _parse_questions_payload(str(content or "{}"))
-        return [q for q in raw if _quality_ok(q)]
+        json_mode_active = True
+        sizes = _json_retry_sizes(count)
+        for attempt_idx, batch_size in enumerate(sizes, start=1):
+            prompt = (
+                f"{PACK_PROMPTS[pack]} Return JSON only: "
+                '{"questions": [{"question_text": "...", "options": '
+                '[{"label":"A","value":"a"},...4 options], "correct_value": "a", '
+                '"difficulty": "medium"}]}'
+                f" Generate exactly {batch_size} unique questions."
+            )
+            max_tokens = max(512, batch_size * TOKENS_PER_QUESTION)
+            try:
+                content = _completion_create(
+                    client,
+                    prompt=prompt,
+                    max_tokens=max_tokens,
+                    use_json_mode=json_mode_active,
+                )
+            except APIError as exc:
+                attempt_log.append(
+                    {
+                        "attempt": attempt_idx,
+                        "batch_size": batch_size,
+                        "max_tokens": max_tokens,
+                        "json_mode": json_mode_active,
+                        "error": f"APIError: {exc}",
+                        "parsed": 0,
+                        "valid": 0,
+                    }
+                )
+                continue
 
-    return await asyncio.to_thread(_sync)
+            raw = _parse_questions_payload(str(content or "{}"))
+            valid = [q for q in raw if _quality_ok(q)]
+            attempt_log.append(
+                {
+                    "attempt": attempt_idx,
+                    "batch_size": batch_size,
+                    "max_tokens": max_tokens,
+                    "json_mode": json_mode_active,
+                    "parsed": len(raw),
+                    "valid": len(valid),
+                }
+            )
+            if valid:
+                return valid[:count]
+
+        return []
+
+    valid = await asyncio.to_thread(_sync)
+    return valid, attempt_log
 
 
 def _pack_count(supabase, pack: str) -> int:
@@ -131,6 +227,10 @@ def _pack_count(supabase, pack: str) -> int:
 async def seed_pack(pack: str, *, target: int = TARGET_PER_PACK) -> int:
     supabase = get_supabase()
     existing = _pack_count(supabase, pack)
+    print(
+        f"Starting pack {pack} (target: {target}, currently have: {existing})",
+        flush=True,
+    )
     if existing >= target:
         logger.info("Pack %s already has %s rows — skipping", pack, existing)
         return 0
@@ -138,10 +238,16 @@ async def seed_pack(pack: str, *, target: int = TARGET_PER_PACK) -> int:
     needed = target - existing
     inserted = 0
     while inserted < needed:
-        batch = min(BATCH_SIZE, needed - inserted)
-        questions = await _generate_pack_questions(pack, batch)
+        batch = min(DEFAULT_BATCH_SIZE, needed - inserted)
+        questions, attempt_log = await _generate_pack_questions(pack, batch)
         if not questions:
-            logger.warning("Pack %s: LLM returned no valid questions", pack)
+            logger.error(
+                "Pack %s: batch failed after %s attempts — giving up on this batch",
+                pack,
+                len(attempt_log),
+            )
+            for entry in attempt_log:
+                logger.error("Pack %s attempt detail: %s", pack, entry)
             break
         rows = [
             {
@@ -157,15 +263,17 @@ async def seed_pack(pack: str, *, target: int = TARGET_PER_PACK) -> int:
         inserted += len(rows)
         logger.info("Pack %s: inserted %s (total new %s)", pack, len(rows), inserted)
 
+    print(f"Pack {pack} summary: inserted {inserted} new rows", flush=True)
     return inserted
 
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    total = 0
+    summary: dict[str, int] = {}
     for pack in PACKS:
-        total += await seed_pack(pack)
-    logger.info("Seed complete. New rows inserted: %s", total)
+        summary[pack] = await seed_pack(pack)
+    print("Seed complete — per-pack new rows:", summary, flush=True)
+    logger.info("Seed complete. New rows inserted: %s", sum(summary.values()))
 
 
 if __name__ == "__main__":
