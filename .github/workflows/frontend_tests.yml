@@ -1,13 +1,21 @@
+# Vitest gate for branch protection check "Frontend tests / vitest".
+# CI workflow also runs npm test after lint; this job stays for the required check name.
 name: Frontend tests
+
 on:
   pull_request:
     paths:
       - "apps/frontend/**"
       - ".github/workflows/frontend_tests.yml"
+      - ".github/workflows/ci.yml"
   push:
     branches: [master]
     paths:
       - "apps/frontend/**"
+
+concurrency:
+  group: frontend-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   vitest:
@@ -24,3 +32,5 @@ jobs:
           cache-dependency-path: apps/frontend/package-lock.json
       - run: npm ci
       - run: npm test
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1

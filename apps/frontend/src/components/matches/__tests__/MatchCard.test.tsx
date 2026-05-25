@@ -1,0 +1,75 @@
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MatchCard } from "../MatchCard";
+import type { MatchData } from "@/lib/api";
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => <a href={href}>{children}</a>,
+}));
+
+const baseMatch: MatchData = {
+  id: "m1",
+  score: 88,
+  vector_score: 82,
+  skill_score: 91,
+  bonus_score: 5,
+  matched_skills: ["python"],
+  missing_skills: [],
+  explanation: null,
+  created_at: "2026-05-18T00:00:00Z",
+  job: {
+    id: "j1",
+    title: "Software Engineer",
+    company: "ACME Zambia",
+    location: "Lusaka",
+    closing_date: null,
+    apply_url: null,
+    apply_email: null,
+    source_url: null,
+  },
+};
+
+describe("MatchCard", () => {
+  it("renders the match score", () => {
+    render(<MatchCard match={baseMatch} onApplyClick={vi.fn()} />);
+    expect(screen.getByText("88")).toBeInTheDocument();
+    expect(screen.getByText("Software Engineer")).toBeInTheDocument();
+  });
+
+  it("shows an active Apply button that calls onApplyClick", async () => {
+    const user = userEvent.setup();
+    const onApplyClick = vi.fn();
+    render(<MatchCard match={baseMatch} onApplyClick={onApplyClick} />);
+    const btn = screen.getByTestId("match-apply-active");
+    expect(btn).toBeEnabled();
+    await user.click(btn);
+    expect(onApplyClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables apply when the job is expired", () => {
+    render(<MatchCard match={baseMatch} expired onApplyClick={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /application closed/i })).toBeDisabled();
+    expect(screen.getByText("EXPIRED")).toBeInTheDocument();
+  });
+
+  it("renders an external apply link when apply_url is set", () => {
+    const withUrl: MatchData = {
+      ...baseMatch,
+      job: {
+        ...baseMatch.job,
+        apply_url: "https://careers.example.com/apply",
+      },
+    };
+    render(<MatchCard match={withUrl} />);
+    const link = screen.getByTestId("match-apply-external");
+    expect(link).toHaveAttribute("href", "https://careers.example.com/apply");
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+});

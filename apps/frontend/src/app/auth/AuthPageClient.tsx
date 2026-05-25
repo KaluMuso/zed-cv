@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { auth, DEVICE_TOKEN_KEY, type OtpChannel, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -9,10 +8,8 @@ import { z } from "zod";
 import { Icon } from "@/components/ui/Icon";
 import { Logo } from "@/components/ui/Logo";
 import { ChevronMotif } from "@/components/ui/ChevronMotif";
-import { Button } from "@/components/ui/button";
-import { PhoneField } from "@/components/shared/PhoneField";
-import { OtpField } from "@/components/shared/OtpField";
-import { StepProgress } from "@/components/shared/StepProgress";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { OtpPage } from "@/components/auth/OtpPage";
 
 const phoneSchema = z
   .string()
@@ -115,6 +112,22 @@ export default function AuthPageClient() {
       setLoading(false);
     }
   };
+
+  const handleResendOtp = useCallback(async () => {
+    if (resendIn > 0 || loading) return;
+    setError("");
+    setLoading(true);
+    try {
+      const channel = isFreeTier ? otpChannel : "whatsapp";
+      await auth.requestOTP(fullPhone, channel);
+      setResendIn(30);
+      setOtpCode("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend OTP");
+    } finally {
+      setLoading(false);
+    }
+  }, [fullPhone, isFreeTier, loading, otpChannel, resendIn]);
 
   const verifyOtp = useCallback(
     async (code: string) => {
@@ -264,223 +277,41 @@ export default function AuthPageClient() {
           </div>
 
           {step === "phone" && (
-            <div className="fade-up">
-              <StepProgress current={1} total={2} labels={["Phone", "Verify code"]} className="mb-4" />
-              <h2
-                className="font-display mt-2 mb-2"
-                style={{ fontSize: 44, letterSpacing: "-0.02em" }}
-              >
-                Enter your number
-              </h2>
-              <p
-                className="text-sm mb-8"
-                style={{ color: "var(--muted)" }}
-              >
-                We&apos;ll send a 6-digit code by email or WhatsApp. Your email receives daily match digests.
-              </p>
-
-              <form onSubmit={handlePhoneSubmit}>
-                <label htmlFor="auth-phone" className="mb-2 block text-sm font-medium text-ink-2">
-                  Phone number
-                </label>
-                <PhoneField
-                  id="auth-phone"
-                  digits={phoneDigits}
-                  onDigitsChange={setPhoneDigits}
-                  error={error}
-                  disabled={loading}
-                />
-
-                <label htmlFor="auth-email" className="mb-2 mt-5 block text-sm font-medium text-ink-2">
-                  Email address
-                </label>
-                <input
-                  id="auth-email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={loading}
-                  placeholder="you@example.com"
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                />
-
-                {isFreeTier && (
-                  <fieldset className="mt-5">
-                    <legend className="mb-2 text-sm font-medium text-ink-2">
-                      Send code via
-                    </legend>
-                    <div className="flex flex-col gap-2 text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="otp-channel"
-                          checked={otpChannel === "email"}
-                          onChange={() => setOtpChannel("email")}
-                          disabled={loading}
-                        />
-                        Email (default)
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="otp-channel"
-                          checked={otpChannel === "whatsapp"}
-                          onChange={() => setOtpChannel("whatsapp")}
-                          disabled={loading}
-                        />
-                        WhatsApp
-                      </label>
-                    </div>
-                  </fieldset>
-                )}
-
-                <label
-                  className="mt-5 flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer"
-                  style={{ color: "var(--muted)" }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => setConsentChecked(e.target.checked)}
-                    className="cursor-pointer"
-                    style={{
-                      accentColor: "var(--green-700)",
-                      width: 16,
-                      height: 16,
-                      marginTop: 2,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span>
-                    I agree to the{" "}
-                    <Link
-                      href="/legal/terms"
-                      style={{ color: "var(--ink-2)", textDecoration: "underline" }}
-                    >
-                      Terms
-                    </Link>{" "}
-                    and acknowledge the{" "}
-                    <Link
-                      href="/legal/privacy"
-                      style={{ color: "var(--ink-2)", textDecoration: "underline" }}
-                    >
-                      Privacy Policy
-                    </Link>
-                    .
-                  </span>
-                </label>
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="mt-6 w-full"
-                  loading={loading}
-                  disabled={!consentChecked || phoneDigits.length < 9 || !email.trim()}
-                >
-                  Send code <Icon name="arrowRight" size={16} />
-                </Button>
-              </form>
-            </div>
+            <LoginPage
+              phoneDigits={phoneDigits}
+              email={email}
+              consentChecked={consentChecked}
+              loading={loading}
+              error={error}
+              otpChannel={otpChannel}
+              isFreeTier={isFreeTier}
+              onPhoneChange={setPhoneDigits}
+              onEmailChange={setEmail}
+              onConsentChange={setConsentChecked}
+              onOtpChannelChange={setOtpChannel}
+              onSubmit={handlePhoneSubmit}
+            />
           )}
 
           {step === "otp" && (
-            <div className="fade-up">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="mb-4 h-auto min-h-0 px-0 text-muted-foreground"
-                onClick={() => {
-                  setStep("phone");
-                  setOtpCode("");
-                  setError("");
-                }}
-              >
-                <Icon name="arrowLeft" size={13} /> Change number
-              </Button>
-              <StepProgress current={2} total={2} labels={["Phone", "Verify code"]} className="mb-4" />
-              <h2
-                className="font-display mt-2 mb-2"
-                style={{ fontSize: 44, letterSpacing: "-0.02em" }}
-              >
-                Enter the code
-              </h2>
-              <p
-                className="text-sm mb-8"
-                style={{ color: "var(--muted)" }}
-              >
-                {otpChannel === "email" ? (
-                  <>
-                    Sent to{" "}
-                    <span style={{ color: "var(--ink)" }}>{email.trim()}</span> by
-                    email.
-                  </>
-                ) : (
-                  <>
-                    Sent to{" "}
-                    <span className="font-mono" style={{ color: "var(--ink)" }}>
-                      +260 {phoneDigits}
-                    </span>{" "}
-                    on WhatsApp.
-                  </>
-                )}
-              </p>
-
-              <label
-                className="mb-6 flex items-start gap-2.5 text-xs leading-relaxed cursor-pointer"
-                style={{ color: "var(--muted)" }}
-              >
-                <input
-                  type="checkbox"
-                  checked={rememberDevice}
-                  onChange={(e) => setRememberDevice(e.target.checked)}
-                  disabled={loading}
-                  className="cursor-pointer"
-                  style={{
-                    accentColor: "var(--green-700)",
-                    width: 16,
-                    height: 16,
-                    marginTop: 2,
-                    flexShrink: 0,
-                  }}
-                />
-                <span>Remember this device (skip verification code next time)</span>
-              </label>
-
-              <OtpField
-                value={otpCode}
-                onChange={setOtpCode}
-                disabled={loading}
-                error={error}
-              />
-
-              <div className="mt-6 flex justify-between items-center">
-                <span className="text-sm" style={{ color: "var(--muted)" }}>
-                  {loading ? "Verifying..." : "Didn't receive it?"}
-                </span>
-                {!loading && (
-                  <button
-                    onClick={() => resendIn === 0 && setResendIn(30)}
-                    disabled={resendIn > 0}
-                    className="text-sm font-mono font-medium"
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: resendIn > 0 ? "default" : "pointer",
-                      color:
-                        resendIn > 0
-                          ? "var(--muted)"
-                          : "var(--green-700)",
-                    }}
-                  >
-                    {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
-                  </button>
-                )}
-              </div>
-            </div>
+            <OtpPage
+              phoneDigits={phoneDigits}
+              email={email}
+              otpCode={otpCode}
+              otpChannel={otpChannel}
+              loading={loading}
+              error={error}
+              resendIn={resendIn}
+              rememberDevice={rememberDevice}
+              onOtpChange={setOtpCode}
+              onRememberChange={setRememberDevice}
+              onBack={() => {
+                setStep("phone");
+                setOtpCode("");
+                setError("");
+              }}
+              onResend={() => void handleResendOtp()}
+            />
           )}
 
           {step === "success" && (
