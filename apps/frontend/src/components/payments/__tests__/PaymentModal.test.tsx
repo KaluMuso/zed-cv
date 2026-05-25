@@ -7,16 +7,15 @@ vi.mock("next/script", () => ({
   default: ({
     src,
     onLoad,
-    "data-testid": testId,
   }: {
     src: string;
     onLoad?: () => void;
-    "data-testid"?: string;
   }) => (
-    <script
-      src={src}
-      data-testid={testId ?? "lenco-script"}
-      onLoad={() => onLoad?.()}
+    <div
+      role="presentation"
+      data-testid="lenco-script"
+      data-src={src}
+      onFocus={() => onLoad?.()}
     />
   ),
 }));
@@ -61,7 +60,7 @@ describe("PaymentModal", () => {
     expect(screen.getByTestId("tier-professional")).toBeInTheDocument();
     const script = screen.getByTestId("lenco-script");
     expect(script).toHaveAttribute(
-      "src",
+      "data-src",
       "https://pay.sandbox.lenco.co/js/v1/inline.js",
     );
   });
