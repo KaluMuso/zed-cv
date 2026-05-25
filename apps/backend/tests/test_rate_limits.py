@@ -34,10 +34,9 @@ def _restore_limiter(limiter, prev):
 
 
 class TestOTPRequestSlowAPI:
-    @patch("app.api.v1.auth.ensure_session_started", new_callable=AsyncMock, return_value=True)
-    @patch("app.api.v1.auth.send_whatsapp_otp", new_callable=AsyncMock)
+    @patch("app.api.v1.auth.send_otp", new_callable=AsyncMock)
     def test_sixth_request_per_phone_returns_429_problem_json(
-        self, mock_wa, mock_ensure, client, fake_supabase
+        self, mock_send_otp, client, fake_supabase
     ):
         """5/hour per phone — 6th call is 429 with RFC 7807 body."""
         fake_supabase.set_table("otp_codes", _OtpCooldownBypassQuery())
