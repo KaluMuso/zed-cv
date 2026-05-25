@@ -1,15 +1,17 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, computed_field, model_validator
 from datetime import datetime, timezone
 from typing import Any, Optional
 from app.schemas.jobs import Job
 
 
-# v2 component caps (50/20/15/10/5)
-SEMANTIC_SCORE_MAX = 50.0
-SKILLS_SCORE_MAX = 20.0
-EXPERIENCE_SCORE_MAX = 15.0
-LOCATION_SCORE_MAX = 10.0
-RECENCY_SCORE_MAX = 5.0
+# Stored component scores are raw 0–100. v2 weights (50/20/15/10/5) apply at
+# presentation via weighted_*_contribution, not as Field upper bounds.
+COMPONENT_SCORE_MAX = 100.0
+SEMANTIC_WEIGHT = 0.50
+SKILLS_WEIGHT = 0.20
+EXPERIENCE_WEIGHT = 0.15
+LOCATION_WEIGHT = 0.10
+RECENCY_WEIGHT = 0.05
 
 
 class MatchResult(BaseModel):
@@ -17,19 +19,34 @@ class MatchResult(BaseModel):
     job: Job
     score: float = Field(..., ge=0, le=100)
     semantic_score: float = Field(
-        0, ge=0, le=SEMANTIC_SCORE_MAX, description="Semantic similarity (0–50)"
+        0,
+        ge=0,
+        le=COMPONENT_SCORE_MAX,
+        description="Raw semantic similarity (0–100)",
     )
     skills_score: float = Field(
-        0, ge=0, le=SKILLS_SCORE_MAX, description="Required skills overlap (0–20)"
+        0,
+        ge=0,
+        le=COMPONENT_SCORE_MAX,
+        description="Raw required-skills overlap (0–100)",
     )
     experience_score: float = Field(
-        0, ge=0, le=EXPERIENCE_SCORE_MAX, description="Experience fit (0–15)"
+        0,
+        ge=0,
+        le=COMPONENT_SCORE_MAX,
+        description="Raw experience fit (0–100)",
     )
     location_score: float = Field(
-        0, ge=0, le=LOCATION_SCORE_MAX, description="Location / remote fit (0–10)"
+        0,
+        ge=0,
+        le=COMPONENT_SCORE_MAX,
+        description="Raw location / remote fit (0–100)",
     )
     recency_score: float = Field(
-        0, ge=0, le=RECENCY_SCORE_MAX, description="Job posting recency (0–5)"
+        0,
+        ge=0,
+        le=COMPONENT_SCORE_MAX,
+        description="Raw job posting recency (0–100)",
     )
     bonus_score: float = Field(
         0,
@@ -46,6 +63,31 @@ class MatchResult(BaseModel):
     missing_skills: list[str] = []
     explanation: Optional[str] = None
     created_at: datetime
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def weighted_semantic_contribution(self) -> float:
+        return round(self.semantic_score * SEMANTIC_WEIGHT, 2)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def weighted_skills_contribution(self) -> float:
+        return round(self.skills_score * SKILLS_WEIGHT, 2)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def weighted_experience_contribution(self) -> float:
+        return round(self.experience_score * EXPERIENCE_WEIGHT, 2)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def weighted_location_contribution(self) -> float:
+        return round(self.location_score * LOCATION_WEIGHT, 2)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def weighted_recency_contribution(self) -> float:
+        return round(self.recency_score * RECENCY_WEIGHT, 2)
 
     @model_validator(mode="after")
     def _sync_score_aliases(self) -> "MatchResult":
@@ -72,8 +114,10 @@ class MatchResult(BaseModel):
         adjusted_bonus: float | None = None,
         explanation: str | None = None,
     ) -> "MatchResult":
-        semantic = float(row.get("vector_score") or 0)
-        skills = float(row.get("skill_score") or 0)
+        semantic = float(
+            row.get("semantic_score") or row.get("vector_score") or 0
+        )
+        skills = float(row.get("skills_score") or row.get("skill_score") or 0)
         experience = float(row.get("experience_score") or 0)
         location = float(row.get("location_score") or 0)
         recency = float(row.get("recency_score") or 0)

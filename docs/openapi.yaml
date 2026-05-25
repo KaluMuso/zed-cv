@@ -1049,28 +1049,43 @@ components:
         semantic_score:
           type: number
           minimum: 0
-          maximum: 50
-          description: Semantic similarity component (0–50 under v2 RPC)
+          maximum: 100
+          description: Raw semantic similarity (0–100). v2 weight 50% via weighted_semantic_contribution.
         skills_score:
           type: number
           minimum: 0
-          maximum: 20
-          description: Required skills overlap (0–20 under v2 RPC)
+          maximum: 100
+          description: Raw required-skills overlap (0–100). v2 weight 20% via weighted_skills_contribution.
         experience_score:
           type: number
           minimum: 0
-          maximum: 15
-          description: Experience fit component (0–15 under v2 RPC)
+          maximum: 100
+          description: Raw experience fit (0–100). v2 weight 15% via weighted_experience_contribution.
         location_score:
           type: number
           minimum: 0
-          maximum: 10
-          description: Location or remote/hybrid fit (0–10 under v2 RPC)
+          maximum: 100
+          description: Raw location or remote/hybrid fit (0–100). v2 weight 10% via weighted_location_contribution.
         recency_score:
           type: number
           minimum: 0
-          maximum: 5
-          description: Posting recency component (0–5 under v2 RPC)
+          maximum: 100
+          description: Raw posting recency (0–100). v2 weight 5% via weighted_recency_contribution.
+        weighted_semantic_contribution:
+          type: number
+          description: Presentation-only v2 weighted semantic points (semantic_score × 0.5)
+        weighted_skills_contribution:
+          type: number
+          description: Presentation-only v2 weighted skills points (skills_score × 0.2)
+        weighted_experience_contribution:
+          type: number
+          description: Presentation-only v2 weighted experience points (experience_score × 0.15)
+        weighted_location_contribution:
+          type: number
+          description: Presentation-only v2 weighted location points (location_score × 0.1)
+        weighted_recency_contribution:
+          type: number
+          description: Presentation-only v2 weighted recency points (recency_score × 0.05)
         vector_score:
           type: number
           minimum: 0
