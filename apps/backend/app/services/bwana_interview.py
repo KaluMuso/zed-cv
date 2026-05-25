@@ -11,6 +11,7 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 
 from app.core.config import get_settings
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open
+from app.services.llm import FEATURE_APTITUDE, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -76,6 +77,8 @@ async def _call_openrouter(
     role: str,
     messages: list[dict[str, str]],
     max_tokens: int = 350,
+    user_id: str | None = None,
+    route: str = "POST /api/v1/interview/mock",
 ) -> dict[str, Any]:
     settings = get_settings()
     if not settings.openrouter_api_key:
@@ -97,6 +100,11 @@ async def _call_openrouter(
             response = create_chat_completion_with_retries(
                 client,
                 log_prefix="bwana_interview",
+                log_context=LlmLogContext(
+                    feature=FEATURE_APTITUDE,
+                    route=route,
+                    user_id=user_id,
+                ),
                 model=BWANA_INTERVIEW_MODEL,
                 max_tokens=max_tokens,
                 temperature=0.4,
@@ -119,9 +127,10 @@ async def _call_openrouter(
     return await asyncio.to_thread(_sync_call)
 
 
-async def generate_first_question(role: str) -> str:
+async def generate_first_question(role: str, *, user_id: str | None = None) -> str:
     data = await _call_openrouter(
         role=role,
+        user_id=user_id,
         messages=[
             {
                 "role": "user",
@@ -145,6 +154,7 @@ async def score_answer(
     answer: str,
     question_number: int,
     prior_turns: list[dict[str, str]],
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Score one answer on STAR completeness."""
     history = list(prior_turns)
@@ -158,7 +168,7 @@ async def score_answer(
             ),
         },
     )
-    data = await _call_openrouter(role=role, messages=history)
+    data = await _call_openrouter(role=role, messages=history, user_id=user_id)
     return {
         "star_score": float(data.get("star_score") or 0),
         "feedback": str(data.get("feedback") or "").strip()
@@ -171,6 +181,7 @@ async def generate_next_question(
     role: str,
     question_number: int,
     prior_turns: list[dict[str, str]],
+    user_id: str | None = None,
 ) -> str:
     history = list(prior_turns)
     history.append(
@@ -182,7 +193,7 @@ async def generate_next_question(
             ),
         },
     )
-    data = await _call_openrouter(role=role, messages=history)
+    data = await _call_openrouter(role=role, messages=history, user_id=user_id)
     next_q = str(data.get("question") or data.get("next_question") or "").strip()
     if not next_q:
         raise ValueError("Bwana Interview did not return the next question.")
@@ -193,6 +204,7 @@ async def generate_final_summary(
     *,
     role: str,
     transcript: list[dict[str, Any]],
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     lines = []
     for i, row in enumerate(transcript, start=1):
@@ -202,6 +214,7 @@ async def generate_final_summary(
         )
     data = await _call_openrouter(
         role=role,
+        user_id=user_id,
         messages=[
             {
                 "role": "user",

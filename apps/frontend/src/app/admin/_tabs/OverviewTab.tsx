@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { StatCard, formatNgwee } from "./shared";
+import { LlmCostPanel } from "./LlmCostPanel";
 
 export function OverviewTab({
   token,
@@ -126,6 +127,8 @@ export function OverviewTab({
           loading={breakdownLoading}
         />
       </div>
+
+      <LlmCostPanel token={token} />
     </div>
   );
 }

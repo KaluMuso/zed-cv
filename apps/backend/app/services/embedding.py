@@ -22,13 +22,24 @@ import httpx
 
 from app.core.config import get_settings
 from app.lib.retry import LLMCircuitOpenError, async_call_with_llm_retry, circuit_is_open
+from app.services.llm import (
+    FEATURE_MATCHING,
+    LlmLogContext,
+    merge_llm_context,
+    record_gemini_embedding,
+)
 
 logger = logging.getLogger(__name__)
 
 GEMINI_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:embedContent"
 
 
-async def generate_embedding(text: str) -> list[float]:
+async def generate_embedding(
+    text: str,
+    *,
+    log_context: LlmLogContext | None = None,
+    supabase=None,
+) -> list[float]:
     """Generate an embedding via Gemini `embedContent`.
 
     Output dimensionality is taken from `settings.embedding_dimensions`
@@ -88,6 +99,17 @@ async def generate_embedding(text: str) -> list[float]:
                 raise ValueError("Embedding service is temporarily unavailable.")
 
             data = response.json()
+            usage = data.get("usageMetadata") or {}
+            prompt_tokens = int(usage.get("promptTokenCount") or 0)
+            if prompt_tokens <= 0:
+                prompt_tokens = max(1, len(truncated) // 4)
+            ctx = log_context or merge_llm_context(feature=FEATURE_MATCHING)
+            record_gemini_embedding(
+                model=settings.embedding_model,
+                prompt_tokens=prompt_tokens,
+                context=ctx,
+                supabase=supabase,
+            )
             return data["embedding"]["values"]
 
         except httpx.TimeoutException:

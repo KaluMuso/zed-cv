@@ -9,6 +9,7 @@ from typing import Any, Awaitable, Callable, TypeVar
 
 import httpx
 from openai import APIConnectionError, APIError, APITimeoutError, OpenAI
+from supabase import Client
 from tenacity import (
     AsyncRetrying,
     Retrying,
@@ -199,13 +200,27 @@ def create_chat_completion_with_retries(
     client: OpenAI,
     *,
     log_prefix: str = "openrouter",
+    log_context: Any = None,
+    supabase: Client | None = None,
     **kwargs: Any,
 ) -> Any:
     """OpenRouter/OpenAI chat.completions.create with retry + circuit breaker."""
-    return call_with_llm_retry(
+    from app.services.llm import get_llm_context, record_openrouter_completion
+
+    model = str(kwargs.get("model") or "")
+    response = call_with_llm_retry(
         lambda: client.chat.completions.create(**kwargs),
         log_prefix=log_prefix,
     )
+    ctx = log_context or get_llm_context()
+    if model and ctx is not None:
+        record_openrouter_completion(
+            response,
+            model=model,
+            context=ctx,
+            supabase=supabase,
+        )
+    return response
 
 
 async def gemini_post_with_retries(

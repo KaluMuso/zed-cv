@@ -11,8 +11,9 @@ from supabase import Client
 
 from app.core.config import get_settings
 from app.schemas.db_enums import CacheType, validate_cache_type
-from app.services.bwana_faq import is_escalation_request, match_faq
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open
+from app.services.bwana_faq import is_escalation_request, match_faq
+from app.services.llm import FEATURE_BWANA, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -121,7 +122,11 @@ def append_and_persist_history(
 
 
 async def _call_openrouter_llm(
-    message: str, history: list[dict[str, str]]
+    message: str,
+    history: list[dict[str, str]],
+    *,
+    user_id: str | None = None,
+    supabase: Client | None = None,
 ) -> str:
     settings = get_settings()
     if not settings.openrouter_api_key:
@@ -145,6 +150,12 @@ async def _call_openrouter_llm(
             response = create_chat_completion_with_retries(
                 client,
                 log_prefix="bwana_chat",
+                log_context=LlmLogContext(
+                    feature=FEATURE_BWANA,
+                    route="POST /api/v1/bwana/chat",
+                    user_id=user_id,
+                ),
+                supabase=supabase,
                 model=settings.llm_model,
                 max_tokens=400,
                 messages=messages,
@@ -200,7 +211,9 @@ async def process_bwana_message(
     hist = history if history is not None else load_conversation_history(
         supabase, user_id, session_id
     )
-    reply = await _call_openrouter_llm(text, hist)
+    reply = await _call_openrouter_llm(
+        text, hist, user_id=user_id, supabase=supabase
+    )
     return reply, "llm"
 
 

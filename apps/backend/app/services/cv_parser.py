@@ -17,8 +17,9 @@ from PyPDF2 import PdfReader
 from docx import Document
 
 from app.core.config import get_settings
-from app.schemas.cv_sections import CVSections
 from app.lib.retry import circuit_is_open, degraded_llm_result
+from app.schemas.cv_sections import CVSections
+from app.services.llm import FEATURE_CV_PARSING, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -215,6 +216,10 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
             response = create_chat_completion_with_retries(
                 client,
                 log_prefix="cv_parser",
+                log_context=LlmLogContext(
+                    feature=FEATURE_CV_PARSING,
+                    route="POST /api/v1/cv/upload",
+                ),
                 model=settings.llm_model,
                 # 4096 to accommodate the structured "sections" object —
                 # 12 nested arrays can easily exceed the old 1024 cap and
@@ -284,6 +289,10 @@ async def _ocr_with_vision(image_bytes: bytes, file_type: str) -> str:
             response = create_chat_completion_with_retries(
                 client,
                 log_prefix="cv_parser_ocr",
+                log_context=LlmLogContext(
+                    feature=FEATURE_CV_PARSING,
+                    route="POST /api/v1/cv/upload",
+                ),
                 model=settings.llm_model,
                 max_tokens=2048,
                 messages=[

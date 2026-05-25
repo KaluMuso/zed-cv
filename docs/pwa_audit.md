@@ -41,12 +41,14 @@
 - PNG + maskable entries; removed broken references to missing assets
 - `display_override`, `lang: en-ZM`
 
-### Service worker (`public/sw.js`)
+### Service worker (`@ducanh2912/next-pwa`)
 
-- Cache version bumped to `zedapply-v3`
-- **Static assets:** cache-first (`/_next/static/`)
-- **HTML navigations:** stale-while-revalidate (network updates cache; offline falls back)
-- RSC / prefetch requests bypass SW (unchanged guard)
+- Generated at build into `public/sw.js` (gitignored; do not hand-edit)
+- **Static assets:** cache-first (`/_next/static/`, icons)
+- **API:** network-first (`api.zedcv.com/api/v1`, local backend)
+- **Lenco payments:** network-only (no cached checkout scripts)
+- **Offline fallback:** `app/~offline/page.tsx`
+- Default next-pwa rules retain network-first for RSC / page navigations
 
 ### App integration
 

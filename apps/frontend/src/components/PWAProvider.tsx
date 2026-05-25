@@ -11,18 +11,7 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
   const [showSplash, setShowSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
 
-  // Register service worker
-  useEffect(() => {
-    const isDev =
-      typeof window !== "undefined" &&
-      /localhost|127\.0\.0\.1|0\.0\.0\.0/.test(window.location.hostname);
-
-    if (!isDev && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        // SW registration failed — app still works, just no offline support
-      });
-    }
-  }, []);
+  // Service worker: registered by @ducanh2912/next-pwa at build time (see next.config.js).
 
   // Mark app as ready after a brief hydration window
   useEffect(() => {

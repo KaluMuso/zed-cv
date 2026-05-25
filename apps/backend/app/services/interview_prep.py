@@ -13,6 +13,7 @@ from openai import OpenAI, AuthenticationError, RateLimitError, APIError
 
 from app.core.config import get_settings
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, degraded_llm_result
+from app.services.llm import FEATURE_INTERVIEW_PREP, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -104,6 +105,10 @@ async def generate_interview_prep(
             response = create_chat_completion_with_retries(
                 client,
                 log_prefix="interview_prep",
+                log_context=LlmLogContext(
+                    feature=FEATURE_INTERVIEW_PREP,
+                    route="POST /api/v1/interview-prep/generate",
+                ),
                 model=settings.llm_model,
                 max_tokens=2000,
                 messages=[

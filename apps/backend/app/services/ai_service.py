@@ -11,6 +11,7 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 
 from app.core.config import get_settings
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, call_with_llm_retry
+from app.services.llm import FEATURE_OTHER, LlmLogContext, record_openai_completion
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,14 @@ async def generate_tailored_cover_letter(
                     ],
                 ),
                 log_prefix="openai_cover_letter",
+            )
+            record_openai_completion(
+                response,
+                model=COVER_LETTER_MODEL,
+                context=LlmLogContext(
+                    feature=FEATURE_OTHER,
+                    route="POST /api/v1/cover-letter/generate",
+                ),
             )
             content = (response.choices[0].message.content or "").strip()
             if not content:

@@ -165,8 +165,14 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   @apply bg-surface text-ink antialiased;
+  overflow-x: clip;
+  max-width: 100%;
   font-family: var(--font-body);
   font-size: 0.9375rem;
   line-height: 1.6;
