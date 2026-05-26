@@ -31,11 +31,11 @@
 - **JobsSidebarMobile** horizontal chips on viewports &lt; lg
 - Auth layout tokens (`.auth-grid`, `.auth-form-panel`), responsive headings, `.field` on email input
 
-### Still optional
+### Third round (2026-05-26) — completed
 
-- Profile referral block parity with PDF §14
-- CV builder PDF export from Review step
-- Hydrate builder draft from uploaded profile CV via API
+- **PDF export:** `print.css` + `printTailoredCv()` on live preview and Review step (browser Save as PDF)
+- **Profile hydration:** `mapProfileToDraft()` + `useHydrateBuilderFromProfile()` from `GET /profile` → `cv_sections`
+- **Referral card:** `ProfileReferralCard` on profile sidebar (invite link with `ref` query param)
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { Icon } from "@/components/ui/Icon";
 import { BuilderStepShell } from "./BuilderStepShell";
+import { printTailoredCv } from "./printTailoredCv";
 import { useTailoredCvBuilderStore } from "./store";
 
 export function PreviewStepForm({ onOpenPreview }: { onOpenPreview?: () => void }) {
@@ -43,6 +44,13 @@ export function PreviewStepForm({ onOpenPreview }: { onOpenPreview?: () => void 
             <Icon name="eye" size={14} /> Open preview
           </button>
         ) : null}
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={() => printTailoredCv(`cv-${draft.basics.fullName.trim() || "tailored"}`)}
+        >
+          <Icon name="download" size={14} /> Download PDF
+        </button>
         <button type="button" className="btn btn-outline btn-sm" onClick={() => void copyBasics()}>
           Copy header block
         </button>
@@ -51,8 +59,8 @@ export function PreviewStepForm({ onOpenPreview }: { onOpenPreview?: () => void 
         </button>
       </div>
       <p className="text-xs mt-4" style={{ color: "var(--muted)" }}>
-        PDF download from the legacy profile generator remains available on paid plans. Full export
-        wiring for this builder is planned next.
+        Download PDF opens your browser print dialog — choose &quot;Save as PDF&quot;. Layout matches
+        the live preview on the right.
       </p>
     </BuilderStepShell>
   );

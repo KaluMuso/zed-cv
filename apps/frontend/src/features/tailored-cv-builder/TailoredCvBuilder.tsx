@@ -22,7 +22,9 @@ import { SkillsStepForm } from "./SkillsStepForm";
 import { StyleStepForm } from "./StyleStepForm";
 import { useTailoredCvBuilderStore } from "./store";
 import type { BuilderStep } from "./types";
+import { useHydrateBuilderFromProfile } from "./useHydrateBuilderFromProfile";
 import "./builder.css";
+import "./print.css";
 
 function LeftPane({
   step,
@@ -78,11 +80,28 @@ export function TailoredCvBuilder() {
   const company = searchParams.get("company") ?? "";
   const step = useTailoredCvBuilderStore((s) => s.step);
   const setStep = useTailoredCvBuilderStore((s) => s.setStep);
+  const hydratedFromProfile = useTailoredCvBuilderStore((s) => s.hydratedFromProfile);
+  const resetDraft = useTailoredCvBuilderStore((s) => s.resetDraft);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  useHydrateBuilderFromProfile(token);
+
   return (
     <div className="w-full">
+      {hydratedFromProfile ? (
+        <div
+          className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border px-4 py-3 text-sm"
+          style={{ borderColor: "var(--line)", background: "var(--green-50)" }}
+        >
+          <span style={{ color: "var(--green-800)" }}>
+            Loaded from your uploaded CV. Edit any section — the preview updates live.
+          </span>
+          <button type="button" className="btn btn-ghost btn-sm shrink-0" onClick={resetDraft}>
+            Reset sample data
+          </button>
+        </div>
+      ) : null}
       <BuilderHeader
         currentStep={step}
         onStepClick={setStep}

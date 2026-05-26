@@ -92,7 +92,9 @@ export function emptyEducation(): EducationEntry {
 type TailoredCvBuilderState = {
   step: BuilderStep;
   draft: TailoredCvDraft;
+  hydratedFromProfile: boolean;
   setStep: (step: BuilderStep) => void;
+  setDraft: (draft: TailoredCvDraft, options?: { fromProfile?: boolean }) => void;
   updateBasics: (patch: Partial<TailoredCvDraft["basics"]>) => void;
   setExperience: (entries: ExperienceEntry[]) => void;
   updateExperience: (index: number, patch: Partial<ExperienceEntry>) => void;
@@ -110,7 +112,13 @@ type TailoredCvBuilderState = {
 export const useTailoredCvBuilderStore = create<TailoredCvBuilderState>((set) => ({
   step: "basics",
   draft: DEFAULT_DRAFT,
+  hydratedFromProfile: false,
   setStep: (step) => set({ step }),
+  setDraft: (draft, options) =>
+    set({
+      draft,
+      hydratedFromProfile: options?.fromProfile ?? false,
+    }),
   updateBasics: (patch) =>
     set((state) => ({
       draft: { ...state.draft, basics: { ...state.draft.basics, ...patch } },
@@ -171,5 +179,6 @@ export const useTailoredCvBuilderStore = create<TailoredCvBuilderState>((set) =>
     set((state) => ({
       draft: { ...state.draft, style: { ...state.draft.style, ...patch } },
     })),
-  resetDraft: () => set({ draft: DEFAULT_DRAFT, step: "basics" }),
+  resetDraft: () =>
+    set({ draft: DEFAULT_DRAFT, step: "basics", hydratedFromProfile: false }),
 }));

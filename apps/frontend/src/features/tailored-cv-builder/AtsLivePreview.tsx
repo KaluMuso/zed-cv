@@ -27,7 +27,7 @@ export function AtsLivePreview({ draft }: { draft: TailoredCvDraft }) {
 
   return (
     <article
-      className={cn("tailored-cv-paper", densityClass)}
+      className={cn("tailored-cv-paper tailored-cv-print-root", densityClass)}
       aria-label="CV preview"
     >
       <h1>{basics.fullName.trim() || "Your Name"}</h1>

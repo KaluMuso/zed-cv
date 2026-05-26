@@ -57,6 +57,17 @@ export default function AuthPageClient() {
   const safeNext =
     rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/matches";
 
+  // Preserve referral attribution until backend accepts it on signup.
+  useEffect(() => {
+    const ref = searchParams?.get("ref")?.trim();
+    if (!ref) return;
+    try {
+      sessionStorage.setItem("zedapply_referral_ref", ref);
+    } catch {
+      /* private mode */
+    }
+  }, [searchParams]);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {

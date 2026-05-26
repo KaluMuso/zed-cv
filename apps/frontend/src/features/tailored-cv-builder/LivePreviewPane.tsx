@@ -1,15 +1,16 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
-import { notify } from "@/lib/toast";
 import { useTailoredCvBuilderStore } from "./store";
 import { AtsLivePreview } from "./AtsLivePreview";
+import { printTailoredCv } from "./printTailoredCv";
 
 export function LivePreviewPane({ className = "" }: { className?: string }) {
   const draft = useTailoredCvBuilderStore((s) => s.draft);
 
   const onDownloadPdf = () => {
-    notify.info("PDF export is coming soon. Your live preview updates as you type.");
+    const slug = draft.basics.fullName.trim() || "tailored-cv";
+    printTailoredCv(`cv-${slug}`);
   };
 
   return (

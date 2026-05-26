@@ -20,6 +20,7 @@ import { AnalysisTab } from "./_tabs/AnalysisTab";
 import { GeneratorTab } from "./_tabs/GeneratorTab";
 import { PreferencesTab } from "./_tabs/PreferencesTab";
 import { DataPrivacyCard } from "./_tabs/DataPrivacyCard";
+import { ProfileReferralCard } from "./_tabs/ProfileReferralCard";
 
 type Tab = "cv" | "analysis" | "generator" | "preferences";
 
@@ -432,6 +433,8 @@ export default function ProfilePageClient() {
               </>
             )}
           </div>
+
+          <ProfileReferralCard userId={profileData.id} userName={profileData.full_name} />
 
           <div className="card p-6">
             <div className="eyebrow mb-3">Account</div>

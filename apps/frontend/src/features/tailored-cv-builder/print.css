@@ -1,0 +1,36 @@
+/* Print export for tailored CV builder — mirrors profile generator print.css */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .tailored-cv-print-root,
+  .tailored-cv-print-root * {
+    visibility: visible !important;
+  }
+  .tailored-cv-print-root {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    box-shadow: none !important;
+    border: none !important;
+    width: 210mm;
+    min-height: 297mm;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .tailored-cv-print-root .cv-preview-section {
+    break-inside: avoid;
+  }
+}
