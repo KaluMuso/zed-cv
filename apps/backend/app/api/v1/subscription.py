@@ -1,7 +1,7 @@
 """Subscription and payment routes."""
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.core.deps import get_supabase, get_current_user_id
@@ -12,6 +12,8 @@ from app.schemas.subscription import (
     PaymentInitiateResponse,
     PaymentVerifyRequest,
     PaymentVerifyResponse,
+    PaymentHistoryList,
+    PaymentHistoryRow,
 )
 from app.core.tier_gating import get_effective_match_limit, welcome_bonus_active
 from app.services.matching import get_credited_match_count
@@ -64,6 +66,41 @@ async def get_subscription(
         if tier == "free"
         else False,
     )
+
+
+@router.get("/payments", response_model=PaymentHistoryList)
+async def list_my_payments(
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """Completed and pending payments for the authenticated user (newest first)."""
+    capped = max(1, min(limit, 100))
+    result = (
+        supabase.table("payments")
+        .select(
+            "id, amount, currency, payment_method, provider, status, created_at, completed_at",
+            count="exact",
+        )
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(capped)
+        .execute()
+    )
+    rows = [
+        PaymentHistoryRow(
+            id=p["id"],
+            amount=int(p["amount"]),
+            currency=p.get("currency") or "ZMW",
+            payment_method=p["payment_method"],
+            provider=p.get("provider"),
+            status=p["status"],
+            created_at=p.get("created_at"),
+            completed_at=p.get("completed_at"),
+        )
+        for p in (result.data or [])
+    ]
+    return PaymentHistoryList(payments=rows, total=result.count or len(rows))
 
 
 @router.post("/pay", response_model=PaymentInitiateResponse)

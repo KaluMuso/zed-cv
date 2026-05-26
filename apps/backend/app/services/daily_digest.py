@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.services.email import send_daily_digest_email
 from app.services.matching import run_matching_for_user
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
+from app.services.quiet_hours import user_in_quiet_hours
 from app.services.whatsapp import send_whatsapp_message
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ JOB_RECENCY_HOURS = 24
 _USER_SELECT = (
     "id, phone, email, full_name, whatsapp_number, whatsapp_verified, "
     "alert_frequency, email_notifications_enabled, preferred_notification_channel, "
-    "subscription_tier"
+    "subscription_tier, quiet_hours_start, quiet_hours_end, display_timezone"
 )
 
 
@@ -247,12 +248,16 @@ async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
     """Send daily digests via WAHA for Starter+ users on the WhatsApp channel."""
     settings = get_settings()
     now = datetime.now(timezone.utc)
-    sent = skipped = failed = 0
+    sent = skipped = failed = quiet_hours_skipped = 0
 
     for user in await _eligible_daily_users(supabase):
         user_id = user.get("id")
         phone = _delivery_phone(user) if user_id else None
         if not user_id or not phone or not wants_whatsapp_digest(user):
+            continue
+
+        if user_in_quiet_hours(user, now):
+            quiet_hours_skipped += 1
             continue
 
         matches = await _select_digest_matches(
@@ -283,7 +288,12 @@ async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
         )
         sent += 1
 
-    return {"sent": sent, "skipped": skipped, "failed": failed}
+    return {
+        "sent": sent,
+        "skipped": skipped,
+        "failed": failed,
+        "quiet_hours_skipped": quiet_hours_skipped,
+    }
 
 
 async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
@@ -298,6 +308,9 @@ async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
         user_id = user.get("id")
         phone = _delivery_phone(user)
         if not user_id or not phone:
+            continue
+
+        if user_in_quiet_hours(user, now):
             continue
 
         matches = await _select_digest_matches(

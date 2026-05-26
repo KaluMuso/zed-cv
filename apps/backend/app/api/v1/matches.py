@@ -37,6 +37,7 @@ from app.services.matching import (
 from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
+from app.services.quiet_hours import user_in_quiet_hours
 from app.services.whatsapp import send_match_digest
 
 logger = logging.getLogger(__name__)
@@ -214,7 +215,12 @@ async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:
     legacy = _channels(user)
     sent = False
     phone = (user.get("whatsapp_number") or user.get("phone") or "").strip()
-    if wants_whatsapp_digest(user) and phone and legacy.get("whatsapp", True):
+    if (
+        wants_whatsapp_digest(user)
+        and phone
+        and legacy.get("whatsapp", True)
+        and not user_in_quiet_hours(user, now)
+    ):
         try:
             await send_match_digest(
                 phone,
@@ -554,7 +560,8 @@ async def cron_tick(
             "id, subscription_tier, last_auto_match_at, auto_match_enabled, "
             "notification_channels, last_notification_at, phone, email, "
             "whatsapp_number, whatsapp_verified, email_notifications_enabled, "
-            "preferred_notification_channel"
+            "preferred_notification_channel, quiet_hours_start, quiet_hours_end, "
+            "display_timezone"
         )
         .eq("auto_match_enabled", True)
         .neq("subscription_tier", "free")
@@ -600,7 +607,8 @@ async def send_notifications(
         .select(
             "id, phone, email, subscription_tier, auto_match_enabled, "
             "notification_channels, last_notification_at, whatsapp_number, "
-            "whatsapp_verified, email_notifications_enabled, preferred_notification_channel"
+            "whatsapp_verified, email_notifications_enabled, preferred_notification_channel, "
+            "quiet_hours_start, quiet_hours_end, display_timezone"
         )
         .eq("auto_match_enabled", True)
         .limit(limit)

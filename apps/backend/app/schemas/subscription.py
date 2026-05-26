@@ -84,3 +84,19 @@ class PaymentVerifyResponse(BaseModel):
     reference: str
     payment_id: str | None = None
     message: str
+
+
+class PaymentHistoryRow(BaseModel):
+    id: str
+    amount: int = Field(description="Amount in ngwee")
+    currency: str = "ZMW"
+    payment_method: str
+    provider: Optional[str] = None
+    status: str
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+
+class PaymentHistoryList(BaseModel):
+    payments: list[PaymentHistoryRow]
+    total: int
