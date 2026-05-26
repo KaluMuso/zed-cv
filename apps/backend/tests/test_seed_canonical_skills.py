@@ -6,11 +6,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from app.services.canonical_skills_curated_list import CURATED_ZAMBIA_SKILLS_RAW
 from app.services.canonical_skills_seed import (
     CanonicalSeedRow,
     build_seed_row_from_raw,
     collect_raw_skill_counts,
-    curated_fallback_rows,
+    curated_seed_rows,
     raw_to_canonical_display,
     rows_from_top_raw,
     seed_canonical_skills,
@@ -95,9 +96,10 @@ class TestSeedRows:
         assert "Microsoft Excel" in names
         assert names.count("Microsoft Excel") == 1
 
-    def test_curated_fallback_has_100_rows(self):
-        rows = curated_fallback_rows()
-        assert len(rows) == 100
+    def test_curated_seed_has_full_list(self):
+        rows = curated_seed_rows()
+        assert len(rows) >= 190
+        assert len(rows) <= len(CURATED_ZAMBIA_SKILLS_RAW)
         assert all(isinstance(r, CanonicalSeedRow) for r in rows)
 
 
@@ -114,16 +116,19 @@ class TestSeedInsert:
                 q.range.return_value = q
                 q.execute.return_value = MagicMock(data=[])
             elif name == "canonical_skills":
+                q._mode = "select"
 
                 def insert(payload):
+                    q._mode = "insert"
                     q._payload = payload
                     return q
 
                 def execute():
-                    if hasattr(q, "_payload"):
+                    if q._mode == "insert" and hasattr(q, "_payload"):
                         row = dict(q._payload)
                         row["id"] = "new-id"
                         store.append(row)
+                        q._mode = "select"
                         return MagicMock(data=[row])
                     return MagicMock(data=[])
 
@@ -135,5 +140,6 @@ class TestSeedInsert:
             return q
 
         supabase.table = table
-        seed_canonical_skills(supabase, dry_run=False)
+        inserted = seed_canonical_skills(supabase, dry_run=False)
         assert len(store) >= 1
+        assert len(inserted) >= 1

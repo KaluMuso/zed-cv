@@ -7,9 +7,9 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
+from app.services.canonical_skills_curated_list import CURATED_ZAMBIA_SKILLS_RAW
 from app.services.canonical_skills_seed_data import (
     ACRONYMS,
-    CURATED_RAW_TOP_100,
     DISPLAY_OVERRIDES,
     EXTRA_ALIASES,
     NOTES_BY_CANONICAL,
@@ -24,7 +24,7 @@ from app.services.skills_dictionary import normalize_raw_skill
 
 logger = logging.getLogger(__name__)
 
-TOP_N = 100
+CURATED_SKILL_COUNT = len(CURATED_ZAMBIA_SKILLS_RAW)
 _PAGE_SIZE = 500
 
 
@@ -165,7 +165,9 @@ def collect_raw_skill_counts(supabase: Any) -> Counter[str]:
     return counts
 
 
-def rows_from_top_raw(counts: Counter[str], *, limit: int = TOP_N) -> list[CanonicalSeedRow]:
+def rows_from_top_raw(
+    counts: Counter[str], *, limit: int = CURATED_SKILL_COUNT
+) -> list[CanonicalSeedRow]:
     """Map the top raw strings to deduplicated canonical seed rows."""
     seen_names: set[str] = set()
     rows: list[CanonicalSeedRow] = []
@@ -180,29 +182,44 @@ def rows_from_top_raw(counts: Counter[str], *, limit: int = TOP_N) -> list[Canon
     return rows
 
 
+def curated_seed_rows() -> list[CanonicalSeedRow]:
+    """Static Zambia job-market skills (no scraper / frequency harvest)."""
+    seen: set[str] = set()
+    rows: list[CanonicalSeedRow] = []
+    for raw in CURATED_ZAMBIA_SKILLS_RAW:
+        row = build_seed_row_from_raw(raw)
+        if not row or row.name in seen:
+            continue
+        seen.add(row.name)
+        rows.append(row)
+    return rows
+
+
 def curated_fallback_rows() -> list[CanonicalSeedRow]:
-    """Static top-100 Zambia-relevant skills when the database has no frequency data."""
-    return rows_from_top_raw(
-        Counter({r: 100 - i for i, r in enumerate(CURATED_RAW_TOP_100)})
-    )
+    """Backward-compatible alias for curated_seed_rows()."""
+    return curated_seed_rows()
 
 
 def seed_canonical_skills(
     supabase: Any,
     *,
     dry_run: bool = False,
-    use_curated_fallback: bool = True,
+    harvest_from_database: bool = False,
 ) -> list[CanonicalSeedRow]:
-    """Insert up to TOP_N canonical_skills rows; return rows written (or planned)."""
-    counts = collect_raw_skill_counts(supabase)
-    rows = rows_from_top_raw(counts) if counts else []
-    if len(rows) < TOP_N and use_curated_fallback:
-        for row in curated_fallback_rows():
-            if row.name not in {r.name for r in rows}:
+    """Insert curated canonical_skills rows; return rows written (or planned).
+
+    By default uses only the static Zambia curated list (~200 skills).
+    Set harvest_from_database=True to also mine jobs.requirements (not recommended).
+    """
+    rows = curated_seed_rows()
+    if harvest_from_database:
+        counts = collect_raw_skill_counts(supabase)
+        harvested = rows_from_top_raw(counts) if counts else []
+        seen = {r.name for r in rows}
+        for row in harvested:
+            if row.name not in seen:
                 rows.append(row)
-            if len(rows) >= TOP_N:
-                break
-        rows = rows[:TOP_N]
+                seen.add(row.name)
 
     if dry_run:
         return rows

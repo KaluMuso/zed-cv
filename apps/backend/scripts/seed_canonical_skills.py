@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Seed canonical_skills with the top 100 Zambia-relevant job skills.
+"""Seed canonical_skills from the curated Zambia job-market skill list (~200).
 
-Harvests frequency from jobs.requirements and user_skills (via skills.name),
-maps through SKILL_ALIASES + display rules, and upserts canonical rows with
-optional parent_skill and notes.
+Does not harvest jobs.requirements by default (scraper sentences polluted the table).
+Use --harvest-from-database only for audits, not production seeding.
 
 Run from the repo root::
 
@@ -57,23 +56,22 @@ def main() -> int:
     parser.add_argument(
         "--print-doc",
         action="store_true",
-        help="Print markdown table of seed rows to stdout.",
+        help="Print markdown table of curated seed rows to stdout.",
     )
     parser.add_argument(
-        "--no-curated-fallback",
+        "--harvest-from-database",
         action="store_true",
-        help="Do not pad with curated Zambia list when DB counts are sparse.",
+        help="Also mine jobs.requirements (not recommended for production).",
     )
     args = parser.parse_args()
 
     from supabase import create_client
 
-    from app.services.canonical_skills_seed import (
-        collect_raw_skill_counts,
-        curated_fallback_rows,
-        rows_from_top_raw,
-        seed_canonical_skills,
-    )
+    from app.services.canonical_skills_seed import curated_seed_rows, seed_canonical_skills
+
+    if args.print_doc:
+        print(_format_doc_table(curated_seed_rows()))
+        return 0
 
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY")
@@ -85,24 +83,10 @@ def main() -> int:
 
     supabase = create_client(url, key)
 
-    if args.print_doc:
-        counts = collect_raw_skill_counts(supabase)
-        rows = rows_from_top_raw(counts) if counts else []
-        if len(rows) < 100:
-            seen = {r.name for r in rows}
-            for row in curated_fallback_rows():
-                if row.name not in seen:
-                    rows.append(row)
-                    seen.add(row.name)
-                if len(rows) >= 100:
-                    break
-        print(_format_doc_table(rows[:100]))
-        return 0
-
     rows = seed_canonical_skills(
         supabase,
         dry_run=args.dry_run,
-        use_curated_fallback=not args.no_curated_fallback,
+        harvest_from_database=args.harvest_from_database,
     )
     log.info(
         "%s %d canonical skill row(s)",
