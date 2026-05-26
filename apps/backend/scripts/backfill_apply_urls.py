@@ -99,13 +99,18 @@ def _load_candidates(supabase: Any) -> list[dict[str, Any]]:
     ]
 
 
-async def run_backfill(*, apply: bool, limit: int | None) -> int:
+async def run_backfill(
+    *, apply: bool, limit: int | None, reset_progress: bool = False
+) -> int:
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_key:
         log.error("SUPABASE_URL and SUPABASE_KEY must be set")
         return 1
 
     supabase = create_client(settings.supabase_url, settings.supabase_key)
+    if apply and reset_progress and PROGRESS_PATH.exists():
+        PROGRESS_PATH.unlink()
+        log.info("Cleared progress file %s", PROGRESS_PATH)
     progress = _load_progress() if apply else {}
 
     before = count_aggregator_apply_urls(supabase)
@@ -124,19 +129,34 @@ async def run_backfill(*, apply: bool, limit: int | None) -> int:
 
     stats: dict[str, int] = {}
     samples: list[tuple[str, str, str]] = []
+    stuck: list[tuple[str, str, str]] = []
 
     for row in candidates:
         job_id = str(row["id"])
+        title = str(row.get("title") or "")
         original = str(row.get("apply_url") or "")
         contacts = await resolve_apply_contacts_from_aggregator_url(original)
         await asyncio.sleep(THROTTLE_SECONDS)
 
-        if contacts.apply_url:
+        resolved = bool(
+            contacts.apply_url
+            or (
+                contacts.apply_email
+                and not row.get("apply_email")
+            )
+            or (
+                contacts.contact_phone
+                and not row.get("contact_phone")
+            )
+        )
+        if resolved:
             status = "resolved"
-            if len(samples) < 5:
+            if contacts.apply_url and len(samples) < 5:
                 samples.append((job_id, original, contacts.apply_url))
         else:
             status = "unchanged"
+            if len(stuck) < 5:
+                stuck.append((job_id, title, original))
 
         stats[status] = stats.get(status, 0) + 1
 
@@ -159,6 +179,10 @@ async def run_backfill(*, apply: bool, limit: int | None) -> int:
         print(f"  {key}: {count}")
     for job_id, old_url, new_url in samples:
         print(f"  sample {job_id[:8]}: {old_url} -> {new_url}")
+    if stuck:
+        print("still_unresolvable_sample:")
+        for job_id, title, url in stuck:
+            print(f"  {job_id[:8]} | {title[:60]} | {url}")
 
     if not apply:
         print("Dry-run: pass --apply to persist updates.")
@@ -173,10 +197,21 @@ def main() -> int:
         help="Write resolved URLs to the database (default dry-run)",
     )
     parser.add_argument("--limit", type=int, default=None, help="Max jobs this run")
+    parser.add_argument(
+        "--reset-progress",
+        action="store_true",
+        help="Ignore /tmp progress file and re-process all aggregator jobs",
+    )
     args = parser.parse_args()
     if args.apply:
         log.info("APPLY mode — database and %s may be updated", PROGRESS_PATH)
-    return asyncio.run(run_backfill(apply=args.apply, limit=args.limit))
+    return asyncio.run(
+        run_backfill(
+            apply=args.apply,
+            limit=args.limit,
+            reset_progress=args.reset_progress,
+        )
+    )
 
 
 if __name__ == "__main__":
