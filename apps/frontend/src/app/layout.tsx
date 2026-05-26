@@ -16,6 +16,7 @@ import { BwanaChatWidget } from "@/components/BwanaChatWidget";
 import { RouteTransitionShell } from "@/components/shared/RouteTransitionShell";
 import { Toaster } from "@/components/shared/Toaster";
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics";
+import { MAIN_CONTENT_ID, SkipToContent } from "@/components/SkipToContent";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -56,7 +57,18 @@ export default function RootLayout({
       className={`${inter.variable} ${crimsonPro.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="preconnect" href="https://api.zedapply.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://chnesgmcuxyhwhzomdov.supabase.co"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://o4511365243076608.ingest.de.sentry.io" />
+        <link rel="dns-prefetch" href="https://plausible.io" />
+      </head>
       <body className="min-h-screen font-sans">
+        <SkipToContent />
         <PlausibleAnalytics />
         <ThemeProvider>
           <ErrorBoundary>
@@ -65,7 +77,9 @@ export default function RootLayout({
                 <PWAProvider>
                   <OfflineBanner />
                   <Navbar />
-                  <RouteTransitionShell>{children}</RouteTransitionShell>
+                  <main id={MAIN_CONTENT_ID} tabIndex={-1} className="outline-none">
+                    <RouteTransitionShell>{children}</RouteTransitionShell>
+                  </main>
                   <PWAInstallPrompt />
                   <Footer />
                   <MobileTabBar />

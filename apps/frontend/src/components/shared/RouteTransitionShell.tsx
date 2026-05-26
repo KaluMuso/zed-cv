@@ -13,5 +13,9 @@ export function RouteTransitionShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  return <PageTransition key={pathname}>{children}</PageTransition>;
+  return (
+    <div tabIndex={-1} className="outline-none min-h-[50vh]">
+      <PageTransition key={pathname}>{children}</PageTransition>
+    </div>
+  );
 }

@@ -11,6 +11,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
+import { ModalPortal } from "@/components/shared/ModalPortal";
 
 export function InterviewPrepModal({
   open,
@@ -69,16 +70,14 @@ export function InterviewPrepModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div
-        className="fixed inset-0"
-        style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
-        onClick={onClose}
-      />
-      <div
-        className="relative z-10 w-full max-w-2xl max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl"
-        style={{ background: "var(--surface)", boxShadow: "var(--shadow-lg)" }}
-      >
+    <ModalPortal>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="modal-backdrop" onClick={onClose} aria-hidden />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="modal-panel w-full max-w-2xl max-h-[90vh] flex flex-col rounded-t-2xl sm:rounded-2xl overflow-hidden"
+        >
         <header className="flex items-start justify-between gap-4 p-5 sm:p-6 border-b" style={{ borderColor: "var(--line)" }}>
           <div className="min-w-0">
             <div className="eyebrow mb-1">Interview prep</div>
@@ -153,8 +152,9 @@ export function InterviewPrepModal({
             </button>
           </footer>
         )}
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }
 

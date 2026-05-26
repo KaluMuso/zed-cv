@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { Job } from "@/lib/api";
 import { buildJobPostingJsonLd, cleanForJobSchema } from "@/lib/job-posting-jsonld";
-import { SITE_URL } from "@/lib/site-metadata";
+import { formatSalary } from "@/components/jobs/jobDetailFormatters";
+import { jobOgImageUrl, SITE_URL } from "@/lib/site-metadata";
 import { JobDetailClient } from "./JobDetailClient";
 import { Icon } from "@/components/ui/Icon";
 
@@ -30,6 +31,18 @@ async function fetchJob(id: string): Promise<Job | null> {
   }
 }
 
+function jobMetaDescription(job: Job): string {
+  const salary = formatSalary(job.salary_min, job.salary_max);
+  const parts = [
+    job.title,
+    job.company,
+    job.location || "Zambia",
+    salary ? `Salary ${salary}` : null,
+    "Apply via ZedApply",
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
+
 export async function generateMetadata({
   params,
 }: PageParams): Promise<Metadata> {
@@ -41,28 +54,32 @@ export async function generateMetadata({
     };
   }
 
-  const baseTitle = `${job.title}${job.company ? ` at ${job.company}` : ""}`;
-  const ogTitle = `${baseTitle} — ZedApply`;
+  const pageTitle = `${job.title}${job.company ? ` at ${job.company}` : ""}`;
   const description =
-    cleanForJobSchema(job.description, 200) ||
-    `Open role in ${job.location || "Zambia"}. Apply via ZedApply.`;
+    cleanForJobSchema(job.description, 200) || jobMetaDescription(job);
   const url = `${SITE_URL}/jobs/${job.id}`;
+  const ogImage = jobOgImageUrl(job.id);
+  const closingNote = job.closing_date
+    ? `Closes ${job.closing_date}`
+    : job.location || "Zambia";
 
   return {
-    title: baseTitle,
+    title: pageTitle,
     description,
     alternates: { canonical: url },
     openGraph: {
-      type: "website",
-      title: ogTitle,
-      description,
+      type: "article",
       url,
+      title: pageTitle,
+      description: `${closingNote} · ${description.slice(0, 120)}`,
       siteName: "ZedApply",
+      images: [{ url: ogImage, width: 1200, height: 630, alt: pageTitle }],
     },
     twitter: {
       card: "summary_large_image",
-      title: ogTitle,
+      title: `${job.title} — ${job.company || "ZedApply"}`,
       description,
+      images: [ogImage],
     },
   };
 }

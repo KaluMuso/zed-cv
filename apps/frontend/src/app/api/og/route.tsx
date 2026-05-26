@@ -1,22 +1,15 @@
 import { ImageResponse } from "next/og";
 import {
   buildJobOgImageElement,
+  buildSiteOgImageElement,
   normalizeOgJobCard,
   OG_IMAGE_SIZE,
 } from "@/lib/og-image-builder";
 
 export const runtime = "edge";
 
-export const alt = "ZedApply — job posting";
-export const size = OG_IMAGE_SIZE;
-export const contentType = "image/png";
-
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
-interface PageParams {
-  params: { id: string };
-}
 
 async function fetchJobLite(id: string) {
   try {
@@ -34,7 +27,16 @@ async function fetchJobLite(id: string) {
   }
 }
 
-export default async function Image({ params }: PageParams) {
-  const card = normalizeOgJobCard(await fetchJobLite(params.id));
-  return new ImageResponse(buildJobOgImageElement(card), { ...size });
+/**
+ * Dynamic OG image endpoint for share previews and external tools.
+ * Usage: `/api/og?jobId=<uuid>` or `/api/og` for the site default card.
+ */
+export async function GET(request: Request) {
+  const jobId = new URL(request.url).searchParams.get("jobId")?.trim();
+
+  const element = jobId
+    ? buildJobOgImageElement(normalizeOgJobCard(await fetchJobLite(jobId)))
+    : buildSiteOgImageElement();
+
+  return new ImageResponse(element, { ...OG_IMAGE_SIZE });
 }

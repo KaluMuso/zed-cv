@@ -135,9 +135,11 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
         <div
           class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
         >
-          <button
-            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px]"
-            type="button"
+          <a
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[160px] justify-center"
+            href="https://example.com/apply"
+            rel="noopener noreferrer"
+            target="_blank"
           >
             Apply on company site
             <svg
@@ -155,7 +157,7 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
                 d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
               />
             </svg>
-          </button>
+          </a>
           <button
             aria-label="Save job"
             class="btn btn-outline btn-sm gap-1.5 flex-1 sm:flex-none justify-center"
@@ -204,6 +206,145 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
              Generate cover letter
           </button>
         </div>
+        <section
+          aria-label="Share this job"
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            Share
+          </h3>
+          <div
+            aria-label="Share this job"
+            class="share-buttons"
+            role="group"
+          >
+            <a
+              aria-label="Share on WhatsApp"
+              class="share-btn"
+              data-plausible-event-name="job_share_whatsapp"
+              href="https://wa.me/?text=Software%20Engineer%20%E2%80%94%20ACME%20Zambia%20%C2%B7%20Lusaka%0A%0AView%20on%20ZedApply%3A%20https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="currentColor"
+                height="16"
+                stroke="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="0"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"
+                />
+              </svg>
+              WhatsApp
+            </a>
+            <a
+              aria-label="Share on LinkedIn"
+              class="share-btn"
+              data-plausible-event-name="job_share_linkedin"
+              href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zM4 6a2 2 0 100-4 2 2 0 000 4z"
+                />
+              </svg>
+              LinkedIn
+            </a>
+            <a
+              aria-label="Share on Facebook"
+              class="share-btn"
+              data-plausible-event-name="job_share_facebook"
+              href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"
+                />
+              </svg>
+              Facebook
+            </a>
+            <a
+              aria-label="Share on X"
+              class="share-btn"
+              data-plausible-event-name="job_share_twitter"
+              href="https://twitter.com/intent/tweet?text=Software%20Engineer%20%E2%80%94%20ACME%20Zambia%20%C2%B7%20Lusaka%0A%0AView%20on%20ZedApply%3A%20https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1&url=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M18 6L6 18M6 6l12 12"
+                />
+              </svg>
+              X
+            </a>
+            <button
+              aria-label="Copy job link"
+              class="share-btn"
+              data-plausible-event-name="job_share_copy"
+              type="button"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+                />
+              </svg>
+              Copy link
+            </button>
+          </div>
+        </section>
         <section
           class="mb-8"
         >
@@ -393,9 +534,11 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
         <div
           class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
         >
-          <button
-            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px]"
-            type="button"
+          <a
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[160px] justify-center"
+            href="https://example.com/apply"
+            rel="noopener noreferrer"
+            target="_blank"
           >
             Apply on company site
             <svg
@@ -413,7 +556,7 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
                 d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"
               />
             </svg>
-          </button>
+          </a>
           <button
             aria-label="Save job"
             class="btn btn-outline btn-sm gap-1.5 flex-1 sm:flex-none justify-center"
@@ -462,6 +605,145 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
              Generate cover letter
           </button>
         </div>
+        <section
+          aria-label="Share this job"
+          class="mb-8"
+        >
+          <h3
+            class="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3"
+          >
+            Share
+          </h3>
+          <div
+            aria-label="Share this job"
+            class="share-buttons"
+            role="group"
+          >
+            <a
+              aria-label="Share on WhatsApp"
+              class="share-btn"
+              data-plausible-event-name="job_share_whatsapp"
+              href="https://wa.me/?text=Software%20Engineer%20%E2%80%94%20ACME%20Zambia%20%C2%B7%20Lusaka%0A%0AView%20on%20ZedApply%3A%20https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="currentColor"
+                height="16"
+                stroke="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="0"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"
+                />
+              </svg>
+              WhatsApp
+            </a>
+            <a
+              aria-label="Share on LinkedIn"
+              class="share-btn"
+              data-plausible-event-name="job_share_linkedin"
+              href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-4 0v7h-4v-7a6 6 0 016-6zM2 9h4v12H2zM4 6a2 2 0 100-4 2 2 0 000 4z"
+                />
+              </svg>
+              LinkedIn
+            </a>
+            <a
+              aria-label="Share on Facebook"
+              class="share-btn"
+              data-plausible-event-name="job_share_facebook"
+              href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"
+                />
+              </svg>
+              Facebook
+            </a>
+            <a
+              aria-label="Share on X"
+              class="share-btn"
+              data-plausible-event-name="job_share_twitter"
+              href="https://twitter.com/intent/tweet?text=Software%20Engineer%20%E2%80%94%20ACME%20Zambia%20%C2%B7%20Lusaka%0A%0AView%20on%20ZedApply%3A%20https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1&url=https%3A%2F%2Fwww.zedapply.com%2Fjobs%2Fj1"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M18 6L6 18M6 6l12 12"
+                />
+              </svg>
+              X
+            </a>
+            <button
+              aria-label="Copy job link"
+              class="share-btn"
+              data-plausible-event-name="job_share_copy"
+              type="button"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path
+                  d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"
+                />
+              </svg>
+              Copy link
+            </button>
+          </div>
+        </section>
         <section
           class="mb-8"
         >

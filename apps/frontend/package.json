@@ -34,6 +34,14 @@
     "zod": "^3.23.8",
     "zustand": "^5.0.12"
   },
+  "browserslist": [
+    "chrome >= 87",
+    "firefox >= 78",
+    "safari >= 14",
+    "edge >= 88",
+    "not dead",
+    "not ie 11"
+  ],
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@tailwindcss/typography": "^0.5.19",

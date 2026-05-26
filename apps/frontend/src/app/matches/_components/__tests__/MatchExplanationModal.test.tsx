@@ -32,15 +32,12 @@ const MATCH: MatchData = {
 describe("MatchExplanationModal", () => {
   it("renders solid panel, preferences note, and skill gap callout", () => {
     const onClose = vi.fn();
-    const { container } = render(
-      <MatchExplanationModal match={MATCH} open onClose={onClose} />,
-    );
+    render(<MatchExplanationModal match={MATCH} open onClose={onClose} />);
 
-    const backdrop = container.querySelector('[aria-hidden="true"]');
+    const backdrop = document.body.querySelector(".modal-backdrop");
     expect(backdrop).toBeTruthy();
-    expect(backdrop?.getAttribute("style")).toMatch(/rgba\(0,\s*0,\s*0,\s*0\.5\)/);
 
-    expect(screen.getByRole("dialog")).toHaveStyle({ background: "var(--surface)" });
+    expect(screen.getByRole("dialog")).toHaveClass("modal-panel");
     expect(screen.getByText("Preferences match")).toBeInTheDocument();
     expect(screen.getByText(/remote arrangement, salary range overlap/)).toBeInTheDocument();
     expect(screen.getByText("Skill gap")).toBeInTheDocument();
@@ -51,11 +48,9 @@ describe("MatchExplanationModal", () => {
   it("calls onClose when backdrop is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    const { container } = render(
-      <MatchExplanationModal match={MATCH} open onClose={onClose} />,
-    );
+    render(<MatchExplanationModal match={MATCH} open onClose={onClose} />);
 
-    const backdrop = container.querySelector('[aria-hidden="true"]');
+    const backdrop = document.body.querySelector(".modal-backdrop");
     expect(backdrop).toBeTruthy();
     await user.click(backdrop!);
     expect(onClose).toHaveBeenCalledOnce();

@@ -23,7 +23,7 @@ export function MatchCard({ match, expired = false, onApplyClick }: MatchCardPro
 
   return (
     <article
-      className="card overflow-hidden relative"
+      className="card job-card overflow-hidden relative"
       style={{ opacity: expired ? 0.5 : 1 }}
       data-testid="match-card"
     >

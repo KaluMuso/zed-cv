@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { pageMetadata, siteDefaultMetadata } from "../site-metadata";
+import {
+  pageMetadata,
+  SITE_DEFAULT_TITLE,
+  siteDefaultMetadata,
+} from "../site-metadata";
 
 describe("siteDefaultMetadata", () => {
   it("sets the branded default title and OpenGraph tags", () => {
     expect(siteDefaultMetadata.title).toMatchObject({
-      default: "ZedApply - Zambian AI Job Matching",
-      template: "%s — ZedApply",
+      default: SITE_DEFAULT_TITLE,
+      template: "%s | ZedApply",
     });
     expect(siteDefaultMetadata.openGraph).toMatchObject({
-      title: "ZedApply - Zambian AI Job Matching",
+      title: SITE_DEFAULT_TITLE,
       siteName: "ZedApply",
       type: "website",
+    });
+    expect(siteDefaultMetadata.openGraph?.images?.[0]).toMatchObject({
+      url: "/api/og",
+      width: 1200,
+      height: 630,
     });
   });
 });
@@ -22,7 +31,7 @@ describe("pageMetadata", () => {
       description: "Browse open roles across Zambia.",
     });
     expect(meta.title).toBe("Jobs");
-    expect(meta.openGraph?.title).toBe("Jobs — ZedApply");
-    expect(meta.twitter?.title).toBe("Jobs — ZedApply");
+    expect(meta.openGraph?.title).toBe("Jobs | ZedApply");
+    expect(meta.twitter?.title).toBe("Jobs | ZedApply");
   });
 });

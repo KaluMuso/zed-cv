@@ -290,8 +290,8 @@ export function JobCard({
       className={cn(
         "group relative w-full rounded-xl border border-border/80",
         "bg-card dark:bg-[#121212]",
-        "shadow-sm transition-all duration-200",
-        "hover:border-border hover:shadow-md hover:-translate-y-0.5",
+        "job-card shadow-sm",
+        "hover:border-border",
         "focus-within:ring-2 focus-within:ring-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background",
       )}
     >

@@ -41,7 +41,7 @@
   ],
   "screenshots": [
     {
-      "src": "/og-image.png",
+      "src": "/api/og",
       "sizes": "1200x630",
       "type": "image/png",
       "form_factor": "wide",

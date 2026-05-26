@@ -19,6 +19,7 @@ import {
   formatSalary,
 } from "@/components/jobs/jobDetailFormatters";
 import { buildApplyContactMethods } from "@/components/jobs/applyContacts";
+import { JobShareButtons } from "@/components/share/JobShareButtons";
 import { cn } from "@/lib/utils";
 
 interface JobDetailBodyProps {
@@ -223,6 +224,18 @@ export function JobDetailBody({
               <Icon name="sparkle" size={14} /> Generate cover letter
             </button>
           </div>
+
+          <section className="mb-8" aria-label="Share this job">
+            <SectionTitle>Share</SectionTitle>
+            <JobShareButtons
+              job={{
+                id: job.id,
+                title: job.title,
+                company: job.company,
+                location: job.location,
+              }}
+            />
+          </section>
 
           {job.reference_number && (
             <p className="text-xs font-mono mb-6" style={{ color: "var(--muted)" }}>

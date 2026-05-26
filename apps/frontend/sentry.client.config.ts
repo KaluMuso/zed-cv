@@ -1,15 +1,14 @@
 import * as Sentry from "@sentry/nextjs";
 import { getSentryInitOptions } from "./sentry.shared";
 
-const { dsn, ...options } = getSentryInitOptions();
-const enabled =
-  Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN) && typeof window !== "undefined";
+function initSentryClient() {
+  const { dsn, ...options } = getSentryInitOptions();
+  if (!dsn || typeof window === "undefined") return;
 
-if (dsn && enabled) {
   Sentry.init({
     dsn,
     ...options,
-    enabled,
+    enabled: true,
     ignoreErrors: [
       "ResizeObserver loop limit exceeded",
       "Hydration failed because the initial UI does not match",
@@ -19,4 +18,13 @@ if (dsn && enabled) {
     replaysSessionSampleRate: 0.0,
     replaysOnErrorSampleRate: 0.1,
   });
+}
+
+if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  const schedule =
+    typeof requestIdleCallback === "function"
+      ? requestIdleCallback
+      : (cb: () => void) => window.setTimeout(cb, 1);
+
+  schedule(() => initSentryClient());
 }

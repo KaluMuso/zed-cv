@@ -222,6 +222,7 @@ export default function HomePageClient() {
 
       {/* ───────────────────── SOCIAL PROOF STRIP ───────────────────── */}
       <section
+        className="section-below-fold"
         style={{
           borderTop: "1px solid var(--line)",
           borderBottom: "1px solid var(--line)",
@@ -266,7 +267,7 @@ export default function HomePageClient() {
       <ScoreMathSection />
 
       {/* ─────────────────────── PRICING TEASER ─────────────────────── */}
-      <section className="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
+      <section className="section-below-fold max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
         <div className="flex flex-wrap items-baseline justify-between gap-4 mb-10">
           <div>
             <div className="eyebrow">§ 03 / Pricing</div>
@@ -301,7 +302,7 @@ export default function HomePageClient() {
             <Link
               key={p.name}
               href="/pricing"
-              className="card card-hover p-5 sm:p-6 reveal block"
+              className="card card-hover job-card p-5 sm:p-6 reveal block"
               style={{
                 transitionDelay: `${i * 75}ms`,
                 border: p.highlight
@@ -369,6 +370,7 @@ export default function HomePageClient() {
 
       {/* ────────────────────────── FAQ ────────────────────────── */}
       <section
+        className="section-below-fold"
         style={{
           background: "var(--bg-2)",
           borderTop: "1px solid var(--line)",

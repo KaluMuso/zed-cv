@@ -41,6 +41,8 @@
   --copper-700: #92400e;
   --copper-600: #b45309;
   --copper-500: #D97706;
+  /* WCAG AA on cream (--bg): use for link text, not --copper-500 */
+  --copper-link: #92400e;
   --copper-400: #f59e0b;
   --copper-300: #fbbf24;
   --copper-200: #fde68a;
@@ -527,17 +529,21 @@ body {
 @keyframes pageEnter {
   from {
     opacity: 0;
-    transform: translateY(8px);
-    filter: blur(2px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }
 .page-enter {
-  animation: pageEnter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: pageEnter 250ms ease-out both;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #main-content {
+    animation: pageEnter 250ms ease-out;
+  }
 }
 
 @keyframes slideRight {
@@ -620,6 +626,117 @@ body {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ─── Skip link ─── */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 12px 20px;
+  background: var(--green-700);
+  color: #faf7f2;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: var(--r-sm);
+}
+.skip-to-content:focus {
+  left: 12px;
+  top: 12px;
+  outline: 2px solid var(--copper-300);
+  outline-offset: 2px;
+}
+
+/* ─── Share buttons (job detail) ─── */
+.share-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 200ms ease, background 150ms ease, border-color 150ms ease;
+}
+.share-btn:hover {
+  background: var(--surface);
+  border-color: var(--line-2);
+}
+.share-btn:active {
+  transform: scale(0.98);
+}
+
+/* ─── Job / match cards ─── */
+.job-card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.job-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -8px rgba(15, 23, 42, 0.15);
+}
+
+/* ─── Modal overlay (solid backdrop — no filter blur) ─── */
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes modalPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  animation: modalBackdropIn 200ms ease-out both;
+}
+.modal-panel {
+  position: relative;
+  z-index: 10;
+  opacity: 1;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: modalPanelIn 250ms ease-out both;
+}
+
+/* Copper accent links on light surfaces (AA contrast) */
+a.link-copper,
+.link-copper {
+  color: var(--copper-link);
+}
+a.link-copper:hover,
+.link-copper:hover {
+  color: var(--copper-700);
+}
+
+/* Defer layout for below-the-fold sections */
+.section-below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
 }
 
 /* ─── Focus rings — accessible ─── */

@@ -23,7 +23,7 @@ export function HeroCvPreviewCard({ className }: { className?: string }) {
           Parsed
         </span>
       </div>
-      <h3 className="font-display mt-3 text-xl text-ink">Chanda Mwape</h3>
+      <p className="font-display mt-3 text-xl text-ink m-0">Chanda Mwape</p>
       <p className="mt-0.5 text-sm text-ink-2">Senior Accountant · Lusaka</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {skills.map((skill) => (

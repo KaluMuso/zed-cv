@@ -30,7 +30,7 @@ const baseMatch: MatchData = {
     company: "ACME Zambia",
     location: "Lusaka",
     closing_date: null,
-    apply_url: null,
+    apply_url: "https://careers.example.com/apply",
     apply_email: null,
     source_url: null,
   },
@@ -46,7 +46,11 @@ describe("MatchCard", () => {
   it("shows an active Apply button that calls onApplyClick", async () => {
     const user = userEvent.setup();
     const onApplyClick = vi.fn();
-    render(<MatchCard match={baseMatch} onApplyClick={onApplyClick} />);
+    const match: MatchData = {
+      ...baseMatch,
+      job: { ...baseMatch.job, apply_url: null, apply_email: "hr@acme.zm" },
+    };
+    render(<MatchCard match={match} onApplyClick={onApplyClick} />);
     const btn = screen.getByTestId("match-apply-active");
     expect(btn).toBeEnabled();
     await user.click(btn);

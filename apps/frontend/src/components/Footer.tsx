@@ -67,12 +67,12 @@ export function Footer() {
           {/* Link columns */}
           {columns.map((col) => (
             <div key={col.title}>
-              <h4
-                className="eyebrow mb-4"
+              <p
+                className="eyebrow mb-4 m-0"
                 style={{ color: "var(--muted)" }}
               >
                 {col.title}
-              </h4>
+              </p>
               <ul className="space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>

@@ -148,11 +148,11 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     Parsed
                   </span>
                 </div>
-                <h3
-                  class="font-display mt-3 text-xl text-ink"
+                <p
+                  class="font-display mt-3 text-xl text-ink m-0"
                 >
                   Chanda Mwape
-                </h3>
+                </p>
                 <p
                   class="mt-0.5 text-sm text-ink-2"
                 >
@@ -649,6 +649,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
       </div>
     </section>
     <section
+      class="section-below-fold"
       style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface);"
     >
       <div
@@ -1442,7 +1443,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
       </div>
     </section>
     <section
-      class="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24"
+      class="section-below-fold max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24"
     >
       <div
         class="flex flex-wrap items-baseline justify-between gap-4 mb-10"
@@ -1479,7 +1480,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1534,7 +1535,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
         >
@@ -1595,7 +1596,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1650,7 +1651,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1707,6 +1708,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
       </div>
     </section>
     <section
+      class="section-below-fold"
       style="background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);"
     >
       <div
@@ -3539,11 +3541,11 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     Parsed
                   </span>
                 </div>
-                <h3
-                  class="font-display mt-3 text-xl text-ink"
+                <p
+                  class="font-display mt-3 text-xl text-ink m-0"
                 >
                   Chanda Mwape
-                </h3>
+                </p>
                 <p
                   class="mt-0.5 text-sm text-ink-2"
                 >
@@ -4040,6 +4042,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
       </div>
     </section>
     <section
+      class="section-below-fold"
       style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface);"
     >
       <div
@@ -4833,7 +4836,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
       </div>
     </section>
     <section
-      class="max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24"
+      class="section-below-fold max-w-[1280px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24"
     >
       <div
         class="flex flex-wrap items-baseline justify-between gap-4 mb-10"
@@ -4870,7 +4873,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -4925,7 +4928,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
         >
@@ -4986,7 +4989,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -5041,7 +5044,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="card card-hover p-5 sm:p-6 reveal block"
+          class="card card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -5098,6 +5101,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
       </div>
     </section>
     <section
+      class="section-below-fold"
       style="background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);"
     >
       <div

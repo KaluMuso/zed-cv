@@ -236,9 +236,10 @@ describe("Apply modal", () => {
     renderWithProviders(<MatchesPageClient />);
     const applyBtn = await screen.findByRole("button", { name: /^apply$/i }, { timeout: 5000 });
     await userEvent.click(applyBtn);
-    expect(
-      await screen.findByText(/no direct contact details were listed/i),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText(/how to apply/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^copy$/i })).not.toBeInTheDocument();
   });
 });
 

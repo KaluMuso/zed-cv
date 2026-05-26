@@ -5,34 +5,41 @@ export const SITE_URL = "https://www.zedapply.com";
 
 export const SITE_NAME = "ZedApply";
 
-/** Root layout default — homepage and any route without a page-level title. */
-export const SITE_DEFAULT_TITLE = "ZedApply - Zambian AI Job Matching";
+export const SITE_DEFAULT_TITLE =
+  "ZedApply — AI Job Matching for Zambian Professionals";
 
 export const SITE_DEFAULT_DESCRIPTION =
-  "Find jobs that match your skills. AI-powered matching, CV generation, and WhatsApp delivery for Zambian professionals.";
+  "Find your next role in Zambia. AI-powered matching against your CV, WhatsApp digests, and zero spam. Free to start.";
 
 export const SITE_OG_DESCRIPTION =
-  "Upload your CV and let AI score you against every open role in Zambia. Get matches on WhatsApp.";
+  "Built on the country's largest aggregated jobs feed. Tailored CVs and WhatsApp delivery.";
 
 const SITE_KEYWORDS = [
-  "Zambia jobs",
-  "CV matching",
-  "AI job matching",
+  "jobs Zambia",
   "Lusaka jobs",
   "Zambian careers",
-  "CV builder Zambia",
-  "job search Zambia",
+  "jobs in Zambia",
+  "AI job matching",
+  "CV matching",
 ] as const;
+
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
+
+/** Default OG image (edge-generated). */
+export const SITE_OG_IMAGE_PATH = "/api/og";
 
 /** Site-wide defaults merged into the root layout `metadata` export. */
 export const siteDefaultMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: SITE_DEFAULT_TITLE,
-    template: `%s — ${SITE_NAME}`,
+    template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DEFAULT_DESCRIPTION,
   keywords: [...SITE_KEYWORDS],
+  authors: [{ name: "Zed Apply", url: SITE_URL }],
+  creator: "Vergeo Group",
+  publisher: "Zed Apply",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -47,15 +54,36 @@ export const siteDefaultMetadata: Metadata = {
     title: SITE_DEFAULT_TITLE,
     description: SITE_OG_DESCRIPTION,
     images: [
-      { url: "/og-image.png", width: 1200, height: 630, alt: SITE_NAME },
+      {
+        url: SITE_OG_IMAGE_PATH,
+        width: 1200,
+        height: 630,
+        alt: SITE_NAME,
+      },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_DEFAULT_TITLE,
-    description: SITE_OG_DESCRIPTION,
+    description:
+      "Find your next role in Zambia. AI matches against your CV.",
+    images: [SITE_OG_IMAGE_PATH],
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
+  ...(googleVerification
+    ? { verification: { google: googleVerification } }
+    : {}),
+  alternates: { canonical: SITE_URL },
   other: {
     "mobile-web-app-capable": "yes",
   },
@@ -73,9 +101,9 @@ type PageMetaInput = {
   description: string;
 };
 
-/** Per-route metadata — `title` becomes "{title} — ZedApply" via the root template. */
+/** Per-route metadata — `title` becomes "{title} | ZedApply" via the root template. */
 export function pageMetadata({ title, description }: PageMetaInput): Metadata {
-  const ogTitle = `${title} — ${SITE_NAME}`;
+  const ogTitle = `${title} | ${SITE_NAME}`;
   return {
     title,
     description,
@@ -83,10 +111,18 @@ export function pageMetadata({ title, description }: PageMetaInput): Metadata {
       title: ogTitle,
       description,
       type: "website",
+      images: [{ url: SITE_OG_IMAGE_PATH, width: 1200, height: 630 }],
     },
     twitter: {
+      card: "summary_large_image",
       title: ogTitle,
       description,
+      images: [SITE_OG_IMAGE_PATH],
     },
   };
+}
+
+/** Absolute URL for per-job dynamic OG cards. */
+export function jobOgImageUrl(jobId: string): string {
+  return `${SITE_URL}/api/og?jobId=${encodeURIComponent(jobId)}`;
 }
