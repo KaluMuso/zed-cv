@@ -494,7 +494,7 @@ class TestJobIngest:
         assert inserted["apply_url"] == (
             "https://wd1.myworkdaysite.com/recruiting/abinbev/job/1"
         )
-        assert inserted.get("apply_source") == "aggregator_deep_link"
+        assert inserted.get("apply_source") == "enriched"
 
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
     def test_ingest_dedupes_existing_fingerprint(

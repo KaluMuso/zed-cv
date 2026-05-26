@@ -35,6 +35,20 @@ _MAILTO_RE = re.compile(
     re.IGNORECASE,
 )
 _LINKEDIN_HOST_RE = re.compile(r"(^|\.)linkedin\.com$", re.IGNORECASE)
+_APPLICATION_HEADING_RE = re.compile(
+    r"method\s+of\s+application|how\s+to\s+apply|application\s+instructions",
+    re.IGNORECASE,
+)
+_AGGREGATOR_HOSTS = frozenset(
+    {
+        "jobwebzambia.com",
+        "gozambiajobs.com",
+        "jobsearchzambia.com",
+        "jobsearchzm.com",
+        "careersinafrica.com",
+        "everjobs.com.zm",
+    }
+)
 
 
 def _normalize_http_url(href: str, base_url: str) -> Optional[str]:
@@ -94,25 +108,85 @@ def _links_from_scope(scope: Tag | BeautifulSoup, page_url: str) -> list[str]:
     return links
 
 
-def _pick_apply_url(links: list[str]) -> Optional[str]:
+def _link_host(url: str) -> str:
+    host = (urlparse(url).netloc or "").lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+def _is_aggregator_url(url: str) -> bool:
+    host = _link_host(url)
+    if not host:
+        return False
+    if host in _AGGREGATOR_HOSTS:
+        return True
+    return any(host.endswith(f".{domain}") for domain in _AGGREGATOR_HOSTS)
+
+
+def _is_non_apply_url(url: str) -> bool:
+    lower = url.lower()
+    host = _link_host(url)
+    if any(
+        frag in host
+        for frag in (
+            "facebook.com",
+            "twitter.com",
+            "x.com",
+            "linkedin.com",
+            "api.whatsapp.com",
+            "wa.me",
+        )
+    ):
+        return True
+    return "sharer" in lower or "share-offsite" in lower or "/send?text=" in lower
+
+
+def _pick_apply_url(links: list[str], page_url: str = "") -> Optional[str]:
+    page_host = _link_host(page_url)
+    external = [
+        url
+        for url in links
+        if not _is_aggregator_url(url)
+        and _link_host(url) != page_host
+        and not _is_non_apply_url(url)
+    ]
     keywords = ("apply", "career", "vacanc", "job", "recruit", "submit")
-    for url in links:
+    for url in external:
         lower = url.lower()
         if any(k in lower for k in keywords):
             return url
-    return links[0] if links else None
+    return external[0] if external else None
+
+
+def _application_section_scopes(soup: BeautifulSoup) -> list[Tag | BeautifulSoup]:
+    scopes: list[Tag | BeautifulSoup] = []
+    legacy = soup.select_one(".job-application, section.job-application")
+    if legacy is not None:
+        scopes.append(legacy)
+    for heading in soup.find_all(["h1", "h2", "h3", "h4"]):
+        title = heading.get_text(" ", strip=True) or ""
+        if not _APPLICATION_HEADING_RE.search(title):
+            continue
+        block = soup.new_tag("div")
+        block.append(heading)
+        for sib in heading.next_siblings:
+            if getattr(sib, "name", None) in ("h1", "h2", "h3", "h4"):
+                break
+            block.append(sib)
+        scopes.append(block)
+    return scopes
 
 
 def _build_result(
     emails: list[str],
     links: list[str],
     phones: list[str],
+    page_url: str,
     *,
     parser: str,
     redirect_url: Optional[str] = None,
 ) -> EnrichmentResult:
     apply_email = emails[0] if emails else None
-    apply_url = _pick_apply_url(links)
+    apply_url = _pick_apply_url(links, page_url)
     contact_phone = phones[0] if phones else None
 
     if apply_email and apply_url:
@@ -158,18 +232,29 @@ def parse_gozambiajobs(html: str, url: str) -> EnrichmentResult:
     emails = _emails_from_scope(scope, html)
     links = _links_from_scope(scope, url)
     phones = extract_phones_from_text(scope.get_text(" ", strip=True))
-    return _build_result(emails, links, phones, parser="gozambiajobs")
+    return _build_result(emails, links, phones, url, parser="gozambiajobs")
 
 
 def parse_jobwebzambia(html: str, url: str) -> EnrichmentResult:
     """Parse jobwebzambia.com listing pages."""
     soup = BeautifulSoup(html, "html.parser")
-    section = soup.select_one(".job-application, section.job-application")
-    scope: Tag | BeautifulSoup = section if section else soup
-    emails = _emails_from_scope(scope, html)
-    links = _links_from_scope(scope, url)
-    phones = extract_phones_from_text(scope.get_text(" ", strip=True))
-    return _build_result(emails, links, phones, parser="jobwebzambia")
+    scopes = _application_section_scopes(soup)
+    if not scopes:
+        scopes = [soup]
+    emails: list[str] = []
+    links: list[str] = []
+    phones: list[str] = []
+    for scope in scopes:
+        emails.extend(_emails_from_scope(scope, html))
+        links.extend(_links_from_scope(scope, url))
+        phones.extend(extract_phones_from_text(scope.get_text(" ", strip=True)))
+    return _build_result(
+        _dedupe_emails(emails),
+        links,
+        phones,
+        url,
+        parser="jobwebzambia",
+    )
 
 
 def parse_jobsearchzm(html: str, url: str) -> EnrichmentResult:
@@ -192,7 +277,7 @@ def parse_jobsearchzm(html: str, url: str) -> EnrichmentResult:
     emails.extend(_emails_from_scope(soup, html))
     links.extend(_links_from_scope(soup, url))
     phones = extract_phones_from_text(soup.get_text(" ", strip=True))
-    return _build_result(_dedupe_emails(emails), links, phones, parser="jobsearchzm")
+    return _build_result(_dedupe_emails(emails), links, phones, url, parser="jobsearchzm")
 
 
 def _linkedin_employer_url(soup: BeautifulSoup) -> Optional[str]:
@@ -240,6 +325,7 @@ def parse_linkedin(html: str, url: str) -> EnrichmentResult:
         emails,
         [],
         phones,
+        url,
         parser="linkedin",
         redirect_url=redirect_url,
     )
@@ -251,4 +337,4 @@ def parse_generic(html: str, url: str) -> EnrichmentResult:
     emails = _emails_from_scope(soup, html)
     links = _links_from_scope(soup, url)
     phones = extract_phones_from_text(soup.get_text(" ", strip=True))
-    return _build_result(emails, links, phones, parser="generic")
+    return _build_result(emails, links, phones, url, parser="generic")

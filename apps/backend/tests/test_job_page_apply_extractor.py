@@ -66,6 +66,50 @@ class TestExtractRealApplyUrl:
         url = extract_real_apply_url(html, "https://jobwebzambia.com/jobs/x")
         assert url == "https://employer.example/apply"
 
+    def test_method_of_application_click_here_link(self) -> None:
+        """Save the Children MEAL Lead: external link under Method of Application."""
+        html = """
+        <html><body>
+          <h1 class="how-to-apply">Method of Application</h1>
+          <p>
+            <a href="https://hcri.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/16569?utm_medium=jobboard&amp;utm_source=linkedin">
+              Submit your CV and Application on Company Website : Click Here
+            </a>
+          </p>
+        </body></html>
+        """
+        url = extract_real_apply_url(
+            html,
+            "https://jobwebzambia.com/jobs/monitoring-evaluation-accountability-learning-meal-lead-save-children/",
+        )
+        assert url is not None
+        assert "oraclecloud.com" in url
+
+    def test_method_of_application_email_without_link(self) -> None:
+        html = """
+        <html><body>
+          <h2>How to Apply</h2>
+          <p>Send your CV to careers@savechildren.zm before Friday.</p>
+        </body></html>
+        """
+        contacts = extract_apply_contacts_from_page(
+            html, "https://jobwebzambia.com/jobs/meal-lead/"
+        )
+        assert contacts.apply_email == "careers@savechildren.zm"
+        assert contacts.apply_url is None
+
+    def test_method_of_application_mailto(self) -> None:
+        html = """
+        <html><body>
+          <h3>Application Instructions</h3>
+          <a href="mailto:hr@employer.co.zm">Email your application</a>
+        </body></html>
+        """
+        contacts = extract_apply_contacts_from_page(
+            html, "https://jobwebzambia.com/jobs/x/"
+        )
+        assert contacts.apply_email == "hr@employer.co.zm"
+
     def test_extract_email_and_phone_from_parser(self) -> None:
         html = """
         <html><body>
@@ -103,7 +147,7 @@ class TestMergeResolvedApplyContacts:
             original_apply_url="https://jobwebzambia.com/jobs/x",
         )
         assert job_data["apply_url"] == "https://employer.example/apply"
-        assert job_data["apply_source"] == "aggregator_deep_link"
+        assert job_data["apply_source"] == "enriched"
 
 
 class TestResolveApplyContactsFromAggregatorUrl:
