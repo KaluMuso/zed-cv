@@ -174,6 +174,40 @@ class TestGetSubscription:
         assert body["welcome_bonus_active"] is True
 
 
+class TestListMyPayments:
+    def test_list_payments_unauthenticated(self, client):
+        resp = client.get("/api/v1/subscription/payments")
+        assert resp.status_code in (401, 403)
+
+    def test_list_payments_success(self, client, auth_headers, fake_supabase):
+        fake_supabase.set_table(
+            "payments",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "pay-1",
+                        "user_id": "test-user-id",
+                        "amount": 12500,
+                        "currency": "ZMW",
+                        "payment_method": "lenco_mtn_money",
+                        "provider": "lenco",
+                        "status": "completed",
+                        "created_at": "2026-05-01T10:00:00+00:00",
+                        "completed_at": "2026-05-01T10:01:00+00:00",
+                    }
+                ],
+                count=1,
+            ),
+        )
+        resp = client.get("/api/v1/subscription/payments", headers=auth_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 1
+        assert len(body["payments"]) == 1
+        assert body["payments"][0]["amount"] == 12500
+        assert body["payments"][0]["status"] == "completed"
+
+
 class TestPaymentInitiate:
     def test_pay_returns_410_gone(self, client, auth_headers):
         """Legacy server-side initiation removed in favour of Lenco widget."""

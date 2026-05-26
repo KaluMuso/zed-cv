@@ -343,6 +343,7 @@ export interface UserProfile {
   cv_sections?: CVSections | null;
   referral_code?: string;
   referral_signups_count?: number;
+  referral_qualified_count?: number;
 }
 
 // @openapi NotificationPreferences
@@ -1323,8 +1324,26 @@ export interface PaymentVerifyResult {
   message: string;
 }
 
+export interface PaymentHistoryRow {
+  id: string;
+  amount: number;
+  currency: string;
+  payment_method: string;
+  provider?: string | null;
+  status: string;
+  created_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface PaymentHistoryList {
+  payments: PaymentHistoryRow[];
+  total: number;
+}
+
 export const subscription = {
   get: (token: string) => apiFetch<Subscription>("/subscription", { token }),
+  listPayments: (token: string, limit = 50) =>
+    apiFetch<PaymentHistoryList>(`/subscription/payments?limit=${limit}`, { token }),
   /** @deprecated Use verifyPayment after Lenco widget onSuccess */
   pay: (
     token: string,

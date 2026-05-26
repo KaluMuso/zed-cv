@@ -250,3 +250,4 @@ class DailyDigestSendResponse(BaseModel):
     sent: int = 0
     skipped: int = 0
     failed: int = 0
+    quiet_hours_skipped: int = 0

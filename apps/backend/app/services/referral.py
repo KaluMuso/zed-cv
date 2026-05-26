@@ -5,6 +5,7 @@ import logging
 import re
 import secrets
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -106,6 +107,91 @@ def count_referral_signups(referrer_user_id: str, supabase: Any) -> int:
         supabase.table("users")
         .select("id", count="exact")
         .eq("referred_by_user_id", referrer_user_id)
+        .execute()
+    )
+    if result.count is not None:
+        return int(result.count)
+    return len(result.data or [])
+
+
+REFERRAL_QUALIFY_BONUS_MATCHES = 5
+UNLIMITED_MATCHES = 99_999
+
+
+def qualify_referral_on_cv_upload(referred_user_id: str, supabase: Any) -> bool:
+    """
+    When a referred user uploads their first CV, mark the event qualified and
+  grant the referrer bonus matches for the current billing period.
+    Returns True if a reward was applied.
+    """
+    event_res = (
+        supabase.table("referral_events")
+        .select("id, referrer_user_id, status")
+        .eq("referred_user_id", referred_user_id)
+        .limit(1)
+        .execute()
+    )
+    if not event_res.data:
+        return False
+
+    row = event_res.data[0]
+    if row.get("status") not in ("signed_up",):
+        return False
+
+    referrer_id = row["referrer_user_id"]
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    supabase.table("referral_events").update({
+        "status": "qualified",
+        "qualified_at": now_iso,
+    }).eq("id", row["id"]).execute()
+
+    rewarded = _grant_referrer_match_bonus(referrer_id, supabase)
+    if rewarded:
+        supabase.table("referral_events").update({
+            "status": "rewarded",
+            "rewarded_at": now_iso,
+        }).eq("id", row["id"]).execute()
+    return rewarded
+
+
+def _grant_referrer_match_bonus(referrer_user_id: str, supabase: Any) -> bool:
+    """Add REFERRAL_QUALIFY_BONUS_MATCHES to referrer subscription quota."""
+    sub_res = (
+        supabase.table("subscriptions")
+        .select("id, matches_limit, matches_used")
+        .eq("user_id", referrer_user_id)
+        .limit(1)
+        .execute()
+    )
+    if not sub_res.data:
+        return False
+
+    sub = sub_res.data[0]
+    current_limit = int(sub.get("matches_limit") or 0)
+    if current_limit >= UNLIMITED_MATCHES:
+        return True
+
+    new_limit = min(current_limit + REFERRAL_QUALIFY_BONUS_MATCHES, UNLIMITED_MATCHES)
+    supabase.table("subscriptions").update({
+        "matches_limit": new_limit,
+    }).eq("id", sub["id"]).execute()
+    log.info(
+        "referral bonus: referrer=%s matches_limit %s -> %s",
+        referrer_user_id,
+        current_limit,
+        new_limit,
+    )
+    return True
+
+
+def count_referral_qualified(referrer_user_id: str, supabase: Any) -> int:
+    """Referrals that uploaded a CV (qualified or rewarded)."""
+    result = (
+        supabase.table("referral_events")
+        .select("id", count="exact")
+        .eq("referrer_user_id", referrer_user_id)
+        .in_("status", ["qualified", "rewarded"])
         .execute()
     )
     if result.count is not None:

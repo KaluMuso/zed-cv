@@ -30,6 +30,11 @@ class UserProfile(BaseModel):
         ge=0,
         description="Users who signed up via this user's invite link.",
     )
+    referral_qualified_count: int = Field(
+        default=0,
+        ge=0,
+        description="Referred users who uploaded a CV (qualified for reward).",
+    )
 
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)

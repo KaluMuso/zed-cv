@@ -99,7 +99,7 @@ export function JobDetailMatchPanel({
           Based on {who}&apos;s CV
         </p>
         <p
-          className="mt-4 text-[10px] font-bold tracking-widest uppercase max-w-[240px] leading-snug"
+          className="mt-2 text-[10px] font-bold tracking-widest uppercase max-w-[240px] leading-snug"
           style={{ color: "var(--green-700)" }}
         >
           {matchStrengthHeadline(match.score)}

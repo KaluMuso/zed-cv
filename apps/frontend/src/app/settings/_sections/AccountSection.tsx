@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { profile as profileApi, type UserProfile } from "@/lib/api";
+import { profile as profileApi, userPreferences, type UserProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Avatar } from "@/components/ui/Avatar";
 import { notify } from "@/lib/toast";
@@ -18,6 +18,8 @@ type EditField = "full_name" | "email" | "location" | null;
 export function AccountSection() {
   const { token } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [currency, setCurrency] = useState<"ZMW" | "USD">("ZMW");
+  const [timezone, setTimezone] = useState("Africa/Lusaka");
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<EditField>(null);
   const [draft, setDraft] = useState("");
@@ -25,9 +27,12 @@ export function AccountSection() {
 
   const load = useCallback(() => {
     if (!token) return;
-    profileApi
-      .get(token)
-      .then(setProfile)
+    Promise.all([profileApi.get(token), userPreferences.get(token)])
+      .then(([p, prefs]) => {
+        setProfile(p);
+        setCurrency(prefs.currency);
+        setTimezone(prefs.display_timezone);
+      })
       .catch((e) =>
         notify.error(e instanceof Error ? e.message : "Could not load profile"),
       )
@@ -184,6 +189,62 @@ export function AccountSection() {
               }
             />
           )}
+        </div>
+      </SettingsCard>
+
+      <SettingsCard className="mt-6">
+        <div className="eyebrow mb-4">Language &amp; region</div>
+        <SettingsRow
+          label="Display language"
+          value="English"
+        />
+        <div className="py-4" style={{ borderBottom: "1px solid var(--line)" }}>
+          <label className="text-xs font-medium uppercase tracking-wider block mb-2" style={{ color: "var(--muted)" }}>
+            Currency
+          </label>
+          <select
+            className="field"
+            value={currency}
+            disabled={saving}
+            onChange={(e) => {
+              const next = e.target.value as "ZMW" | "USD";
+              setCurrency(next);
+              if (!token) return;
+              setSaving(true);
+              userPreferences
+                .patch(token, { currency: next })
+                .then(() => notify.custom.success("Saved"))
+                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
+                .finally(() => setSaving(false));
+            }}
+          >
+            <option value="ZMW">Zambian Kwacha (ZMW)</option>
+            <option value="USD">US Dollar (USD)</option>
+          </select>
+        </div>
+        <div className="pt-4">
+          <label className="text-xs font-medium uppercase tracking-wider block mb-2" style={{ color: "var(--muted)" }}>
+            Time zone
+          </label>
+          <select
+            className="field"
+            value={timezone}
+            disabled={saving}
+            onChange={(e) => {
+              setTimezone(e.target.value);
+              if (!token) return;
+              setSaving(true);
+              userPreferences
+                .patch(token, { display_timezone: e.target.value })
+                .then(() => notify.custom.success("Saved"))
+                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
+                .finally(() => setSaving(false));
+            }}
+          >
+            <option value="Africa/Lusaka">Africa/Lusaka (UTC+2)</option>
+            <option value="Africa/Johannesburg">Africa/Johannesburg (UTC+2)</option>
+            <option value="UTC">UTC</option>
+          </select>
         </div>
       </SettingsCard>
     </div>

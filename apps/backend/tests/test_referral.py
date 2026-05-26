@@ -1,11 +1,14 @@
-"""Referral code resolution and signup attribution."""
+"""Referral code resolution, signup attribution, and CV qualify rewards."""
 from unittest.mock import MagicMock
 
 import pytest
 
 from app.services.referral import (
+    REFERRAL_QUALIFY_BONUS_MATCHES,
     attach_referral_on_signup,
+    count_referral_qualified,
     generate_referral_code,
+    qualify_referral_on_cv_upload,
     resolve_referrer_user_id,
 )
 
@@ -32,34 +35,65 @@ class TableQuery:
         self._filters.append(("eq", col, val))
         return self
 
+    def in_(self, col, vals):
+        self._filters.append(("in", col, vals))
+        return self
+
     def limit(self, n):
         return self
 
     def insert(self, data):
         self._insert_payload = data
-        if self._table == "referral_events":
-            self._tables.setdefault("referral_events", []).append(data)
         return self
 
     def update(self, data):
         self._update_payload = data
         return self
 
-    def execute(self):
-        result = MagicMock()
-        rows = self._tables.get(self._table, [])
+    def _apply_filters(self, rows: list) -> list:
         filtered = rows
         for op, col, val in self._filters:
             if op == "eq":
                 filtered = [r for r in filtered if r.get(col) == val]
-        if self._insert_payload and self._table == "users":
+            elif op == "in":
+                filtered = [r for r in filtered if r.get(col) in val]
+        return filtered
+
+    def execute(self):
+        result = MagicMock()
+        rows = self._tables.get(self._table, [])
+        filtered = self._apply_filters(rows)
+
+        if self._update_payload:
+            for row in filtered:
+                row.update(self._update_payload)
+
+        if self._insert_payload:
             row = dict(self._insert_payload)
-            row.setdefault("id", "new-user")
-            self._tables.setdefault("users", []).append(row)
-        result.data = filtered[:1] if filtered else []
-        result.count = len([r for r in rows if all(
-            r.get(c) == v for _, c, v in self._filters if _ == "eq"
-        )]) if self._table == "users" and any(f[1] == "referred_by_user_id" for f in self._filters) else None
+            if self._table == "referral_events":
+                row.setdefault("id", f"evt-{len(rows) + 1}")
+            elif self._table == "users":
+                row.setdefault("id", "new-user")
+            self._tables.setdefault(self._table, []).append(row)
+            filtered = [row]
+
+        result.data = filtered[:1] if self._update_payload is None else filtered[:1]
+        if not result.data and filtered:
+            result.data = filtered[:1]
+        count_filters = [
+            f for f in self._filters
+            if f[0] in ("eq", "in")
+        ]
+        if count_filters and self._table in ("users", "referral_events"):
+            counted = rows
+            for op, col, val in count_filters:
+                if op == "eq":
+                    counted = [r for r in counted if r.get(col) == val]
+                elif op == "in":
+                    counted = [r for r in counted if r.get(col) in val]
+            result.count = len(counted)
+        else:
+            result.count = None
         return result
 
 
@@ -116,3 +150,56 @@ def test_attach_self_referral_ignored(supabase_tables):
     sb = TableQuery(supabase_tables)
     assert attach_referral_on_signup(REFERRER_ID, REFERRER_ID, sb) is None
     assert len(supabase_tables["referral_events"]) == 0
+
+
+REFERRED_ID = "c3333333-3333-4333-8333-333333333333"
+EVENT_ID = "e4444444-4444-4444-8444-444444444444"
+
+
+@pytest.fixture
+def qualify_tables(supabase_tables):
+    supabase_tables["referral_events"] = [
+        {
+            "id": EVENT_ID,
+            "referrer_user_id": REFERRER_ID,
+            "referred_user_id": REFERRED_ID,
+            "status": "signed_up",
+        },
+    ]
+    supabase_tables["subscriptions"] = [
+        {
+            "id": "sub-1",
+            "user_id": REFERRER_ID,
+            "matches_limit": 10,
+            "matches_used": 2,
+        },
+    ]
+    return supabase_tables
+
+
+def test_qualify_referral_on_cv_upload_grants_bonus(qualify_tables):
+    sb = TableQuery(qualify_tables)
+    assert qualify_referral_on_cv_upload(REFERRED_ID, sb) is True
+    event = qualify_tables["referral_events"][0]
+    assert event["status"] == "rewarded"
+    assert event.get("qualified_at")
+    assert event.get("rewarded_at")
+    sub = qualify_tables["subscriptions"][0]
+    assert sub["matches_limit"] == 10 + REFERRAL_QUALIFY_BONUS_MATCHES
+
+
+def test_qualify_referral_no_event_returns_false(supabase_tables):
+    sb = TableQuery(supabase_tables)
+    assert qualify_referral_on_cv_upload(REFERRED_ID, sb) is False
+
+
+def test_qualify_referral_already_rewarded_skipped(qualify_tables):
+    qualify_tables["referral_events"][0]["status"] = "rewarded"
+    sb = TableQuery(qualify_tables)
+    assert qualify_referral_on_cv_upload(REFERRED_ID, sb) is False
+
+
+def test_count_referral_qualified(qualify_tables):
+    qualify_tables["referral_events"][0]["status"] = "rewarded"
+    sb = TableQuery(qualify_tables)
+    assert count_referral_qualified(REFERRER_ID, sb) == 1

@@ -9,11 +9,13 @@ export function ProfileReferralCard({
   userName,
   referralCode,
   referralSignupsCount = 0,
+  referralQualifiedCount = 0,
 }: {
   userId: string;
   userName?: string | null;
   referralCode: string;
   referralSignupsCount?: number;
+  referralQualifiedCount?: number;
 }) {
   const [copied, setCopied] = useState(false);
   const code = referralCode.trim().toUpperCase();
@@ -88,7 +90,17 @@ export function ProfileReferralCard({
           <span className="font-semibold" style={{ color: "var(--ink-2)" }}>
             {referralSignupsCount}
           </span>{" "}
-          {referralSignupsCount === 1 ? "friend has" : "friends have"} signed up via your link
+          {referralSignupsCount === 1 ? "friend has" : "friends have"} signed up
+          {referralQualifiedCount > 0 ? (
+            <>
+              {" "}
+              ·{" "}
+              <span className="font-semibold" style={{ color: "var(--ink-2)" }}>
+                {referralQualifiedCount}
+              </span>{" "}
+              uploaded a CV (you earned +5 bonus matches each)
+            </>
+          ) : null}
         </p>
       </div>
 

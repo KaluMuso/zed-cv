@@ -8,6 +8,7 @@ from app.services.daily_digest import (
     WHATSAPP_DAILY_DIGEST_CHANNEL,
     format_daily_digest_message,
     build_daily_digest_batch,
+    run_whatsapp_daily_digest,
     _select_digest_matches,
 )
 from tests.conftest import FakeSupabaseQuery
@@ -178,10 +179,16 @@ class TestBuildDailyDigestBatch:
                 ]
             ),
         )
-        with patch(
-            "app.services.daily_digest._select_digest_matches",
-            new_callable=AsyncMock,
-            return_value=[],
+        with (
+            patch(
+                "app.services.daily_digest.user_in_quiet_hours",
+                return_value=False,
+            ),
+            patch(
+                "app.services.daily_digest._select_digest_matches",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             rows = await build_daily_digest_batch(fake_supabase)
         assert rows == []
@@ -215,6 +222,10 @@ class TestBuildDailyDigestBatch:
         ]
         with (
             patch(
+                "app.services.daily_digest.user_in_quiet_hours",
+                return_value=False,
+            ),
+            patch(
                 "app.services.daily_digest._select_digest_matches",
                 new_callable=AsyncMock,
                 return_value=matches,
@@ -232,3 +243,76 @@ class TestBuildDailyDigestBatch:
         assert mock_record.await_args.args[0] == "u1"
         assert mock_record.await_args.args[1] == ["j1"]
         assert mock_record.await_args.args[2] == WHATSAPP_DAILY_DIGEST_CHANNEL
+
+    @pytest.mark.asyncio
+    async def test_build_batch_skips_users_in_quiet_hours(self, fake_supabase):
+        fake_supabase.set_table(
+            "users",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "u1",
+                        "phone": "+260971234567",
+                        "whatsapp_number": "+260971234567",
+                        "full_name": "Jane",
+                        "whatsapp_verified": True,
+                        "alert_frequency": "daily",
+                        "preferred_notification_channel": "whatsapp",
+                        "subscription_tier": "starter",
+                        "quiet_hours_start": "20:00",
+                        "quiet_hours_end": "07:00",
+                        "display_timezone": "Africa/Lusaka",
+                    }
+                ]
+            ),
+        )
+        with (
+            patch(
+                "app.services.daily_digest.user_in_quiet_hours",
+                return_value=True,
+            ),
+            patch(
+                "app.services.daily_digest._select_digest_matches",
+                new_callable=AsyncMock,
+            ) as mock_select,
+        ):
+            rows = await build_daily_digest_batch(fake_supabase)
+        assert rows == []
+        mock_select.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_run_whatsapp_counts_quiet_hours_skipped(self, fake_supabase):
+        fake_supabase.set_table(
+            "users",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "u1",
+                        "phone": "+260971234567",
+                        "whatsapp_number": "+260971234567",
+                        "full_name": "Jane",
+                        "whatsapp_verified": True,
+                        "alert_frequency": "daily",
+                        "preferred_notification_channel": "whatsapp",
+                        "subscription_tier": "starter",
+                        "quiet_hours_start": "20:00",
+                        "quiet_hours_end": "07:00",
+                        "display_timezone": "Africa/Lusaka",
+                    }
+                ]
+            ),
+        )
+        with (
+            patch(
+                "app.services.daily_digest.user_in_quiet_hours",
+                return_value=True,
+            ),
+            patch(
+                "app.services.daily_digest.send_whatsapp_message",
+                new_callable=AsyncMock,
+            ) as mock_send,
+        ):
+            stats = await run_whatsapp_daily_digest(fake_supabase)
+        assert stats["quiet_hours_skipped"] == 1
+        assert stats["sent"] == 0
+        mock_send.assert_not_awaited()

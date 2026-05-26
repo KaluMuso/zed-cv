@@ -1497,6 +1497,26 @@ components:
         payment_id: { type: string, format: uuid, nullable: true }
         message: { type: string }
 
+    PaymentHistoryRow:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        amount: { type: integer, description: Amount in ngwee }
+        currency: { type: string, default: ZMW }
+        payment_method: { type: string }
+        provider: { type: string, nullable: true }
+        status: { type: string, enum: [pending, completed, failed, refunded] }
+        created_at: { type: string, format: date-time, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+
+    PaymentHistoryList:
+      type: object
+      properties:
+        payments:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentHistoryRow' }
+        total: { type: integer }
+
     CoverLetterRequest:
       type: object
       required: [job_id]
@@ -2924,6 +2944,22 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Subscription' }
+
+  /subscription/payments:
+    get:
+      operationId: listMyPayments
+      summary: Payment history for the authenticated user
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentHistoryList' }
 
   /subscription/pay:
     post:
