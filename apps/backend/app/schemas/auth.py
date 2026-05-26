@@ -16,6 +16,11 @@ class OTPVerify(BaseModel):
     )
     consent_accepted: bool | None = None
     remember_device: bool = False
+    referral_ref: str | None = Field(
+        None,
+        max_length=64,
+        description="Invite ref from link (?ref=) — user id or referral_code.",
+    )
 
 class LoginRequest(BaseModel):
     phone: str = Field(..., pattern=r"^\+260[0-9]{9}$", examples=["+260971234567"])

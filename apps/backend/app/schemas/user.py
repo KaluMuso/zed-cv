@@ -21,6 +21,15 @@ class UserProfile(BaseModel):
     # the structured-parser change (legacy parsed_data without the
     # "sections" key). Frontend treats null as "show empty state".
     cv_sections: Optional[CVSections] = None
+    referral_code: str = Field(
+        default="",
+        description="Stable invite code for sharing with friends.",
+    )
+    referral_signups_count: int = Field(
+        default=0,
+        ge=0,
+        description="Users who signed up via this user's invite link.",
+    )
 
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)

@@ -180,6 +180,7 @@ export const auth = {
       consentAccepted?: boolean;
       email?: string;
       rememberDevice?: boolean;
+      referralRef?: string | null;
     }
   ) =>
     apiFetch<AuthTokens>("/auth/otp/verify", {
@@ -193,9 +194,33 @@ export const auth = {
         }),
         ...(options?.email && { email: options.email }),
         remember_device: options?.rememberDevice ?? false,
+        ...(options?.referralRef?.trim()
+          ? { referral_ref: options.referralRef.trim() }
+          : {}),
       }),
     }),
 };
+
+export const REFERRAL_STORAGE_KEY = "zedapply_referral_ref";
+
+export function readStoredReferralRef(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = sessionStorage.getItem(REFERRAL_STORAGE_KEY);
+    return v?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearStoredReferralRef(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(REFERRAL_STORAGE_KEY);
+  } catch {
+    /* private mode */
+  }
+}
 
 // ── CV structured sections (task #59) ──
 // Mirrors apps/backend/app/schemas/cv_sections.py exactly. Keep these in
@@ -316,6 +341,8 @@ export interface UserProfile {
   /** Structured CV body from cv_parser (task #59). Null when no CV
    *  is uploaded or when the upload pre-dates structured parsing. */
   cv_sections?: CVSections | null;
+  referral_code?: string;
+  referral_signups_count?: number;
 }
 
 // @openapi NotificationPreferences

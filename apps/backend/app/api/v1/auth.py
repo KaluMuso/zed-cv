@@ -19,6 +19,7 @@ from app.schemas.auth import (
     OTPRequestResponse,
     OTPVerify,
 )
+from app.services.referral import attach_referral_on_signup, generate_referral_code
 from app.services.otp import (
     default_otp_channel_for_tier,
     generate_otp_code,
@@ -293,14 +294,17 @@ async def verify_otp(
             else "user"
         )
         otp_pref = "email"
+        referral_code = generate_referral_code(supabase)
         new_user = supabase.table("users").insert({
             "phone": body.phone,
             "email": str(body.email),
             "role": role,
             "preferred_notification_channel": "email",
             "otp_channel_preference": otp_pref,
+            "referral_code": referral_code,
         }).execute()
         user_id = new_user.data[0]["id"]
+        attach_referral_on_signup(user_id, body.referral_ref, supabase)
 
         if role == "superadmin":
             supabase.table("subscriptions").insert({

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from app.core.deps import get_supabase, get_current_user_id
 from app.schemas.cv_sections import CVSections
+from app.services.referral import count_referral_signups
 from app.schemas.user import (
     UserProfile,
     UserProfileUpdate,
@@ -75,6 +76,9 @@ def _build_profile(user_id: str, supabase) -> UserProfile:
         else None
     )
 
+    referral_code = user.get("referral_code") or ""
+    referral_signups = count_referral_signups(user_id, supabase) if referral_code else 0
+
     return UserProfile(
         id=user["id"],
         phone=user["phone"],
@@ -87,6 +91,8 @@ def _build_profile(user_id: str, supabase) -> UserProfile:
         subscription_tier=user.get("subscription_tier", "free"),
         role=user.get("role", "user"),
         cv_sections=cv_sections,
+        referral_code=referral_code,
+        referral_signups_count=referral_signups,
     )
 
 

@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth, DEVICE_TOKEN_KEY, type OtpChannel, ApiError } from "@/lib/api";
+import {
+  auth,
+  clearStoredReferralRef,
+  DEVICE_TOKEN_KEY,
+  readStoredReferralRef,
+  REFERRAL_STORAGE_KEY,
+  type OtpChannel,
+  ApiError,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { z } from "zod";
 import { Icon } from "@/components/ui/Icon";
@@ -57,12 +65,12 @@ export default function AuthPageClient() {
   const safeNext =
     rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/matches";
 
-  // Preserve referral attribution until backend accepts it on signup.
+  // Preserve referral attribution until OTP verify sends it to the backend.
   useEffect(() => {
     const ref = searchParams?.get("ref")?.trim();
     if (!ref) return;
     try {
-      sessionStorage.setItem("zedapply_referral_ref", ref);
+      sessionStorage.setItem(REFERRAL_STORAGE_KEY, ref);
     } catch {
       /* private mode */
     }
@@ -163,10 +171,12 @@ export default function AuthPageClient() {
           consentAccepted: consentChecked,
           email: email.trim(),
           rememberDevice,
+          referralRef: readStoredReferralRef(),
         });
         if (tokens.device_token) {
           localStorage.setItem(DEVICE_TOKEN_KEY, tokens.device_token);
         }
+        clearStoredReferralRef();
         login(tokens.access_token, tokens.user_id);
         setStep("success");
         setTimeout(() => router.push(safeNext), 1400);

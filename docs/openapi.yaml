@@ -82,6 +82,10 @@ components:
           type: boolean
           default: false
           description: When true, returns device_token to store for trusted-device login.
+        referral_ref:
+          type: string
+          maxLength: 64
+          description: Invite ref from shared link (?ref=) — referrer user id or referral_code.
 
     LoginRequest:
       type: object
@@ -133,6 +137,13 @@ components:
             Structured CV body extracted by the parser (task #59). Null for
             users who haven't uploaded a CV or whose upload pre-dates the
             structured-parser change. Canon shape is app/schemas/cv_sections.py.
+        referral_code:
+          type: string
+          description: Stable invite code for sharing with friends.
+        referral_signups_count:
+          type: integer
+          minimum: 0
+          description: Users who signed up via this user's invite link.
 
     CVSections:
       type: object
