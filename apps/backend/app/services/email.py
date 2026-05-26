@@ -15,6 +15,11 @@ from typing import Any, Optional
 import resend
 
 from app.core.config import get_settings
+from app.services.email_delivery import (
+    EMAIL_PROVIDER_UNAVAILABLE,
+    EmailDeliveryError,
+    classify_resend_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,16 +231,41 @@ async def send_payment_confirmation_email(
     return _send(email, f"Zed CV — {label} plan activated", html)
 
 
-async def send_otp_email(email: str, code: str) -> bool:
-    """Email OTP fallback. Callable from auth flow when WhatsApp delivery fails.
+async def send_otp_email(email: str, code: str) -> None:
+    """Email OTP delivery. Raises EmailDeliveryError on failure (auth returns 503).
 
     Bypasses email_notifications_enabled — this is an auth channel, not marketing.
     """
     if not email:
-        return False
+        raise EmailDeliveryError(
+            EMAIL_PROVIDER_UNAVAILABLE,
+            log_message="OTP email requested without recipient address",
+        )
+    if not _api_ready():
+        raise EmailDeliveryError(
+            EMAIL_PROVIDER_UNAVAILABLE,
+            log_message="RESEND_API_KEY not configured",
+        )
+    settings = get_settings()
     html = f"""
     <h2>Your Zed CV verification code</h2>
     <p style="font-size:32px;letter-spacing:8px;font-family:monospace;"><strong>{code}</strong></p>
     <p>This code expires in 5 minutes. If you didn't request it, ignore this email.</p>
     """
-    return _send(email, "Your Zed CV verification code", html)
+    payload: dict[str, object] = {
+        "from": settings.resend_from_email,
+        "to": [email],
+        "subject": "Your Zed CV verification code",
+        "html": html,
+    }
+    try:
+        resend.Emails.send(payload)
+    except Exception as exc:
+        code_err = classify_resend_error(exc)
+        logger.error(
+            "resend OTP send failed: to=%s code=%s err=%s",
+            email,
+            code_err,
+            exc,
+        )
+        raise EmailDeliveryError(code_err, log_message=str(exc)) from exc

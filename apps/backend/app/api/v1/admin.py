@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase, require_admin
 from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
@@ -445,6 +446,18 @@ async def drain_cv_queue(
             })
 
     return out
+
+
+@router.get("/email/health")
+async def email_health(settings: Settings = Depends(get_settings)):
+    """Resend connectivity check (domains list) — no email is sent."""
+    from app.services.email_delivery import check_resend_health
+
+    report = check_resend_health(
+        resend_api_key=settings.resend_api_key,
+        resend_from_email=settings.resend_from_email,
+    )
+    return report.as_dict()
 
 
 @router.post("/waha/bootstrap-session")

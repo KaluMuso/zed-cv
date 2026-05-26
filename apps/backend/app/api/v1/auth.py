@@ -4,6 +4,9 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+
+from app.core.errors import ProblemHTTPException
+from app.services.email_delivery import EmailDeliveryError
 from jose import jwt
 
 from app.core.config import Settings, get_settings
@@ -170,18 +173,35 @@ async def request_otp(
 
     try:
         await send_otp(phone=body.phone, code=code, channel=channel, email=email)
+    except EmailDeliveryError as exc:
+        log.error(
+            "Email OTP delivery failed for %s: code=%s %s",
+            body.phone,
+            exc.code,
+            exc.log_message,
+        )
+        raise ProblemHTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            code=exc.code,
+            user_message=(
+                "Email delivery is temporarily unavailable — please try WhatsApp instead."
+            ),
+        ) from exc
     except Exception as exc:
         log.error("OTP delivery failed for %s via %s: %s", body.phone, channel, exc)
-        if channel == "whatsapp":
-            detail = (
-                "WhatsApp delivery is temporarily unavailable. "
-                "Please try again in a minute or use email OTP."
-            )
-        else:
-            detail = "OTP delivery is temporarily unavailable. Please try again."
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=detail,
+        if channel in ("whatsapp", "both"):
+            raise ProblemHTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                code="whatsapp_delivery_unavailable",
+                user_message=(
+                    "WhatsApp delivery is temporarily unavailable. "
+                    "Please try again in a minute or use email OTP."
+                ),
+            ) from exc
+        raise ProblemHTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            code="otp_delivery_unavailable",
+            user_message="OTP delivery is temporarily unavailable. Please try again.",
         ) from exc
 
     default_ch = default_otp_channel_for_tier(tier)

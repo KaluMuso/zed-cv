@@ -84,6 +84,7 @@ def problem_response(
     title: str | None = None,
     detail: str,
     type_suffix: str | None = None,
+    user_message: str | None = None,
 ) -> JSONResponse:
     request_id = get_request_id(request)
     resolved_title = title or _status_title(status)
@@ -96,6 +97,8 @@ def problem_response(
         "instance": request.url.path,
         "request_id": request_id,
     }
+    if user_message:
+        body["user_message"] = user_message
     return JSONResponse(
         status_code=status,
         content=body,
@@ -104,9 +107,35 @@ def problem_response(
     )
 
 
+class ProblemHTTPException(HTTPException):
+    """HTTPException that maps to RFC 7807 with a machine `detail` code."""
+
+    def __init__(
+        self,
+        status_code: int,
+        *,
+        code: str,
+        user_message: str,
+        title: str | None = None,
+    ) -> None:
+        super().__init__(status_code=status_code, detail=code)
+        self.problem_code = code
+        self.user_message = user_message
+        self.problem_title = title
+
+
 async def http_exception_handler(
     request: Request, exc: HTTPException
 ) -> JSONResponse:
+    if isinstance(exc, ProblemHTTPException):
+        return problem_response(
+            request,
+            status=exc.status_code,
+            title=exc.problem_title,
+            detail=exc.problem_code,
+            type_suffix=exc.problem_code,
+            user_message=exc.user_message,
+        )
     return problem_response(
         request,
         status=exc.status_code,

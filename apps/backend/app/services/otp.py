@@ -10,6 +10,7 @@ from typing import Any
 
 from app.core.config import Settings, get_settings
 from app.services.email import send_otp_email
+from app.services.email_delivery import EmailDeliveryError
 from app.services.whatsapp import ensure_session_started, send_whatsapp_otp
 
 log = logging.getLogger(__name__)
@@ -84,9 +85,7 @@ async def send_otp(
     if channel == "email":
         if not email:
             raise ValueError("Email required for email OTP channel")
-        ok = await send_otp_email(email, code)
-        if not ok:
-            raise RuntimeError("Email OTP delivery failed")
+        await send_otp_email(email, code)
         return
 
     if channel in ("whatsapp", "both"):
@@ -95,7 +94,13 @@ async def send_otp(
             raise RuntimeError("WAHA session not WORKING")
         await send_whatsapp_otp(phone, code)
         if channel == "both" and email:
-            await send_otp_email(email, code)
+            try:
+                await send_otp_email(email, code)
+            except EmailDeliveryError:
+                log.warning(
+                    "Email leg of both-channel OTP failed for %s; WhatsApp sent",
+                    phone,
+                )
         return
 
     raise ValueError(f"Unknown OTP channel: {channel}")

@@ -60,7 +60,15 @@ export interface CoverLetterRequest { job_id: string; tone?: CoverLetterTone; }
 export interface CoverLetterResponse { content: string; word_count: number; }
 
 export interface HealthCheck { status: "healthy" | "degraded" | "unhealthy"; version: string; supabase: boolean; waha: boolean; }
-export interface ProblemDetail { type: string; title: string; status: number; detail?: string; }
+export interface ProblemDetail {
+  type: string;
+  title: string;
+  status: number;
+  detail?: string;
+  user_message?: string;
+  instance?: string;
+  request_id?: string;
+}
 
 /** Canonical tiers — mirrors app/schemas/subscription.py (ngwee + match quota). */
 export const PRICING = {

@@ -38,6 +38,17 @@ export default function AuthPageClient() {
   const isFreeTier =
     userTier === null || userTier === "free" || userTier === undefined;
 
+  const handleOtpRequestError = useCallback((err: unknown) => {
+    if (err instanceof ApiError) {
+      if (err.code?.startsWith("email_") && isFreeTier) {
+        setOtpChannel("whatsapp");
+      }
+      setError(err.detail);
+      return;
+    }
+    setError(err instanceof Error ? err.message : "Failed to send OTP");
+  }, [isFreeTier]);
+
   // Where to send the user after sign-in. `?next=/path` (set by pages
   // that redirected here on 401) wins; otherwise we drop them on
   // /matches. Guard against open-redirect by requiring the next param
@@ -107,7 +118,7 @@ export default function AuthPageClient() {
       setStep("otp");
       setOtpCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send OTP");
+      handleOtpRequestError(err);
     } finally {
       setLoading(false);
     }
@@ -123,11 +134,11 @@ export default function AuthPageClient() {
       setResendIn(30);
       setOtpCode("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resend OTP");
+      handleOtpRequestError(err);
     } finally {
       setLoading(false);
     }
-  }, [fullPhone, isFreeTier, loading, otpChannel, resendIn]);
+  }, [fullPhone, handleOtpRequestError, isFreeTier, loading, otpChannel, resendIn]);
 
   const verifyOtp = useCallback(
     async (code: string) => {

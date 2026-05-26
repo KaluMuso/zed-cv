@@ -30,6 +30,32 @@ class TestOTPRequest:
         mock_send.assert_awaited_once()
 
     @patch("app.api.v1.auth.send_otp", new_callable=AsyncMock)
+    @patch(
+        "app.api.v1.auth.lookup_user_auth_context",
+        return_value={"id": "u1", "email": "user@example.com", "tier": "free"},
+    )
+    def test_request_otp_email_failure_returns_problem_json(
+        self, mock_lookup, mock_send, client, fake_supabase
+    ):
+        """Email OTP failures expose machine codes in RFC 7807 detail."""
+        from app.services.email_delivery import (
+            EMAIL_PROVIDER_UNAVAILABLE,
+            EmailDeliveryError,
+        )
+
+        mock_send.side_effect = EmailDeliveryError(EMAIL_PROVIDER_UNAVAILABLE)
+        fake_supabase.set_table("otp_codes", FakeSupabaseQuery(data=[]))
+        resp = client.post(
+            "/api/v1/auth/otp/request",
+            json={"phone": "+260971234567", "channel": "email"},
+        )
+        assert resp.status_code == 503
+        assert resp.headers["content-type"].startswith("application/problem+json")
+        body = resp.json()
+        assert body["detail"] == EMAIL_PROVIDER_UNAVAILABLE
+        assert "WhatsApp" in body["user_message"]
+
+    @patch("app.api.v1.auth.send_otp", new_callable=AsyncMock)
     @patch("app.api.v1.auth.lookup_user_auth_context", return_value=None)
     def test_request_otp_rate_limited(self, mock_send, mock_lookup, client, fake_supabase):
         """Rejects rapid re-requests."""

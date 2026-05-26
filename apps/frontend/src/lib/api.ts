@@ -50,12 +50,53 @@ function prepareRequestBody(
 export class ApiError extends Error {
   status: number;
   detail: string;
-  constructor(status: number, detail: string) {
+  /** Machine-readable RFC 7807 detail when the API returns a problem code. */
+  code?: string;
+  constructor(status: number, detail: string, code?: string) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
+    this.code = code;
   }
+}
+
+const MACHINE_CODE_RE = /^[a-z][a-z0-9_]*$/;
+
+function reportApi5xxToSentry(
+  status: number,
+  path: string,
+  problem: Record<string, unknown>
+): void {
+  if (status < 500 || typeof window === "undefined") return;
+  void import("@sentry/nextjs").then((Sentry) => {
+    Sentry.captureMessage(`API ${status} ${path}`, {
+      level: "error",
+      extra: { problem },
+      tags: {
+        api_path: path,
+        problem_code:
+          typeof problem.detail === "string" ? problem.detail : "unknown",
+      },
+    });
+  });
+}
+
+function parseProblemBody(
+  body: Record<string, unknown>,
+  fallbackStatusText: string
+): { message: string; code?: string } {
+  const rawDetail = body.detail;
+  const detailStr =
+    typeof rawDetail === "string" ? rawDetail : fallbackStatusText;
+  const userMessage =
+    typeof body.user_message === "string" ? body.user_message : undefined;
+  const code = MACHINE_CODE_RE.test(detailStr) ? detailStr : undefined;
+  const message =
+    userMessage ||
+    (code ? "Delivery is temporarily unavailable. Please try again." : detailStr) ||
+    fallbackStatusText;
+  return { message, code };
 }
 
 export async function apiFetch<T>(
@@ -78,8 +119,12 @@ export async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(res.status, body.detail || body.title || "Unknown error");
+    const body = (await res.json().catch(() => ({
+      detail: res.statusText,
+    }))) as Record<string, unknown>;
+    const { message, code } = parseProblemBody(body, res.statusText);
+    reportApi5xxToSentry(res.status, path, body);
+    throw new ApiError(res.status, message, code);
   }
 
   if (res.status === 204) {
@@ -671,7 +716,20 @@ export interface AdminJobCreate {
   salary_max?: number;
 }
 
+export interface AdminEmailHealth {
+  status: "ok" | "degraded" | "error";
+  code?: string | null;
+  message: string;
+  api_key_configured: boolean;
+  from_email: string;
+  from_domain?: string | null;
+  domain_verified?: boolean | null;
+  domains_listed?: number | null;
+}
+
 export const admin = {
+  emailHealth: (token: string) =>
+    apiFetch<AdminEmailHealth>("/admin/email/health", { token }),
   stats: (token: string) => apiFetch<AdminStats>("/admin/stats", { token }),
   llmCostStats: (token: string, params?: { days?: number }) => {
     const q = new URLSearchParams();

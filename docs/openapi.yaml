@@ -33,7 +33,27 @@ components:
         type: { type: string, format: uri }
         title: { type: string }
         status: { type: integer }
-        detail: { type: string }
+        detail:
+          type: string
+          description: Machine-readable error code (e.g. email_provider_unavailable) or human detail.
+        user_message:
+          type: string
+          description: Safe user-facing message when detail is a machine code.
+        instance: { type: string }
+        request_id: { type: string }
+
+    AdminEmailHealth:
+      type: object
+      required: [status, message, api_key_configured, from_email]
+      properties:
+        status: { type: string, enum: [ok, degraded, error] }
+        code: { type: string, nullable: true }
+        message: { type: string }
+        api_key_configured: { type: boolean }
+        from_email: { type: string }
+        from_domain: { type: string, nullable: true }
+        domain_verified: { type: boolean, nullable: true }
+        domains_listed: { type: integer, nullable: true }
 
     OTPRequest:
       type: object
@@ -1526,7 +1546,11 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/OTPRequestResponse' }
         '429': { description: Rate limited }
-        '503': { description: Delivery channel unavailable }
+        '503':
+          description: Delivery channel unavailable (RFC 7807 problem+json)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetail' }
 
   /auth/otp/verify:
     post:
@@ -1748,6 +1772,20 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/UserSkillsList' }
         '404': { description: Skill not found }
+
+  /admin/email/health:
+    get:
+      operationId: adminEmailHealth
+      summary: Resend connectivity check (no email sent)
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Health report (status ok, degraded, or error)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailHealth' }
+        '403': { description: Admin only }
 
   /admin/stats:
     get:
