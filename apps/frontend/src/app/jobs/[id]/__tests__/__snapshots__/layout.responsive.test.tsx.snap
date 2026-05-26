@@ -246,7 +246,7 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
             
 
             <p
-              class="my-2 leading-relaxed"
+              class="my-2 leading-relaxed whitespace-pre-line"
             >
               Build APIs.
             </p>
@@ -504,7 +504,7 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
             
 
             <p
-              class="my-2 leading-relaxed"
+              class="my-2 leading-relaxed whitespace-pre-line"
             >
               Build APIs.
             </p>

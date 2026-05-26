@@ -86,7 +86,11 @@ export function JobDescription({
           ul: ({ children }) => (
             <ul className="list-disc pl-5 space-y-1 my-2">{children}</ul>
           ),
-          p: ({ children }) => <p className="my-2 leading-relaxed">{children}</p>,
+          ol: ({ children }) => (
+            <ol className="list-decimal pl-5 space-y-1 my-2">{children}</ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          p: ({ children }) => <p className="my-2 leading-relaxed whitespace-pre-line">{children}</p>,
         }}
       >
         {md}

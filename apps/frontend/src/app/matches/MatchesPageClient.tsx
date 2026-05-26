@@ -23,7 +23,6 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { MatchScore } from "@/components/MatchScore";
-import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
@@ -31,6 +30,7 @@ import { Counter } from "@/components/ui/Counter";
 import Link from "next/link";
 import { notify } from "@/lib/toast";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
+import { MatchExplanationModal } from "./_components/MatchExplanationModal";
 import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
 import { isJobPastClosing } from "@/lib/isJobPastClosing";
@@ -74,7 +74,7 @@ export default function MatchesPageClient() {
   const [autoPrefs, setAutoPrefs] = useState<AutoMatchPreferences | null>(null);
   const [savingAutoPrefs, setSavingAutoPrefs] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [detailMatch, setDetailMatch] = useState<MatchData | null>(null);
   const [scoreFilter, setScoreFilter] = useState(0);
   const [sort, setSort] = useState<"score" | "closing">("score");
   const [prepFor, setPrepFor] = useState<MatchData | null>(null);
@@ -894,77 +894,12 @@ export default function MatchesPageClient() {
                     </Link>
                   )}
                   <button
-                    onClick={() =>
-                      setExpanded(expanded === match.id ? null : match.id)
-                    }
+                    type="button"
+                    onClick={() => setDetailMatch(match)}
                     className="btn btn-ghost btn-sm w-40"
                   >
-                    {expanded === match.id ? "Hide details" : "Why this match?"}{" "}
-                    <Icon
-                      name={
-                        expanded === match.id
-                          ? "chevronDown"
-                          : "chevronRight"
-                      }
-                      size={13}
-                    />
+                    Why this match? <Icon name="chevronRight" size={13} />
                   </button>
-                </div>
-              </div>
-
-              {/* Expanded breakdown */}
-              <div
-                className="overflow-hidden transition-all duration-300"
-                style={{
-                  maxHeight: expanded === match.id ? 560 : 0,
-                  borderTop:
-                    expanded === match.id
-                      ? "1px solid var(--line)"
-                      : "none",
-                  background: "var(--bg-2)",
-                }}
-              >
-                <div
-                  className="breakdown-grid p-6 grid gap-6"
-                  style={{ gridTemplateColumns: "1fr 1fr" }}
-                >
-                  <div>
-                    <div className="eyebrow mb-4">Score breakdown</div>
-                    <MatchScoreBreakdown match={match} />
-                  </div>
-                  <div>
-                    <div className="eyebrow mb-4">AI explanation</div>
-                    {match.explanation && (
-                      <p
-                        className="text-sm leading-relaxed mb-4"
-                        style={{ color: "var(--ink-2)" }}
-                      >
-                        {match.explanation}
-                      </p>
-                    )}
-                    {match.missing_skills.length > 0 && (
-                      <div
-                        className="p-3.5 rounded-lg"
-                        style={{
-                          background: "var(--surface)",
-                          border: "1px dashed var(--line-2)",
-                        }}
-                      >
-                        <div
-                          className="eyebrow mb-1.5"
-                          style={{ color: "var(--copper-600)" }}
-                        >
-                          Skill gap
-                        </div>
-                        <div
-                          className="text-sm font-mono"
-                          style={{ color: "var(--ink-2)" }}
-                        >
-                          Missing: {match.missing_skills.join(", ")}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </article>
@@ -972,6 +907,12 @@ export default function MatchesPageClient() {
           })}
         </div>
       )}
+
+      <MatchExplanationModal
+        match={detailMatch}
+        open={detailMatch !== null}
+        onClose={() => setDetailMatch(null)}
+      />
 
       <ApplyModal
         job={applyJob}
