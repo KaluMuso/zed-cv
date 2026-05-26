@@ -12,6 +12,8 @@ import { JobDetailMatchPanel } from "@/components/jobs/JobDetailMatchPanel";
 import { JobDetailSimilarMatches } from "@/components/jobs/JobDetailSimilarMatches";
 import { CoverLetterModal } from "@/components/jobs/CoverLetterModal";
 import { stripDescriptionHtml } from "@/components/jobs/jobDetailHtml";
+import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
+import Link from "next/link";
 import {
   EMPLOYMENT_TYPE_LABEL,
   WORK_ARRANGEMENT_LABEL,
@@ -52,11 +54,7 @@ function MetaPill({ children, className }: { children: React.ReactNode; classNam
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">
-      {children}
-    </h3>
-  );
+  return <SectionEyebrow>{children}</SectionEyebrow>;
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -223,6 +221,12 @@ export function JobDetailBody({
             >
               <Icon name="sparkle" size={14} /> Generate cover letter
             </button>
+            <Link
+              href={`/profile/cv-builder?jobId=${encodeURIComponent(job.id)}&jobTitle=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company || "")}`}
+              className="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
+            >
+              <Icon name="file" size={14} /> Tailored CV
+            </Link>
           </div>
 
           <section className="mb-8" aria-label="Share this job">

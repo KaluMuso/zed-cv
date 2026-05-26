@@ -9,12 +9,12 @@ import type {
 } from "./dashboard-mock-data";
 
 const cardShell =
-  "relative overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/50 dark:border-zinc-800/80 dark:bg-zinc-900/50";
+  "relative overflow-hidden rounded-xl border bg-[var(--surface)]";
 
 function CardTopAccent() {
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"
+      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--green-400)] to-transparent opacity-60"
       aria-hidden
     />
   );
@@ -22,15 +22,21 @@ function CardTopAccent() {
 
 export function DashboardStatCard({ label, value, detail }: DashboardStat) {
   return (
-    <div className={cn(cardShell, "p-4 sm:p-5")}>
+    <div className={cn(cardShell, "p-4 sm:p-5")} style={{ borderColor: "var(--line)" }}>
       <CardTopAccent />
-      <p className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+      <p
+        className="text-[11px] font-medium uppercase tracking-wider"
+        style={{ color: "var(--muted)" }}
+      >
         {label}
       </p>
-      <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-zinc-50">
+      <p
+        className="mt-2 font-mono text-2xl font-semibold tabular-nums"
+        style={{ color: "var(--ink)" }}
+      >
         {value}
         {detail ? (
-          <span className="ml-1.5 text-base font-normal text-zinc-500">
+          <span className="ml-1.5 text-base font-normal" style={{ color: "var(--muted)" }}>
             {detail}
           </span>
         ) : null}
@@ -42,10 +48,10 @@ export function DashboardStatCard({ label, value, detail }: DashboardStat) {
 function MatchScoreBadge({ score }: { score: number }) {
   const tone =
     score >= 85
-      ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/30"
+      ? "bg-[var(--green-50)] text-[var(--green-700)] ring-[var(--green-300)]"
       : score >= 70
-        ? "bg-amber-500/15 text-amber-400 ring-amber-500/30"
-        : "bg-zinc-800 text-zinc-400 ring-zinc-700";
+        ? "bg-[var(--copper-100)] text-[var(--copper-600)] ring-[var(--copper-300)]"
+        : "bg-[var(--bg-2)] text-[var(--muted)] ring-[var(--line)]";
   return (
     <span
       className={cn(
@@ -61,35 +67,36 @@ function MatchScoreBadge({ score }: { score: number }) {
 
 export function CondensedJobCard({ job }: { job: CondensedMatchJob }) {
   return (
+    <Link href={`/jobs/${job.id}`} className="block">
     <article
       className={cn(
         cardShell,
-        "group p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/70"
+        "group p-4 transition-colors hover:shadow-md"
       )}
+      style={{ borderColor: "var(--line)" }}
     >
       <CardTopAccent />
       <div className="flex items-start gap-3">
         <Avatar name={job.company} size={32} />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="truncate text-sm font-semibold text-zinc-100 group-hover:text-white">
+            <h3 className="truncate text-sm font-semibold group-hover:underline" style={{ color: "var(--ink)" }}>
               {job.title}
             </h3>
             <MatchScoreBadge score={job.matchScore} />
           </div>
-          <p className="mt-0.5 truncate text-xs text-zinc-500">
+          <p className="mt-0.5 truncate text-xs" style={{ color: "var(--muted)" }}>
             {job.company} · {job.location}
           </p>
           {job.salaryLabel ? (
-            <p className="mt-1 font-mono text-xs text-zinc-400">{job.salaryLabel}/mo</p>
+            <p className="mt-1 font-mono text-xs" style={{ color: "var(--muted)" }}>
+              {job.salaryLabel}/mo
+            </p>
           ) : null}
           {job.matchedSkills.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1">
               {job.matchedSkills.slice(0, 3).map((skill) => (
-                <span
-                  key={skill}
-                  className="rounded-md bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-400"
-                >
+                <span key={skill} className="tag tag-green text-[10px] py-0.5">
                   {skill}
                 </span>
               ))}
@@ -98,6 +105,7 @@ export function CondensedJobCard({ job }: { job: CondensedMatchJob }) {
         </div>
       </div>
     </article>
+    </Link>
   );
 }
 

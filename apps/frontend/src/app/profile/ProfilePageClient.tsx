@@ -258,15 +258,25 @@ export default function ProfilePageClient() {
           className="mb-6 max-w-md"
         />
       ) : null}
-      <div className="card p-6 md:p-8 mb-8">
+      <div
+        className="card p-6 md:p-8 mb-8 overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(135deg, var(--green-800) 0%, var(--green-700) 55%, var(--green-600) 100%)",
+          borderColor: "transparent",
+        }}
+      >
         <div className="flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center gap-5 flex-1">
             <Avatar name={profileData.full_name || "User"} size={72} />
             <div>
-              <h1 className="font-display text-3xl" style={{ letterSpacing: "-0.01em" }}>
+              <h1
+                className="font-display text-3xl"
+                style={{ letterSpacing: "-0.01em", color: "var(--green-50)" }}
+              >
                 {profileData.full_name || "Your Profile"}
               </h1>
-              <p className="text-sm" style={{ color: "var(--muted)" }}>
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.75)" }}>
                 {profileData.phone}
               </p>
               <div className="flex items-center gap-2 mt-2">
@@ -334,7 +344,7 @@ export default function ProfilePageClient() {
             {activeTab === tab.key && (
               <span
                 className="absolute left-0 right-0 bottom-0 h-0.5 rounded-full"
-                style={{ background: "var(--copper-500)" }}
+                style={{ background: "var(--green-700)" }}
               />
             )}
           </button>

@@ -1,7 +1,5 @@
-"use client";
-
-import { TailoredCvBuilder } from "@/features/tailored-cv-builder/TailoredCvBuilder";
+import { CvBuilderPageClient } from "./CvBuilderPageClient";
 
 export default function CvBuilderPage() {
-  return <TailoredCvBuilder />;
+  return <CvBuilderPageClient />;
 }

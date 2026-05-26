@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 import { isJobHiddenFromUserFeed } from "@/lib/isJobHiddenFromUserFeed";
 import { Counter } from "@/components/ui/Counter";
 import { Pagination } from "@/components/ui/Pagination";
+import { JobsSidebar, type JobsListPreset } from "@/components/jobs/JobsSidebar";
 
 const ZAMBIAN_LOCATIONS = [
   "All Locations",
@@ -123,6 +124,7 @@ export default function JobsPageClient() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [listPreset, setListPreset] = useState<JobsListPreset>("all");
   const urlHydratedRef = useRef(false);
   const lastUrlSyncRef = useRef("");
 
@@ -200,6 +202,13 @@ export default function JobsPageClient() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  const effectiveSort =
+    listPreset === "closing" ? "closing" : sort;
+  const effectiveEmploymentType =
+    listPreset === "full_time" ? "full_time" : employmentType;
+  const effectiveWorkArrangement =
+    listPreset === "remote" ? "remote" : workArrangement;
+
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     try {
@@ -207,20 +216,38 @@ export default function JobsPageClient() {
         page,
         search: searchQuery || undefined,
         location: location || undefined,
-        sort,
+        sort: effectiveSort,
         skills: selectedSkills.length > 0 ? selectedSkills : undefined,
-        employment_type: employmentType ? [employmentType] : undefined,
-        work_arrangement: workArrangement ? [workArrangement] : undefined,
+        employment_type: effectiveEmploymentType ? [effectiveEmploymentType] : undefined,
+        work_arrangement: effectiveWorkArrangement ? [effectiveWorkArrangement] : undefined,
       });
-      setJobsList(res.jobs.filter((j) => !isJobHiddenFromUserFeed(j.closing_date)));
+      let jobs = res.jobs.filter((j) => !isJobHiddenFromUserFeed(j.closing_date));
+      if (listPreset === "with_salary") {
+        jobs = jobs.filter((j) => j.salary_min != null || j.salary_max != null);
+      }
+      if (listPreset === "saved" && token) {
+        jobs = jobs.filter((j) => savedJobIds.has(j.id));
+      }
+      setJobsList(jobs);
       setTotalPages(res.pages);
-      setTotal(res.total);
+      setTotal(listPreset === "saved" ? jobs.length : res.total);
     } catch {
       setJobsList([]);
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery, location, sort, selectedSkills, employmentType, workArrangement]);
+  }, [
+    page,
+    searchQuery,
+    location,
+    effectiveSort,
+    selectedSkills,
+    effectiveEmploymentType,
+    effectiveWorkArrangement,
+    listPreset,
+    token,
+    savedJobIds,
+  ]);
 
   useEffect(() => {
     fetchJobs();
@@ -247,7 +274,20 @@ export default function JobsPageClient() {
     setSelectedSkills([]);
     setEmploymentType("");
     setWorkArrangement("");
+    setListPreset("all");
     setPage(1);
+  };
+
+  const onListPresetChange = (preset: JobsListPreset) => {
+    setListPreset(preset);
+    setPage(1);
+    if (preset === "closing") setSort("closing");
+    if (preset === "full_time") setEmploymentType("full_time");
+    if (preset === "remote") setWorkArrangement("remote");
+    if (preset === "all") {
+      setEmploymentType("");
+      setWorkArrangement("");
+    }
   };
 
   const toggleSkill = (skill: string) => {
@@ -452,6 +492,15 @@ export default function JobsPageClient() {
             <div key={i} className="skeleton h-28 w-full" />
           ))}
         </div>
+      ) : listPreset === "saved" && !token ? (
+        <div className="text-center py-20">
+          <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+            Sign in to see jobs you have saved.
+          </p>
+          <a href="/auth?next=/jobs" className="btn btn-primary btn-sm">
+            Sign in
+          </a>
+        </div>
       ) : jobsList.length === 0 ? (
         <div className="text-center py-20">
           <div
@@ -489,7 +538,13 @@ export default function JobsPageClient() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6 lg:gap-8">
+            <JobsSidebar
+              active={listPreset}
+              onChange={onListPresetChange}
+              savedCount={savedJobIds.size}
+            />
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 min-w-0">
             {jobsList.map((job) => (
               <JobCard
                 key={job.id}
@@ -518,10 +573,11 @@ export default function JobsPageClient() {
                 }}
               />
             ))}
+            </div>
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {totalPages > 1 && listPreset !== "saved" && (
             <Pagination
               page={page}
               totalPages={totalPages}

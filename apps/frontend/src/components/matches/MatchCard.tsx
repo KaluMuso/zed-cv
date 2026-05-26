@@ -9,6 +9,7 @@ import {
   type ApplyJobFields,
 } from "@/lib/applyLink";
 import type { MatchData } from "@/lib/api";
+import { SkillBadge } from "@/components/SkillBadge";
 
 export interface MatchCardProps {
   match: MatchData;
@@ -71,6 +72,18 @@ export function MatchCard({ match, expired = false, onApplyClick }: MatchCardPro
               {formatMatchedRelative(match.created_at)}
             </p>
           ) : null}
+          {(match.matched_skills.length > 0 || match.missing_skills.length > 0) && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {match.matched_skills.slice(0, 6).map((s) => (
+                <SkillBadge key={s} skill={s} matched />
+              ))}
+              {match.missing_skills.slice(0, 4).map((s) => (
+                <span key={s} className="tag tag-mono opacity-75">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="match-actions flex flex-col gap-2 items-end">
@@ -103,6 +116,12 @@ export function MatchCard({ match, expired = false, onApplyClick }: MatchCardPro
               {apply.label}
             </button>
           ) : null}
+          <Link
+            href={`/jobs/${match.job.id}`}
+            className="btn btn-ghost btn-sm w-40 text-center mt-1"
+          >
+            Learn more
+          </Link>
         </div>
       </div>
     </article>

@@ -40,3 +40,11 @@ export function matchStrengthCopy(score: number): string {
   if (score >= 50) return "Moderate match. Based on your CV.";
   return "Stretch match. Based on your CV.";
 }
+
+/** Uppercase headline for the match panel (PDF §3). */
+export function matchStrengthHeadline(score: number): string {
+  if (score >= 85) return "You and this job are a strong match";
+  if (score >= 70) return "You and this job are a good match";
+  if (score >= 50) return "You and this job are a moderate match";
+  return "This role may be a stretch for your CV";
+}

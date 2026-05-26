@@ -3,7 +3,10 @@
 import type { MatchData } from "@/lib/api";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { SkillBadge } from "@/components/SkillBadge";
-import { matchStrengthCopy } from "@/components/jobs/jobDetailFormatters";
+import {
+  matchStrengthCopy,
+  matchStrengthHeadline,
+} from "@/components/jobs/jobDetailFormatters";
 import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
 import Link from "next/link";
 
@@ -54,15 +57,18 @@ export function JobDetailMatchPanel({
       style={{ borderColor: "var(--line)", background: "var(--surface)" }}
     >
       <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-5">
-        Match breakdown
+        Why you&apos;re a good match
       </div>
 
       <div className="flex flex-col items-center text-center mb-6">
         <ScoreRing score={match.score} size={132} stroke={10} />
         <p
-          className="mt-4 text-sm font-medium max-w-[220px]"
+          className="mt-4 text-[10px] font-bold tracking-widest uppercase max-w-[240px] leading-snug"
           style={{ color: "var(--green-700)" }}
         >
+          {matchStrengthHeadline(match.score)}
+        </p>
+        <p className="mt-2 text-xs max-w-[220px]" style={{ color: "var(--muted)" }}>
           {matchStrengthCopy(match.score)}
         </p>
       </div>

@@ -376,6 +376,31 @@ body {
   color: var(--orange-400);
 }
 
+/* ─── Job description body (PDF §3 typography) ─── */
+.job-description-markdown {
+  line-height: 1.65;
+}
+.job-description-markdown p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.job-description-markdown ul,
+.job-description-markdown ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0.85rem;
+  padding-left: 1.35rem;
+}
+.job-description-markdown li {
+  margin-bottom: 0.35rem;
+}
+.job-description-markdown li::marker {
+  color: var(--green-700);
+}
+.job-description-markdown strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* ─── Inputs ─── */
 .field {
   width: 100%;
