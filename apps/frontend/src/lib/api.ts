@@ -343,6 +343,7 @@ export interface UserProfile {
   cv_sections?: CVSections | null;
   referral_code?: string;
   referral_signups_count?: number;
+  referral_qualified_count?: number;
 }
 
 // @openapi NotificationPreferences
@@ -363,6 +364,12 @@ export interface UserPreferences {
   whatsapp_verified: boolean;
   preferred_notification_channel: PreferredNotificationChannel;
   whatsapp_digest_available: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  profile_visible_to_employers: boolean;
+  hidden_employer_name: string | null;
+  notify_product_updates: boolean;
+  display_timezone: string;
 }
 
 // @openapi UserPreferencesUpdate
@@ -372,6 +379,12 @@ export interface UserPreferencesUpdate {
   currency?: "ZMW" | "USD";
   alert_frequency?: "daily" | "weekly" | "muted";
   preferred_notification_channel?: PreferredNotificationChannel;
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
+  profile_visible_to_employers?: boolean;
+  hidden_employer_name?: string | null;
+  notify_product_updates?: boolean;
+  display_timezone?: string;
 }
 
 export interface NotificationChannels {
@@ -1234,6 +1247,8 @@ export interface MatchData {
     company: string | null;
     location: string | null;
     closing_date: string | null;
+    salary_min?: number | null;
+    salary_max?: number | null;
     // Backend's Job pydantic model includes these — frontend type was
     // truncated, leaving the /matches Apply button dead. Restored here.
     apply_url?: string | null;

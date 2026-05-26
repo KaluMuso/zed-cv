@@ -1,4 +1,5 @@
--- 067: Referral codes, referred-by attribution, and signup event log.
+-- 069: Referral codes, referred-by attribution, and signup event log.
+-- (Renumbered from 067_user_referrals to avoid collision with 067_job_expiration_cron.)
 
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS referral_code VARCHAR(12),
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.referral_events (
     CHECK (status IN ('signed_up', 'qualified', 'rewarded')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   qualified_at TIMESTAMPTZ,
+  rewarded_at TIMESTAMPTZ,
   CONSTRAINT referral_events_referred_user_unique UNIQUE (referred_user_id)
 );
 
@@ -33,6 +35,13 @@ CREATE INDEX IF NOT EXISTS idx_referral_events_referrer
 
 COMMENT ON TABLE public.referral_events IS
   'Audit log when a new user signs up via an invite link.';
+
+ALTER TABLE public.referral_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS referral_events_referrer_read ON public.referral_events;
+CREATE POLICY referral_events_referrer_read ON public.referral_events
+  FOR SELECT
+  USING (referrer_user_id = auth.uid());
 
 -- Backfill referral_code for existing users (collision-safe loop).
 DO $$

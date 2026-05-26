@@ -404,6 +404,7 @@ export default function ProfilePageClient() {
             userName={profileData.full_name}
             referralCode={profileData.referral_code ?? ""}
             referralSignupsCount={profileData.referral_signups_count ?? 0}
+            referralQualifiedCount={profileData.referral_qualified_count ?? 0}
           />
 
           <div className="card p-6">

@@ -23,13 +23,21 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 _SETTINGS_SELECT = (
     "phone, whatsapp_number, location, currency, alert_frequency, whatsapp_verified, "
-    "preferred_notification_channel, subscription_tier"
+    "preferred_notification_channel, subscription_tier, quiet_hours_start, quiet_hours_end, "
+    "profile_visible_to_employers, hidden_employer_name, notify_product_updates, display_timezone"
 )
 
 
 def _effective_whatsapp_number(row: dict[str, Any]) -> str | None:
     """Delivery number; falls back to auth phone when unset."""
     return row.get("whatsapp_number") or row.get("phone")
+
+
+def _format_time_field(value: object) -> str:
+    if value is None:
+        return "20:00"
+    text = str(value)
+    return text[:5] if len(text) >= 5 else text
 
 
 def _row_to_user_preferences(row: dict[str, Any]) -> UserPreferences:
@@ -42,6 +50,12 @@ def _row_to_user_preferences(row: dict[str, Any]) -> UserPreferences:
         whatsapp_verified=bool(row.get("whatsapp_verified", False)),
         preferred_notification_channel=row.get("preferred_notification_channel") or "email",
         whatsapp_digest_available=whatsapp_digest_allowed(row),
+        quiet_hours_start=_format_time_field(row.get("quiet_hours_start")),
+        quiet_hours_end=_format_time_field(row.get("quiet_hours_end")),
+        profile_visible_to_employers=bool(row.get("profile_visible_to_employers", True)),
+        hidden_employer_name=row.get("hidden_employer_name"),
+        notify_product_updates=bool(row.get("notify_product_updates", False)),
+        display_timezone=row.get("display_timezone") or "Africa/Lusaka",
     )
 
 

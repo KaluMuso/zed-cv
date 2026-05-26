@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { savedJobs, matches, type Job, type MatchData } from "@/lib/api";
+import { savedJobs, matches, profile as profileApi, type Job, type MatchData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { JobDetailBody } from "@/components/JobDetailBody";
 
@@ -17,6 +17,8 @@ export function JobDetailClient({ job }: { job: Job }) {
   const [jobSaved, setJobSaved] = useState(false);
   const [match, setMatch] = useState<MatchData | null>(null);
   const [similarMatches, setSimilarMatches] = useState<MatchData[]>([]);
+  const [viewerName, setViewerName] = useState<string | null>(null);
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -41,12 +43,13 @@ export function JobDetailClient({ job }: { job: Job }) {
     if (!token) {
       setMatch(null);
       setSimilarMatches([]);
+      setViewerName(null);
+      setSubscriptionTier(null);
       return;
     }
     let cancelled = false;
-    matches
-      .get(token)
-      .then((res) => {
+    Promise.all([matches.get(token), profileApi.get(token).catch(() => null)])
+      .then(([res, profile]) => {
         if (cancelled) return;
         const forJob = res.matches.find((m) => m.job.id === job.id) ?? null;
         setMatch(forJob);
@@ -56,6 +59,10 @@ export function JobDetailClient({ job }: { job: Job }) {
             .sort((a, b) => b.score - a.score)
             .slice(0, 3),
         );
+        if (profile) {
+          setViewerName(profile.full_name ?? null);
+          setSubscriptionTier(profile.subscription_tier);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -79,6 +86,8 @@ export function JobDetailClient({ job }: { job: Job }) {
       onSavedChange={setJobSaved}
       match={match}
       similarMatches={similarMatches}
+      viewerName={viewerName}
+      subscriptionTier={subscriptionTier}
     />
   );
 }

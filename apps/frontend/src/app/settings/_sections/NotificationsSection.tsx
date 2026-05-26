@@ -136,6 +136,123 @@ export function NotificationsSection() {
         )}
       </SettingsCard>
 
+      <SettingsCard className="mb-4">
+        <div className="eyebrow mb-2">Email</div>
+        <label className="flex items-center justify-between gap-4 py-3 border-b border-[var(--line)]">
+          <span>
+            <span className="text-sm font-medium block">New match notifications</span>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              Included in your daily digest when alerts are on.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="h-5 w-5"
+            checked={(dashPrefs?.alert_frequency ?? "daily") !== "muted"}
+            disabled={loading || savingChannel}
+            onChange={(e) => {
+              if (!token) return;
+              setSavingChannel(true);
+              userPreferences
+                .patch(token, { alert_frequency: e.target.checked ? "daily" : "muted" })
+                .then(setDashPrefs)
+                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
+                .finally(() => setSavingChannel(false));
+            }}
+          />
+        </label>
+        <label className="flex items-center justify-between gap-4 py-3 border-b border-[var(--line)]">
+          <span>
+            <span className="text-sm font-medium block">Weekly job alerts</span>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              A summary of activity in your area once per week.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            className="h-5 w-5"
+            checked={dashPrefs?.alert_frequency === "weekly"}
+            disabled={loading || savingChannel}
+            onChange={(e) => {
+              if (!token) return;
+              setSavingChannel(true);
+              userPreferences
+                .patch(token, { alert_frequency: e.target.checked ? "weekly" : "daily" })
+                .then(setDashPrefs)
+                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
+                .finally(() => setSavingChannel(false));
+            }}
+          />
+        </label>
+        <label className="flex items-center justify-between gap-4 py-3">
+          <span>
+            <span className="text-sm font-medium block">Product updates and offers</span>
+          </span>
+          <input
+            type="checkbox"
+            className="h-5 w-5"
+            checked={dashPrefs?.notify_product_updates ?? false}
+            disabled={loading || savingChannel}
+            onChange={(e) => {
+              if (!token) return;
+              setSavingChannel(true);
+              userPreferences
+                .patch(token, { notify_product_updates: e.target.checked })
+                .then(setDashPrefs)
+                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
+                .finally(() => setSavingChannel(false));
+            }}
+          />
+        </label>
+      </SettingsCard>
+
+      <SettingsCard className="mb-4">
+        <div className="eyebrow mb-2">Quiet hours</div>
+        <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>
+          We won&apos;t send WhatsApp messages during these hours ({dashPrefs?.display_timezone ?? "Africa/Lusaka"}).
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+              From
+            </span>
+            <input
+              type="time"
+              className="field mt-1"
+              value={dashPrefs?.quiet_hours_start?.slice(0, 5) ?? "20:00"}
+              disabled={loading || savingChannel}
+              onChange={(e) => {
+                if (!token) return;
+                setSavingChannel(true);
+                userPreferences
+                  .patch(token, { quiet_hours_start: e.target.value })
+                  .then(setDashPrefs)
+                  .finally(() => setSavingChannel(false));
+              }}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--muted)" }}>
+              To
+            </span>
+            <input
+              type="time"
+              className="field mt-1"
+              value={dashPrefs?.quiet_hours_end?.slice(0, 5) ?? "07:00"}
+              disabled={loading || savingChannel}
+              onChange={(e) => {
+                if (!token) return;
+                setSavingChannel(true);
+                userPreferences
+                  .patch(token, { quiet_hours_end: e.target.value })
+                  .then(setDashPrefs)
+                  .finally(() => setSavingChannel(false));
+              }}
+            />
+          </label>
+        </div>
+      </SettingsCard>
+
       <SettingsCard>
         <div className="eyebrow mb-2">Matching</div>
         <h3 className="font-medium text-sm mb-1">Scheduled auto-match</h3>

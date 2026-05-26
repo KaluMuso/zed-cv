@@ -20,6 +20,13 @@ export function GeneratorTab({
   const tier = profileData.subscription_tier;
   const tierAllowed =
     tier === "starter" || tier === "professional" || tier === "super_standard";
+  const shouldRedirect = profileData.cv_uploaded && tierAllowed;
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.replace("/profile/cv-builder");
+    }
+  }, [shouldRedirect, router]);
 
   if (!profileData.cv_uploaded) {
     return (
@@ -45,10 +52,6 @@ export function GeneratorTab({
       </div>
     );
   }
-
-  useEffect(() => {
-    router.replace("/profile/cv-builder");
-  }, [router]);
 
   return (
     <p className="text-sm py-8 text-center" style={{ color: "var(--muted)" }}>
