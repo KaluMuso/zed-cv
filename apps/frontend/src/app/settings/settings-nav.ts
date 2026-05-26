@@ -39,7 +39,7 @@ export const SETTINGS_NAV: {
   {
     slug: "privacy",
     label: "Privacy & data",
-    description: "Export and policy",
+    description: "Consent toggles, export, and policies",
     pageTitle: "Privacy & Data",
   },
   {

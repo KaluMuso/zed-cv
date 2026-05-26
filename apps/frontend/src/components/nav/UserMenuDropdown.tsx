@@ -31,7 +31,8 @@ export function UserMenuDropdown({
     { href: "/profile?tab=cv-generator", label: "CV Generator", icon: "file" },
     { href: "/matches", label: "My matches", icon: "sparkle" },
     { href: "/settings/notifications", label: "Notifications", icon: "bell" },
-    { href: "/settings/account", label: "Settings", icon: "settings" },
+    { href: "/settings/account", label: "Account settings", icon: "settings" },
+    { href: "/settings/privacy", label: "Privacy & data", icon: "shield" },
   ];
 
   if (showAdmin) {

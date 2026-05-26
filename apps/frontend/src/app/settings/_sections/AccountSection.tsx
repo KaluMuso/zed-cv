@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { profile as profileApi, userPreferences, type UserProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Avatar } from "@/components/ui/Avatar";
@@ -94,10 +95,14 @@ export function AccountSection() {
         title="Account"
         action={
           <span className="text-xs" style={{ color: "var(--muted)" }}>
-            Profile & CV tools live on{" "}
-            <a href="/profile" className="underline" style={{ color: "var(--green-700)" }}>
+            <Link href="/settings/privacy" className="underline" style={{ color: "var(--green-700)" }}>
+              Privacy &amp; data
+            </Link>
+            {" · "}
+            Profile & CV tools on{" "}
+            <Link href="/profile" className="underline" style={{ color: "var(--green-700)" }}>
               Profile
-            </a>
+            </Link>
           </span>
         }
       />

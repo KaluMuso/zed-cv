@@ -6,6 +6,7 @@ import { profile as profileApi, userPreferences, type UserPreferences } from "@/
 import { useAuth } from "@/lib/auth";
 import { notify } from "@/lib/toast";
 import { DataPrivacyCard } from "@/app/profile/_tabs/DataPrivacyCard";
+import { ConsentPreferencesSection } from "./ConsentPreferencesSection";
 import { SettingsCard, SettingsSectionHeader } from "../_components/SettingsShell";
 
 export function PrivacySection() {
@@ -51,6 +52,8 @@ export function PrivacySection() {
   return (
     <div>
       <SettingsSectionHeader title="Privacy & data" />
+
+      <ConsentPreferencesSection />
 
       <SettingsCard className="mb-4">
         <div className="eyebrow mb-2">Visibility</div>

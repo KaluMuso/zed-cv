@@ -1,10 +1,17 @@
 """User account preference routes."""
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 
 from app.core.deps import get_current_user_id, get_supabase
+from app.schemas.data_rights import (
+    ConsentRecordResponse,
+    ConsentStatusResponse,
+    ConsentUpdateBody,
+    ConsentUpdateResponse,
+)
 from app.schemas.saved_jobs import SavedJobsList
 from app.schemas.user import (
     AutoMatchPreferences,
@@ -177,3 +184,115 @@ async def update_auto_match_preferences(
         raise HTTPException(status_code=422, detail="No fields to update")
     supabase.table("users").update(update_data).eq("id", user_id).execute()
     return await get_auto_match_preferences(user_id, supabase)
+
+
+# ── Consent audit log (privacy settings) ──
+
+_CONSENT_DEFAULTS: dict[str, bool] = {
+    "terms_of_service": True,
+    "privacy_policy": True,
+    "marketing_email": False,
+    "marketing_whatsapp": False,
+    "analytics_cookies": False,
+    "third_party_data_sharing": False,
+}
+
+
+def _client_ip(request: Request) -> str | None:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return None
+
+
+def _legal_doc_version(consent_type: str, supabase) -> str | None:
+    slug = None
+    if consent_type == "terms_of_service":
+        slug = "terms"
+    elif consent_type == "privacy_policy":
+        slug = "privacy"
+    if not slug:
+        return None
+    row = (
+        supabase.table("legal_docs")
+        .select("version")
+        .eq("slug", slug)
+        .limit(1)
+        .execute()
+    )
+    if row.data:
+        return row.data[0].get("version")
+    return None
+
+
+def _latest_consent_by_type(user_id: str, supabase) -> tuple[dict[str, bool], dict[str, str]]:
+    rows = (
+        supabase.table("consent_log")
+        .select("consent_type, granted, granted_at")
+        .eq("user_id", user_id)
+        .order("granted_at", desc=True)
+        .execute()
+    )
+    consents = dict(_CONSENT_DEFAULTS)
+    last_updated: dict[str, str] = {}
+    seen: set[str] = set()
+    for row in rows.data or []:
+        ctype = row.get("consent_type")
+        if not ctype or ctype in seen:
+            continue
+        seen.add(ctype)
+        consents[ctype] = bool(row.get("granted"))
+        granted_at = row.get("granted_at")
+        if granted_at:
+            last_updated[ctype] = str(granted_at)
+    return consents, last_updated
+
+
+@router.get("/me/consent", response_model=ConsentStatusResponse)
+async def get_consent_status(
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Latest consent flag per type from consent_log (defaults when unset)."""
+    consents, last_updated = _latest_consent_by_type(user_id, supabase)
+    return ConsentStatusResponse(consents=consents, last_updated=last_updated)
+
+
+@router.post("/me/consent", response_model=ConsentUpdateResponse)
+async def record_consent(
+    body: ConsentUpdateBody,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Append an immutable consent_log row (service role insert)."""
+    now = datetime.now(timezone.utc)
+    version = _legal_doc_version(body.consent_type, supabase)
+    inserted = (
+        supabase.table("consent_log")
+        .insert(
+            {
+                "user_id": user_id,
+                "consent_type": body.consent_type,
+                "granted": body.granted,
+                "granted_at": now.isoformat(),
+                "legal_doc_version": version,
+                "ip_address": _client_ip(request),
+                "user_agent": (request.headers.get("user-agent") or "")[:500] or None,
+            }
+        )
+        .execute()
+    )
+    row = inserted.data[0] if inserted.data else {}
+    granted_at = row.get("granted_at")
+    if not isinstance(granted_at, str):
+        granted_at = now.isoformat()
+    record = ConsentRecordResponse(
+        consent_type=body.consent_type,
+        granted=body.granted,
+        granted_at=granted_at,
+        legal_doc_version=version,
+    )
+    return ConsentUpdateResponse(consent=record)

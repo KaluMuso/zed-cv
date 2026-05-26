@@ -277,6 +277,49 @@ components:
         auto_match_enabled: { type: boolean }
         notification_channels: { $ref: '#/components/schemas/NotificationChannels' }
 
+    ConsentType:
+      type: string
+      enum:
+        - terms_of_service
+        - privacy_policy
+        - marketing_email
+        - marketing_whatsapp
+        - analytics_cookies
+        - third_party_data_sharing
+
+    ConsentUpdateBody:
+      type: object
+      required: [consent_type, granted]
+      properties:
+        consent_type: { $ref: '#/components/schemas/ConsentType' }
+        granted: { type: boolean }
+
+    ConsentRecordResponse:
+      type: object
+      required: [consent_type, granted, granted_at]
+      properties:
+        consent_type: { $ref: '#/components/schemas/ConsentType' }
+        granted: { type: boolean }
+        granted_at: { type: string, format: date-time }
+        legal_doc_version: { type: string, nullable: true }
+
+    ConsentUpdateResponse:
+      type: object
+      required: [consent]
+      properties:
+        consent: { $ref: '#/components/schemas/ConsentRecordResponse' }
+
+    ConsentStatusResponse:
+      type: object
+      required: [consents, last_updated]
+      properties:
+        consents:
+          type: object
+          additionalProperties: { type: boolean }
+        last_updated:
+          type: object
+          additionalProperties: { type: string, format: date-time }
+
     # Phase 2 Initiative #4 — job-search preferences. Backs
     # /api/v1/preferences (distinct from /profile/preferences, which is
     # notification prefs). Shape mirrors
@@ -1764,6 +1807,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SavedJobsList' }
+
+  /users/me/consent:
+    get:
+      operationId: getConsentStatus
+      summary: Latest consent flag per type from consent_log
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentStatusResponse' }
+    post:
+      operationId: recordConsent
+      summary: Append consent_log entry for a toggle change
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsentUpdateBody' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentUpdateResponse' }
 
   /preferences:
     get:

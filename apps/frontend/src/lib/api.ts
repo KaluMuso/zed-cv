@@ -1370,6 +1370,38 @@ export const health = {
   check: () => apiFetch<{ status: string }>("/health"),
 };
 
+// ── Data rights / consent (privacy settings) ──
+export type ConsentType =
+  | "terms_of_service"
+  | "privacy_policy"
+  | "marketing_email"
+  | "marketing_whatsapp"
+  | "analytics_cookies"
+  | "third_party_data_sharing";
+
+export interface ConsentRecordResponse {
+  consent_type: ConsentType;
+  granted: boolean;
+  granted_at: string;
+  legal_doc_version?: string | null;
+}
+
+export interface ConsentStatusResponse {
+  consents: Partial<Record<ConsentType, boolean>>;
+  last_updated: Partial<Record<ConsentType, string>>;
+}
+
+export const dataRights = {
+  getConsentStatus: (token: string) =>
+    apiFetch<ConsentStatusResponse>("/users/me/consent", { token }),
+  recordConsent: (token: string, consentType: ConsentType, granted: boolean) =>
+    apiFetch<{ consent: ConsentRecordResponse }>("/users/me/consent", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ consent_type: consentType, granted }),
+    }),
+};
+
 // ── Cover letter ──
 export const coverLetter = {
   generate: (token: string, jobId: string) =>

@@ -316,7 +316,14 @@ export function Navbar() {
                       onClick={() => setMenuOpen(false)}
                       className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
                     >
-                      <Icon name="settings" size={16} /> Settings
+                      <Icon name="settings" size={16} /> Account settings
+                    </Link>
+                    <Link
+                      href="/settings/privacy"
+                      onClick={() => setMenuOpen(false)}
+                      className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
+                    >
+                      <Icon name="shield" size={16} /> Privacy &amp; data
                     </Link>
                     <button
                       type="button"
