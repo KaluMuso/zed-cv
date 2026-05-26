@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.core.deps import get_supabase, get_current_user_id
 from app.schemas.cv_sections import CVSections
-from app.services.referral import count_referral_qualified, count_referral_signups
+from app.services.referral import count_referral_signups
 from app.schemas.user import (
     UserProfile,
     UserProfileUpdate,
