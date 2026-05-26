@@ -37,6 +37,8 @@ interface JobDetailBodyProps {
   match?: MatchData | null;
   /** Top matches used for the "Similar matches" grid at page bottom. */
   similarMatches?: MatchData[];
+  viewerName?: string | null;
+  subscriptionTier?: string | null;
 }
 
 function MetaPill({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -79,6 +81,8 @@ export function JobDetailBody({
   onSavedChange,
   match,
   similarMatches = [],
+  viewerName,
+  subscriptionTier,
 }: JobDetailBodyProps) {
   const salary = formatSalary(job.salary_min, job.salary_max);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -174,7 +178,12 @@ export function JobDetailBody({
       {/* Two-column: match panel stacks under header on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] gap-8 lg:gap-10">
         <aside className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
-          <JobDetailMatchPanel match={match} signedIn={Boolean(authToken)} />
+          <JobDetailMatchPanel
+            match={match}
+            signedIn={Boolean(authToken)}
+            viewerName={viewerName}
+            subscriptionTier={subscriptionTier}
+          />
         </aside>
 
         <div className="order-2 lg:order-1 min-w-0">

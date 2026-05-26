@@ -144,6 +144,10 @@ components:
           type: integer
           minimum: 0
           description: Users who signed up via this user's invite link.
+        referral_qualified_count:
+          type: integer
+          minimum: 0
+          description: Referred users who uploaded a CV and triggered referral rewards.
 
     CVSections:
       type: object
@@ -219,6 +223,18 @@ components:
           type: boolean
           default: false
           description: True when subscription tier allows WhatsApp digests.
+        quiet_hours_start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          default: '20:00'
+        quiet_hours_end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+          default: '07:00'
+        profile_visible_to_employers: { type: boolean, default: true }
+        hidden_employer_name: { type: string, nullable: true, maxLength: 120 }
+        notify_product_updates: { type: boolean, default: false }
+        display_timezone: { type: string, default: Africa/Lusaka }
 
     UserPreferencesUpdate:
       type: object
@@ -232,6 +248,16 @@ components:
         preferred_notification_channel:
           type: string
           enum: [email, whatsapp, both]
+        quiet_hours_start:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        quiet_hours_end:
+          type: string
+          pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+        profile_visible_to_employers: { type: boolean }
+        hidden_employer_name: { type: string, nullable: true, maxLength: 120 }
+        notify_product_updates: { type: boolean }
+        display_timezone: { type: string, maxLength: 64 }
 
     NotificationChannels:
       type: object

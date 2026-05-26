@@ -65,6 +65,12 @@ class UserPreferences(BaseModel):
     whatsapp_verified: bool = False
     preferred_notification_channel: PreferredNotificationChannel = "email"
     whatsapp_digest_available: bool = False
+    quiet_hours_start: str = "20:00"
+    quiet_hours_end: str = "07:00"
+    profile_visible_to_employers: bool = True
+    hidden_employer_name: Optional[str] = None
+    notify_product_updates: bool = False
+    display_timezone: str = "Africa/Lusaka"
 
 
 class UserPreferencesUpdate(BaseModel):
@@ -76,6 +82,20 @@ class UserPreferencesUpdate(BaseModel):
     currency: Optional[Literal["ZMW", "USD"]] = None
     alert_frequency: Optional[Literal["daily", "weekly", "muted"]] = None
     preferred_notification_channel: Optional[PreferredNotificationChannel] = None
+    quiet_hours_start: Optional[str] = Field(
+        None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Local quiet hours start (HH:MM).",
+    )
+    quiet_hours_end: Optional[str] = Field(
+        None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d$",
+        description="Local quiet hours end (HH:MM).",
+    )
+    profile_visible_to_employers: Optional[bool] = None
+    hidden_employer_name: Optional[str] = Field(None, max_length=120)
+    notify_product_updates: Optional[bool] = None
+    display_timezone: Optional[str] = Field(None, max_length=64)
 
     @field_validator("whatsapp_number")
     @classmethod

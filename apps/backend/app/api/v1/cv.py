@@ -520,6 +520,16 @@ async def upload_cv(
             await send_welcome_email(user_id, supabase)
         except Exception:
             pass
+        try:
+            from app.services.referral import qualify_referral_on_cv_upload
+
+            qualify_referral_on_cv_upload(user_id, supabase)
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "referral qualify failed for user=%s", user_id, exc_info=True,
+            )
 
     background_tasks.add_task(_match_after_cv_upload, user_id, cv_id, supabase)
 
