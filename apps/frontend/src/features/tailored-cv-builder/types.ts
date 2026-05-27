@@ -44,6 +44,7 @@ export type EducationEntry = {
   location: string;
   startDate: string;
   endDate: string;
+  gpa: string;
 };
 
 export type CvStyleOptions = {

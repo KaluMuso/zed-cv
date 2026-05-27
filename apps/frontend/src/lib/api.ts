@@ -1139,6 +1139,46 @@ export interface CVGenerationDetail extends CVGenerationSummary {
   sections?: CVSections | null;
 }
 
+export interface BuildFromScratchPayload {
+  summary: string;
+  basics: {
+    full_name: string;
+    phone: string;
+    email: string;
+    location: string;
+    headline: string;
+  };
+  experience: Array<{
+    title: string;
+    company: string;
+    location: string;
+    start_date: string;
+    end_date: string;
+    achievements: string[];
+  }>;
+  education: Array<{
+    degree: string;
+    institution: string;
+    location: string;
+    start_date: string;
+    end_date: string;
+    gpa: string;
+  }>;
+  skills: string[];
+  style: {
+    template: "modern" | "classic" | "compact";
+    accent_color: string;
+    show_summary: boolean;
+  };
+}
+
+export interface BuildFromScratchResult {
+  cv_id: string;
+  pdf_url: string;
+  storage_path: string;
+  render_time_ms: number;
+}
+
 export const cv = {
   upload: async (token: string, file: File): Promise<CVUploadResult> => {
     const formData = new FormData();
@@ -1172,6 +1212,35 @@ export const cv = {
     apiFetch<{ generations: CVGenerationSummary[] }>("/cv/generations", { token }),
   getGeneration: (token: string, id: string) =>
     apiFetch<CVGenerationDetail>(`/cv/generations/${encodeURIComponent(id)}`, { token }),
+  buildFromScratch: (token: string, data: BuildFromScratchPayload) =>
+    apiFetch<BuildFromScratchResult>("/cv/build-from-scratch", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+  suggestSummary: (
+    token: string,
+    data: { strengths: string[]; headline?: string; full_name?: string }
+  ) =>
+    apiFetch<{ summary: string }>("/cv/suggest-summary", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+  suggestBullets: (
+    token: string,
+    data: { title: string; company: string; context?: string }
+  ) =>
+    apiFetch<{ bullets: string[] }>("/cv/suggest-bullets", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
+  suggestSkills: (token: string, q: string, limit = 12) =>
+    apiFetch<{ skills: Array<{ name: string }> }>(
+      `/cv/skills/suggest?q=${encodeURIComponent(q)}&limit=${limit}`,
+      { token }
+    ),
   tailorForMatch: (token: string, matchId: string) =>
     apiFetch<MatchTailorCvResult>(
       `/matches/${encodeURIComponent(matchId)}/tailor-cv`,

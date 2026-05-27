@@ -24,6 +24,7 @@ function mapEducation(
     location: item.location ?? "",
     startDate: item.start_date ?? "",
     endDate: item.end_date ?? "",
+    gpa: item.gpa ?? "",
   }));
 }
 

@@ -12,7 +12,20 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.schemas.cv_sections import CVSections
 from app.services.cv_parser import extract_text_from_file, parse_cv_with_llm
-from app.services.cv_generator import analyze_cv, generate_cv_structured
+from app.services.cv_generator import analyze_cv, generate_cv_structured, _render_sections_to_text
+from app.services.cv_pdf_renderer import render_cv_pdf
+from app.services.cv_scratch import suggest_professional_summary, suggest_role_bullets
+from app.schemas.cv_scratch import (
+    BuildFromScratchBody,
+    BuildFromScratchResponse,
+    SkillSuggestItem,
+    SkillSuggestResponse,
+    SuggestBulletsBody,
+    SuggestBulletsResponse,
+    SuggestSummaryBody,
+    SuggestSummaryResponse,
+)
+from app.schemas.cv_sections import CVSections, ProfessionalSummary, WorkExperience, Education
 from app.services.embedding import generate_embedding
 from app.services.skill_resolver import resolve_skill_ids
 from app.services.preferences_auto_populate import auto_populate_from_cv
@@ -717,6 +730,252 @@ async def list_generations(
             )
             for r in rows
         ]
+    )
+
+
+def _scratch_to_parsed_data(body: BuildFromScratchBody) -> dict:
+    """Map wizard payload into cvs.parsed_data for downstream profile/matching."""
+    return {
+        "full_name": body.basics.full_name,
+        "email": body.basics.email,
+        "phone": body.basics.phone,
+        "location": body.basics.location,
+        "skills": body.skills,
+        "experience_summary": body.summary,
+        "education": [e.degree for e in body.education if e.degree.strip()],
+        "confidence": 1.0,
+        "sections": {
+            "professional_summary": {"text": body.summary},
+            "work_experience": [
+                {
+                    "title": e.title,
+                    "company": e.company,
+                    "location": e.location or None,
+                    "start_date": e.start_date or None,
+                    "end_date": e.end_date or None,
+                    "achievements": e.achievements,
+                }
+                for e in body.experience
+            ],
+            "education": [
+                {
+                    "degree": e.degree,
+                    "institution": e.institution,
+                    "location": e.location or None,
+                    "start_date": e.start_date or None,
+                    "end_date": e.end_date or None,
+                    "gpa": e.gpa or None,
+                }
+                for e in body.education
+            ],
+        },
+    }
+
+
+def _scratch_to_raw_text(body: BuildFromScratchBody) -> str:
+    sections = CVSections(
+        professional_summary=ProfessionalSummary(text=body.summary),
+        work_experience=[
+            WorkExperience(
+                title=e.title,
+                company=e.company,
+                location=e.location or None,
+                start_date=e.start_date or None,
+                end_date=e.end_date or None,
+                achievements=e.achievements,
+            )
+            for e in body.experience
+        ],
+        education=[
+            Education(
+                degree=e.degree,
+                institution=e.institution,
+                location=e.location or None,
+                start_date=e.start_date or None,
+                end_date=e.end_date or None,
+                gpa=e.gpa or None,
+            )
+            for e in body.education
+        ],
+    )
+    contact = " · ".join(
+        b for b in (body.basics.phone, body.basics.email, body.basics.location) if b.strip()
+    )
+    return _render_sections_to_text(
+        sections,
+        full_name=body.basics.full_name,
+        contact_line=contact,
+    )
+
+
+@router.get("/skills/suggest", response_model=SkillSuggestResponse)
+async def suggest_skills(
+    q: str = "",
+    limit: int = 12,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Autocomplete canonical skills for the manual CV wizard."""
+    del user_id
+    term = q.strip().lower()
+    limit = max(1, min(limit, 25))
+    if len(term) < 2:
+        return SkillSuggestResponse(skills=[])
+
+    res = (
+        supabase.table("canonical_skills")
+        .select("name")
+        .ilike("name", f"%{term}%")
+        .order("name")
+        .limit(limit)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        res = (
+            supabase.table("skills")
+            .select("name")
+            .ilike("name", f"%{term}%")
+            .order("name")
+            .limit(limit)
+            .execute()
+        )
+        rows = res.data or []
+
+    return SkillSuggestResponse(
+        skills=[SkillSuggestItem(name=r["name"]) for r in rows if r.get("name")]
+    )
+
+
+@router.post("/suggest-summary", response_model=SuggestSummaryResponse)
+@limiter.limit("15/minute")
+async def suggest_summary(
+    request: Request,
+    body: SuggestSummaryBody,
+    user_id: str = Depends(get_current_user_id),
+):
+    del user_id  # auth gate only
+    try:
+        result = await suggest_professional_summary(
+            strengths=body.strengths,
+            headline=body.headline,
+            full_name=body.full_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return SuggestSummaryResponse(summary=result["summary"])
+
+
+@router.post("/suggest-bullets", response_model=SuggestBulletsResponse)
+@limiter.limit("20/minute")
+async def suggest_bullets(
+    request: Request,
+    body: SuggestBulletsBody,
+    user_id: str = Depends(get_current_user_id),
+):
+    del user_id
+    try:
+        result = await suggest_role_bullets(
+            title=body.title,
+            company=body.company,
+            context=body.context,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return SuggestBulletsResponse(bullets=result["bullets"])
+
+
+@router.post("/build-from-scratch", response_model=BuildFromScratchResponse)
+@limiter.limit("10/minute")
+async def build_from_scratch(
+    request: Request,
+    body: BuildFromScratchBody,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Render a scratch-built CV to PDF, store in Supabase Storage, upsert cvs row."""
+    if not body.basics.full_name.strip():
+        raise HTTPException(status_code=422, detail="Full name is required")
+
+    try:
+        pdf_bytes, render_time_ms = render_cv_pdf(body)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).exception("cv_pdf_render_failed user=%s", user_id)
+        raise HTTPException(
+            status_code=503,
+            detail=f"PDF rendering failed: {exc}",
+        ) from exc
+
+    existing = (
+        supabase.table("cvs")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("is_primary", True)
+        .limit(1)
+        .execute()
+    )
+    cv_id = existing.data[0]["id"] if existing.data else str(uuid.uuid4())
+    storage_path = f"cvs/{user_id}/generated/{cv_id}.pdf"
+
+    try:
+        supabase.storage.from_("documents").upload(
+            storage_path,
+            pdf_bytes,
+            {"content-type": "application/pdf", "upsert": "true"},
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(
+            "cv_pdf_upload_failed user=%s path=%s err=%s", user_id, storage_path, exc
+        )
+        raise HTTPException(status_code=503, detail="Could not store generated PDF") from exc
+
+    parsed_data = _scratch_to_parsed_data(body)
+    raw_text = _scratch_to_raw_text(body)
+    row = {
+        "file_url": storage_path,
+        "file_type": "pdf",
+        "raw_text": raw_text[:10000],
+        "parsed_data": parsed_data,
+        "generated_pdf_path": storage_path,
+        "parsing_confidence": 1.0,
+        "is_primary": True,
+    }
+
+    if existing.data:
+        supabase.table("cvs").update(row).eq("id", cv_id).execute()
+    else:
+        supabase.table("cvs").update({"is_primary": False}).eq("user_id", user_id).execute()
+        insert_res = supabase.table("cvs").insert({
+            "id": cv_id,
+            "user_id": user_id,
+            **row,
+        }).execute()
+        if not insert_res.data:
+            raise HTTPException(status_code=500, detail="Failed to store CV record")
+        cv_id = insert_res.data[0]["id"]
+
+    try:
+        signed = supabase.storage.from_("documents").create_signed_url(
+            storage_path, 3600
+        )
+        pdf_url = signed.get("signedURL") or signed.get("signedUrl") or ""
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(
+            "cv_pdf_signed_url_failed user=%s path=%s err=%s", user_id, storage_path, exc
+        )
+        raise HTTPException(status_code=503, detail="PDF saved but download link failed") from exc
+
+    if not pdf_url:
+        raise HTTPException(status_code=503, detail="PDF saved but download link was empty")
+
+    return BuildFromScratchResponse(
+        cv_id=str(cv_id),
+        pdf_url=pdf_url,
+        storage_path=storage_path,
+        render_time_ms=render_time_ms,
     )
 
 

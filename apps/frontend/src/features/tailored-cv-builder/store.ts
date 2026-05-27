@@ -54,6 +54,7 @@ export const DEFAULT_DRAFT: TailoredCvDraft = {
       location: "Lusaka",
       startDate: "2011",
       endDate: "2014",
+      gpa: "",
     },
   ],
   skills: [
@@ -86,6 +87,7 @@ export function emptyEducation(): EducationEntry {
     location: "",
     startDate: "",
     endDate: "",
+    gpa: "",
   };
 }
 
