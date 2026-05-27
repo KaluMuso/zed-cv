@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from supabase import Client
@@ -21,6 +21,7 @@ WHATSAPP_DAILY_DIGEST_CHANNEL = "whatsapp_daily_digest"
 DIGEST_MATCH_LIMIT = 15
 DIGEST_TOP_N = 3
 JOB_RECENCY_HOURS = 24
+UPCOMING_INTERVIEW_HOURS = 48
 
 _USER_SELECT = (
     "id, phone, email, full_name, whatsapp_number, whatsapp_verified, "
@@ -44,20 +45,87 @@ def _delivery_phone(row: dict[str, Any]) -> str | None:
     return str(phone) if phone else None
 
 
-def format_daily_digest_message(name: str, matches: list[dict[str, Any]]) -> str:
+def format_daily_digest_message(
+    name: str,
+    matches: list[dict[str, Any]],
+    *,
+    upcoming_interviews: list[dict[str, Any]] | None = None,
+) -> str:
     """WhatsApp-friendly digest text."""
-    lines = [
-        f"Good morning {name}! Here are your {len(matches)} new matches for today:\n",
-    ]
-    for index, match in enumerate(matches, start=1):
-        title = match.get("job_title") or "Role"
-        company = match.get("job_company") or "Company"
-        score = round(float(match.get("final_score") or match.get("score") or 0))
-        lines.append(f"{index}. {title} at {company} ({score}% match)")
-    lines.append(
-        "\nReply 1, 2, or 3 to apply, or open ZedApply for details."
-    )
+    lines: list[str] = [f"Good morning {name}!"]
+    interviews = upcoming_interviews or []
+
+    if interviews:
+        lines.append("\nUpcoming interviews (next 48h):")
+        for item in interviews:
+            title = item.get("job_title") or "Role"
+            company = item.get("job_company") or "Company"
+            when = item.get("interview_date") or "soon"
+            lines.append(f"• {title} at {company} — {when}")
+
+    if matches:
+        lines.append(f"\nHere are your {len(matches)} new matches for today:\n")
+        for index, match in enumerate(matches, start=1):
+            title = match.get("job_title") or "Role"
+            company = match.get("job_company") or "Company"
+            score = round(float(match.get("final_score") or match.get("score") or 0))
+            lines.append(f"{index}. {title} at {company} ({score}% match)")
+        lines.append(
+            "\nReply 1, 2, or 3 to apply, or open ZedApply for details."
+        )
+    elif interviews:
+        lines.append("\nOpen ZedApply to review your application board.")
     return "\n".join(lines)
+
+
+async def fetch_upcoming_interviews(
+    user_id: str,
+    supabase: Client,
+    *,
+    now: datetime,
+) -> list[dict[str, Any]]:
+    """Saved jobs with interview_date within the next 48 hours."""
+    horizon = now + timedelta(hours=UPCOMING_INTERVIEW_HOURS)
+    today = now.date()
+    end_date = horizon.date()
+    result = (
+        supabase.table("saved_jobs")
+        .select(
+            "job_id, interview_date, application_notes, application_status, "
+            "jobs(title, company)"
+        )
+        .eq("user_id", user_id)
+        .not_.is_("interview_date", "null")
+        .gte("interview_date", today.isoformat())
+        .lte("interview_date", end_date.isoformat())
+        .order("interview_date")
+        .execute()
+    )
+    upcoming: list[dict[str, Any]] = []
+    for row in result.data or []:
+        if not isinstance(row, dict):
+            continue
+        nested = row.get("jobs") if isinstance(row.get("jobs"), dict) else {}
+        interview_raw = row.get("interview_date")
+        interview_date: date | None = None
+        if isinstance(interview_raw, str):
+            try:
+                interview_date = date.fromisoformat(interview_raw[:10])
+            except ValueError:
+                interview_date = None
+        elif isinstance(interview_raw, date):
+            interview_date = interview_raw
+        upcoming.append(
+            {
+                "job_id": str(row.get("job_id") or ""),
+                "job_title": nested.get("title") or "Role",
+                "job_company": nested.get("company") or "Company",
+                "interview_date": interview_date.isoformat() if interview_date else None,
+                "application_notes": row.get("application_notes"),
+                "application_status": row.get("application_status"),
+            }
+        )
+    return upcoming
 
 
 async def _fetch_sent_job_ids(user_id: str, channel: str, supabase: Client) -> set[str]:
@@ -217,7 +285,8 @@ async def run_email_daily_digest(supabase: Client) -> dict[str, int]:
             now=now,
             min_score=settings.min_match_score,
         )
-        if not matches:
+        upcoming = await fetch_upcoming_interviews(str(user_id), supabase, now=now)
+        if not matches and not upcoming:
             skipped += 1
             continue
 
@@ -228,15 +297,17 @@ async def run_email_daily_digest(supabase: Client) -> dict[str, int]:
             matches,
             supabase,
             digest_date=now.date().isoformat(),
+            upcoming_interviews=upcoming,
         )
         if ok:
-            await record_digest_notifications(
-                str(user_id),
-                [str(m["job_id"]) for m in matches if m.get("job_id")],
-                EMAIL_DAILY_DIGEST_CHANNEL,
-                supabase,
-                now=now,
-            )
+            if matches:
+                await record_digest_notifications(
+                    str(user_id),
+                    [str(m["job_id"]) for m in matches if m.get("job_id")],
+                    EMAIL_DAILY_DIGEST_CHANNEL,
+                    supabase,
+                    now=now,
+                )
             sent += 1
         else:
             failed += 1
@@ -267,11 +338,16 @@ async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
             now=now,
             min_score=settings.min_match_score,
         )
-        if not matches:
+        upcoming = await fetch_upcoming_interviews(str(user_id), supabase, now=now)
+        if not matches and not upcoming:
             skipped += 1
             continue
 
-        message = format_daily_digest_message(_display_name(user), matches)
+        message = format_daily_digest_message(
+            _display_name(user),
+            matches,
+            upcoming_interviews=upcoming,
+        )
         try:
             await send_whatsapp_message(phone, message)
         except Exception:
@@ -279,13 +355,14 @@ async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
             failed += 1
             continue
 
-        await record_digest_notifications(
-            str(user_id),
-            [str(m["job_id"]) for m in matches if m.get("job_id")],
-            WHATSAPP_DAILY_DIGEST_CHANNEL,
-            supabase,
-            now=now,
-        )
+        if matches:
+            await record_digest_notifications(
+                str(user_id),
+                [str(m["job_id"]) for m in matches if m.get("job_id")],
+                WHATSAPP_DAILY_DIGEST_CHANNEL,
+                supabase,
+                now=now,
+            )
         sent += 1
 
     return {
@@ -320,22 +397,28 @@ async def build_daily_digest_batch(supabase: Client) -> list[dict[str, str]]:
             now=now,
             min_score=settings.min_match_score,
         )
-        if not matches:
+        upcoming = await fetch_upcoming_interviews(str(user_id), supabase, now=now)
+        if not matches and not upcoming:
             continue
 
         payloads.append(
             {
                 "user_id": str(user_id),
                 "phone": phone,
-                "message": format_daily_digest_message(_display_name(user), matches),
+                "message": format_daily_digest_message(
+                    _display_name(user),
+                    matches,
+                    upcoming_interviews=upcoming,
+                ),
             }
         )
-        await record_digest_notifications(
-            str(user_id),
-            [str(m["job_id"]) for m in matches if m.get("job_id")],
-            WHATSAPP_DAILY_DIGEST_CHANNEL,
-            supabase,
-            now=now,
-        )
+        if matches:
+            await record_digest_notifications(
+                str(user_id),
+                [str(m["job_id"]) for m in matches if m.get("job_id")],
+                WHATSAPP_DAILY_DIGEST_CHANNEL,
+                supabase,
+                now=now,
+            )
 
     return payloads

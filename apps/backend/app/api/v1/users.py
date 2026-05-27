@@ -1,11 +1,18 @@
 """User account preference routes."""
 from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import ValidationError
 
 from app.core.deps import get_current_user_id, get_supabase
+from app.schemas.application_status import (
+    ApplicationStatus,
+    ApplicationStatusResponse,
+    ApplicationStatusUpdate,
+    SavedJobApplication,
+)
 from app.schemas.data_rights import (
     ConsentRecordResponse,
     ConsentStatusResponse,
@@ -13,6 +20,7 @@ from app.schemas.data_rights import (
     ConsentUpdateResponse,
 )
 from app.schemas.saved_jobs import SavedJobsList
+from app.services.application_status import validate_status_transition
 from app.schemas.user import (
     AutoMatchPreferences,
     AutoMatchPreferencesUpdate,
@@ -79,6 +87,13 @@ async def _fetch_user_settings_row(user_id: str, supabase) -> dict[str, Any]:
     return result.data
 
 
+def _parse_application_status(raw: object) -> ApplicationStatus:
+    try:
+        return ApplicationStatus(str(raw or ApplicationStatus.saved.value))
+    except ValueError:
+        return ApplicationStatus.saved
+
+
 @router.get("/me/saved-jobs", response_model=SavedJobsList)
 async def list_saved_jobs(
     user_id: str = Depends(get_current_user_id),
@@ -86,20 +101,108 @@ async def list_saved_jobs(
 ):
     rows = (
         supabase.table("saved_jobs")
-        .select("created_at, jobs(*, job_skills(skills(name)))")
+        .select(
+            "application_status, status_updated_at, application_notes, interview_date, "
+            "created_at, jobs(*, job_skills(skills(name)))"
+        )
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .execute()
     )
     jobs_out = []
+    applications_out: list[SavedJobApplication] = []
     for row in rows.data or []:
         nested = row.get("jobs")
         if isinstance(nested, dict):
             try:
-                jobs_out.append(hydrate_job_row(nested))
+                job = hydrate_job_row(nested)
             except ValidationError:
                 continue
-    return SavedJobsList(jobs=jobs_out)
+            jobs_out.append(job)
+            applications_out.append(
+                SavedJobApplication(
+                    job=job,
+                    application_status=_parse_application_status(
+                        row.get("application_status")
+                    ),
+                    status_updated_at=row.get("status_updated_at"),
+                    application_notes=row.get("application_notes"),
+                    interview_date=row.get("interview_date"),
+                )
+            )
+    return SavedJobsList(jobs=jobs_out, applications=applications_out)
+
+
+@router.patch(
+    "/me/saved-jobs/{job_id}/status",
+    response_model=ApplicationStatusResponse,
+)
+async def update_saved_job_status(
+    job_id: UUID,
+    body: ApplicationStatusUpdate,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    job_id_str = str(job_id)
+    existing = (
+        supabase.table("saved_jobs")
+        .select(
+            "id, application_status, application_notes, interview_date, status_updated_at"
+        )
+        .eq("user_id", user_id)
+        .eq("job_id", job_id_str)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Saved job not found")
+
+    row = existing.data[0]
+    current_status = _parse_application_status(row.get("application_status"))
+    try:
+        validate_status_transition(current_status, body.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    now = datetime.now(timezone.utc)
+    update_data: dict[str, Any] = {
+        "application_status": body.status.value,
+        "status_updated_at": now.isoformat(),
+    }
+    if body.notes is not None:
+        update_data["application_notes"] = body.notes
+    if body.interview_date is not None:
+        update_data["interview_date"] = body.interview_date.isoformat()
+
+    updated = (
+        supabase.table("saved_jobs")
+        .update(update_data)
+        .eq("user_id", user_id)
+        .eq("job_id", job_id_str)
+        .execute()
+    )
+    saved_row = {**row, **update_data}
+    if updated.data:
+        saved_row = {**updated.data[0], **update_data}
+
+    if body.status != current_status:
+        supabase.table("application_status_history").insert(
+            {
+                "saved_job_id": row["id"],
+                "from_status": current_status.value,
+                "to_status": body.status.value,
+                "changed_at": now.isoformat(),
+                "changed_by_user_id": user_id,
+            }
+        ).execute()
+
+    return ApplicationStatusResponse(
+        job_id=job_id_str,
+        application_status=body.status,
+        status_updated_at=saved_row.get("status_updated_at"),
+        application_notes=saved_row.get("application_notes"),
+        interview_date=saved_row.get("interview_date"),
+    )
 
 
 def _channels(raw: object) -> NotificationChannels:

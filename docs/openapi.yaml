@@ -1180,6 +1180,41 @@ components:
         jobs:
           type: array
           items: { $ref: '#/components/schemas/Job' }
+        applications:
+          type: array
+          items: { $ref: '#/components/schemas/SavedJobApplication' }
+
+    SavedJobApplication:
+      type: object
+      properties:
+        job: { $ref: '#/components/schemas/Job' }
+        application_status:
+          type: string
+          enum: [saved, applied, interviewing, offered, closed_won, closed_lost]
+        status_updated_at: { type: string, format: date-time, nullable: true }
+        application_notes: { type: string, nullable: true }
+        interview_date: { type: string, format: date, nullable: true }
+
+    ApplicationStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [saved, applied, interviewing, offered, closed_won, closed_lost]
+        notes: { type: string, nullable: true }
+        interview_date: { type: string, format: date, nullable: true }
+
+    ApplicationStatusResponse:
+      type: object
+      properties:
+        job_id: { type: string, format: uuid }
+        application_status:
+          type: string
+          enum: [saved, applied, interviewing, offered, closed_won, closed_lost]
+        status_updated_at: { type: string, format: date-time, nullable: true }
+        application_notes: { type: string, nullable: true }
+        interview_date: { type: string, format: date, nullable: true }
 
     MatchResult:
       type: object
@@ -1831,6 +1866,32 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SavedJobsList' }
+
+  /users/me/saved-jobs/{job_id}/status:
+    patch:
+      operationId: updateSavedJobStatus
+      summary: Update application Kanban status, notes, and interview date
+      tags: [Users]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplicationStatusUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationStatusResponse' }
+        '404':
+          description: Saved job not found
+        '422':
+          description: Invalid status transition
 
   /users/me/consent:
     get:

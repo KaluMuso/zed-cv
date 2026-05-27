@@ -9,6 +9,7 @@ from app.services.daily_digest import (
     format_daily_digest_message,
     build_daily_digest_batch,
     run_whatsapp_daily_digest,
+    fetch_upcoming_interviews,
     _select_digest_matches,
 )
 from tests.conftest import FakeSupabaseQuery
@@ -43,6 +44,23 @@ class TestFormatDailyDigestMessage:
         assert "3. Nurse at CIDRZ (65% match)" in text
         assert "Reply 1, 2, or 3" in text
         assert "ZedApply" in text
+
+    def test_formats_upcoming_interviews_section(self):
+        upcoming = [
+            {
+                "job_title": "Analyst",
+                "job_company": "FNB",
+                "interview_date": "2026-05-28",
+            }
+        ]
+        text = format_daily_digest_message(
+            "Chanda",
+            [],
+            upcoming_interviews=upcoming,
+        )
+        assert "Upcoming interviews (next 48h)" in text
+        assert "Analyst at FNB" in text
+        assert "2026-05-28" in text
 
 
 class TestSelectDigestMatches:
@@ -316,3 +334,30 @@ class TestBuildDailyDigestBatch:
         assert stats["quiet_hours_skipped"] == 1
         assert stats["sent"] == 0
         mock_send.assert_not_awaited()
+
+
+class TestFetchUpcomingInterviews:
+    @pytest.mark.asyncio
+    async def test_returns_interviews_within_horizon(self, fake_supabase):
+        fake_supabase.set_table(
+            "saved_jobs",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "job_id": "j1",
+                        "interview_date": "2026-05-23",
+                        "application_notes": "Prep STAR answers",
+                        "application_status": "interviewing",
+                        "jobs": {"title": "Dev", "company": "TechCo"},
+                    }
+                ]
+            ),
+        )
+        rows = await fetch_upcoming_interviews(
+            "user-1",
+            fake_supabase,
+            now=NOW,
+        )
+        assert len(rows) == 1
+        assert rows[0]["job_title"] == "Dev"
+        assert rows[0]["interview_date"] == "2026-05-23"

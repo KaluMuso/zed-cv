@@ -19,7 +19,7 @@ export function MobileTabBar() {
   const router = useRouter();
 
   // Only show on authenticated pages
-  const showOn = ["/matches", "/jobs", "/profile", "/pricing"];
+  const showOn = ["/matches", "/jobs", "/profile", "/pricing", "/applications"];
   const shouldShow = showOn.some((p) => pathname.startsWith(p));
   if (!shouldShow) return null;
 

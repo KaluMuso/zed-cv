@@ -188,6 +188,11 @@ export function UserDashboard({ userName, liveData }: UserDashboardProps) {
                 </Link>
               </li>
               <li>
+                <Link href="/applications" className="hover:underline" style={{ color: "var(--green-700)" }}>
+                  Track applications
+                </Link>
+              </li>
+              <li>
                 <Link href="/jobs" className="hover:underline" style={{ color: "var(--green-700)" }}>
                   Browse all jobs
                 </Link>

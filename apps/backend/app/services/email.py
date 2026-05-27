@@ -156,6 +156,21 @@ async def send_welcome_email(
     supabase.table("users").update({"welcome_email_sent": True}).eq("id", user_id).execute()
 
 
+def _digest_upcoming_html(upcoming: list[dict[str, Any]]) -> str:
+    if not upcoming:
+        return ""
+    rows: list[str] = []
+    for item in upcoming[:5]:
+        title = escape(str(item.get("job_title") or "Role"))
+        company = escape(str(item.get("job_company") or ""))
+        when = escape(str(item.get("interview_date") or "soon"))
+        rows.append(f"<li><strong>{title}</strong> at {company} — interview {when}</li>")
+    return (
+        "<h3>Upcoming interviews (next 48h)</h3>"
+        f"<ul>{''.join(rows)}</ul>"
+    )
+
+
 async def send_daily_digest_email(
     user_id: str,
     email: str,
@@ -164,9 +179,11 @@ async def send_daily_digest_email(
     supabase,
     *,
     digest_date: str,
+    upcoming_interviews: list[dict[str, Any]] | None = None,
 ) -> bool:
     """Daily cron digest via Resend template (falls back to inline HTML)."""
-    if not matches or not email:
+    upcoming = upcoming_interviews or []
+    if (not matches and not upcoming) or not email:
         return False
     enabled, resolved = await _resolve_recipient(user_id, supabase)
     if not enabled:
@@ -176,8 +193,14 @@ async def send_daily_digest_email(
         return False
 
     settings = get_settings()
-    subject = f"{len(matches)} new job matches for you"
+    subject_parts: list[str] = []
+    if upcoming:
+        subject_parts.append(f"{len(upcoming)} upcoming interview(s)")
+    if matches:
+        subject_parts.append(f"{len(matches)} new job matches")
+    subject = " · ".join(subject_parts) if subject_parts else "Your ZedApply digest"
     idempotency_key = f"daily-digest-email/{user_id}/{digest_date}"
+    upcoming_html = _digest_upcoming_html(upcoming)
     template_id = (settings.resend_daily_digest_template_id or "").strip()
     if template_id:
         return _send_with_template(
@@ -187,17 +210,25 @@ async def send_daily_digest_email(
                 "USER_NAME": display_name,
                 "MATCH_COUNT": str(len(matches)),
                 "MATCHES_HTML": _digest_matches_html(matches),
+                "UPCOMING_INTERVIEWS_HTML": upcoming_html,
                 "APP_URL": settings.app_url,
             },
             subject=subject,
             idempotency_key=idempotency_key,
         )
 
+    matches_block = (
+        f"<p>Here are your {len(matches)} new matches for today:</p>"
+        f"{_digest_matches_html(matches)}"
+        if matches
+        else ""
+    )
     html = f"""
     <h2>Good morning {escape(display_name)}!</h2>
-    <p>Here are your {len(matches)} new matches for today:</p>
-    {_digest_matches_html(matches)}
-    <p><a href="{settings.app_url}/matches">View all matches</a></p>
+    {upcoming_html}
+    {matches_block}
+    <p><a href="{settings.app_url}/applications">View application board</a> ·
+    <a href="{settings.app_url}/matches">View all matches</a></p>
     """
     return _send(to, subject, html, idempotency_key=idempotency_key)
 

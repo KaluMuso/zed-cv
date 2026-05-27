@@ -1222,7 +1222,20 @@ export const jobs = {
 
 export const savedJobs = {
   list: (token: string) =>
-    apiFetch<{ jobs: Job[] }>("/users/me/saved-jobs", { token }),
+    apiFetch<SavedJobsListResponse>("/users/me/saved-jobs", { token }),
+  updateStatus: (
+    token: string,
+    jobId: string,
+    body: ApplicationStatusUpdate,
+  ) =>
+    apiFetch<ApplicationStatusResponse>(
+      `/users/me/saved-jobs/${jobId}/status`,
+      {
+        method: "PATCH",
+        token,
+        body: body as unknown as ApiJsonBody,
+      },
+    ),
   save: (token: string, jobId: string) =>
     apiFetch<{ saved: boolean }>(`/jobs/${jobId}/save`, {
       method: "POST",
@@ -1231,6 +1244,41 @@ export const savedJobs = {
   unsave: (token: string, jobId: string) =>
     apiFetch<void>(`/jobs/${jobId}/save`, { method: "DELETE", token }),
 };
+
+export type ApplicationStatus =
+  | "saved"
+  | "applied"
+  | "interviewing"
+  | "offered"
+  | "closed_won"
+  | "closed_lost";
+
+export interface SavedJobApplication {
+  job: Job;
+  application_status: ApplicationStatus;
+  status_updated_at: string | null;
+  application_notes: string | null;
+  interview_date: string | null;
+}
+
+export interface SavedJobsListResponse {
+  jobs: Job[];
+  applications?: SavedJobApplication[];
+}
+
+export interface ApplicationStatusUpdate {
+  status: ApplicationStatus;
+  notes?: string | null;
+  interview_date?: string | null;
+}
+
+export interface ApplicationStatusResponse {
+  job_id: string;
+  application_status: ApplicationStatus;
+  status_updated_at: string | null;
+  application_notes: string | null;
+  interview_date: string | null;
+}
 
 // ── Matches ──
 export interface MatchData {

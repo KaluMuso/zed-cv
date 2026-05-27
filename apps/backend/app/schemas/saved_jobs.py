@@ -1,13 +1,19 @@
-"""Saved jobs API models."""
+"""Saved jobs API models — re-exports application tracking schemas."""
 
-from pydantic import BaseModel
+from app.schemas.application_status import (
+    ApplicationStatus,
+    ApplicationStatusResponse,
+    ApplicationStatusUpdate,
+    SavedJobApplication,
+    SavedJobsList,
+)
+from app.schemas.saved_jobs_legacy import SaveJobResponse
 
-from app.schemas.jobs import Job
-
-
-class SavedJobsList(BaseModel):
-    jobs: list[Job]
-
-
-class SaveJobResponse(BaseModel):
-    saved: bool = True
+__all__ = [
+    "ApplicationStatus",
+    "ApplicationStatusResponse",
+    "ApplicationStatusUpdate",
+    "SaveJobResponse",
+    "SavedJobApplication",
+    "SavedJobsList",
+]

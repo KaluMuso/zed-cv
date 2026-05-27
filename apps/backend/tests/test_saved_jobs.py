@@ -37,4 +37,4 @@ def test_list_saved_jobs_empty(client, auth_headers, fake_supabase):
     fake_supabase.set_table("saved_jobs", FakeSupabaseQuery(data=[]))
     resp = client.get("/api/v1/users/me/saved-jobs", headers=auth_headers)
     assert resp.status_code == 200
-    assert resp.json() == {"jobs": []}
+    assert resp.json() == {"jobs": [], "applications": []}
