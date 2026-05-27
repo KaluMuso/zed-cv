@@ -16,7 +16,9 @@ describe("siteDefaultMetadata", () => {
       siteName: "Zed Apply",
       type: "website",
     });
-    expect(siteDefaultMetadata.openGraph?.images?.[0]).toMatchObject({
+    const images = siteDefaultMetadata.openGraph?.images;
+    const firstImage = Array.isArray(images) ? images[0] : images;
+    expect(firstImage).toMatchObject({
       url: "/api/og",
       width: 1200,
       height: 630,

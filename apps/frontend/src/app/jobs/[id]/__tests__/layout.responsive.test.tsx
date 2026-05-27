@@ -31,15 +31,15 @@ const JOB: Job = {
   description_markdown: "## Role\n\nBuild APIs.",
   employment_type: "full_time",
   work_arrangement: "hybrid",
-  salary_min_ngwee: null,
-  salary_max_ngwee: null,
+  salary_min: null,
+  salary_max: null,
   closing_date: "2026-12-01",
   apply_url: "https://example.com/apply",
   apply_email: null,
   source_url: "https://example.com",
   posted_at: "2026-05-01",
   skills: ["python", "fastapi"],
-  is_active: true,
+  quality_score: 80,
 };
 
 function atWidth(width: number) {
