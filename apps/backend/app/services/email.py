@@ -10,11 +10,13 @@ with variables USER_NAME, MATCH_COUNT, MATCHES_HTML, APP_URL.
 """
 import logging
 from html import escape
+from pathlib import Path
 from typing import Any, Optional
 
 import resend
 
 from app.core.config import get_settings
+from app.core.deps import get_supabase
 from app.services.email_delivery import (
     EMAIL_PROVIDER_UNAVAILABLE,
     EmailDeliveryError,
@@ -22,6 +24,10 @@ from app.services.email_delivery import (
 )
 
 logger = logging.getLogger(__name__)
+
+_WELCOME_TEMPLATE = (
+    Path(__file__).resolve().parent.parent / "templates" / "emails" / "welcome.html"
+)
 
 
 def _api_ready() -> bool:
@@ -118,23 +124,36 @@ def _digest_matches_html(matches: list[dict[str, Any]]) -> str:
     return f"<ol>{''.join(rows)}</ol>"
 
 
-async def send_welcome_email(user_id: str, supabase) -> bool:
-    enabled, email = await _resolve_recipient(user_id, supabase)
-    if not enabled or not email:
-        return False
-    settings = get_settings()
-    html = f"""
-    <h2>Welcome to Zed CV</h2>
-    <p>Your CV is in. Our AI will start matching you to jobs across Zambia within minutes.</p>
-    <p>What's next:</p>
-    <ul>
-      <li>Wait for your first match digest (usually within 24 hours).</li>
-      <li>Reply <strong>matches</strong> on WhatsApp to see top matches anytime.</li>
-      <li>Visit <a href="{settings.app_url}/matches">your dashboard</a> for full match details.</li>
-    </ul>
-    <p>— The Zed CV team</p>
-    """
-    return _send(email, "Welcome to Zed CV", html)
+def _render_welcome_html(first_name: str) -> str:
+    raw = _WELCOME_TEMPLATE.read_text(encoding="utf-8")
+    return raw.replace("{{first_name}}", escape(first_name))
+
+
+async def send_welcome_email(
+    user_id: str,
+    full_name: str | None,
+    email: str | None,
+) -> None:
+    """Post-signup welcome email. Sets users.welcome_email_sent on success."""
+    if not email:
+        return
+
+    first_name = (full_name or "").split()[0] if (full_name or "").strip() else "there"
+    html = _render_welcome_html(first_name)
+    subject = "Welcome to ZedApply"
+    ok = _send(
+        email,
+        subject,
+        html,
+        idempotency_key=f"welcome-email/{user_id}",
+    )
+    if not ok:
+        logger.warning("welcome email send failed user_id=%s to=%s", user_id, email)
+        return
+
+    logger.info("welcome email sent user_id=%s to=%s", user_id, email)
+    supabase = get_supabase()
+    supabase.table("users").update({"welcome_email_sent": True}).eq("id", user_id).execute()
 
 
 async def send_daily_digest_email(

@@ -3,7 +3,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 
 from app.core.errors import ProblemHTTPException
 from app.services.email_delivery import EmailDeliveryError
@@ -19,6 +19,7 @@ from app.schemas.auth import (
     OTPRequestResponse,
     OTPVerify,
 )
+from app.services.email import send_welcome_email
 from app.services.referral import attach_referral_on_signup, generate_referral_code
 from app.services.otp import (
     default_otp_channel_for_tier,
@@ -218,6 +219,7 @@ async def request_otp(
 async def verify_otp(
     request: Request,
     body: OTPVerify,
+    background_tasks: BackgroundTasks,
     settings: Settings = Depends(get_settings),
     supabase=Depends(get_supabase),
 ):
@@ -264,19 +266,24 @@ async def verify_otp(
 
     user_result = (
         supabase.table("users")
-        .select("id, role, email")
+        .select("id, role, email, full_name, welcome_email_sent")
         .eq("phone", body.phone)
         .limit(1)
         .execute()
     )
     device_token: str | None = None
+    newly_created = False
+    user_row: dict = {}
 
     if user_result.data:
-        user_id = user_result.data[0]["id"]
+        user_row = user_result.data[0]
+        user_id = user_row["id"]
         supabase.table("otp_codes").update({"verified": True}).eq("id", otp["id"]).execute()
-        if body.email and not user_result.data[0].get("email"):
+        if body.email and not user_row.get("email"):
             supabase.table("users").update({"email": str(body.email)}).eq("id", user_id).execute()
+            user_row["email"] = str(body.email)
     else:
+        newly_created = True
         if body.consent_accepted is not True:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -318,6 +325,22 @@ async def verify_otp(
                 "tier": "free",
                 "status": "active",
             }).execute()
+        user_row = {
+            "email": str(body.email),
+            "full_name": None,
+            "welcome_email_sent": False,
+        }
+
+    welcome_email = user_row.get("email") or (
+        str(body.email) if body.email else None
+    )
+    if newly_created and not user_row.get("welcome_email_sent"):
+        background_tasks.add_task(
+            send_welcome_email,
+            user_id,
+            user_row.get("full_name"),
+            welcome_email,
+        )
 
     if body.remember_device:
         device_token = secrets.token_urlsafe(32)

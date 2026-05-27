@@ -14,7 +14,6 @@ from app.schemas.cv_sections import CVSections
 from app.services.cv_parser import extract_text_from_file, parse_cv_with_llm
 from app.services.cv_generator import analyze_cv, generate_cv_structured
 from app.services.embedding import generate_embedding
-from app.services.email import send_welcome_email
 from app.services.skill_resolver import resolve_skill_ids
 from app.services.preferences_auto_populate import auto_populate_from_cv
 from app.services.user_profile_enricher import (
@@ -516,10 +515,6 @@ async def upload_cv(
         )
 
     if is_first_upload:
-        try:
-            await send_welcome_email(user_id, supabase)
-        except Exception:
-            pass
         try:
             from app.services.referral import qualify_referral_on_cv_upload
 
