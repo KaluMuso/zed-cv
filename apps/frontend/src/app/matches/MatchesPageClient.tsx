@@ -31,6 +31,8 @@ import Link from "next/link";
 import { notify } from "@/lib/toast";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { MatchExplanationModal } from "./_components/MatchExplanationModal";
+import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
+import { canTailorCvForMatch } from "@/lib/tier-gating";
 import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
 import { isJobPastClosing } from "@/lib/isJobPastClosing";
@@ -78,6 +80,7 @@ export default function MatchesPageClient() {
   const [scoreFilter, setScoreFilter] = useState(0);
   const [sort, setSort] = useState<"score" | "closing">("score");
   const [prepFor, setPrepFor] = useState<MatchData | null>(null);
+  const [tailorFor, setTailorFor] = useState<MatchData | null>(null);
   const [applyJob, setApplyJob] = useState<MatchData["job"] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(false);
@@ -875,6 +878,28 @@ export default function MatchesPageClient() {
                       below SS see a clear upgrade affordance instead of
                       clicking a button that just 403s. Backend enforcement
                       remains the source of truth. */}
+                  {canTailorCvForMatch(sub?.tier) ? (
+                    <button
+                      type="button"
+                      onClick={() => setTailorFor(match)}
+                      className="btn btn-accent btn-sm w-40"
+                      title="Generate a CV tailored to this role"
+                      data-testid="match-tailor-cv"
+                    >
+                      Tailor my CV <Icon name="file" size={13} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm w-40"
+                      disabled
+                      title="Professional or Super Standard — tailored CV per match. Upgrade at /pricing."
+                      style={{ opacity: 0.55, cursor: "not-allowed" }}
+                      data-testid="match-tailor-cv-locked"
+                    >
+                      Tailor my CV
+                    </button>
+                  )}
                   {sub?.tier === "super_standard" ? (
                     <button
                       onClick={() => setPrepFor(match)}
@@ -930,6 +955,17 @@ export default function MatchesPageClient() {
           jobId={prepFor.job.id}
           jobTitle={prepFor.job.title}
           company={prepFor.job.company}
+        />
+      )}
+
+      {token && tailorFor && (
+        <TailoredCvModal
+          open={!!tailorFor}
+          onClose={() => setTailorFor(null)}
+          token={token}
+          matchId={tailorFor.id}
+          jobTitle={tailorFor.job.title}
+          company={tailorFor.job.company}
         />
       )}
 

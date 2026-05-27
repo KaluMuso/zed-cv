@@ -1115,7 +1115,25 @@ export const cv = {
     apiFetch<{ generations: CVGenerationSummary[] }>("/cv/generations", { token }),
   getGeneration: (token: string, id: string) =>
     apiFetch<CVGenerationDetail>(`/cv/generations/${encodeURIComponent(id)}`, { token }),
+  tailorForMatch: (token: string, matchId: string) =>
+    apiFetch<MatchTailorCvResult>(
+      `/matches/${encodeURIComponent(matchId)}/tailor-cv`,
+      { method: "POST", token, body: "{}" }
+    ),
 };
+
+export interface MatchTailorCvResult {
+  generation_id: string;
+  markdown: string;
+  word_count: number;
+  job_title: string;
+  company?: string | null;
+  cached?: boolean;
+  duration_ms?: number | null;
+  estimated_cost_usd?: number | null;
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+}
 
 // ── Jobs ──
 

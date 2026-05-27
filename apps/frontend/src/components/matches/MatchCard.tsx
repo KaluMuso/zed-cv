@@ -10,15 +10,30 @@ import {
 } from "@/lib/applyLink";
 import type { MatchData } from "@/lib/api";
 import { SkillBadge } from "@/components/SkillBadge";
+import { Icon } from "@/components/ui/Icon";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface MatchCardProps {
   match: MatchData;
   expired?: boolean;
   /** Opens in-app apply flow (matches page modal). */
   onApplyClick?: () => void;
+  /** Professional+ — opens match-tailored CV modal. */
+  canTailorCv?: boolean;
+  onTailorCvClick?: () => void;
 }
 
-export function MatchCard({ match, expired = false, onApplyClick }: MatchCardProps) {
+export function MatchCard({
+  match,
+  expired = false,
+  onApplyClick,
+  canTailorCv = false,
+  onTailorCvClick,
+}: MatchCardProps) {
   const apply = resolveApplyAction(match.job as ApplyJobFields);
   const useExternalLink = Boolean(apply?.external && !onApplyClick);
 
@@ -116,6 +131,31 @@ export function MatchCard({ match, expired = false, onApplyClick }: MatchCardPro
               {apply.label}
             </button>
           ) : null}
+          {canTailorCv ? (
+            <button
+              type="button"
+              className="btn btn-accent btn-sm w-40"
+              onClick={onTailorCvClick}
+              data-testid="match-tailor-cv"
+            >
+              Tailor my CV <Icon name="file" size={13} />
+            </button>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                type="button"
+                className="btn btn-ghost btn-sm w-40"
+                disabled
+                style={{ opacity: 0.55, cursor: "not-allowed" }}
+                data-testid="match-tailor-cv-locked"
+              >
+                Tailor my CV
+              </TooltipTrigger>
+              <TooltipContent>
+                Professional or Super Standard — tailored CV per match. Upgrade at /pricing.
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Link
             href={`/jobs/${match.job.id}`}
             className="btn btn-ghost btn-sm w-40 text-center mt-1"

@@ -1,14 +1,16 @@
 """CV analysis and tailored-CV generation via OpenRouter (google/gemini-flash-2.0).
 
 Mirrors the cover_letter service: same client, same error mapping, same
-model. Two public functions:
+model. Public functions:
 
   - analyze_cv(cv_text) -> {overall, skills, format, impact, strengths[], improvements[]}
   - generate_cv(cv_text, job_title, company?, job_description?) -> {content, word_count}
+  - generate_tailored_cv_for_match(...) -> {content, word_count, usage}
 """
 import asyncio
 import json
 import logging
+import time
 from functools import lru_cache
 from typing import Optional
 
@@ -18,10 +20,12 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from app.core.config import get_settings
 from app.schemas.cv_sections import CVSections
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open, degraded_llm_result
+from app.services.llm import FEATURE_MATCH_TAILORED_CV, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
 )
+from app.services.llm import estimate_openrouter_cost_usd, extract_usage_from_completion
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +69,35 @@ Output rules:
   - Keep it to one page of content (~400-600 words).
   - Use Zambian conventions: phone +260, ZMW currency, local institutions named accurately.
   - Sign-off line not needed (this is a CV, not a cover letter).
+"""
+
+
+MATCH_TAILOR_USER_PROMPT = """You are an expert CV writer for the Zambian job market. Rewrite this candidate's CV
+to maximally highlight their fit for the role below.
+
+CANDIDATE'S MASTER CV:
+{master_cv_markdown}
+
+TARGET ROLE:
+Title: {job_title}
+Company: {company}
+Description: {job_description}
+Required skills: {skills_required}
+
+MATCH ANALYSIS:
+Overlapping skills (emphasize these): {overlapping_skills}
+Missing skills (address transferable experience or willingness to learn): {missing_skills}
+
+Output a complete tailored CV in markdown. Keep all factual claims accurate to
+the source CV — do not fabricate experience. Reorder bullets to lead with
+overlapping skills. Stay under 800 words. Use Zambian English conventions.
+"""
+
+MATCH_TAILOR_SYSTEM_PROMPT = """You are an expert CV writer for the Zambian job market.
+
+Return a complete tailored CV in markdown only — no preamble, no code fences.
+Use clear headings (##) for sections. Keep every claim faithful to the source CV.
+Stay under 800 words. Use Zambian conventions: +260 phones, local institutions, ZMW where relevant.
 """
 
 
@@ -485,6 +518,151 @@ async def generate_cv_structured(
         except APIError as e:
             logger.error(f"OpenRouter API error during CV generation: {e}")
             raise ValueError("CV generation is temporarily unavailable. Please try again later.")
+
+    return await asyncio.to_thread(_call)
+
+
+class GeneratedMatchTailoredCV(BaseModel):
+    """Validation for per-match markdown CV output."""
+
+    content: str = Field(..., min_length=200, max_length=16000)
+    word_count: int = Field(..., ge=50, le=900)
+
+    @field_validator("content", mode="after")
+    @classmethod
+    def _no_refusal_or_echo_match(cls, v: str) -> str:
+        lowered = v.lower()
+        for marker in _REFUSAL_OR_ECHO_MARKERS:
+            if marker in lowered:
+                raise ValueError(
+                    f"Generated CV contains suspicious marker: {marker!r}. "
+                    "The model may have refused the task or echoed the prompt."
+                )
+        return v
+
+
+async def generate_tailored_cv_for_match(
+    *,
+    master_cv_markdown: str,
+    job_title: str,
+    company: str | None,
+    job_description: str | None,
+    skills_required: list[str],
+    overlapping_skills: list[str],
+    missing_skills: list[str],
+) -> dict:
+    """Tailor the user's master CV to a specific matched role (markdown output).
+
+    Returns {content, word_count, prompt_tokens, completion_tokens, duration_ms,
+    estimated_cost_usd}.
+    """
+    if circuit_is_open():
+        return degraded_llm_result(
+            content=DEGRADED_LLM_USER_MESSAGE,
+            word_count=0,
+            prompt_tokens=0,
+            completion_tokens=0,
+            duration_ms=0,
+            estimated_cost_usd=0.0,
+        )
+
+    settings = get_settings()
+    client = _client()
+    company_line = company or "Not specified"
+    desc = (job_description or "Not provided.")[:4000]
+    skills_req = ", ".join(skills_required[:30]) if skills_required else "Not listed"
+    overlap = ", ".join(overlapping_skills[:30]) if overlapping_skills else "None identified"
+    missing = ", ".join(missing_skills[:30]) if missing_skills else "None identified"
+
+    user_prompt = MATCH_TAILOR_USER_PROMPT.format(
+        master_cv_markdown=master_cv_markdown[:8000],
+        job_title=job_title,
+        company=company_line,
+        job_description=desc,
+        skills_required=skills_req,
+        overlapping_skills=overlap,
+        missing_skills=missing,
+    )
+
+    log_ctx = LlmLogContext(
+        feature=FEATURE_MATCH_TAILORED_CV,
+        route="POST /api/v1/matches/{match_id}/tailor-cv",
+    )
+
+    def _call():
+        started = time.perf_counter()
+        try:
+            response = create_chat_completion_with_retries(
+                client,
+                log_prefix="cv_generator_match_tailor",
+                log_context=log_ctx,
+                model=settings.llm_model,
+                max_tokens=2500,
+                messages=[
+                    {"role": "system", "content": MATCH_TAILOR_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            content = get_completion_content(response, default="")
+            if content is None:
+                logger.warning("match_tailor_cv_skip: empty choices")
+                raise ValueError("Empty response from CV generator")
+            content = content.strip()
+            if not content:
+                raise ValueError("Empty response from CV generator")
+
+            prompt_tokens, completion_tokens, _req_id = extract_usage_from_completion(
+                response
+            )
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            est_cost = estimate_openrouter_cost_usd(
+                settings.llm_model, prompt_tokens, completion_tokens
+            )
+
+            raw_word_count = len(content.split())
+            try:
+                validated = GeneratedMatchTailoredCV(
+                    content=content, word_count=raw_word_count
+                )
+            except ValidationError as ve:
+                logger.error(
+                    "Match-tailored CV failed validation: errors=%s preview=%r",
+                    ve.errors(),
+                    content[:200],
+                )
+                raise ValueError(
+                    "We couldn't produce a usable CV for this role. "
+                    "Try again or upload a fuller CV."
+                )
+
+            logger.info(
+                "match_tailor_cv model=%s duration_ms=%d prompt_tokens=%d "
+                "completion_tokens=%d estimated_cost_usd=%.8f",
+                settings.llm_model,
+                duration_ms,
+                prompt_tokens,
+                completion_tokens,
+                est_cost,
+            )
+            return {
+                "content": validated.content,
+                "word_count": validated.word_count,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "duration_ms": duration_ms,
+                "estimated_cost_usd": est_cost,
+            }
+        except AuthenticationError:
+            logger.error("OpenRouter API key invalid for match-tailored CV")
+            raise ValueError("CV generation is not configured. Please contact support.")
+        except RateLimitError:
+            logger.warning("OpenRouter rate limit hit during match-tailored CV")
+            raise ValueError("CV generation is temporarily busy. Please try again in a minute.")
+        except APIError as e:
+            logger.error("OpenRouter API error during match-tailored CV: %s", e)
+            raise ValueError(
+                "CV generation is temporarily unavailable. Please try again later."
+            )
 
     return await asyncio.to_thread(_call)
 

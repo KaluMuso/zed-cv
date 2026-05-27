@@ -715,6 +715,21 @@ components:
         company: { type: string, maxLength: 255 }
         job_description: { type: string, maxLength: 10000 }
 
+    MatchTailorCvResponse:
+      type: object
+      required: [generation_id, markdown, word_count, job_title]
+      properties:
+        generation_id: { type: string, format: uuid }
+        markdown: { type: string }
+        word_count: { type: integer }
+        job_title: { type: string }
+        company: { type: string }
+        cached: { type: boolean, default: false }
+        duration_ms: { type: integer }
+        estimated_cost_usd: { type: number, format: float }
+        prompt_tokens: { type: integer }
+        completion_tokens: { type: integer }
+
     CVGenerateResponse:
       type: object
       properties:
@@ -2686,6 +2701,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MatchList' }
+
+  /matches/{match_id}/tailor-cv:
+    post:
+      operationId: tailorCvForMatch
+      summary: Generate a markdown CV tailored to a specific match (Professional+)
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchTailorCvResponse' }
+        '403':
+          description: Tier gate — Professional or Super Standard required
+        '404':
+          description: Match or job not found
+        '422':
+          description: No primary CV uploaded
+        '503':
+          description: LLM generation failed or degraded
 
   /matches/{user_id}:
     get:

@@ -10,6 +10,7 @@ const FEATURE_LABELS: Record<string, string> = {
   cv_parsing: "CV parsing",
   bwana: "Bwana chat",
   interview_prep: "Interview prep",
+  match_tailored_cv: "Match-tailored CV",
   aptitude: "Bwana Interview / aptitude",
   other: "Other",
 };

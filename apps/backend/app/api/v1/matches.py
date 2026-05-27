@@ -1,8 +1,10 @@
 """Matching routes."""
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, BackgroundTasks, Header
+from pydantic import BaseModel
 from app.core.config import Settings, get_settings
 from app.core.deps import (
     get_supabase,
@@ -10,7 +12,12 @@ from app.core.deps import (
     get_current_user,
     is_superadmin,
 )
-from app.core.tier_gating import FEATURE_JOB_MATCHES, verify_tier_access
+from app.core.tier_gating import (
+    FEATURE_JOB_MATCHES,
+    FEATURE_MATCH_TAILORED_CV,
+    verify_tier_access,
+)
+from app.services.cv_generator import generate_tailored_cv_for_match
 from app.core.rate_limit import limiter
 from app.schemas.matching import (
     MatchResult,
@@ -276,6 +283,138 @@ async def get_matches(
         remaining_quota=remaining,
         credited_count=credited_count,
         matches_limit=matches_limit,
+    )
+
+
+class MatchTailorCvResponse(BaseModel):
+    generation_id: str
+    markdown: str
+    word_count: int
+    job_title: str
+    company: Optional[str] = None
+    cached: bool = False
+    duration_ms: Optional[int] = None
+    estimated_cost_usd: Optional[float] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+
+
+@router.post("/{match_id}/tailor-cv", response_model=MatchTailorCvResponse)
+@limiter.limit("5/minute")
+async def tailor_cv_for_match(
+    request: Request,
+    match_id: str,
+    current_user: dict = Depends(get_current_user),
+    supabase=Depends(get_supabase),
+):
+    """Generate a markdown CV tailored to the matched job (Professional+)."""
+    user_id = current_user["id"]
+
+    await verify_tier_access(
+        FEATURE_MATCH_TAILORED_CV,
+        user_id,
+        supabase,
+        is_superadmin=is_superadmin(current_user),
+    )
+
+    match_res = (
+        supabase.table("matches")
+        .select("id, user_id, job_id, matched_skills, missing_skills, jobs(title, company, description, skills)")
+        .eq("id", match_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not match_res.data:
+        raise HTTPException(status_code=404, detail="Match not found")
+    match_row = match_res.data[0]
+    job = match_row.get("jobs") or {}
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found for this match")
+
+    existing = (
+        supabase.table("cv_generations")
+        .select("id, content, word_count, job_title, company")
+        .eq("user_id", user_id)
+        .eq("match_id", match_id)
+        .eq("source", "match_tailored")
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        row = existing.data[0]
+        return MatchTailorCvResponse(
+            generation_id=str(row["id"]),
+            markdown=row.get("content") or "",
+            word_count=int(row.get("word_count") or 0),
+            job_title=row.get("job_title") or job.get("title") or "",
+            company=row.get("company") or job.get("company"),
+            cached=True,
+        )
+
+    cv_res = (
+        supabase.table("cvs")
+        .select("id, raw_text")
+        .eq("user_id", user_id)
+        .eq("is_primary", True)
+        .limit(1)
+        .execute()
+    )
+    if not cv_res.data or not cv_res.data[0].get("raw_text"):
+        raise HTTPException(
+            status_code=422,
+            detail="Upload a CV first. We need your CV to tailor it for this role.",
+        )
+    cv = cv_res.data[0]
+
+    job_title = job.get("title") or "Role"
+    company = job.get("company")
+    job_skills = job.get("skills") or []
+    if not isinstance(job_skills, list):
+        job_skills = []
+
+    try:
+        result = await generate_tailored_cv_for_match(
+            master_cv_markdown=cv["raw_text"],
+            job_title=job_title,
+            company=company,
+            job_description=job.get("description"),
+            skills_required=[str(s) for s in job_skills],
+            overlapping_skills=[str(s) for s in (match_row.get("matched_skills") or [])],
+            missing_skills=[str(s) for s in (match_row.get("missing_skills") or [])],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if result.get("degraded"):
+        raise HTTPException(status_code=503, detail=result.get("content") or "AI temporarily unavailable")
+
+    insert_res = supabase.table("cv_generations").insert({
+        "user_id": user_id,
+        "cv_id": cv["id"],
+        "match_id": match_id,
+        "source": "match_tailored",
+        "job_title": job_title,
+        "company": company,
+        "content": result["content"],
+        "word_count": result["word_count"],
+        "metadata": {"match_id": match_id, "format": "markdown"},
+    }).execute()
+    if not insert_res.data:
+        raise HTTPException(status_code=500, detail="Failed to store tailored CV")
+
+    gen_id = str(insert_res.data[0]["id"])
+    return MatchTailorCvResponse(
+        generation_id=gen_id,
+        markdown=result["content"],
+        word_count=result["word_count"],
+        job_title=job_title,
+        company=company,
+        cached=False,
+        duration_ms=result.get("duration_ms"),
+        estimated_cost_usd=result.get("estimated_cost_usd"),
+        prompt_tokens=result.get("prompt_tokens"),
+        completion_tokens=result.get("completion_tokens"),
     )
 
 

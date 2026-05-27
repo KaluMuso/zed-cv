@@ -63,6 +63,23 @@ describe("MatchCard", () => {
     expect(screen.getByText("EXPIRED")).toBeInTheDocument();
   });
 
+  it("shows locked tailor button when canTailorCv is false", () => {
+    render(<MatchCard match={baseMatch} canTailorCv={false} />);
+    expect(screen.getByTestId("match-tailor-cv-locked")).toHaveAttribute(
+      "data-trigger-disabled"
+    );
+  });
+
+  it("calls onTailorCvClick when tailor is enabled", async () => {
+    const user = userEvent.setup();
+    const onTailor = vi.fn();
+    render(
+      <MatchCard match={baseMatch} canTailorCv onTailorCvClick={onTailor} />
+    );
+    await user.click(screen.getByTestId("match-tailor-cv"));
+    expect(onTailor).toHaveBeenCalledTimes(1);
+  });
+
   it("renders an external apply link when apply_url is set", () => {
     const withUrl: MatchData = {
       ...baseMatch,
