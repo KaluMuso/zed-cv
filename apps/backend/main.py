@@ -75,7 +75,8 @@ def create_app() -> FastAPI:
             "https://zedcv.vercel.app",
         ],
         allow_origin_regex=(
-            r"https://zed-cv-[a-z0-9-]+-vergeo-projects\.vercel\.app"
+            # Vercel preview URLs: zed-<hash>-… (current project) and zed-cv-<hash>-… (legacy)
+            r"https://zed(?:-cv)?-[a-z0-9-]+-vergeo-projects\.vercel\.app"
         ),
         allow_credentials=True,
         allow_methods=["*"],

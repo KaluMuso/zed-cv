@@ -92,6 +92,47 @@ class TestProblemDetail:
         assert resp.headers.get("X-Request-ID") == custom_id
 
 
+class TestCorsPreflight:
+    """Preview deploys must pass OPTIONS before POST /auth/login."""
+
+    @pytest.mark.parametrize(
+        "origin",
+        [
+            "https://zed-kvqba36cx-vergeo-projects.vercel.app",
+            "https://zed-cv-abc123-vergeo-projects.vercel.app",
+            "https://www.zedapply.com",
+        ],
+    )
+    def test_auth_login_preflight_allows_known_origins(
+        self, middleware_client, origin: str
+    ):
+        resp = middleware_client.options(
+            "/api/v1/auth/login",
+            headers={
+                **API_HOST,
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.headers.get("access-control-allow-origin") == origin
+
+    def test_auth_login_preflight_rejects_unknown_origin(
+        self, middleware_client
+    ):
+        origin = "https://evil.example.com"
+        resp = middleware_client.options(
+            "/api/v1/auth/login",
+            headers={
+                **API_HOST,
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resp.headers.get("access-control-allow-origin") != origin
+
+
 class TestSecurityHeaders:
     def test_security_headers_present(self, middleware_client):
         resp = middleware_client.get("/api/v1/health", headers=API_HOST)
