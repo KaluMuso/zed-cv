@@ -18,12 +18,37 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def verify_lenco_signature(raw_body: bytes, signature: str, api_key: str) -> bool:
+def derive_lenco_webhook_hash_key(
+    *,
+    webhook_secret: str = "",
+    api_key: str = "",
+) -> str:
+    """Return Lenco's webhook HMAC key (sha256 of API token)."""
+    if webhook_secret:
+        return webhook_secret.strip()
+    if api_key:
+        return hashlib.sha256(api_key.encode()).hexdigest()
+    return ""
+
+
+def verify_lenco_signature(
+    raw_body: bytes,
+    signature: str,
+    *,
+    webhook_secret: str = "",
+    api_key: str = "",
+) -> bool:
     """Verify X-Lenco-Signature using Lenco's sha256(api_key) derivation."""
-    if not signature or not api_key:
+    if not signature:
         return False
 
-    webhook_hash_key = hashlib.sha256(api_key.encode()).hexdigest()
+    webhook_hash_key = derive_lenco_webhook_hash_key(
+        webhook_secret=webhook_secret,
+        api_key=api_key,
+    )
+    if not webhook_hash_key:
+        return False
+
     expected = hmac.new(
         webhook_hash_key.encode(),
         raw_body,
@@ -31,6 +56,57 @@ def verify_lenco_signature(raw_body: bytes, signature: str, api_key: str) -> boo
     ).hexdigest()
     provided = signature.strip().lower()
     return hmac.compare_digest(expected, provided)
+
+
+def mask_lenco_webhook_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Redact reference/amount for Sentry breadcrumbs (last 4 chars visible)."""
+    if not isinstance(payload, dict):
+        return {"payload_type": type(payload).__name__}
+
+    data = payload.get("data")
+    masked: dict[str, Any] = {"event": payload.get("event")}
+    if not isinstance(data, dict):
+        return masked
+
+    ref = data.get("reference") or data.get("companyRef")
+    if ref is not None:
+        ref_s = str(ref)
+        masked["reference"] = (
+            f"***{ref_s[-4:]}" if len(ref_s) > 4 else "****"
+        )
+
+    amount = data.get("amount")
+    if amount is not None:
+        amount_s = str(amount)
+        masked["amount"] = (
+            f"***{amount_s[-4:]}" if len(amount_s) > 4 else "****"
+        )
+
+    status = data.get("status")
+    if status is not None:
+        masked["status"] = status
+
+    return masked
+
+
+def add_lenco_webhook_breadcrumb(
+    payload: dict[str, Any],
+    *,
+    success: bool,
+    detail: str,
+) -> None:
+    """Record a Sentry breadcrumb for every Lenco webhook delivery."""
+    try:
+        import sentry_sdk
+
+        sentry_sdk.add_breadcrumb(
+            category="lenco.webhook",
+            message=detail,
+            level="info" if success else "warning",
+            data=mask_lenco_webhook_payload(payload),
+        )
+    except Exception:
+        logger.debug("Sentry breadcrumb skipped for Lenco webhook", exc_info=True)
 
 
 def extract_event_fields(payload: dict) -> dict[str, Any]:

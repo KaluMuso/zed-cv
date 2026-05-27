@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.core.config import get_settings
+from app.core.lenco_startup import assert_lenco_production_ready
 from app.core.errors import register_exception_handlers
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import limiter
@@ -45,6 +46,7 @@ TRUSTED_HOSTS = [
 def create_app() -> FastAPI:
     """Build the FastAPI application (middleware, routes, handlers)."""
     settings = get_settings()
+    assert_lenco_production_ready(settings)
     docs_url = "/docs" if settings.debug else None
     redoc_url = "/redoc" if settings.debug else None
     openapi_url = "/openapi.json" if settings.debug else None

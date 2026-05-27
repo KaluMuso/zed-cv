@@ -400,43 +400,79 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
 
 @router.post("/lenco")
 async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
-    """Process Lenco v2 webhooks with mandatory HMAC-SHA512 signature verification.
+    """Process Lenco v2 webhooks with HMAC-SHA512 signature verification.
 
-    Signature key: sha256(LENCO_API_KEY).hexdigest() per Lenco docs.
-    Handles collection.successful, collection.failed, and collection.settled.
+    Signature key: sha256(LENCO_API_KEY).hexdigest() per Lenco docs (stored as
+    LENCO_WEBHOOK_SECRET in production). Handles collection.successful,
+    collection.failed, and collection.settled.
     """
+    import json
     from fastapi import HTTPException
     from datetime import datetime, timezone
     from app.core.config import get_settings
     from app.services.lenco_webhook import (
         verify_lenco_signature,
         extract_event_fields,
+        add_lenco_webhook_breadcrumb,
     )
 
     settings = get_settings()
     raw_body = await request.body()
     signature = request.headers.get("x-lenco-signature", "")
 
-    if not settings.lenco_api_key:
-        logging.error("Lenco webhook: LENCO_API_KEY not configured")
-        raise HTTPException(
-            status_code=500,
-            detail="Lenco webhook verification not configured",
-        )
-
-    if not verify_lenco_signature(raw_body, signature, settings.lenco_api_key):
-        logging.warning("lenco_webhook_invalid_signature")
-        raise HTTPException(status_code=401, detail="Invalid signature")
-
-    # Safe to parse JSON.
-    import json
+    # Parse early so breadcrumbs carry masked event/amount/reference.
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
     except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = {}
+
+    if settings.lenco_verify_signatures:
+        if not settings.lenco_api_key and not settings.lenco_webhook_secret:
+            add_lenco_webhook_breadcrumb(
+                payload,
+                success=False,
+                detail="lenco_webhook_verification_not_configured",
+            )
+            logging.error("Lenco webhook: signature verification not configured")
+            raise HTTPException(
+                status_code=500,
+                detail="Lenco webhook verification not configured",
+            )
+
+        if not verify_lenco_signature(
+            raw_body,
+            signature,
+            webhook_secret=settings.lenco_webhook_secret,
+            api_key=settings.lenco_api_key,
+        ):
+            add_lenco_webhook_breadcrumb(
+                payload,
+                success=False,
+                detail="lenco_webhook_invalid_signature",
+            )
+            logging.warning("lenco_webhook_invalid_signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+    else:
+        logging.warning(
+            "Lenco webhook: LENCO_VERIFY_SIGNATURES=false — accepting "
+            "unauthenticated delivery (sandbox/dev only)"
+        )
+
+    if not payload:
+        add_lenco_webhook_breadcrumb(
+            payload,
+            success=False,
+            detail="lenco_webhook_invalid_payload",
+        )
         logging.error("Lenco webhook: signed but unparseable body")
         return {"status": "invalid_payload"}
 
     fields = extract_event_fields(payload)
+    add_lenco_webhook_breadcrumb(
+        payload,
+        success=True,
+        detail=f"lenco_webhook_received event={fields.get('event')}",
+    )
     logging.info(
         "Lenco webhook: event=%s status=%s ref=%s",
         fields.get("event"), fields.get("status_raw"), fields.get("company_ref"),
