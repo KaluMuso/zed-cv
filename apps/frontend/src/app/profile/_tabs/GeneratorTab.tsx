@@ -53,10 +53,6 @@ export function GeneratorTab({
     );
   }
 
-  useEffect(() => {
-    router.replace("/profile/cv-builder");
-  }, [router]);
-
   return (
     <p className="text-sm py-8 text-center" style={{ color: "var(--muted)" }}>
       Opening tailored CV builder…
