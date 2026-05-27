@@ -141,13 +141,13 @@ class Settings(BaseSettings):
 
     # Email (Resend)
     resend_api_key: str = ""
-    resend_from_email: str = "Zed CV <noreply@zedcv.com>"
+    resend_from_email: str = "ZedApply <noreply@zedapply.com>"
     # Published Resend template alias/id for daily match digests ({{{USER_NAME}}}, etc.).
     resend_daily_digest_template_id: str = "daily-job-matches"
     # Inbox the /contact form delivers to (task #65). Defaults to the
     # operator address that already appears in the footer + auth page.
     contact_email: str = "convergeozambia@gmail.com"
-    app_url: str = "https://zedcv.com"
+    app_url: str = "https://zedapply.com"
 
     # Observability (Sentry)
     # If sentry_dsn is empty, Sentry init is a no-op. Set in prod env only.
