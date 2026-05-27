@@ -20,7 +20,7 @@ const PACKS: { id: AptitudePack; label: string; minutes: number }[] = [
   { id: "abstract", label: "Abstract Reasoning", minutes: 15 },
 ];
 
-const STORAGE_KEY = "zedcv_aptitude_session";
+const STORAGE_KEY = "zedapply_aptitude_session";
 
 interface SavedSession {
   pack: AptitudePack;

@@ -17,7 +17,7 @@ const pwaOptions = {
     navigateFallbackDenylist: [/^\/api\//, /^\/_next\/data\//],
     runtimeCaching: [
       {
-        urlPattern: /^https:\/\/api\.zedcv\.com\/api\/v1\/.*/i,
+        urlPattern: /^https:\/\/api\.zedapply\.com\/api\/v1\/.*/i,
         handler: "NetworkFirst",
         options: {
           cacheName: "zedapply-api",

@@ -6,7 +6,7 @@ import type { AdminJobCreatePayload } from "./types";
 // Bumping this suffix invalidates older drafts without manual cleanup.
 // Use case: when AdminJobCreatePayload shape changes in a future PR and
 // rehydrating an old draft would crash a step component.
-export const DRAFT_STORAGE_KEY = "zedcv:admin:job-draft:v1";
+export const DRAFT_STORAGE_KEY = "zedapply:admin:job-draft:v1";
 
 const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const WRITE_DEBOUNCE_MS = 400;

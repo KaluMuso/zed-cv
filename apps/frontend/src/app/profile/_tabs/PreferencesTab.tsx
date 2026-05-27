@@ -70,7 +70,7 @@ const NOTICE_PERIOD_OPTIONS = [
   "3+ months",
 ] as const;
 
-const STORAGE_KEY = "zedcv:preferences:expanded";
+const STORAGE_KEY = "zedapply:preferences:expanded";
 
 export function PreferencesTab({
   profileData,
