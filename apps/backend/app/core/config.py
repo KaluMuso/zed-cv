@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     dpo_pay_webhook_secret: str = ""
     lenco_api_key: str = ""
     lenco_public_key: str = ""
+    # sandbox | production — production triggers fail-fast checks in main.py.
+    lenco_environment: str = "sandbox"
+    # When True (default), POST /webhooks/lenco rejects unsigned payloads.
+    # Sandbox may set False for local testing; production MUST stay True.
+    lenco_verify_signatures: bool = True
+    # Precomputed sha256(LENCO_API_KEY).hexdigest() — Lenco's webhook HMAC key.
+    # Empty in sandbox/dev; required in production (see lenco_production_smoke_test.md).
+    lenco_webhook_secret: str = ""
     # Default to v2 sandbox so a fresh dev env points at the right URL. Prod
     # overrides via .env on OCI. Lenco v2 deprecates the v1 path; the email
     # received 2026-05-12 only ships v2 sandbox URLs.
