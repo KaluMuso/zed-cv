@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/lib/auth";
+import { subscription as subscriptionApi } from "@/lib/api";
 import { BuilderHeader } from "./BuilderHeader";
 import { BasicsStepForm } from "./BasicsStepForm";
 import { CoverLetterStep } from "./CoverLetterStep";
@@ -29,17 +30,21 @@ import "./print.css";
 function LeftPane({
   step,
   jobId,
+  matchId,
   jobTitle,
   company,
   token,
+  subscriptionTier,
   setStep,
   onOpenPreview,
 }: {
   step: BuilderStep;
   jobId: string | null;
+  matchId: string | null;
   jobTitle: string;
   company: string;
   token: string | null;
+  subscriptionTier: string | null | undefined;
   setStep: (s: BuilderStep) => void;
   onOpenPreview?: () => void;
 }) {
@@ -58,9 +63,11 @@ function LeftPane({
       return (
         <CoverLetterStep
           jobId={jobId}
+          matchId={matchId}
           jobTitle={jobTitle}
           company={company}
           token={token}
+          subscriptionTier={subscriptionTier}
           onBack={() => setStep("style")}
           onNext={() => setStep("preview")}
         />
@@ -76,8 +83,21 @@ export function TailoredCvBuilder() {
   const searchParams = useSearchParams();
   const { token } = useAuth();
   const jobId = searchParams.get("jobId");
+  const matchId = searchParams.get("matchId");
   const jobTitle = searchParams.get("jobTitle") ?? "";
   const company = searchParams.get("company") ?? "";
+  const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      setSubscriptionTier(null);
+      return;
+    }
+    subscriptionApi
+      .get(token)
+      .then((sub) => setSubscriptionTier(sub.tier))
+      .catch(() => setSubscriptionTier("free"));
+  }, [token]);
   const step = useTailoredCvBuilderStore((s) => s.step);
   const setStep = useTailoredCvBuilderStore((s) => s.setStep);
   const hydratedFromProfile = useTailoredCvBuilderStore((s) => s.hydratedFromProfile);
@@ -128,9 +148,11 @@ export function TailoredCvBuilder() {
           <LeftPane
             step={step}
             jobId={jobId}
+            matchId={matchId}
             jobTitle={jobTitle}
             company={company}
             token={token}
+            subscriptionTier={subscriptionTier}
             setStep={setStep}
             onOpenPreview={() => setPreviewOpen(true)}
           />

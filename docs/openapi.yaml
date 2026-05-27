@@ -730,6 +730,64 @@ components:
         prompt_tokens: { type: integer }
         completion_tokens: { type: integer }
 
+    CoverLetterVersionSummary:
+      type: object
+      required: [id, version_number, generated_by, created_at, label]
+      properties:
+        id: { type: string, format: uuid }
+        version_number: { type: integer }
+        parent_version_id: { type: string, format: uuid, nullable: true }
+        generated_by: { type: string, enum: [ai, user_edit] }
+        created_at: { type: string, format: date-time }
+        label: { type: string, example: "v2 — 2026-05-27 14:32 (edited)" }
+
+    CoverLetterVersionDetail:
+      allOf:
+        - { $ref: '#/components/schemas/CoverLetterVersionSummary' }
+        - type: object
+          required: [content_md]
+          properties:
+            content_md: { type: string }
+
+    CoverLetterVersionsResponse:
+      type: object
+      required: [versions]
+      properties:
+        versions:
+          type: array
+          items: { $ref: '#/components/schemas/CoverLetterVersionDetail' }
+        latest:
+          oneOf:
+            - { $ref: '#/components/schemas/CoverLetterVersionDetail' }
+            - { type: 'null' }
+
+    CoverLetterSaveRequest:
+      type: object
+      required: [content_md]
+      properties:
+        content_md: { type: string, maxLength: 50000 }
+        parent_version_id: { type: string, format: uuid, nullable: true }
+        source: { type: string, enum: [ai, user_edit], default: user_edit }
+
+    CoverLetterSaveResponse:
+      type: object
+      required: [id, version_number, generated_by, created_at, word_count]
+      properties:
+        id: { type: string, format: uuid }
+        version_number: { type: integer }
+        generated_by: { type: string, enum: [ai, user_edit] }
+        created_at: { type: string, format: date-time }
+        word_count: { type: integer }
+
+    MatchCoverLetterGenerateResponse:
+      type: object
+      required: [content, word_count, version_id, version_number]
+      properties:
+        content: { type: string }
+        word_count: { type: integer }
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+
     CVGenerateResponse:
       type: object
       properties:
@@ -3007,6 +3065,71 @@ paths:
           description: No primary CV uploaded
         '503':
           description: LLM generation failed or degraded
+
+  /matches/{match_id}/cover-letter/versions:
+    get:
+      operationId: getMatchCoverLetterVersions
+      summary: List cover letter versions for a match (Professional+ editor)
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverLetterVersionsResponse' }
+        '403':
+          description: Professional tier required
+        '404':
+          description: Match not found
+
+  /matches/{match_id}/cover-letter/save:
+    post:
+      operationId: saveMatchCoverLetter
+      summary: Save a new cover letter version for a match
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CoverLetterSaveRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoverLetterSaveResponse' }
+        '403':
+          description: Professional tier required
+        '404':
+          description: Match not found
+        '422':
+          description: Empty content or word limit exceeded
+
+  /matches/{match_id}/cover-letter/generate:
+    post:
+      operationId: generateMatchCoverLetter
+      summary: Generate a tailored cover letter and store as a new AI version
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchCoverLetterGenerateResponse' }
+        '403':
+          description: Professional tier required
+        '404':
+          description: Match or job not found
+        '422':
+          description: No CV uploaded
+        '503':
+          description: LLM unavailable
 
   /matches/{user_id}:
     get:

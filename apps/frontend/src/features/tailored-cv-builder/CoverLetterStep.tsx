@@ -1,42 +1,68 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { coverLetter, ApiError } from "@/lib/api";
+import { canUseCoverLetterEditor } from "@/lib/tier-gating";
 import { Icon } from "@/components/ui/Icon";
 import { notify } from "@/lib/toast";
+
+const CoverLetterEditor = dynamic(
+  () =>
+    import("./CoverLetterEditor").then((mod) => ({ default: mod.CoverLetterEditor })),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="text-sm py-4 text-center" style={{ color: "var(--muted)" }}>
+        Loading editor…
+      </p>
+    ),
+  }
+);
+
 export function CoverLetterStep({
   jobId,
+  matchId,
   jobTitle,
   company,
   token,
+  subscriptionTier,
   onBack,
   onNext,
 }: {
   jobId: string | null;
+  matchId: string | null;
   jobTitle: string;
   company: string;
   token: string | null;
+  subscriptionTier: string | null | undefined;
   onBack: () => void;
   onNext: () => void;
 }) {
   const [letter, setLetter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const editorEnabled = canUseCoverLetterEditor(subscriptionTier);
 
   const generate = useCallback(async () => {
     if (!token) {
       notify.error("Sign in to generate a cover letter.");
       return;
     }
-    if (!jobId) {
-      notify.error("Open this builder from a job to generate a tailored cover letter.");
+    if (!matchId && !jobId) {
+      notify.error("Open this builder from a match to generate a tailored cover letter.");
       return;
     }
     setLoading(true);
     setLetter(null);
     try {
-      const res = await coverLetter.generate(token, jobId);
-      setLetter(res.content);
+      if (matchId) {
+        const res = await coverLetter.generateForMatch(token, matchId);
+        setLetter(res.content);
+      } else if (jobId) {
+        const res = await coverLetter.generate(token, jobId);
+        setLetter(res.content);
+      }
       notify.custom.success("Cover letter ready");
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 403) {
@@ -49,7 +75,7 @@ export function CoverLetterStep({
     } finally {
       setLoading(false);
     }
-  }, [token, jobId]);
+  }, [token, jobId, matchId]);
 
   const copy = useCallback(async () => {
     if (!letter) return;
@@ -61,8 +87,10 @@ export function CoverLetterStep({
     }
   }, [letter]);
 
+  const showEditor = Boolean(matchId && (letter || editorEnabled));
+
   return (
-    <div className="card p-6 flex flex-col gap-4 max-w-xl">
+    <div className="card p-6 flex flex-col gap-4 max-w-3xl">
       <div>
         <h2 className="text-lg font-semibold mb-1" style={{ color: "var(--ink)" }}>
           Cover letter
@@ -73,13 +101,29 @@ export function CoverLetterStep({
         </p>
       </div>
 
-      {!jobId && (
-        <p className="text-sm rounded-lg border p-4" style={{ borderColor: "var(--line)", color: "var(--ink-2)" }}>
+      {!matchId && !jobId && (
+        <p
+          className="text-sm rounded-lg border p-4"
+          style={{ borderColor: "var(--line)", color: "var(--ink-2)" }}
+        >
           Pick a job from{" "}
           <Link href="/matches" className="underline" style={{ color: "var(--green-700)" }}>
             your matches
           </Link>{" "}
-          or a job detail page to generate a letter aligned to that role.
+          to generate and edit a letter aligned to that role.
+        </p>
+      )}
+
+      {!editorEnabled && matchId && (
+        <p
+          className="text-sm rounded-lg border px-4 py-3"
+          style={{ borderColor: "var(--line)", color: "var(--muted)" }}
+        >
+          Generate a draft on Professional or Super Standard.{" "}
+          <Link href="/pricing" className="underline" style={{ color: "var(--green-700)" }}>
+            Upgrade
+          </Link>{" "}
+          to edit inline, save versions, and export PDF.
         </p>
       )}
 
@@ -88,7 +132,12 @@ export function CoverLetterStep({
           type="button"
           className="btn btn-primary w-full sm:w-auto"
           onClick={() => void generate()}
-          disabled={!token || !jobId}
+          disabled={!token || (!jobId && !matchId)}
+          title={
+            !editorEnabled
+              ? "Professional plan required to generate cover letters"
+              : undefined
+          }
         >
           <Icon name="sparkle" size={14} /> Generate cover letter
         </button>
@@ -100,7 +149,7 @@ export function CoverLetterStep({
         </p>
       )}
 
-      {letter && (
+      {letter && !showEditor && (
         <div className="space-y-3">
           <div
             className="max-h-72 overflow-y-auto rounded-lg border p-4 text-sm leading-relaxed whitespace-pre-wrap"
@@ -118,6 +167,29 @@ export function CoverLetterStep({
           </div>
         </div>
       )}
+
+      {showEditor && matchId ? (
+        <CoverLetterEditor
+          matchId={matchId}
+          jobTitle={jobTitle}
+          company={company}
+          token={token}
+          editorEnabled={editorEnabled}
+          initialContent={letter ?? ""}
+          onContentChange={setLetter}
+        />
+      ) : null}
+
+      {letter && showEditor ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void copy()}>
+            Copy
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void generate()}>
+            Regenerate
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex justify-between pt-4 mt-2 border-t" style={{ borderColor: "var(--line)" }}>
         <button type="button" className="btn btn-ghost" onClick={onBack}>

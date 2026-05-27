@@ -1,0 +1,36 @@
+/* Print export for cover letter editor — mirrors tailored CV print.css */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .cover-letter-print-root,
+  .cover-letter-print-root * {
+    visibility: visible !important;
+  }
+  .cover-letter-print-root {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 180mm;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #111111;
+  }
+  .cover-letter-print-root p {
+    margin: 0 0 0.75em;
+  }
+}

@@ -1531,6 +1531,36 @@ export const dataRights = {
 };
 
 // ── Cover letter ──
+export interface CoverLetterVersionDetail {
+  id: string;
+  version_number: number;
+  parent_version_id: string | null;
+  generated_by: "ai" | "user_edit";
+  created_at: string;
+  label: string;
+  content_md: string;
+}
+
+export interface CoverLetterVersionsResponse {
+  versions: CoverLetterVersionDetail[];
+  latest: CoverLetterVersionDetail | null;
+}
+
+export interface CoverLetterSaveResult {
+  id: string;
+  version_number: number;
+  generated_by: "ai" | "user_edit";
+  created_at: string;
+  word_count: number;
+}
+
+export interface MatchCoverLetterGenerateResult {
+  content: string;
+  word_count: number;
+  version_id: string;
+  version_number: number;
+}
+
 export const coverLetter = {
   generate: (token: string, jobId: string) =>
     apiFetch<{ content: string; word_count: number; document_id: string }>(
@@ -1538,6 +1568,37 @@ export const coverLetter = {
       {
         method: "POST",
         token,
+      }
+    ),
+  generateForMatch: (token: string, matchId: string) =>
+    apiFetch<MatchCoverLetterGenerateResult>(
+      `/matches/${encodeURIComponent(matchId)}/cover-letter/generate`,
+      { method: "POST", token }
+    ),
+  listVersions: (token: string, matchId: string) =>
+    apiFetch<CoverLetterVersionsResponse>(
+      `/matches/${encodeURIComponent(matchId)}/cover-letter/versions`,
+      { token }
+    ),
+  save: (
+    token: string,
+    matchId: string,
+    body: {
+      content_md: string;
+      parent_version_id?: string | null;
+      source?: "ai" | "user_edit";
+    }
+  ) =>
+    apiFetch<CoverLetterSaveResult>(
+      `/matches/${encodeURIComponent(matchId)}/cover-letter/save`,
+      {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          content_md: body.content_md,
+          parent_version_id: body.parent_version_id ?? null,
+          source: body.source ?? "user_edit",
+        }),
       }
     ),
 };

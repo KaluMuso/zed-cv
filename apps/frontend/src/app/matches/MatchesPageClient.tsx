@@ -32,7 +32,8 @@ import { notify } from "@/lib/toast";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { MatchExplanationModal } from "./_components/MatchExplanationModal";
 import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
-import { canTailorCvForMatch } from "@/lib/tier-gating";
+import { CoverLetterMatchModal } from "@/components/matches/CoverLetterMatchModal";
+import { canTailorCvForMatch, canUseCoverLetterEditor } from "@/lib/tier-gating";
 import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
 import { isJobPastClosing } from "@/lib/isJobPastClosing";
@@ -81,6 +82,7 @@ export default function MatchesPageClient() {
   const [sort, setSort] = useState<"score" | "closing">("score");
   const [prepFor, setPrepFor] = useState<MatchData | null>(null);
   const [tailorFor, setTailorFor] = useState<MatchData | null>(null);
+  const [coverLetterFor, setCoverLetterFor] = useState<MatchData | null>(null);
   const [applyJob, setApplyJob] = useState<MatchData["job"] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(false);
@@ -900,6 +902,28 @@ export default function MatchesPageClient() {
                       Tailor my CV
                     </button>
                   )}
+                  {canUseCoverLetterEditor(sub?.tier) ? (
+                    <button
+                      type="button"
+                      onClick={() => setCoverLetterFor(match)}
+                      className="btn btn-outline btn-sm w-40"
+                      title="Generate and edit a cover letter for this match"
+                      data-testid="match-cover-letter"
+                    >
+                      Cover letter <Icon name="file" size={13} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm w-40"
+                      disabled
+                      title="Professional or Super Standard — cover letter editor. Upgrade at /pricing."
+                      style={{ opacity: 0.55, cursor: "not-allowed" }}
+                      data-testid="match-cover-letter-locked"
+                    >
+                      Cover letter
+                    </button>
+                  )}
                   {sub?.tier === "super_standard" ? (
                     <button
                       onClick={() => setPrepFor(match)}
@@ -966,6 +990,18 @@ export default function MatchesPageClient() {
           matchId={tailorFor.id}
           jobTitle={tailorFor.job.title}
           company={tailorFor.job.company}
+        />
+      )}
+
+      {token && coverLetterFor && (
+        <CoverLetterMatchModal
+          open={!!coverLetterFor}
+          onClose={() => setCoverLetterFor(null)}
+          token={token}
+          matchId={coverLetterFor.id}
+          jobTitle={coverLetterFor.job.title}
+          company={coverLetterFor.job.company}
+          subscriptionTier={sub?.tier}
         />
       )}
 
