@@ -1560,7 +1560,7 @@ export const me = {
     // stripped by a proxy.
     const cd = res.headers.get("content-disposition") || "";
     const match = cd.match(/filename="?([^"]+)"?/i);
-    const filename = match?.[1] || `zedcv-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+    const filename = match?.[1] || `zedapply-data-export-${new Date().toISOString().slice(0, 10)}.json`;
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
