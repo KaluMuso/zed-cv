@@ -104,6 +104,18 @@ export function EducationStepForm() {
                   style={builderFieldStyle}
                 />
               </div>
+              <div>
+                <label className={builderLabelClass} style={{ color: "var(--ink-2)" }}>
+                  GPA (optional)
+                </label>
+                <input
+                  value={edu.gpa}
+                  onChange={(e) => updateEducation(index, { gpa: e.target.value })}
+                  className={builderInputClass}
+                  style={builderFieldStyle}
+                  placeholder="3.8 / Distinction"
+                />
+              </div>
             </div>
           </div>
         ))}
