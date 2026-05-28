@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase, require_admin
+from app.schemas.push import PushTestRequest, PushTestResponse
 from app.services.matching import get_credited_match_count
 from app.schemas.admin import (
     AdminParserStats,
@@ -462,6 +463,35 @@ async def email_health(settings: Settings = Depends(get_settings)):
         resend_from_email=settings.resend_from_email,
     )
     return report.as_dict()
+
+
+@router.post("/push/test")
+async def admin_push_test(
+    body: PushTestRequest | None = None,
+    current_user: dict = Depends(require_admin),
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Send a test Web Push to the admin (or body.user_id) for smoke testing."""
+    from app.services.web_push import send_test_push, vapid_configured
+
+    if not vapid_configured(settings):
+        return PushTestResponse(
+            delivered=0,
+            message="VAPID keys not configured (VAPID_PRIVATE_KEY / VAPID_PUBLIC_KEY)",
+        )
+
+    target_id = (body.user_id if body and body.user_id else None) or str(current_user["id"])
+    delivered = await send_test_push(target_id, supabase, settings=settings)
+    if delivered == 0:
+        return PushTestResponse(
+            delivered=0,
+            message=f"No active subscriptions for user {target_id}",
+        )
+    return PushTestResponse(
+        delivered=delivered,
+        message=f"Test push sent to {delivered} device(s)",
+    )
 
 
 @router.post("/waha/bootstrap-session")

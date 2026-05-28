@@ -46,6 +46,7 @@ from app.services.email import send_match_digest_email
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
 from app.services.quiet_hours import user_in_quiet_hours
 from app.services.whatsapp import send_match_digest
+from app.services.notifications import notify_high_match_web_pushes
 
 logger = logging.getLogger(__name__)
 
@@ -196,11 +197,16 @@ async def _primary_cv_id(user_id: str, supabase) -> str | None:
 async def _match_and_credit_user(user_id: str, cv_id: str, supabase) -> int:
     matches = await run_matching_for_user(user_id, supabase)
     await store_matches(user_id, cv_id, matches, supabase)
-    return await credit_matches_for_cycle(
-        user_id,
-        [m["job_id"] for m in matches if m.get("job_id")],
-        supabase,
-    )
+    job_ids = [m["job_id"] for m in matches if m.get("job_id")]
+    new_credited = await credit_matches_for_cycle(user_id, job_ids, supabase)
+    if new_credited:
+        try:
+            await notify_high_match_web_pushes(user_id, job_ids, supabase)
+        except Exception:
+            logger.warning(
+                "high-match web push dispatch failed for user=%s", user_id, exc_info=True
+            )
+    return new_credited
 
 
 async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:

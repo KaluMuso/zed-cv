@@ -385,7 +385,9 @@ export default function ProfilePageClient() {
             />
           )}
           {activeTab === "analysis" && <AnalysisTab token={token} profileData={profileData} />}
-          {activeTab === "generator" && <GeneratorTab token={token} profileData={profileData} />}
+          {activeTab === "generator" && (
+            <GeneratorTab token={token} profileData={profileData} onCvCreated={refresh} />
+          )}
         </div>
 
         <div className="space-y-6">

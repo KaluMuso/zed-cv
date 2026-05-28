@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { pageMetadata } from "@/lib/site-metadata";
 import MatchesPageClient from "./MatchesPageClient";
 
@@ -9,5 +10,9 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function MatchesPage() {
-  return <MatchesPageClient />;
+  return (
+    <Suspense fallback={null}>
+      <MatchesPageClient />
+    </Suspense>
+  );
 }

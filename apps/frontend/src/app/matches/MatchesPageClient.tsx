@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RefreshCountdownRing } from "@/components/RefreshCountdownRing";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { formatMatchRelativeTime } from "@/lib/formatMatchRelativeTime";
@@ -40,6 +40,7 @@ import { isJobPastClosing } from "@/lib/isJobPastClosing";
 import { isJobHiddenFromUserFeed } from "@/lib/isJobHiddenFromUserFeed";
 import { trackApplyClick } from "@/lib/trackApplyClick";
 import { ApplyModal } from "@/components/jobs/ApplyModal";
+import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 
 // Human-friendly tier label. Free → "Free", super_standard → "Super",
 // etc. Falls back to the raw key if we don't recognize it so we don't
@@ -70,6 +71,7 @@ const TIER_LABELS: Record<string, string> = {
 
 export default function MatchesPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { token, isAuthenticated, isLoading: authLoading, logout } = useAuth();
   const [data, setData] = useState<MatchRefreshResponse | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
@@ -101,6 +103,7 @@ export default function MatchesPageClient() {
   const autoTriggeredRef = useRef(false);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshStartedAtRef = useRef<number | null>(null);
+  const deepLinkHandledRef = useRef(false);
 
   const loadMatches = useCallback(async (authToken: string) => {
     const [matchesRes, subRes, prefsRes, autoPrefsRes] = await Promise.allSettled([
@@ -147,6 +150,17 @@ export default function MatchesPageClient() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || !data?.matches?.length || deepLinkHandledRef.current) return;
+    const match = data.matches.find((m) => m.id === openId);
+    if (match) {
+      deepLinkHandledRef.current = true;
+      setDetailMatch(match);
+      router.replace("/matches", { scroll: false });
+    }
+  }, [searchParams, data?.matches, router]);
 
   useEffect(
     () => () => {
@@ -427,6 +441,7 @@ export default function MatchesPageClient() {
 
   return (
     <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+      <PushPermissionPrompt creditedMatchCount={matchesUsed} />
       {/* Header */}
       <div
         className="matches-header grid gap-8 items-start mb-10"

@@ -100,6 +100,9 @@ def create_app() -> FastAPI:
     from app.api.v1 import match_cover_letter
 
     application.include_router(match_cover_letter.router, prefix="/api/v1")
+    from app.api.v1 import push
+
+    application.include_router(push.router, prefix="/api/v1")
     application.include_router(cv.router, prefix="/api/v1")
     application.include_router(profile.router, prefix="/api/v1")
     application.include_router(subscription.router, prefix="/api/v1")

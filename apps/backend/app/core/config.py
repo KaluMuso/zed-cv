@@ -157,6 +157,11 @@ class Settings(BaseSettings):
     contact_email: str = "convergeozambia@gmail.com"
     app_url: str = "https://zedapply.com"
 
+    # Web Push (VAPID) — private key on OCI; public key on Vercel (NEXT_PUBLIC_*).
+    vapid_private_key: str = ""
+    vapid_public_key: str = ""
+    vapid_claims_email: str = "convergeozambia@gmail.com"
+
     # Observability (Sentry)
     # If sentry_dsn is empty, Sentry init is a no-op. Set in prod env only.
     sentry_dsn: str = ""

@@ -2,6 +2,7 @@
 const pwaOptions = {
   dest: "public",
   sw: "sw.js",
+  customWorkerSrc: "worker",
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
