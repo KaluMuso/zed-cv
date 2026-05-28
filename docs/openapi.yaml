@@ -797,6 +797,122 @@ components:
           type: array
           items: { $ref: '#/components/schemas/CVGenerationSummary' }
 
+    ScratchBasics:
+      type: object
+      required: [full_name]
+      properties:
+        full_name: { type: string, maxLength: 200 }
+        phone: { type: string, maxLength: 20 }
+        email: { type: string, maxLength: 254 }
+        location: { type: string, maxLength: 200 }
+        headline: { type: string, maxLength: 300 }
+
+    ScratchExperience:
+      type: object
+      required: [title, company]
+      properties:
+        title: { type: string, maxLength: 200 }
+        company: { type: string, maxLength: 200 }
+        location: { type: string, maxLength: 200 }
+        start_date: { type: string, maxLength: 40 }
+        end_date: { type: string, maxLength: 40 }
+        achievements:
+          type: array
+          items: { type: string }
+          maxItems: 20
+
+    ScratchEducation:
+      type: object
+      required: [degree, institution]
+      properties:
+        degree: { type: string, maxLength: 200 }
+        institution: { type: string, maxLength: 200 }
+        location: { type: string, maxLength: 200 }
+        start_date: { type: string, maxLength: 40 }
+        end_date: { type: string, maxLength: 40 }
+        gpa: { type: string, maxLength: 20 }
+
+    ScratchStyle:
+      type: object
+      properties:
+        template: { type: string, enum: [modern, classic, compact], default: modern }
+        accent_color: { type: string, maxLength: 20, default: '#0E5C3A' }
+        show_summary: { type: boolean, default: true }
+
+    BuildFromScratchRequest:
+      type: object
+      required: [basics]
+      properties:
+        summary: { type: string, maxLength: 5000 }
+        basics: { $ref: '#/components/schemas/ScratchBasics' }
+        experience:
+          type: array
+          items: { $ref: '#/components/schemas/ScratchExperience' }
+          maxItems: 15
+        education:
+          type: array
+          items: { $ref: '#/components/schemas/ScratchEducation' }
+          maxItems: 10
+        skills:
+          type: array
+          items: { type: string }
+          maxItems: 50
+        style: { $ref: '#/components/schemas/ScratchStyle' }
+
+    BuildFromScratchResponse:
+      type: object
+      required: [cv_id, pdf_url, storage_path, render_time_ms]
+      properties:
+        cv_id: { type: string, format: uuid }
+        pdf_url: { type: string, format: uri }
+        storage_path: { type: string }
+        render_time_ms: { type: integer, minimum: 0 }
+
+    SuggestSummaryRequest:
+      type: object
+      required: [strengths]
+      properties:
+        strengths:
+          type: array
+          items: { type: string }
+          minItems: 1
+          maxItems: 3
+        headline: { type: string, maxLength: 300 }
+        full_name: { type: string, maxLength: 200 }
+
+    SuggestSummaryResponse:
+      type: object
+      required: [summary]
+      properties:
+        summary: { type: string }
+
+    SuggestBulletsRequest:
+      type: object
+      required: [title, company]
+      properties:
+        title: { type: string, maxLength: 200 }
+        company: { type: string, maxLength: 200 }
+        context: { type: string, maxLength: 2000 }
+
+    SuggestBulletsResponse:
+      type: object
+      required: [bullets]
+      properties:
+        bullets:
+          type: array
+          items: { type: string }
+
+    SkillSuggestResponse:
+      type: object
+      properties:
+        skills:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string }
+
     CVGenerationDetail:
       type: object
       properties:
@@ -2846,6 +2962,70 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CVGenerationDetail' }
         '404': { description: Generation not found }
+
+  /cv/skills/suggest:
+    get:
+      operationId: suggestCvSkills
+      summary: Autocomplete canonical skills for the manual CV wizard
+      tags: [CV]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 12, minimum: 1, maximum: 25 } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SkillSuggestResponse' }
+
+  /cv/suggest-summary:
+    post:
+      operationId: suggestCvSummary
+      summary: LLM-assisted professional summary from top strengths
+      tags: [CV]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SuggestSummaryRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuggestSummaryResponse' }
+
+  /cv/suggest-bullets:
+    post:
+      operationId: suggestCvBullets
+      summary: LLM-suggested achievement bullets for a work experience entry
+      tags: [CV]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SuggestBulletsRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuggestBulletsResponse' }
+
+  /cv/build-from-scratch:
+    post:
+      operationId: buildCvFromScratch
+      summary: Render manual wizard CV to PDF and store in Supabase Storage
+      tags: [CV]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BuildFromScratchRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BuildFromScratchResponse' }
+        '422': { description: Validation error }
 
   /jobs:
     get:

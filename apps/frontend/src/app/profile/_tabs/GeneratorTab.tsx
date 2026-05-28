@@ -5,16 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { UserProfile } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
+import { ManualCvWizard } from "@/features/manual-cv-wizard/ManualCvWizard";
 
 /**
- * Profile "CV Generator" tab — routes paid users to the unified tailored CV
- * builder at /profile/cv-builder (PDF §4).
+ * Profile "CV Generator" tab — manual wizard when no CV uploaded;
+ * paid users with an uploaded CV go to the tailored builder.
  */
 export function GeneratorTab({
+  token,
   profileData,
+  onCvCreated,
 }: {
   token: string;
   profileData: UserProfile;
+  onCvCreated?: () => void;
 }) {
   const router = useRouter();
   const tier = profileData.subscription_tier;
@@ -30,11 +34,8 @@ export function GeneratorTab({
 
   if (!profileData.cv_uploaded) {
     return (
-      <div className="card p-6">
-        <div className="eyebrow mb-2">CV generator</div>
-        <p className="text-sm" style={{ color: "var(--muted)" }}>
-          Upload your CV first — the generator tailors your existing CV to a target role.
-        </p>
+      <div className="card p-4 sm:p-6">
+        <ManualCvWizard token={token} onCvCreated={onCvCreated} />
       </div>
     );
   }
