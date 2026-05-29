@@ -2,7 +2,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.core.deps import get_supabase, get_current_user_id
 from app.core.rate_limit import limiter
@@ -14,6 +14,8 @@ from app.schemas.subscription import (
     PaymentVerifyResponse,
     PaymentHistoryList,
     PaymentHistoryRow,
+    InvoiceDetail,
+    SubscriptionCancelResponse,
 )
 from app.core.tier_gating import get_effective_match_limit, welcome_bonus_active
 from app.services.matching import get_credited_match_count
@@ -101,6 +103,123 @@ async def list_my_payments(
         for p in (result.data or [])
     ]
     return PaymentHistoryList(payments=rows, total=result.count or len(rows))
+
+
+@router.get("/payments/{payment_id}/invoice", response_model=InvoiceDetail)
+async def get_payment_invoice(
+    payment_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Invoice metadata for a completed payment belonging to the current user."""
+    from app.services.invoice import load_payment_invoice
+
+    invoice = await load_payment_invoice(
+        supabase, user_id=user_id, payment_id=payment_id
+    )
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if invoice["status"] not in {"completed", "refunded"}:
+        raise HTTPException(status_code=404, detail="Invoice not available for this payment")
+    return InvoiceDetail(**invoice)
+
+
+@router.get("/payments/{payment_id}/invoice/download")
+async def download_payment_invoice(
+    payment_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Downloadable HTML invoice (print to PDF from browser)."""
+    from app.services.invoice import load_payment_invoice, render_invoice_html
+
+    invoice = await load_payment_invoice(
+        supabase, user_id=user_id, payment_id=payment_id
+    )
+    if not invoice or invoice["status"] not in {"completed", "refunded"}:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    html = render_invoice_html(invoice)
+    filename = f"{invoice['invoice_number']}.html"
+    return HTMLResponse(
+        content=html,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/payments/{payment_id}/invoice/email")
+async def email_payment_invoice(
+    payment_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Email invoice/receipt copy to the user's registered email."""
+    from app.services.invoice import load_payment_invoice
+    from app.services.email import send_invoice_email
+
+    invoice = await load_payment_invoice(
+        supabase, user_id=user_id, payment_id=payment_id
+    )
+    if not invoice or invoice["status"] not in {"completed", "refunded"}:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    sent = await send_invoice_email(invoice, supabase)
+    if not sent:
+        raise HTTPException(
+            status_code=503,
+            detail="Could not send invoice email — check email notifications are enabled",
+        )
+    return {"status": "sent", "invoice_number": invoice["invoice_number"]}
+
+
+@router.post("/cancel", response_model=SubscriptionCancelResponse)
+async def cancel_subscription(
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Cancel paid plan at end of current billing period (no immediate downgrade)."""
+    from datetime import datetime, timezone
+
+    sub_res = (
+        supabase.table("subscriptions")
+        .select("id, tier, status, current_period_end, cancelled_at")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not sub_res.data:
+        raise HTTPException(status_code=404, detail="No subscription found")
+
+    raw = sub_res.data
+    sub = raw[0] if isinstance(raw, list) else raw
+    if not isinstance(sub, dict):
+        raise HTTPException(status_code=404, detail="No subscription found")
+    tier = sub.get("tier") or "free"
+    if tier == "free":
+        raise HTTPException(status_code=400, detail="Free plan cannot be cancelled")
+
+    now = datetime.now(timezone.utc)
+    if sub.get("cancelled_at"):
+        return SubscriptionCancelResponse(
+            status="already_cancelled",
+            message="Your plan is already set to cancel at period end.",
+            tier=tier,
+            active_until=sub.get("current_period_end"),
+            cancelled_at=sub["cancelled_at"],
+        )
+
+    supabase.table("subscriptions").update(
+        {"cancelled_at": now.isoformat(), "updated_at": now.isoformat()}
+    ).eq("id", sub["id"]).execute()
+
+    return SubscriptionCancelResponse(
+        status="cancelled",
+        message=(
+            "Your subscription will remain active until the end of your billing period, "
+            "then revert to the Free plan. You can upgrade again anytime on the pricing page."
+        ),
+        tier=tier,
+        active_until=sub.get("current_period_end"),
+        cancelled_at=now,
+    )
 
 
 @router.post("/pay", response_model=PaymentInitiateResponse)

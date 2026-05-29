@@ -210,6 +210,31 @@ async def send_match_digest_email(user_id: str, matches: list[dict], supabase) -
     return _send(email, f"{len(matches)} new job matches", html)
 
 
+    return _send(email, f"Zed CV — {label} plan activated", html)
+
+
+async def send_invoice_email(invoice: dict, supabase) -> bool:
+    """Email HTML invoice/receipt for a completed payment."""
+    user_id = invoice.get("user_id")
+    if not user_id:
+        return False
+    enabled, email = await _resolve_recipient(user_id, supabase)
+    if not enabled or not email:
+        return False
+
+    from app.services.invoice import render_invoice_html
+
+    html = render_invoice_html(invoice)
+    inv_no = invoice.get("invoice_number", "receipt")
+    tier = invoice.get("tier_label", "plan")
+    kwacha = int(invoice.get("amount_kwacha") or 0)
+    return _send(
+        email,
+        f"Zed Apply invoice {inv_no} — {tier} (K{kwacha})",
+        html,
+    )
+
+
 async def send_payment_confirmation_email(
     user_id: str, tier: str, amount_ngwee: int, supabase
 ) -> bool:

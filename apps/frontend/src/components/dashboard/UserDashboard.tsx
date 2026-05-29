@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { MatchData } from "@/lib/api";
+import type { MatchData, Subscription } from "@/lib/api";
 import { MOCK_DASHBOARD } from "./dashboard-mock-data";
 import { formatDashboardHeaderDate } from "./format-dashboard-date";
 import { formatSalary } from "@/components/jobs/jobDetailFormatters";
+import { PlanUsageCard } from "./PlanUsageCard";
 import {
   CondensedJobCard,
   DashboardStatCard,
@@ -23,6 +24,9 @@ export type DashboardLiveData = {
 export type UserDashboardProps = {
   userName?: string;
   liveData?: DashboardLiveData;
+  subscription?: Subscription | null;
+  subscriptionTier?: string;
+  subscriptionTierLabel?: string;
 };
 
 function mapMatchToCondensed(m: MatchData) {
@@ -38,7 +42,12 @@ function mapMatchToCondensed(m: MatchData) {
   };
 }
 
-export function UserDashboard({ userName, liveData }: UserDashboardProps) {
+export function UserDashboard({
+  userName,
+  liveData,
+  subscription,
+  subscriptionTier = "free",
+}: UserDashboardProps) {
   const data = MOCK_DASHBOARD;
   const displayName = userName ?? data.userName;
   const headerDate = formatDashboardHeaderDate(new Date());
@@ -101,6 +110,10 @@ export function UserDashboard({ userName, liveData }: UserDashboardProps) {
           )}
         </p>
       </header>
+
+      {useLive ? (
+        <PlanUsageCard tier={subscriptionTier} sub={subscription ?? null} />
+      ) : null}
 
       <section
         className="rounded-xl border p-5 sm:p-6"

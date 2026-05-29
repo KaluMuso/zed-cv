@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   profile as profileApi,
@@ -10,10 +10,13 @@ import {
   type UserProfile,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { notify } from "@/lib/toast";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/button";
 import { formatMatchesLimit } from "@/lib/tier-config";
 import { TIER_NAV_LABELS } from "@/lib/tier-display";
 import { SettingsCard, SettingsSectionHeader } from "../_components/SettingsShell";
+import { InvoicePanel } from "../_components/InvoicePanel";
 
 function formatWelcomeEnd(iso: string | null | undefined): string {
   if (!iso) return "soon";
@@ -26,12 +29,6 @@ function formatWelcomeEnd(iso: string | null | undefined): string {
   } catch {
     return "soon";
   }
-}
-
-function formatNgwee(amount: number, currency: string): string {
-  const major = amount / 100;
-  const symbol = currency === "USD" ? "$" : "K";
-  return `${symbol}${major.toLocaleString("en-ZM", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
 function formatPaymentMethod(method: string): string {
@@ -62,54 +59,15 @@ function formatPaymentDate(iso: string | null | undefined): string {
   }
 }
 
-function statusLabel(status: string): string {
-  if (status === "completed") return "Paid";
-  if (status === "pending") return "Pending";
-  if (status === "failed") return "Failed";
-  if (status === "refunded") return "Refunded";
-  return status;
-}
-
-function PaymentRow({ row }: { row: PaymentHistoryRow }) {
-  const date = formatPaymentDate(row.completed_at ?? row.created_at);
-  return (
-    <div
-      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-3 border-b border-[var(--line)] last:border-0"
-    >
-      <div>
-        <div className="text-sm font-medium">{formatNgwee(row.amount, row.currency)}</div>
-        <div className="text-xs" style={{ color: "var(--muted)" }}>
-          {formatPaymentMethod(row.payment_method)}
-          {row.provider ? ` · ${row.provider}` : ""}
-          {" · "}
-          {date}
-        </div>
-      </div>
-      <span
-        className="text-xs font-medium uppercase tracking-wide self-start sm:self-center"
-        style={{
-          color:
-            row.status === "completed"
-              ? "var(--green-700)"
-              : row.status === "failed"
-                ? "var(--destructive, #b91c1c)"
-                : "var(--muted)",
-        }}
-      >
-        {statusLabel(row.status)}
-      </span>
-    </div>
-  );
-}
-
 export function BillingSection() {
   const { token } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sub, setSub] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<PaymentHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     if (!token) return;
     Promise.all([
       profileApi.get(token),
@@ -123,6 +81,28 @@ export function BillingSection() {
       })
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const handleCancel = async () => {
+    if (!token || !window.confirm(
+      "Cancel your paid plan at the end of this billing period? You keep access until then, then revert to Free.",
+    )) {
+      return;
+    }
+    setCancelling(true);
+    try {
+      const res = await subscriptionApi.cancel(token);
+      notify.success(res.message);
+      reload();
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Could not cancel plan");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Loading billing…</p>;
@@ -162,18 +142,49 @@ export function BillingSection() {
                   : "Free tier with monthly match allowance"
                 : usageLine}
             </p>
+            {sub?.expires_at && tier !== "free" ? (
+              <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
+                Billing period ends {formatPaymentDate(sub.expires_at)}
+              </p>
+            ) : null}
           </div>
-          {tier !== "super_standard" ? (
-            <Link href="/pricing" className="btn btn-primary btn-sm shrink-0">
-              Upgrade plan
-              <Icon name="arrowRight" size={14} />
-            </Link>
-          ) : (
-            <Link href="/pricing" className="btn btn-outline btn-sm shrink-0">
-              View plans
-            </Link>
-          )}
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {tier !== "super_standard" ? (
+              <Link href="/pricing" className="btn btn-primary btn-sm">
+                Upgrade plan
+                <Icon name="arrowRight" size={14} />
+              </Link>
+            ) : (
+              <Link href="/pricing" className="btn btn-outline btn-sm">
+                View plans
+              </Link>
+            )}
+            {tier !== "free" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={cancelling}
+                onClick={handleCancel}
+              >
+                {cancelling ? "Cancelling…" : "Cancel at period end"}
+              </Button>
+            ) : null}
+          </div>
         </div>
+        {tier !== "free" ? (
+          <p className="text-xs mt-4" style={{ color: "var(--muted)" }}>
+            To move to a lower paid tier, cancel at period end then choose a new plan on{" "}
+            <Link href="/pricing" className="underline" style={{ color: "var(--green-700)" }}>
+              pricing
+            </Link>
+            . Prorated refunds: see{" "}
+            <Link href="/legal/refund" className="underline" style={{ color: "var(--green-700)" }}>
+              refund policy
+            </Link>
+            .
+          </p>
+        ) : null}
       </SettingsCard>
 
       <SettingsCard className="mb-4">
@@ -190,24 +201,18 @@ export function BillingSection() {
           </p>
         ) : (
           <p className="text-sm" style={{ color: "var(--muted)" }}>
-            No payment method on file. Add one when you upgrade on the{" "}
+            No payment on file. Upgrade on the{" "}
             <Link href="/pricing" className="underline" style={{ color: "var(--green-700)" }}>
               pricing page
             </Link>{" "}
-            (DPO Pay or Lenco mobile money).
+            via Lenco mobile money or card.
           </p>
         )}
       </SettingsCard>
 
       <SettingsCard>
         <div className="eyebrow mb-2">Invoices</div>
-        {payments.length === 0 ? (
-          <p className="text-sm" style={{ color: "var(--muted)" }}>
-            No invoices yet. Completed payments will appear here after you upgrade.
-          </p>
-        ) : (
-          <div>{payments.map((p) => <PaymentRow key={p.id} row={p} />)}</div>
-        )}
+        <InvoicePanel token={token!} payments={payments} onRefresh={reload} />
       </SettingsCard>
     </div>
   );

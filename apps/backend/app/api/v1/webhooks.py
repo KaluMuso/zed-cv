@@ -10,7 +10,7 @@ from app.services.tier_config import (
     get_tier_prices,
 )
 from app.services.whatsapp import send_whatsapp_message, send_match_digest
-from app.services.email import send_payment_confirmation_email
+from app.services.email import send_payment_confirmation_email, send_invoice_email
 
 logger = logging.getLogger(__name__)
 
@@ -384,6 +384,17 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
         except Exception as e:
             logging.error(f"Failed to send payment confirmation email: {e}")
 
+        try:
+            from app.services.invoice import load_payment_invoice
+
+            invoice = await load_payment_invoice(
+                supabase, user_id=user_id, payment_id=payment_id
+            )
+            if invoice:
+                await send_invoice_email(invoice, supabase)
+        except Exception as e:
+            logging.error(f"Failed to send invoice email: {e}")
+
         logging.info(f"Payment completed: user={user_id}, tier={new_tier}")
         return {"status": "completed"}
 
@@ -611,6 +622,17 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             await send_payment_confirmation_email(user_id, new_tier, amount_ngwee, supabase)
         except Exception as e:
             logging.error(f"Failed to send Lenco payment email: {e}")
+
+        try:
+            from app.services.invoice import load_payment_invoice
+
+            invoice = await load_payment_invoice(
+                supabase, user_id=user_id, payment_id=payment_id
+            )
+            if invoice:
+                await send_invoice_email(invoice, supabase)
+        except Exception as e:
+            logging.error(f"Failed to send Lenco invoice email: {e}")
 
         logging.info("Lenco payment completed: user=%s tier=%s", user_id, new_tier)
         return {"status": "completed"}

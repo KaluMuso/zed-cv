@@ -1584,6 +1584,34 @@ components:
           items: { $ref: '#/components/schemas/PaymentHistoryRow' }
         total: { type: integer }
 
+    InvoiceDetail:
+      type: object
+      properties:
+        invoice_number: { type: string }
+        payment_id: { type: string, format: uuid }
+        reference: { type: string }
+        status: { type: string }
+        amount_ngwee: { type: integer }
+        amount_kwacha: { type: integer }
+        currency: { type: string, default: ZMW }
+        tier: { type: string }
+        tier_label: { type: string }
+        payment_method: { type: string }
+        provider: { type: string, nullable: true }
+        issued_at: { type: string, format: date-time, nullable: true }
+        customer_name: { type: string }
+        customer_email: { type: string, nullable: true }
+        customer_phone: { type: string, nullable: true }
+
+    SubscriptionCancelResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [cancelled, already_cancelled] }
+        message: { type: string }
+        tier: { type: string }
+        active_until: { type: string, format: date-time, nullable: true }
+        cancelled_at: { type: string, format: date-time }
+
     CoverLetterRequest:
       type: object
       required: [job_id]
@@ -3095,6 +3123,73 @@ paths:
           description: Payment failed at Lenco
         '502':
           description: Lenco upstream error
+
+  /subscription/payments/{payment_id}/invoice:
+    get:
+      operationId: getPaymentInvoice
+      summary: Invoice metadata for a completed payment
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceDetail' }
+        '404': { description: Payment or invoice not found }
+
+  /subscription/payments/{payment_id}/invoice/download:
+    get:
+      operationId: downloadPaymentInvoice
+      summary: Download HTML invoice (print to PDF)
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: HTML invoice attachment
+          content:
+            text/html:
+              schema: { type: string }
+        '404': { description: Invoice not found }
+
+  /subscription/payments/{payment_id}/invoice/email:
+    post:
+      operationId: emailPaymentInvoice
+      summary: Email invoice copy to the user
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Invoice email sent
+        '404': { description: Invoice not found }
+        '503': { description: Email delivery failed }
+
+  /subscription/cancel:
+    post:
+      operationId: cancelSubscription
+      summary: Cancel paid plan at period end
+      tags: [Subscription]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubscriptionCancelResponse' }
+        '400': { description: Free plan cannot be cancelled }
 
   /webhooks/dpo:
     post:

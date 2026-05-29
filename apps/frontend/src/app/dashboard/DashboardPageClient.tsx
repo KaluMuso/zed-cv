@@ -7,9 +7,12 @@ import {
   matches as matchesApi,
   savedJobs,
   profile as profileApi,
+  subscription as subscriptionApi,
   type MatchData,
+  type Subscription,
 } from "@/lib/api";
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
+import { TIER_NAV_LABELS } from "@/lib/tier-display";
 
 export function DashboardPageClient() {
   const router = useRouter();
@@ -19,6 +22,8 @@ export function DashboardPageClient() {
   const [savedCount, setSavedCount] = useState(0);
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalMatchCount, setTotalMatchCount] = useState(0);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [subscriptionTier, setSubscriptionTier] = useState("free");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,10 +37,13 @@ export function DashboardPageClient() {
       profileApi.get(token),
       matchesApi.get(token).catch(() => ({ matches: [] as MatchData[] })),
       savedJobs.list(token).catch(() => ({ jobs: [] })),
+      subscriptionApi.get(token).catch(() => null),
     ])
-      .then(([prof, matchRes, savedRes]) => {
+      .then(([prof, matchRes, savedRes, sub]) => {
         if (cancelled) return;
         setUserName(prof.full_name ?? undefined);
+        setSubscriptionTier(prof.subscription_tier);
+        setSubscription(sub);
         const sorted = [...matchRes.matches].sort((a, b) => b.score - a.score);
         setTopMatches(sorted.slice(0, 3));
         setSavedCount(savedRes.jobs.length);
@@ -73,6 +81,9 @@ export function DashboardPageClient() {
   return (
     <UserDashboard
       userName={userName}
+      subscription={subscription}
+      subscriptionTier={subscriptionTier}
+      subscriptionTierLabel={TIER_NAV_LABELS[subscriptionTier] ?? subscriptionTier}
       liveData={{
         totalMatches: totalMatchCount,
         savedJobs: savedCount,

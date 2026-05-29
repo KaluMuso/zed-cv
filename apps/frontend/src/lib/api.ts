@@ -1349,6 +1349,32 @@ export interface PaymentHistoryList {
   total: number;
 }
 
+export interface InvoiceDetail {
+  invoice_number: string;
+  payment_id: string;
+  reference: string;
+  status: string;
+  amount_ngwee: number;
+  amount_kwacha: number;
+  currency: string;
+  tier: string;
+  tier_label: string;
+  payment_method: string;
+  provider?: string | null;
+  issued_at?: string | null;
+  customer_name: string;
+  customer_email?: string | null;
+  customer_phone?: string | null;
+}
+
+export interface SubscriptionCancelResult {
+  status: string;
+  message: string;
+  tier: string;
+  active_until?: string | null;
+  cancelled_at: string;
+}
+
 export const subscription = {
   get: (token: string) => apiFetch<Subscription>("/subscription", { token }),
   listPayments: (token: string, limit = 50) =>
@@ -1367,6 +1393,18 @@ export const subscription = {
       method: "POST",
       token,
       body: JSON.stringify(data),
+    }),
+  getInvoice: (token: string, paymentId: string) =>
+    apiFetch<InvoiceDetail>(`/subscription/payments/${paymentId}/invoice`, { token }),
+  emailInvoice: (token: string, paymentId: string) =>
+    apiFetch<{ status: string; invoice_number: string }>(
+      `/subscription/payments/${paymentId}/invoice/email`,
+      { method: "POST", token },
+    ),
+  cancel: (token: string) =>
+    apiFetch<SubscriptionCancelResult>("/subscription/cancel", {
+      method: "POST",
+      token,
     }),
 };
 

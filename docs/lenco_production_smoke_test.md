@@ -36,6 +36,9 @@ PY
 Store the output as `LENCO_WEBHOOK_SECRET` (same value as
 `hashlib.sha256(LENCO_API_KEY.encode()).hexdigest()` in Python).
 
+**Or:** copy the **Signature key** directly from Lenco Pay → APIs → ZedApply →
+**Webhook** tab (it is the same derived value).
+
 ---
 
 ## Step 2 — Update OCI `.env` (all four Lenco values)

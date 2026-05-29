@@ -100,3 +100,29 @@ class PaymentHistoryRow(BaseModel):
 class PaymentHistoryList(BaseModel):
     payments: list[PaymentHistoryRow]
     total: int
+
+
+class InvoiceDetail(BaseModel):
+    invoice_number: str
+    payment_id: str
+    reference: str
+    status: str
+    amount_ngwee: int
+    amount_kwacha: int
+    currency: str = "ZMW"
+    tier: str
+    tier_label: str
+    payment_method: str
+    provider: Optional[str] = None
+    issued_at: Optional[datetime] = None
+    customer_name: str
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
+
+
+class SubscriptionCancelResponse(BaseModel):
+    status: str
+    message: str
+    tier: str
+    active_until: Optional[datetime] = None
+    cancelled_at: datetime
