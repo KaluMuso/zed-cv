@@ -12,7 +12,23 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/deactivate_expired_jobs",
-        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }] }
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
       },
       "name": "Deactivate Expired Jobs",
       "type": "n8n-nodes-base.httpRequest",
@@ -23,7 +39,19 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/users?is_active=eq.true&select=id,phone,subscription_tier",
-        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" }, { "name": "Authorization", "value": "Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }] }
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        }
       },
       "name": "Get Active Users",
       "type": "n8n-nodes-base.httpRequest",

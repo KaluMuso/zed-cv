@@ -1,5 +1,5 @@
 {
-  "name": "Zed CV - Supabase Heartbeat",
+  "name": "ZedApply - Supabase Heartbeat",
   "nodes": [
     {
       "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } },
@@ -12,7 +12,23 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/heartbeat",
-        "headerParameters": { "parameters": [{ "name": "apikey", "value": "={{ $env.SUPABASE_ANON_KEY }}" }] }
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY || $env.SUPABASE_SERVICE_KEY }}"
+            },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
       },
       "name": "Supabase Heartbeat",
       "type": "n8n-nodes-base.httpRequest",
@@ -28,6 +44,16 @@
     }
   ],
   "connections": {
-    "Every 6 Hours": { "main": [[{ "node": "Supabase Heartbeat", "type": "main", "index": 0 }, { "node": "API Health Check", "type": "main", "index": 0 }]] }
+    "Every 6 Hours": {
+      "main": [
+        [
+          { "node": "Supabase Heartbeat", "type": "main", "index": 0 },
+          { "node": "API Health Check", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
   }
 }

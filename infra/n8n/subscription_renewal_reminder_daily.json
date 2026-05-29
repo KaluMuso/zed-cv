@@ -19,9 +19,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $env.INGEST_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
           ]
-        }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
       },
       "name": "Send Renewal Reminder Emails",
       "type": "n8n-nodes-base.httpRequest",
