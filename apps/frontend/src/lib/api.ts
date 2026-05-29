@@ -678,9 +678,35 @@ export interface AdminPaymentRow {
   currency: string;
   payment_method: string;
   provider: string | null;
+  provider_ref?: string | null;
+  invoice_number?: string | null;
   status: string;
   created_at: string | null;
   completed_at: string | null;
+}
+
+export interface AdminPaymentDetail extends AdminPaymentRow {
+  user_email: string | null;
+  user_full_name: string | null;
+  webhook_summary: Record<string, unknown> | null;
+  tier_inferred: string | null;
+}
+
+export interface AdminBillingHealth {
+  lenco_environment: string;
+  lenco_api_url: string;
+  lenco_api_key_set: boolean;
+  lenco_public_key_set: boolean;
+  lenco_webhook_secret_set: boolean;
+  lenco_verify_signatures: boolean;
+  lenco_production_ready: boolean;
+  webhook_url_expected: string;
+  payments_pending: number;
+  payments_failed_24h: number;
+  payments_completed_24h: number;
+  lenco_completed_24h: number;
+  subscriptions_cancelling: number;
+  checked_at: string;
 }
 
 export interface AdminPaymentList {
@@ -735,6 +761,8 @@ export interface AdminSubscriptionRow {
   matches_used: number;
   matches_limit: number;
   current_period_end: string | null;
+  cancelled_at?: string | null;
+  lenco_subscription_ref?: string | null;
   created_at: string | null;
 }
 
@@ -898,14 +926,21 @@ export const admin = {
     }),
   payments: (
     token: string,
-    params?: { page?: number; per_page?: number; status?: string }
+    params?: { page?: number; per_page?: number; status?: string; provider?: string }
   ) => {
     const q = new URLSearchParams();
     if (params?.page) q.set("page", String(params.page));
     if (params?.per_page) q.set("per_page", String(params.per_page));
     if (params?.status) q.set("status", params.status);
+    if (params?.provider) q.set("provider", params.provider);
     return apiFetch<AdminPaymentList>(`/admin/payments?${q}`, { token });
   },
+  paymentDetail: (token: string, paymentId: string) =>
+    apiFetch<AdminPaymentDetail>(`/admin/payments/${encodeURIComponent(paymentId)}`, {
+      token,
+    }),
+  billingHealth: (token: string) =>
+    apiFetch<AdminBillingHealth>("/admin/billing/health", { token }),
   matches: (
     token: string,
     params?: { page?: number; per_page?: number; min_score?: number }

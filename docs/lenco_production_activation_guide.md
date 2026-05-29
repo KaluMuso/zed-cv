@@ -142,6 +142,10 @@ See [`docs/lenco_production_smoke_test.md`](./lenco_production_smoke_test.md).
 | Cancel at period end | Settings → Billing → Cancel at period end |
 | Upgrade | Pricing page → Lenco widget |
 | Downgrade | Cancel at period end, then choose lower tier on pricing after expiry |
+| **Admin: Lenco health** | Admin → **Billing** tab (config + anomaly badges) |
+| **Admin: payment drill-down** | Admin → Billing → View (webhook summary, reference, tier) |
+| **Admin: subscription usage** | Admin → Billing → subscriptions table (matches used/limit) |
+| **Admin: billing alerts** | Admin → Overview (red strip when pending/failed/config issues) |
 | Admin revenue | Admin → Stats (`/admin/stats`) |
 | LLM cost | Admin → LLM cost panel |
 | Product analytics | `analytics_events` + `/analytics/events` |

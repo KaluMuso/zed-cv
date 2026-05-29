@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AdminStats, AdminTierBreakdown } from "@/lib/api";
 import { admin } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -129,6 +129,49 @@ export function OverviewTab({
       </div>
 
       <LlmCostPanel token={token} />
+
+      <BillingAlertsStrip token={token} />
+    </div>
+  );
+}
+
+function BillingAlertsStrip({ token }: { token: string }) {
+  const [health, setHealth] = useState<import("@/lib/api").AdminBillingHealth | null>(null);
+
+  useEffect(() => {
+    admin
+      .billingHealth(token)
+      .then(setHealth)
+      .catch(() => setHealth(null));
+  }, [token]);
+
+  if (!health) return null;
+
+  const issues: string[] = [];
+  if (health.payments_pending > 0) issues.push(`${health.payments_pending} pending payments`);
+  if (health.payments_failed_24h > 0) {
+    issues.push(`${health.payments_failed_24h} failed payments (24h)`);
+  }
+  if (!health.lenco_production_ready && health.lenco_environment === "production") {
+    issues.push("Lenco production env incomplete");
+  }
+
+  if (issues.length === 0) return null;
+
+  return (
+    <div
+      className="mt-4 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm"
+      role="status"
+    >
+      <p className="font-medium text-destructive">Billing alerts</p>
+      <ul className="mt-1 list-disc pl-5 text-muted-foreground">
+        {issues.map((i) => (
+          <li key={i}>{i}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Open the <strong>Billing</strong> tab for details, webhook config, and payment drill-down.
+      </p>
     </div>
   );
 }

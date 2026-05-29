@@ -10,7 +10,7 @@ import { OverviewTab } from "./_tabs/OverviewTab";
 import { JobsTab } from "./_tabs/JobsTab";
 import { UsersTab } from "./_tabs/UsersTab";
 import { MatchesTab } from "./_tabs/MatchesTab";
-import { PricingTab } from "./_tabs/PricingTab";
+import { BillingTab } from "./_tabs/BillingTab";
 import { TierConfigTab } from "./_tabs/TierConfigTab";
 import { LegalTab } from "./_tabs/LegalTab";
 import { ReviewJobsTab } from "./_tabs/ReviewJobsTab";
@@ -48,7 +48,7 @@ export default function AdminPage() {
           <TabsTrigger value="review" className="min-h-9">Review queue</TabsTrigger>
           <TabsTrigger value="users" className="min-h-9">Users</TabsTrigger>
           <TabsTrigger value="matches" className="min-h-9">Matches</TabsTrigger>
-          <TabsTrigger value="pricing" className="min-h-9">Pricing</TabsTrigger>
+          <TabsTrigger value="billing" className="min-h-9">Billing</TabsTrigger>
           <TabsTrigger value="tier-config" className="min-h-9">Tier Config</TabsTrigger>
           <TabsTrigger value="legal" className="min-h-9">Legal</TabsTrigger>
         </TabsList>
@@ -68,8 +68,8 @@ export default function AdminPage() {
         <TabsContent className="mt-4" value="matches">
           <MatchesTab token={token} />
         </TabsContent>
-        <TabsContent className="mt-4" value="pricing">
-          <PricingTab token={token} stats={stats} breakdown={breakdown} />
+        <TabsContent className="mt-4" value="billing">
+          <BillingTab token={token} stats={stats} breakdown={breakdown} />
         </TabsContent>
         <TabsContent className="mt-4" value="tier-config">
           <TierConfigTab token={token} />

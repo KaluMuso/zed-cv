@@ -31,6 +31,8 @@ from app.schemas.admin import (
     BulkDeactivateResponse,
     AdminPaymentRow,
     AdminPaymentList,
+    AdminPaymentDetail,
+    AdminBillingHealth,
     AdminMatchRow,
     AdminMatchList,
     AdminTierBreakdown,
@@ -995,19 +997,97 @@ async def bulk_deactivate(body: BulkDeactivateRequest, supabase=Depends(get_supa
     return BulkDeactivateResponse(deactivated=len(res.data or []))
 
 
+@router.get("/billing/health", response_model=AdminBillingHealth)
+async def billing_health(
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Lenco config snapshot + payment anomaly counts for admin monitoring."""
+    from app.services.admin_billing import build_billing_health
+
+    payload = await build_billing_health(supabase, settings)
+    return AdminBillingHealth(**payload)
+
+
+@router.get("/payments/{payment_id}", response_model=AdminPaymentDetail)
+async def get_payment_detail(
+    payment_id: str,
+    supabase=Depends(get_supabase),
+):
+    """Single payment with webhook summary for support / dispute investigation."""
+    from app.services.admin_billing import summarize_webhook_data
+    from app.services.invoice import load_payment_invoice, invoice_number
+
+    result = (
+        supabase.table("payments")
+        .select(
+            "id, user_id, amount, currency, payment_method, provider, provider_ref, "
+            "status, created_at, completed_at, webhook_data"
+        )
+        .eq("id", payment_id)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    payment = result.data[0]
+    user_res = (
+        supabase.table("users")
+        .select("phone, email, full_name")
+        .eq("id", payment["user_id"])
+        .limit(1)
+        .execute()
+    )
+    user = (user_res.data or [{}])[0]
+    tier_inferred = None
+    if payment.get("status") in {"completed", "refunded"}:
+        invoice = await load_payment_invoice(
+            supabase,
+            user_id=payment["user_id"],
+            payment_id=payment_id,
+        )
+        tier_inferred = invoice.get("tier") if invoice else None
+
+    return AdminPaymentDetail(
+        id=payment["id"],
+        user_id=payment["user_id"],
+        user_phone=user.get("phone"),
+        user_email=user.get("email"),
+        user_full_name=user.get("full_name"),
+        amount=payment["amount"],
+        currency=payment.get("currency", "ZMW"),
+        payment_method=payment["payment_method"],
+        provider=payment.get("provider"),
+        provider_ref=payment.get("provider_ref"),
+        invoice_number=invoice_number(payment_id),
+        status=payment["status"],
+        created_at=payment.get("created_at"),
+        completed_at=payment.get("completed_at"),
+        webhook_summary=summarize_webhook_data(payment.get("webhook_data")),
+        tier_inferred=tier_inferred,
+    )
+
+
 @router.get("/payments", response_model=AdminPaymentList)
 async def list_payments(
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=1, le=100),
     status_filter: str | None = Query(None, alias="status"),
+    provider: str | None = Query(None, description="Filter by provider, e.g. lenco"),
     supabase=Depends(get_supabase),
 ):
+    from app.services.invoice import invoice_number
+
     query = supabase.table("payments").select(
-        "id, user_id, amount, currency, payment_method, provider, status, created_at, completed_at",
+        "id, user_id, amount, currency, payment_method, provider, provider_ref, "
+        "status, created_at, completed_at",
         count="exact",
     ).order("created_at", desc=True)
     if status_filter:
         query = query.eq("status", status_filter)
+    if provider:
+        query = query.eq("provider", provider)
 
     offset = (page - 1) * per_page
     result = query.range(offset, offset + per_page - 1).execute()
@@ -1029,6 +1109,8 @@ async def list_payments(
             currency=p.get("currency", "ZMW"),
             payment_method=p["payment_method"],
             provider=p.get("provider"),
+            provider_ref=p.get("provider_ref"),
+            invoice_number=invoice_number(p["id"]),
             status=p["status"],
             created_at=p.get("created_at"),
             completed_at=p.get("completed_at"),
@@ -1485,7 +1567,7 @@ async def list_subscriptions(
     )
 
     query = supabase.table("subscriptions").select(
-        "user_id, tier, status, current_period_end, created_at",
+        "user_id, tier, status, current_period_end, cancelled_at, lenco_subscription_ref, created_at",
         count="exact",
     ).order("created_at", desc=True)
     if tier:
@@ -1523,6 +1605,8 @@ async def list_subscriptions(
                 matches_used=await get_credited_match_count(s["user_id"], supabase),
                 matches_limit=await get_effective_match_limit(s["user_id"], supabase),
                 current_period_end=s.get("current_period_end"),
+                cancelled_at=s.get("cancelled_at"),
+                lenco_subscription_ref=s.get("lenco_subscription_ref"),
                 created_at=s.get("created_at"),
             )
         )
@@ -1577,6 +1661,8 @@ async def update_subscription(
         matches_used=await get_credited_match_count(user_id, supabase),
         matches_limit=await get_effective_match_limit(user_id, supabase),
         current_period_end=sub.get("current_period_end"),
+        cancelled_at=sub.get("cancelled_at"),
+        lenco_subscription_ref=sub.get("lenco_subscription_ref"),
         created_at=sub.get("created_at"),
     )
 

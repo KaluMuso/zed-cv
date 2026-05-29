@@ -673,9 +673,39 @@ components:
         currency: { type: string }
         payment_method: { type: string }
         provider: { type: string }
+        provider_ref: { type: string, nullable: true }
+        invoice_number: { type: string, nullable: true }
         status: { type: string }
         created_at: { type: string, format: date-time }
         completed_at: { type: string, format: date-time }
+
+    AdminPaymentDetail:
+      allOf:
+        - { $ref: '#/components/schemas/AdminPaymentRow' }
+        - type: object
+          properties:
+            user_email: { type: string, nullable: true }
+            user_full_name: { type: string, nullable: true }
+            webhook_summary: { type: object, nullable: true, additionalProperties: true }
+            tier_inferred: { type: string, nullable: true }
+
+    AdminBillingHealth:
+      type: object
+      properties:
+        lenco_environment: { type: string }
+        lenco_api_url: { type: string }
+        lenco_api_key_set: { type: boolean }
+        lenco_public_key_set: { type: boolean }
+        lenco_webhook_secret_set: { type: boolean }
+        lenco_verify_signatures: { type: boolean }
+        lenco_production_ready: { type: boolean }
+        webhook_url_expected: { type: string }
+        payments_pending: { type: integer }
+        payments_failed_24h: { type: integer }
+        payments_completed_24h: { type: integer }
+        lenco_completed_24h: { type: integer }
+        subscriptions_cancelling: { type: integer }
+        checked_at: { type: string, format: date-time }
 
     AdminPaymentList:
       type: object
@@ -808,6 +838,8 @@ components:
         matches_used: { type: integer }
         matches_limit: { type: integer }
         current_period_end: { type: string, format: date-time }
+        cancelled_at: { type: string, format: date-time, nullable: true }
+        lenco_subscription_ref: { type: string, nullable: true }
         created_at: { type: string, format: date-time }
 
     AdminSubscriptionList:
@@ -2451,6 +2483,38 @@ paths:
         '403': { description: Superadmin only }
         '422': { description: Validation error }
 
+  /admin/billing/health:
+    get:
+      operationId: adminBillingHealth
+      summary: Lenco config snapshot and payment anomaly counts
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminBillingHealth' }
+        '403': { description: Superadmin only }
+
+  /admin/payments/{payment_id}:
+    get:
+      operationId: adminGetPaymentDetail
+      summary: Payment detail with webhook summary for support
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: payment_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminPaymentDetail' }
+        '404': { description: Payment not found }
+        '403': { description: Superadmin only }
+
   /admin/payments:
     get:
       operationId: adminListPayments
@@ -2460,6 +2524,7 @@ paths:
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: per_page, in: query, schema: { type: integer, default: 25 } }
         - { name: status, in: query, schema: { type: string, enum: [pending, completed, failed, refunded] } }
+        - { name: provider, in: query, schema: { type: string, description: "e.g. lenco, dpo_pay" } }
       responses:
         '200':
           content:

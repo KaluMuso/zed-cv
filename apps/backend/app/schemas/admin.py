@@ -162,9 +162,35 @@ class AdminPaymentRow(BaseModel):
     currency: str = "ZMW"
     payment_method: str
     provider: Optional[str] = None
+    provider_ref: Optional[str] = None
+    invoice_number: Optional[str] = None
     status: str
     created_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+
+
+class AdminPaymentDetail(AdminPaymentRow):
+    user_email: Optional[str] = None
+    user_full_name: Optional[str] = None
+    webhook_summary: Optional[dict] = None
+    tier_inferred: Optional[str] = None
+
+
+class AdminBillingHealth(BaseModel):
+    lenco_environment: str
+    lenco_api_url: str
+    lenco_api_key_set: bool
+    lenco_public_key_set: bool
+    lenco_webhook_secret_set: bool
+    lenco_verify_signatures: bool
+    lenco_production_ready: bool
+    webhook_url_expected: str
+    payments_pending: int
+    payments_failed_24h: int
+    payments_completed_24h: int
+    lenco_completed_24h: int
+    subscriptions_cancelling: int
+    checked_at: datetime
 
 
 class AdminPaymentList(BaseModel):
@@ -213,6 +239,8 @@ class AdminSubscriptionRow(BaseModel):
     matches_used: int = 0
     matches_limit: int = 0
     current_period_end: Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    lenco_subscription_ref: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
