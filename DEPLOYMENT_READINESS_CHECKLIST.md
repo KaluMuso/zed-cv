@@ -86,8 +86,10 @@ docker exec -it zedcv-backend python scripts/backfill_apply_urls_v2.py
 docker exec -it zedcv-backend python scripts/backfill_job_quality.py --dry-run
 ```
 
+See **[docs/APPLY_URL_BACKFILL_V2_RUNBOOK.md](docs/APPLY_URL_BACKFILL_V2_RUNBOOK.md)** for spot-check, approval gate, and post-apply SQL.
+
 - [ ] Deep-link backfill dry-run reviewed
-- [ ] `--apply` only after spot-checking 10 URLs
+- [ ] `--apply` only after spot-checking 10 URLs (human **Y** on approval gate)
 
 ---
 
