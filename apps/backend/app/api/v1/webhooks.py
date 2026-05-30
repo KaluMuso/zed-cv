@@ -461,6 +461,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
                 "lenco_webhook_verification_not_configured",
                 payload,
                 level="error",
+            )
             add_lenco_webhook_breadcrumb(
                 payload,
                 success=False,
@@ -482,6 +483,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
                 "lenco_webhook_invalid_signature",
                 payload,
                 level="warning",
+            )
             add_lenco_webhook_breadcrumb(
                 payload,
                 success=False,
@@ -500,6 +502,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             "lenco_webhook_invalid_payload",
             payload,
             level="warning",
+        )
         add_lenco_webhook_breadcrumb(
             payload,
             success=False,
