@@ -117,7 +117,7 @@ async def load_user_welcome_fields(user_id: str, supabase: Client) -> dict[str, 
         supabase.table("users")
         .select(
             "subscription_tier, welcome_match_bonus, welcome_match_bonus_until, "
-            "promotion_applied_until"
+            "promotion_applied_until, referral_match_bonus"
         )
         .eq("id", user_id)
         .limit(1)
@@ -145,14 +145,21 @@ async def get_effective_match_limit(user_id: str, supabase: Client) -> int:
         tier = normalize_tier(welcome_row.get("subscription_tier") or "free")
 
     base_limit = tier_limits.get(tier, tier_limits.get("free", TIER_MATCH_LIMITS["free"]))
-    if tier != "free":
-        return base_limit
+    referral_extra = 0
+    try:
+        referral_extra = max(0, int(welcome_row.get("referral_match_bonus") or 0))
+    except (TypeError, ValueError):
+        referral_extra = 0
 
-    return effective_free_match_limit(
+    if tier != "free":
+        return min(base_limit + referral_extra, 99_999)
+
+    free_limit = effective_free_match_limit(
         tier_config_limit=base_limit,
         welcome_match_bonus=welcome_row.get("welcome_match_bonus"),
         welcome_match_bonus_until=welcome_row.get("welcome_match_bonus_until"),
     )
+    return min(free_limit + referral_extra, 99_999)
 
 
 async def load_user_gating_row(user_id: str, supabase: Client) -> dict[str, Any]:

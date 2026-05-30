@@ -2025,6 +2025,7 @@ export interface EmployerSummary {
   verified: boolean;
 }
 
+// @openapi EmployerMeResponse
 export interface EmployerMe {
   employer: EmployerSummary;
   seats: Array<{
@@ -2058,6 +2059,7 @@ export interface ContactRequestRow {
   candidate_name?: string | null;
 }
 
+// @openapi EmployerSubscriptionResponse
 export interface EmployerSubscription {
   tier: EmployerTier | null;
   status: string;
@@ -2068,6 +2070,7 @@ export interface EmployerSubscription {
   current_period_end?: string | null;
 }
 
+// @openapi EmployerCheckoutResponse
 export interface EmployerCheckout {
   reference: string;
   amount_ngwee: number;

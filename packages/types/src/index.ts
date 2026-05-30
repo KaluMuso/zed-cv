@@ -17,6 +17,8 @@ export interface UserProfile {
   id: string; phone: string; full_name: string | null; email: string | null;
   location: string | null; years_experience: number; skills: string[];
   subscription_tier: SubscriptionTier; created_at: string;
+  education?: Record<string, unknown>[];
+  certifications?: Record<string, unknown>[];
 }
 export interface UserProfileUpdate { full_name?: string; email?: string; location?: string; years_experience?: number; }
 

@@ -5,7 +5,7 @@ import logging
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -156,31 +156,53 @@ def qualify_referral_on_cv_upload(referred_user_id: str, supabase: Any) -> bool:
 
 
 def _grant_referrer_match_bonus(referrer_user_id: str, supabase: Any) -> bool:
-    """Add REFERRAL_QUALIFY_BONUS_MATCHES to referrer subscription quota."""
-    sub_res = (
-        supabase.table("subscriptions")
-        .select("id, matches_limit, matches_used")
-        .eq("user_id", referrer_user_id)
+    """Add REFERRAL_QUALIFY_BONUS_MATCHES to the referrer's effective match quota.
+
+    Paid-tier quota comes from tier_config; subscription.matches_limit was
+    dropped in migration 036. Free-tier welcome bonus uses users.welcome_match_bonus.
+    All tiers also accumulate users.referral_match_bonus (migration 084).
+    """
+    user_res = (
+        supabase.table("users")
+        .select(
+            "id, subscription_tier, welcome_match_bonus, "
+            "welcome_match_bonus_until, referral_match_bonus"
+        )
+        .eq("id", referrer_user_id)
         .limit(1)
         .execute()
     )
-    if not sub_res.data:
+    if not user_res.data:
         return False
 
-    sub = sub_res.data[0]
-    current_limit = int(sub.get("matches_limit") or 0)
-    if current_limit >= UNLIMITED_MATCHES:
-        return True
+    user = user_res.data[0]
+    tier = (user.get("subscription_tier") or "free").lower()
+    referral_bonus = int(user.get("referral_match_bonus") or 0)
+    new_referral_bonus = min(
+        referral_bonus + REFERRAL_QUALIFY_BONUS_MATCHES,
+        UNLIMITED_MATCHES,
+    )
 
-    new_limit = min(current_limit + REFERRAL_QUALIFY_BONUS_MATCHES, UNLIMITED_MATCHES)
-    supabase.table("subscriptions").update({
-        "matches_limit": new_limit,
-    }).eq("id", sub["id"]).execute()
+    update_payload: dict[str, Any] = {"referral_match_bonus": new_referral_bonus}
+
+    if tier == "free":
+        current_welcome = int(user.get("welcome_match_bonus") or 7)
+        update_payload["welcome_match_bonus"] = min(
+            current_welcome + REFERRAL_QUALIFY_BONUS_MATCHES,
+            UNLIMITED_MATCHES,
+        )
+        if not user.get("welcome_match_bonus_until"):
+            update_payload["welcome_match_bonus_until"] = (
+                datetime.now(timezone.utc) + timedelta(days=60)
+            ).isoformat()
+
+    supabase.table("users").update(update_payload).eq("id", referrer_user_id).execute()
     log.info(
-        "referral bonus: referrer=%s matches_limit %s -> %s",
+        "referral bonus: referrer=%s referral_match_bonus %s -> %s tier=%s",
         referrer_user_id,
-        current_limit,
-        new_limit,
+        referral_bonus,
+        new_referral_bonus,
+        tier,
     )
     return True
 

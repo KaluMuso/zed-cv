@@ -29,8 +29,11 @@ python scripts/ci_schema_guard.py --json
 `ci_schema_guard.py` picks a schema source automatically:
 
 - **`SUPABASE_URL` + `SUPABASE_SERVICE_KEY` set** → live mode (queries
-  Supabase). Requires that the project ships a `schema_guard_columns`
-  RPC (one row per `(table_name, column_name)` in the `public` schema).
+  Supabase via the `schema_guard_columns` RPC from migration
+  `083_schema_guard_columns_rpc.sql` — one row per `(table_name,
+  column_name)` in `public`). Add both secrets to GitHub Actions for
+  drift-guards on `master` pushes; without them CI falls back to
+  migrations-only parsing (may miss prod-only gaps).
 - **Otherwise** → derives the schema from `infra/supabase/migrations/`.
   This is the path used for PRs from forks and for local development
   without DB credentials. It handles `CREATE TABLE`, `ALTER TABLE … ADD

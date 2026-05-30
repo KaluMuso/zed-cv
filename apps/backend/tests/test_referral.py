@@ -166,12 +166,13 @@ def qualify_tables(supabase_tables):
             "status": "signed_up",
         },
     ]
-    supabase_tables["subscriptions"] = [
+    supabase_tables["users"] = [
         {
-            "id": "sub-1",
-            "user_id": REFERRER_ID,
-            "matches_limit": 10,
-            "matches_used": 2,
+            "id": REFERRER_ID,
+            "subscription_tier": "starter",
+            "welcome_match_bonus": 7,
+            "welcome_match_bonus_until": None,
+            "referral_match_bonus": 0,
         },
     ]
     return supabase_tables
@@ -184,8 +185,8 @@ def test_qualify_referral_on_cv_upload_grants_bonus(qualify_tables):
     assert event["status"] == "rewarded"
     assert event.get("qualified_at")
     assert event.get("rewarded_at")
-    sub = qualify_tables["subscriptions"][0]
-    assert sub["matches_limit"] == 10 + REFERRAL_QUALIFY_BONUS_MATCHES
+    referrer = qualify_tables["users"][0]
+    assert referrer["referral_match_bonus"] == REFERRAL_QUALIFY_BONUS_MATCHES
 
 
 def test_qualify_referral_no_event_returns_false(supabase_tables):
