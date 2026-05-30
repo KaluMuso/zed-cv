@@ -44,7 +44,7 @@ cd apps/backend && python scripts/production_readiness_audit.py
 - [ ] `DEBUG=false`
 - [ ] `SENTRY_DSN` set
 - [ ] `REDIS_URL` set (recommended)
-- [ ] `VAPID_PRIVATE_KEY` + `VAPID_CLAIMS_EMAIL` set (if push enabled)
+- [ ] `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_CLAIMS_EMAIL` set (if push enabled) — see [docs/WEB_PUSH_VAPID.md](docs/WEB_PUSH_VAPID.md)
 - [ ] Lenco: `LENCO_ENVIRONMENT=production`, `LENCO_VERIFY_SIGNATURES=true`, webhook secret set
 - [ ] WeasyPrint: image includes `libpango` / `libcairo` (post-audit Dockerfile)
 
@@ -53,7 +53,7 @@ cd apps/backend && python scripts/production_readiness_audit.py
 ## Vercel frontend
 
 - [ ] `NEXT_PUBLIC_API_URL` → production API
-- [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY` set (if push enabled)
+- [ ] `NEXT_PUBLIC_VAPID_PUBLIC_KEY` set (must match OCI `VAPID_PUBLIC_KEY`) — [docs/WEB_PUSH_VAPID.md](docs/WEB_PUSH_VAPID.md)
 - [ ] `NEXT_PUBLIC_SENTRY_DSN` set
 - [ ] Lenco **production** public key + widget URL
 - [ ] Deploy **without** build cache after env changes
@@ -71,7 +71,7 @@ cd apps/backend && python scripts/production_readiness_audit.py
 | Lenco | K10 payment → tier activates → refund |
 | CV upload | PDF upload → parse → matches appear |
 | Tailored CV | Pro user → tailor → cached second call |
-| Web push | Subscribe on `/matches` → admin test push |
+| Web push | Subscribe on `/matches` → `POST /admin/push/test` — [docs/WEB_PUSH_VAPID.md](docs/WEB_PUSH_VAPID.md) |
 | Employer consent | Request contact → YES on WhatsApp → employer sees phone |
 | Daily digest | Cron or manual trigger → WhatsApp/email |
 

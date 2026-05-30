@@ -12,7 +12,7 @@ Prioritized from the 2026-05-28 audit. **P0 = launch blocker.**
 - [ ] **Apply Supabase migrations 074–080** on prod (confirm 073 if using bulk-fix)
 - [ ] **OCI:** rebuild & `force-recreate` backend after merging audit fixes
 - [ ] **Vercel:** production deploy with green `npm run build`
-- [ ] **VAPID:** run `scripts/generate_vapid_keys.py`; set OCI + Vercel env
+- [x] **VAPID:** runbook in `docs/WEB_PUSH_VAPID.md`; prod `vapid_configured: true` (verify smoke on Chrome)
 - [ ] **Lenco production smoke** — `docs/lenco_production_smoke_test.md`
 - [ ] **WAHA** session `WORKING` — `POST /admin/waha/bootstrap-session` if needed
 - [ ] **Resend:** verify `vergeo.company`; smoke welcome + OTP email
