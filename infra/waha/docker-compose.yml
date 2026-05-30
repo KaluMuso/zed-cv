@@ -38,9 +38,17 @@ services:
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: ${N8N_USER}
       N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+      N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS: "false"
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_KEY: ${SUPABASE_KEY}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
       FASTAPI_URL: http://backend:8000
+      INGEST_API_KEY: ${INGEST_API_KEY}
+      WAHA_API_URL: http://waha:3000
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_MODEL: google/gemini-2.0-flash-001
+      ADMIN_ALERT_PHONE: "+260761359005"
     volumes: [n8n_data:/home/node/.n8n]
     networks: [zedcv]
 

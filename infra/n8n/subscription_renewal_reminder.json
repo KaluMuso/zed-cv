@@ -1,0 +1,38 @@
+{
+  "name": "ZedApply - Subscription Renewal Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
+        }
+      },
+      "name": "Every Day at 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-renewal-reminders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 120000 }
+      },
+      "name": "Send Renewal Reminder Emails",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "Every Day at 9AM": {
+      "main": [[{ "node": "Send Renewal Reminder Emails", "type": "main", "index": 0 }]]
+    }
+  }
+}

@@ -9,15 +9,6 @@ import { profile } from "@/lib/api";
 const LENCO_SCRIPT =
   process.env.NEXT_PUBLIC_LENCO_SCRIPT_URL ?? "https://pay.sandbox.lenco.co/js/v1/inline.js";
 
-declare global {
-  interface Window {
-    LencoPay?: {
-      getPaid: (opts: Record<string, unknown>) => void;
-    };
-    label?: string;
-  }
-}
-
 function kwacha(ngwee: number) {
   return ngwee / 100;
 }

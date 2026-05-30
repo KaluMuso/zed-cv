@@ -182,6 +182,14 @@ components:
           type: integer
           minimum: 0
           description: Referred users who uploaded a CV and triggered referral rewards.
+        education:
+          type: array
+          items: { type: object, additionalProperties: true }
+          description: Structured education entries from users.education (JSONB).
+        certifications:
+          type: array
+          items: { type: object, additionalProperties: true }
+          description: Professional certifications from users.certifications (JSONB).
 
     CVSections:
       type: object
@@ -3485,6 +3493,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReviewQueueAlertResponse' }
+        '401': { description: Invalid admin or ingest API key }
+
+  /admin/trigger-renewal-reminders:
+    post:
+      operationId: triggerRenewalReminders
+      summary: Cron — send subscription renewal reminder emails
+      description: |
+        Emails paid users whose subscription_renews_at (or subscription_expires_at)
+        falls within the next 3 days. Uses Resend with per-user/day idempotency keys.
+      tags: [Admin Cron]
+      parameters:
+        - { name: ADMIN_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-ADMIN-API-KEY, in: header, required: false, schema: { type: string } }
+        - { name: INGEST_API_KEY, in: header, required: false, schema: { type: string } }
+        - { name: X-INGEST-API-KEY, in: header, required: false, schema: { type: string } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DailyDigestSendResponse' }
         '401': { description: Invalid admin or ingest API key }
 
   /admin/trigger-daily-digest-email:

@@ -81,7 +81,7 @@ export async function subscribeToWebPush(token: string): Promise<boolean> {
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublic),
+      applicationServerKey: urlBase64ToUint8Array(vapidPublic) as BufferSource,
     });
   }
 

@@ -43,14 +43,19 @@ class TestDigestCronEndpoints:
         with patch(
             "app.api.v1.admin_ingest.run_email_daily_digest",
             new_callable=AsyncMock,
-            return_value={"sent": 2, "skipped": 1, "failed": 0},
+            return_value={"sent": 2, "skipped": 1, "failed": 0, "quiet_hours_skipped": 0},
         ):
             resp = client.post(
                 "/api/v1/admin/trigger-daily-digest-email",
                 headers=INGEST_HEADERS,
             )
         assert resp.status_code == 200
-        assert resp.json() == {"sent": 2, "skipped": 1, "failed": 0}
+        assert resp.json() == {
+            "sent": 2,
+            "skipped": 1,
+            "failed": 0,
+            "quiet_hours_skipped": 0,
+        }
 
     @pytest.mark.asyncio
     async def test_whatsapp_digest_endpoint(self, client):

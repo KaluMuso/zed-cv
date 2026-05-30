@@ -19,6 +19,7 @@ from app.services.daily_digest import (
     run_email_daily_digest,
     run_whatsapp_daily_digest,
 )
+from app.services.renewal_reminder import run_renewal_reminder_emails
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,23 @@ async def trigger_daily_digest_whatsapp(
         settings, admin_api_key, x_admin_api_key, ingest_api_key, x_ingest_api_key
     )
     stats = await run_whatsapp_daily_digest(supabase)
+    return DailyDigestSendResponse(**stats)
+
+
+@router.post("/trigger-renewal-reminders", response_model=DailyDigestSendResponse)
+async def trigger_renewal_reminders(
+    admin_api_key: str | None = Header(None, alias="ADMIN_API_KEY"),
+    x_admin_api_key: str | None = Header(None, alias="X-ADMIN-API-KEY"),
+    ingest_api_key: str | None = Header(None, alias="INGEST_API_KEY"),
+    x_ingest_api_key: str | None = Header(None, alias="X-INGEST-API-KEY"),
+    supabase=Depends(get_supabase),
+    settings: Settings = Depends(get_settings),
+):
+    """Daily cron: email paid users whose plan renews within the next 3 days."""
+    _require_cron_auth(
+        settings, admin_api_key, x_admin_api_key, ingest_api_key, x_ingest_api_key
+    )
+    stats = await run_renewal_reminder_emails(supabase)
     return DailyDigestSendResponse(**stats)
 
 

@@ -60,6 +60,7 @@ export function draftToPreviewDraft(draft: ManualCvDraft) {
       location: e.location,
       startDate: e.startDate,
       endDate: e.endDate,
+      gpa: e.gpa ?? "",
     })),
     skills: draft.skills,
     style: {

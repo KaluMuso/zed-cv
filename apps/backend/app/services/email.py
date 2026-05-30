@@ -9,6 +9,7 @@ Daily digests prefer a published Resend template (`resend_daily_digest_template_
 with variables USER_NAME, MATCH_COUNT, MATCHES_HTML, APP_URL.
 """
 import logging
+from datetime import datetime
 from html import escape
 from pathlib import Path
 from typing import Any, Optional
@@ -154,6 +155,40 @@ async def send_welcome_email(
     logger.info("welcome email sent user_id=%s to=%s", user_id, email)
     supabase = get_supabase()
     supabase.table("users").update({"welcome_email_sent": True}).eq("id", user_id).execute()
+
+
+async def send_renewal_reminder_email(
+    user_id: str,
+    email: str,
+    display_name: str,
+    tier_label: str,
+    renew_at: datetime,
+) -> bool:
+    """Remind a paid user their ZedApply plan renews soon."""
+    if not email:
+        return False
+    settings = get_settings()
+    first = (display_name or "").split()[0] if (display_name or "").strip() else "there"
+    renew_str = renew_at.strftime("%d %B %Y") if isinstance(renew_at, datetime) else str(renew_at)
+    pricing_url = f"{settings.app_url.rstrip('/')}/pricing"
+    subject = f"Your {tier_label} plan renews on {renew_str}"
+    html = (
+        f"<p>Hi {escape(first)},</p>"
+        f"<p>Your <strong>{escape(tier_label)}</strong> subscription on ZedApply "
+        f"is scheduled to renew on <strong>{escape(renew_str)}</strong>.</p>"
+        f"<p>No action is needed if you want to continue — your plan will renew automatically "
+        f"via your saved payment method.</p>"
+        f'<p><a href="{escape(pricing_url, quote=True)}">Manage your plan</a> in Settings if you '
+        f"need to update billing.</p>"
+        f"<p>— The ZedApply team</p>"
+    )
+    renew_date = renew_at.date().isoformat() if isinstance(renew_at, datetime) else str(renew_at)[:10]
+    return _send(
+        email,
+        subject,
+        html,
+        idempotency_key=f"renewal-reminder/{user_id}/{renew_date}",
+    )
 
 
 def _digest_upcoming_html(upcoming: list[dict[str, Any]]) -> str:
