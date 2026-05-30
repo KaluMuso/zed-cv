@@ -225,6 +225,7 @@ because each item has caught a real bug.
 - `docs/openapi.yaml` — API contract; this is canon for both sides
 - `docs/CODE_REVIEW_PROMPT.md` — what a code review on this repo checks for
 - `DEPLOY.md` — deploy steps for backend (OCI) and frontend (Vercel)
+- `docs/WEB_PUSH_VAPID.md` — VAPID keygen, OCI/Vercel env, push smoke test
 - `infra/supabase/migrations/` — every schema change, in order
 - `infra/n8n/` — n8n workflow JSON exports (scraper, heartbeat)
 - `~/n8n-docker/` on the OCI server — the docker-compose for backend + WAHA + n8n in prod
