@@ -411,12 +411,20 @@ Do **not** run `python3 scripts/...` on the Ubuntu host unless you have a venv w
 # Audit (full)
 docker exec zedcv-backend python scripts/production_readiness_audit.py
 
-# Backfills — dry-run first, then --apply where supported
-docker exec zedcv-backend python scripts/backfill_apply_urls_v2.py --dry-run
+# apply_url backfill — dry-run is the DEFAULT (no --dry-run flag; do not pass it)
+docker exec zedcv-backend python scripts/backfill_apply_urls_v2.py
+# docker exec zedcv-backend python scripts/backfill_apply_urls_v2.py --apply
+
+# Job quality — explicit --dry-run / --apply (review counts before --apply!)
 docker exec zedcv-backend python scripts/backfill_job_quality.py --dry-run
-docker exec zedcv-backend python scripts/backfill_job_enrichment.py --dry-run
-# docker exec -it zedcv-backend python scripts/backfill_apply_urls_v2.py --apply
+# docker exec zedcv-backend python scripts/backfill_job_quality.py --apply
+
+# LLM enrichment — dry-run is the DEFAULT
+docker exec zedcv-backend python scripts/backfill_job_enrichment.py
+# docker exec zedcv-backend python scripts/backfill_job_enrichment.py --apply
 ```
+
+**Warning:** `backfill_job_quality --apply` can deactivate hundreds of `is_active` jobs (missing `source_url`, aggregator URLs, thin LinkedIn stubs). Treat a dry-run that says `Would deactivate: N` as a human review step — do not `--apply` until product agrees with the count.
 
 #### 5. WAHA recovery when `"waha": false`
 
@@ -444,9 +452,10 @@ ssh ubuntu@YOUR_OCI_PUBLIC_IP
 
 # Record current SHA before deploy (for rollback target)
 cd ~/zedcv && git rev-parse HEAD
+# Example previous SHA: 92c24b2e54700531c38d5f6cc5e84bbf527890d7
 
-# Roll back source to previous known-good commit
-cd ~/zedcv && git fetch origin master && git checkout <previous-sha>
+# Roll back source to previous known-good commit (replace with real SHA, not angle brackets)
+cd ~/zedcv && git fetch origin master && git checkout 92c24b2e54700531c38d5f6cc5e84bbf527890d7
 
 # Rebuild + recreate on the old code
 cd ~/n8n-docker
