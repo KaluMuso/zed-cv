@@ -96,7 +96,7 @@ Transactional email (OTP, match digests, contact form) goes through [Resend](htt
 
 ```bash
 RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=Zed CV <info@vergeo.company>
+RESEND_FROM_EMAIL="Zed CV <info@vergeo.company>"
 ```
 
 **Verify:** `curl -s -H "X-Admin-Key: $ADMIN_API_KEY" https://api.zedcv.com/api/v1/admin/email-health | jq .domain_verified` → `true`
@@ -345,6 +345,36 @@ docker compose up -d --force-recreate zedcv-backend
 ```
 
 Then re-run the sanity checks above before running the backfill dry-run.
+
+**If `docker compose up` fails with `key cannot contain a space` on `.env` line N**, quote
+values that contain spaces (common culprit: `RESEND_FROM_EMAIL`):
+
+```bash
+# Wrong — docker compose env_file parser rejects unquoted spaces
+RESEND_FROM_EMAIL=Zed CV <info@vergeo.company>
+
+# Correct
+RESEND_FROM_EMAIL="Zed CV <info@vergeo.company>"
+```
+
+**If `git pull` aborts on local Dockerfile/requirements.txt changes**, either stash or
+discard before rebuilding (the image is built from `~/zedcv/apps/backend` on disk):
+
+```bash
+cd ~/zedcv
+git diff apps/backend/Dockerfile apps/backend/requirements.txt
+git checkout -- apps/backend/Dockerfile apps/backend/requirements.txt   # discard local edits
+git pull origin master
+grep trigger-renewal-reminders apps/backend/app/api/v1/admin_ingest.py  # must match
+```
+
+Wave 1 renewal cron sanity check:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  https://api.zedapply.com/api/v1/admin/trigger-renewal-reminders
+# 401 = route exists (good). 404 = still on pre-#174 image — pull + rebuild again.
+```
 
 ---
 
