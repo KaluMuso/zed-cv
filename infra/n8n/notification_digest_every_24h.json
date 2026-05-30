@@ -1,29 +1,57 @@
 {
-  "name": "Zed CV - Notification Digest Every 24h",
+  "name": "ZedApply — Notification Digest (Every 24h)",
+  "meta": {
+    "description": "Legacy tier-based digest via POST /api/v1/matches/send-notifications. KEEP DISABLED when Daily Digest dual-channel is active — duplicates WhatsApp/email.",
+    "n8nWorkflowId": "MW5KETbBdrAOk04y",
+    "recommendedActive": false,
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"]
+  },
+  "settings": { "executionOrder": "v1" },
   "nodes": [
     {
-      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] } },
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 23, "triggerAtMinute": 59 }]
+        }
+      },
       "name": "Every 24 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [250, 300]
+      "typeVersion": 1.3,
+      "position": [240, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"]\n  }\n}];"
+      },
+      "name": "ENV script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [464, 160]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/matches/send-notifications",
+        "url": "={{ $json.fastapiUrl }}/api/v1/matches/send-notifications",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
-        }
+          "parameters": [
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" }
+          ]
+        },
+        "options": { "timeout": 120000 }
       },
-      "name": "Send Due Digests",
+      "name": "POST send-notifications",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 300]
+      "typeVersion": 4.4,
+      "position": [688, 160]
     }
   ],
   "connections": {
-    "Every 24 Hours": { "main": [[{ "node": "Send Due Digests", "type": "main", "index": 0 }]] }
+    "Every 24 Hours": {
+      "main": [[{ "node": "ENV script", "type": "main", "index": 0 }]]
+    },
+    "ENV script": {
+      "main": [[{ "node": "POST send-notifications", "type": "main", "index": 0 }]]
+    }
   }
 }

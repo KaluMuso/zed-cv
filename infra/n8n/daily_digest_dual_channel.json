@@ -1,5 +1,11 @@
 {
-  "name": "Zed CV - Daily Digest (Email + WhatsApp)",
+  "name": "ZedApply - Daily Digest (Email + WhatsApp)",
+  "meta": {
+    "description": "Canonical scheduled digest at 07:00 CAT. Calls admin trigger-daily-digest-email and trigger-daily-digest-whatsapp.",
+    "n8nWorkflowId": "j6U2CDRZi0FI5G32",
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"]
+  },
+  "settings": { "executionOrder": "v1" },
   "nodes": [
     {
       "parameters": {
@@ -9,48 +15,56 @@
       },
       "name": "Every Day at 7AM",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [250, 300]
+      "typeVersion": 1.3,
+      "position": [-560, 32]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"]\n  }\n}];"
+      },
+      "name": "ENV script",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-336, 32]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-daily-digest-email",
+        "url": "={{ $json.fastapiUrl }}/api/v1/admin/trigger-daily-digest-email",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
-          ]
+          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" }]
         }
       },
       "name": "Send Email Digests",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 220]
+      "typeVersion": 4.4,
+      "position": [-112, -64]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-daily-digest-whatsapp",
+        "url": "={{ $json.fastapiUrl }}/api/v1/admin/trigger-daily-digest-whatsapp",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
-          ]
+          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" }]
         }
       },
       "name": "Send WhatsApp Digests",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 380]
+      "typeVersion": 4.4,
+      "position": [-112, 128]
     }
   ],
   "connections": {
     "Every Day at 7AM": {
+      "main": [[{ "node": "ENV script", "type": "main", "index": 0 }]]
+    },
+    "ENV script": {
       "main": [
         [
-          { "node": "Send Email Digests", "type": "main", "index": 0 },
-          { "node": "Send WhatsApp Digests", "type": "main", "index": 0 }
+          { "node": "Send WhatsApp Digests", "type": "main", "index": 0 },
+          { "node": "Send Email Digests", "type": "main", "index": 0 }
         ]
       ]
     }

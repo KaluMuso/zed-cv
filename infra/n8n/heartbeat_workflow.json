@@ -1,5 +1,10 @@
 {
   "name": "ZedApply - Supabase Heartbeat",
+  "meta": {
+    "description": "Pings Supabase RPC heartbeat + FastAPI health every 6h to prevent free-tier pause.",
+    "n8nWorkflowId": "qA4Zi46MAWx3gTTL",
+    "requiredEnv": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "FASTAPI_URL"]
+  },
   "nodes": [
     {
       "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] } },
