@@ -412,10 +412,11 @@ Do **not** run `python3 scripts/...` on the Ubuntu host unless you have a venv w
 docker exec zedcv-backend python scripts/production_readiness_audit.py
 
 # Backfills — dry-run first, then --apply where supported
-docker exec zedcv-backend python scripts/backfill_apply_urls_v2.py --dry-run
+# Apply URL v2: default is dry-run (no flag). Full runbook: docs/APPLY_URL_BACKFILL_V2_RUNBOOK.md
+docker exec -it zedcv-backend python scripts/backfill_apply_urls_v2.py
+# docker exec -it zedcv-backend python scripts/backfill_apply_urls_v2.py --apply
 docker exec zedcv-backend python scripts/backfill_job_quality.py --dry-run
 docker exec zedcv-backend python scripts/backfill_job_enrichment.py --dry-run
-# docker exec -it zedcv-backend python scripts/backfill_apply_urls_v2.py --apply
 ```
 
 #### 5. WAHA recovery when `"waha": false`
