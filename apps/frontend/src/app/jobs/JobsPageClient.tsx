@@ -345,11 +345,10 @@ export default function JobsPageClient() {
       {/* Filter bar */}
       {/* Filter bar — search is debounced (300ms); no submit button. */}
       <div
-        className="sticky top-[65px] z-30 -mx-6 px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center dark:bg-background/90 dark:border-border"
+        className="sticky top-[65px] z-30 -mx-6 px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center border-b border-border"
         style={{
-          background: "rgba(250,247,242,0.9)",
+          background: "color-mix(in srgb, var(--bg) 92%, transparent)",
           backdropFilter: "blur(12px)",
-          borderBottom: "1px solid var(--line)",
         }}
       >
         <div className="relative flex-1">

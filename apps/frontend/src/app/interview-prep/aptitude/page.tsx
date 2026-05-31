@@ -211,7 +211,7 @@ function AptitudeContent() {
             className="h-full transition-all"
             style={{
               width: `${result.percentile}%`,
-              background: "var(--green-600)",
+              background: "var(--green-500)",
             }}
           />
         </div>
@@ -288,7 +288,7 @@ function AptitudeContent() {
       >
         <div
           className="h-full"
-          style={{ width: `${progress}%`, background: "var(--green-600)" }}
+          style={{ width: `${progress}%`, background: "var(--green-500)" }}
         />
       </div>
 
@@ -303,11 +303,11 @@ function AptitudeContent() {
               <button
                 key={opt.value}
                 type="button"
-                className="w-full text-left rounded-lg border px-4 py-3 text-sm hover:border-[var(--green-600)]"
+                className="w-full text-left rounded-lg border px-4 py-3 text-sm hover:border-[var(--green-500)]"
                 style={{
                   borderColor:
                     session.answers[current.id] === opt.value
-                      ? "var(--green-600)"
+                      ? "var(--green-500)"
                       : "var(--line)",
                 }}
                 onClick={() => selectOption(opt.value)}

@@ -114,7 +114,7 @@ export function TailoredCvBuilder() {
           className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border px-4 py-3 text-sm"
           style={{ borderColor: "var(--line)", background: "var(--green-50)" }}
         >
-          <span style={{ color: "var(--green-800)" }}>
+          <span style={{ color: "var(--green-700)" }}>
             Loaded from your uploaded CV. Edit any section — the preview updates live.
           </span>
           <button type="button" className="btn btn-ghost btn-sm shrink-0" onClick={resetDraft}>

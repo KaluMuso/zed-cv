@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import "./globals.css";
 
 export default function GlobalError({
   error,
@@ -38,7 +39,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body>
+      <body className="bg-background text-foreground antialiased">
         <main
           className="max-w-[640px] mx-auto px-5 sm:px-6 py-16 sm:py-24 text-center"
           role="alert"

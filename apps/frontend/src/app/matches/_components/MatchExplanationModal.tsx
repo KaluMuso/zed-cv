@@ -128,13 +128,13 @@ export function MatchExplanationModal({
                   <div
                     className="p-4 rounded-lg"
                     style={{
-                      background: "#FEF3C7",
-                      border: "1px solid #F59E0B",
+                      background: "var(--copper-100)",
+                      border: "1px solid color-mix(in srgb, var(--copper-500) 45%, var(--line))",
                     }}
                   >
                     <div
                       className="text-[10px] font-bold uppercase tracking-wider mb-2"
-                      style={{ color: "#B45309" }}
+                      style={{ color: "var(--copper-600)" }}
                     >
                       Skill gap
                     </div>

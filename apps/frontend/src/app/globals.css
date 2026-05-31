@@ -111,6 +111,8 @@
   --border: 60 14% 88%;
   --input: 60 14% 88%;
   --ring: 154 73% 21%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
   --radius: 10px;
 }
 
@@ -129,12 +131,17 @@
   --muted: #94a3b8;
   --muted-2: #64748b;
 
+  --green-800: #a9e2c5;
   --green-700: #4ade80;
+  --green-600: #4ade80;
   --green-500: #4ade80;
   --green-400: #6ee7a3;
   --green-100: #1c3527;
   --green-50: #122418;
 
+  --copper-link: #fbbf24;
+  --copper-700: #fde68a;
+  --copper-600: #fbbf24;
   --copper-500: #fbbf24;
   --copper-300: #fde68a;
   --copper-100: #3a2716;
@@ -154,6 +161,8 @@
   --border: 215 28% 17%;
   --input: 215 28% 17%;
   --ring: 142 69% 58%;
+  --popover: 120 4% 10%;
+  --popover-foreground: 210 40% 98%;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px -4px rgba(0, 0, 0, 0.5);
@@ -802,6 +811,11 @@ a.link-copper,
 a.link-copper:hover,
 .link-copper:hover {
   color: var(--copper-700);
+}
+
+.dark a.link-copper:hover,
+.dark .link-copper:hover {
+  color: var(--copper-300);
 }
 
 /* Defer layout for below-the-fold sections */
