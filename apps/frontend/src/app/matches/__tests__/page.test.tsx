@@ -72,10 +72,21 @@ function withHandlers(opts: {
   server.use(
     http.get(`${API}/users/me/saved-jobs`, () => HttpResponse.json({ jobs: [] })),
     http.get(`${API}/matches`, () =>
-      HttpResponse.json({ matches, remaining_quota: 10 })
+      HttpResponse.json({
+        matches,
+        remaining_quota: 45,
+        matches_used: 5,
+        matches_limit: 50,
+        matches_unlimited: false,
+      })
     ),
     http.get(`${API}/subscription`, () =>
-      HttpResponse.json({ tier: "starter", matches_used: 5, matches_limit: 50 })
+      HttpResponse.json({
+        tier: "starter",
+        matches_used: 5,
+        matches_limit: 50,
+        matches_unlimited: false,
+      })
     ),
     http.get(`${API}/preferences`, () =>
       HttpResponse.json({
@@ -121,9 +132,13 @@ function withHandlers(opts: {
       return HttpResponse.json(
         {
           matches,
-          remaining_quota: 10,
+          remaining_quota: 45,
+          matches_used: 5,
+          matches_limit: 50,
+          matches_unlimited: false,
           from_cache: true,
           last_batch_run_at: "2026-05-22T10:00:00Z",
+          refresh_computing: false,
         },
         { status: triggerStatus }
       );
@@ -141,6 +156,15 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+});
+
+describe("Quota card", () => {
+  it("shows starter used/limit from API", async () => {
+    withHandlers({ matches: [MATCH_OBJ] });
+    renderWithProviders(<MatchesPageClient />);
+    expect(await screen.findByText("5", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.getByText("/ 50")).toBeInTheDocument();
+  });
 });
 
 describe("Refresh button", () => {

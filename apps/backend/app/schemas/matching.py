@@ -190,8 +190,22 @@ class MatchResult(BaseModel):
 class MatchList(BaseModel):
     matches: list[MatchResult]
     remaining_quota: int
-    credited_count: int = 0
-    matches_limit: int = 10
+    matches_used: int = Field(
+        0,
+        description="Unique jobs credited this billing period (same as credited_count).",
+    )
+    credited_count: int = Field(
+        0,
+        description="Alias of matches_used for older clients.",
+    )
+    matches_limit: int = Field(
+        10,
+        description="Monthly delivery cap from tier_config; 99999 = unlimited.",
+    )
+    matches_unlimited: bool = Field(
+        False,
+        description="True when matches_limit uses the unlimited sentinel (99999).",
+    )
     last_batch_run_at: datetime | None = None
     from_cache: bool = False
 
@@ -200,6 +214,13 @@ class MatchRefreshResponse(MatchList):
     """POST /matches/refresh — cached nightly batch or onboarding fallback."""
 
     message: str | None = None
+    refresh_computing: bool = Field(
+        False,
+        description=(
+            "True when the server is still running first-time on-demand matching; "
+            "clients may show a progress affordance until the next refresh."
+        ),
+    )
 
 
 class BatchMatchAcceptedResponse(BaseModel):

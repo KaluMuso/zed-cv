@@ -170,6 +170,9 @@ class TestRefreshEndpoint:
         assert body["from_cache"] is True
         assert body["last_batch_run_at"] is not None
         assert len(body["matches"]) == 1
+        assert "matches_used" in body
+        assert "matches_unlimited" in body
+        assert body.get("refresh_computing") is False
         mock_on_demand.assert_not_called()
         mock_fetch.assert_called_once()
 

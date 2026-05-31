@@ -1523,8 +1523,10 @@ export const analytics = {
 export interface MatchListResponse {
   matches: MatchData[];
   remaining_quota: number;
+  matches_used?: number;
   credited_count?: number;
   matches_limit?: number;
+  matches_unlimited?: boolean;
   last_batch_run_at?: string | null;
   from_cache?: boolean;
 }
@@ -1532,6 +1534,8 @@ export interface MatchListResponse {
 /** POST /matches/refresh — MatchList plus optional onboarding message. */
 export interface MatchRefreshResponse extends MatchListResponse {
   message?: string | null;
+  /** True during first-time on-demand matching — show progress until next refresh. */
+  refresh_computing?: boolean;
 }
 
 export const matches = {
@@ -1577,6 +1581,7 @@ export interface Subscription {
   tier: string;
   matches_used: number;
   matches_limit: number;
+  matches_unlimited?: boolean;
   active: boolean;
   expires_at: string | null;
   welcome_match_bonus?: number | null;

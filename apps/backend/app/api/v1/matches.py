@@ -41,6 +41,7 @@ from app.services.matching import (
     get_user_tier_limit,
     fetch_jobs_by_ids,
 )
+from app.services.match_quota import build_match_quota_snapshot
 from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
@@ -51,6 +52,11 @@ from app.services.notifications import notify_high_match_web_pushes
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/matches", tags=["Matching"])
+
+# RPC match_jobs_for_user (migration 060) stores rows with score >= 35.
+# List/refresh endpoints default min_score=50 for user-facing feeds.
+_MATCH_RPC_STORE_FLOOR = 35
+_MATCH_API_DISPLAY_MIN_SCORE = 50
 
 _AUTO_MATCH_CADENCE_HOURS: dict[str, int | None] = {
     "free": None,
@@ -166,19 +172,15 @@ async def _build_match_list_response(
     from_cache: bool = False,
     limit: int = 50,
 ) -> MatchList:
-    _, remaining = await check_match_quota(user_id, supabase)
-    _, matches_limit, _ = await get_user_tier_limit(user_id, supabase)
-    credited_count = await get_credited_match_count(user_id, supabase)
+    quota = await build_match_quota_snapshot(user_id, supabase)
     preferences = await _load_user_preferences(user_id, supabase)
     matches = _rows_to_match_results(list(stored_rows), preferences)
     parsed_batch_at = _parse_dt(last_batch_run_at)
     return MatchList(
         matches=matches[:limit],
-        remaining_quota=remaining,
-        credited_count=credited_count,
-        matches_limit=matches_limit,
         last_batch_run_at=parsed_batch_at,
         from_cache=from_cache,
+        **quota,
     )
 
 
@@ -276,9 +278,7 @@ async def get_matches(
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
 ):
-    _, remaining = await check_match_quota(user_id, supabase)
-    _, matches_limit, _ = await get_user_tier_limit(user_id, supabase)
-    credited_count = await get_credited_match_count(user_id, supabase)
+    quota = await build_match_quota_snapshot(user_id, supabase)
     # Pull a wider candidate set than `limit` so the preferences-aware
     # re-rank below can actually move things around. Without this, a
     # 10-row LIMIT means re-ranking can only shuffle within 10 rows,
@@ -305,12 +305,7 @@ async def get_matches(
                 continue
             filtered.append(m)
         matches = filtered
-    return MatchList(
-        matches=matches[:limit],
-        remaining_quota=remaining,
-        credited_count=credited_count,
-        matches_limit=matches_limit,
-    )
+    return MatchList(matches=matches[:limit], **quota)
 
 
 class MatchTailorCvResponse(BaseModel):
@@ -485,9 +480,7 @@ async def get_matches_for_user(
         is_superadmin=is_superadmin(current_user),
     )
 
-    _, remaining = await check_match_quota(user_id, supabase)
-    _, matches_limit, _ = await get_user_tier_limit(user_id, supabase)
-    credited_count = await get_credited_match_count(user_id, supabase)
+    quota = await build_match_quota_snapshot(user_id, supabase)
 
     try:
         rpc_rows = await run_matching_for_user(
@@ -586,12 +579,7 @@ async def get_matches_for_user(
             view_count,
             supabase,
         )
-    return MatchList(
-        matches=delivered,
-        remaining_quota=remaining,
-        credited_count=credited_count,
-        matches_limit=matches_limit,
-    )
+    return MatchList(matches=delivered, **quota)
 
 
 @router.post("/refresh", response_model=MatchRefreshResponse)
@@ -621,7 +609,11 @@ async def refresh_matches(
             from_cache=True,
             limit=limit,
         )
-        return MatchRefreshResponse(**body.model_dump(), message=None)
+        return MatchRefreshResponse(
+            **body.model_dump(),
+            message=None,
+            refresh_computing=False,
+        )
 
     cv_id = await _primary_cv_id(user_id, supabase)
     if not cv_id:
@@ -657,6 +649,7 @@ async def refresh_matches(
     return MatchRefreshResponse(
         **body.model_dump(),
         message="Your first matches are computing — check back in a moment.",
+        refresh_computing=True,
     )
 
 

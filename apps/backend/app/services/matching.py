@@ -143,6 +143,7 @@ def normalize_rpc_match_row(row: dict[str, Any]) -> dict[str, Any]:
         location_score=location,
         recency_score=recency,
         matched_skills=matched,
+        missing_skills=missing,
     )
     return {
         "job_id": row["job_id"],
@@ -164,7 +165,11 @@ def normalize_rpc_match_row(row: dict[str, Any]) -> dict[str, Any]:
 async def run_matching_for_user(
     user_id: str, supabase: Client, limit: int = 50, min_score: float = 50.0
 ) -> list[dict]:
-    """Execute hybrid matching via the match_jobs_for_user() RPC function."""
+    """Execute hybrid matching via the match_jobs_for_user() RPC function.
+
+    The RPC hard-floors stored rows at score 35 (migration 060). Callers pass
+    min_score (default 50 on HTTP routes) to filter what users see in feeds.
+    """
     try:
         result = supabase.rpc(
             "match_jobs_for_user",

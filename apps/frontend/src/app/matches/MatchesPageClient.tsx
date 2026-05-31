@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { RefreshCountdownRing } from "@/components/RefreshCountdownRing";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { formatMatchRelativeTime } from "@/lib/formatMatchRelativeTime";
 import { isJobExpired } from "@/lib/isJobExpired";
@@ -34,8 +33,8 @@ import { MatchExplanationModal } from "./_components/MatchExplanationModal";
 import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
 import { CoverLetterMatchModal } from "@/components/matches/CoverLetterMatchModal";
 import { canTailorCvForMatch, canUseCoverLetterEditor } from "@/lib/tier-gating";
-import { CountdownRing } from "@/components/CountdownRing";
 import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
+import { resolveMatchQuotaDisplay } from "@/lib/matchQuota";
 import { isJobPastClosing } from "@/lib/isJobPastClosing";
 import { isJobHiddenFromUserFeed } from "@/lib/isJobHiddenFromUserFeed";
 import { isJobListingClosed } from "@/lib/isJobListingClosed";
@@ -46,10 +45,7 @@ import { PushPermissionPrompt } from "@/components/notifications/PushPermissionP
 // Human-friendly tier label. Free → "Free", super_standard → "Super",
 // etc. Falls back to the raw key if we don't recognize it so we don't
 // hide unknown tiers entirely.
-const MATCHES_CACHE_KEY = "zedapply_matches_cache_v1";
-/** Seconds for refresh countdown ring when API omits estimated_seconds. */
-const DEFAULT_REFRESH_COUNTDOWN_SECONDS = 30;
-const REFRESH_MAX_WAIT_MS = 30_000;
+const MATCHES_CACHE_KEY = "zedapply_matches_cache_v2";
 
 function formatLastBatchRun(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -92,20 +88,8 @@ export default function MatchesPageClient() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshCooldown, setRefreshCooldown] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(() => new Set());
-  /** UI while POST /matches/trigger + optional wait + refetch */
-  const [refreshRing, setRefreshRing] = useState<{
-    phase: "countdown" | "working";
-    total: number;
-    secondsLeft: number;
-  } | null>(null);
-  const refreshTimersRef = useRef<{
-    tick?: ReturnType<typeof setInterval>;
-    watchdog?: ReturnType<typeof setTimeout>;
-  }>({});
   const [autoTriggering, setAutoTriggering] = useState(false);
   const autoTriggeredRef = useRef(false);
-  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const refreshStartedAtRef = useRef<number | null>(null);
   const deepLinkHandledRef = useRef(false);
 
   const loadMatches = useCallback(async (authToken: string, includeClosed = false) => {
@@ -165,30 +149,23 @@ export default function MatchesPageClient() {
     }
   }, [searchParams, data?.matches, router]);
 
-  useEffect(
-    () => () => {
-      if (refreshTimersRef.current.tick) {
-        clearInterval(refreshTimersRef.current.tick);
-      }
-      if (refreshTimersRef.current.watchdog) {
-        clearTimeout(refreshTimersRef.current.watchdog);
-      }
-    },
-    [],
-  );
-
   const handleRefreshMatches = useCallback(async () => {
     if (!token || refreshing || refreshCooldown) return;
     const preIds = new Set((data?.matches ?? []).map((m) => m.id));
 
     setRefreshing(true);
-    setRefreshRing(null);
     try {
       const refreshed = await matchesApi.refresh(token);
       setData(refreshed);
+      setAutoTriggering(Boolean(refreshed.refresh_computing));
       const next = refreshed.matches ?? [];
       const newOnes = next.filter((m) => !preIds.has(m.id));
-      if (refreshed.message) {
+      if (refreshed.refresh_computing) {
+        notify.custom.message(
+          refreshed.message ??
+            "Your first matches are computing — check back in a moment.",
+        );
+      } else if (refreshed.message) {
         notify.custom.message(refreshed.message);
       } else if (newOnes.length > 0) {
         notify.custom.success(`${newOnes.length} new matches scored.`);
@@ -262,7 +239,7 @@ export default function MatchesPageClient() {
             setAutoTriggering(true);
             const refreshed = await matchesApi.refresh(token);
             setData(refreshed);
-            setAutoTriggering(false);
+            setAutoTriggering(Boolean(refreshed.refresh_computing));
           }
         } catch {
           setAutoTriggering(false);
@@ -430,21 +407,16 @@ export default function MatchesPageClient() {
     );
   }
 
-  // Real quota from /subscription (sub.matches_limit). Falls back to the
-  // sum used+remaining if subscription failed to load — gives a coherent
-  // bar even in the degraded case. The historical hard-coded "25" was
-  // wrong for every tier except Starter.
-  const matchesUsed =
-    data.credited_count ?? sub?.matches_used ?? Math.max(0, 25 - data.remaining_quota);
-  const matchesLimit =
-    (data.matches_limit ?? sub?.matches_limit ?? (matchesUsed + data.remaining_quota)) || 25;
-  const usagePct = matchesLimit > 0 ? Math.min(100, (matchesUsed / matchesLimit) * 100) : 0;
+  const {
+    matchesUsed,
+    unlimited: quotaUnlimited,
+    limitLabel: quotaLimitLabel,
+    usagePct,
+  } = resolveMatchQuotaDisplay(data, sub);
   const tierLabel = TIER_LABELS[sub?.tier ?? ""] ?? (sub?.tier ?? "Starter");
 
-  const refreshCountdown =
-    refreshing && refreshRing?.phase === "countdown" ? refreshRing.secondsLeft : null;
-  const refreshCountdownTotal =
-    refreshRing?.total ?? DEFAULT_REFRESH_COUNTDOWN_SECONDS;
+  const showRefreshProgress =
+    refreshing || Boolean(data?.refresh_computing) || autoTriggering;
   const lastBatchLabel = formatLastBatchRun(data?.last_batch_run_at);
   const refreshTitle =
     data?.message ??
@@ -495,13 +467,23 @@ export default function MatchesPageClient() {
               <div className="eyebrow">This month</div>
               <div className="mt-2 font-display text-4xl leading-none">
                 {matchesUsed}
-                <span
-                  className="text-2xl"
-                  style={{ color: "var(--muted)" }}
-                >
-                  {" "}
-                  / {matchesLimit}
-                </span>
+                {!quotaUnlimited && (
+                  <span
+                    className="text-2xl"
+                    style={{ color: "var(--muted)" }}
+                  >
+                    {" "}
+                    / {quotaLimitLabel}
+                  </span>
+                )}
+                {quotaUnlimited && (
+                  <span
+                    className="text-lg ml-2"
+                    style={{ color: "var(--muted)" }}
+                  >
+                    · Unlimited
+                  </span>
+                )}
               </div>
               <div
                 className="text-xs mt-1"
@@ -670,59 +652,36 @@ export default function MatchesPageClient() {
               {l}
             </button>
           ))}
-          {refreshRing && (
-            <div
-              className="flex flex-col items-center gap-1 px-1"
-              aria-live="polite"
-            >
-              <CountdownRing
-                phase={refreshRing.phase}
-                total={refreshRing.total}
-                secondsLeft={refreshRing.secondsLeft}
-              />
-              <span
-                className="text-[11px] font-mono text-center leading-tight"
-                style={{ color: "var(--muted)", maxWidth: 100 }}
-              >
-                {refreshRing.phase === "working"
-                  ? "Still working…"
-                  : `~${refreshRing.secondsLeft}s remaining`}
-              </span>
-            </div>
-          )}
           <button
             onClick={handleRefreshMatches}
-            disabled={refreshing || refreshCooldown}
+            disabled={showRefreshProgress || refreshCooldown}
             title={refreshTitle}
             className="btn btn-sm flex items-center gap-2"
             style={{
               background: "var(--green-700)",
               color: "#faf7f2",
-              opacity: refreshing || refreshCooldown ? 0.6 : 1,
-              cursor: refreshing || refreshCooldown ? "not-allowed" : "pointer",
+              opacity: showRefreshProgress || refreshCooldown ? 0.6 : 1,
+              cursor: showRefreshProgress || refreshCooldown ? "not-allowed" : "pointer",
             }}
+            aria-busy={showRefreshProgress}
           >
-            {refreshing && refreshCountdown !== null ? (
-              <RefreshCountdownRing
-                totalSeconds={refreshCountdownTotal}
-                remainingSeconds={refreshCountdown}
-                size={36}
-              />
-            ) : (
-              <Icon name="refresh" size={13} />
-            )}
+            <Icon
+              name="refresh"
+              size={13}
+              className={showRefreshProgress ? "animate-spin" : undefined}
+            />
             <span className="flex flex-col items-start leading-tight">
               <span>
-                {refreshing ? "Refreshing\u2026" : "Refresh matches"}
+                {showRefreshProgress ? "Refreshing\u2026" : "Refresh matches"}
               </span>
-              {refreshing && refreshCountdown !== null && (
+              {data?.refresh_computing && (
                 <span className="font-mono text-[10px] opacity-90">
-                  ~{refreshCountdown}s remaining
+                  First batch computing
                 </span>
               )}
             </span>
           </button>
-          {lastBatchLabel && !refreshing && (
+          {lastBatchLabel && !showRefreshProgress && (
             <p
               className="text-[11px] text-right col-span-full sm:col-span-1"
               style={{ color: "var(--muted)", maxWidth: 220 }}
@@ -756,14 +715,14 @@ export default function MatchesPageClient() {
             </Link>
             <button
               onClick={handleRefreshMatches}
-              disabled={refreshing || refreshCooldown}
+              disabled={showRefreshProgress || refreshCooldown}
               className="btn btn-ghost"
               style={{
-                opacity: refreshing || refreshCooldown ? 0.6 : 1,
+                opacity: showRefreshProgress || refreshCooldown ? 0.6 : 1,
               }}
             >
               <Icon name="refresh" size={14} />
-              {refreshing ? "Refreshing\u2026" : "Refresh matches"}
+              {showRefreshProgress ? "Refreshing\u2026" : "Refresh matches"}
             </button>
           </div>
         </div>

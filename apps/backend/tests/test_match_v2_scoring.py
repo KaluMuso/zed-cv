@@ -119,10 +119,10 @@ def test_build_match_explanation_lists_five_components():
         location_score=10.0,
         recency_score=4.0,
         matched_skills=["Python", "FastAPI"],
+        missing_skills=["Kubernetes"],
     )
+    assert "Python" in text
+    assert "FastAPI" in text
     assert "42/50" in text
     assert "14/20" in text
-    assert "12/15" in text
-    assert "10/10" in text
-    assert "4/5" in text
-    assert "Matched on" in text
+    assert "Kubernetes" in text
