@@ -48,7 +48,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       {pendingReviewCount > 0 && (
         <Link
           href="/admin/jobs/review"
-          className="mb-4 flex max-w-7xl mx-auto items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900"
+          className="mb-4 flex max-w-7xl mx-auto items-center justify-between rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/90 dark:text-amber-100"
         >
           <span>{pendingReviewCount} jobs need review</span>
           <span aria-hidden="true">&rarr;</span>

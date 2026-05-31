@@ -1,16 +1,8 @@
 "use client";
 
-import type React from "react";
 import { useMemo, useState } from "react";
 
 export type SortDirection = "asc" | "desc";
-
-/** Numeric sort key for nullable ISO timestamps (null/invalid → 0). */
-export function sortIsoDate(iso: string | null | undefined): number {
-  if (!iso) return 0;
-  const t = new Date(iso).getTime();
-  return Number.isNaN(t) ? 0 : t;
-}
 
 export function useClientTable<T>(
   rows: T[],
@@ -53,14 +45,14 @@ export function useClientTable<T>(
     }
   };
 
-  const sortProps = (key: keyof T & string) => {
-    const ariaSort: React.AriaAttributes["aria-sort"] =
-      sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : "none";
-    return {
-      "aria-sort": ariaSort,
-      onClick: () => toggleSort(key),
-    };
-  };
+  const sortProps = (key: keyof T & string) => ({
+    "aria-sort":
+      sortKey === key
+        ? ((sortDir === "asc" ? "ascending" : "descending") as const)
+        : ("none" as const),
+    onClick: () => toggleSort(key),
+    className: "cursor-pointer select-none hover:text-foreground",
+  });
 
   return {
     sorted,

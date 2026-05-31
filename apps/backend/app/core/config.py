@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     # OpenRouter with 400 BadRequestError. Use ':free' suffix for the
     # zero-cost experimental tier, or the -001 stable model below.
     openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "google/gemini-2.0-flash-001"
 
     # Payments

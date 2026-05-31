@@ -289,7 +289,7 @@ export function JobCard({
     <article
       className={cn(
         "group relative w-full rounded-xl border border-border/80",
-        "bg-card dark:bg-[#121212]",
+        "bg-card",
         "job-card shadow-sm",
         "hover:border-border",
         "focus-within:ring-2 focus-within:ring-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background",
@@ -309,7 +309,7 @@ export function JobCard({
             saved={jobSaved}
             token={saveToken}
             onChange={onSaveChange}
-            className="!min-h-9 !h-9 !w-9 !p-0 !rounded-full !border-border/60 !bg-background/90 dark:!bg-[#1a1a1a] hover:!bg-muted"
+            className="!min-h-9 !h-9 !w-9 !p-0 !rounded-full !border-border/60 !bg-background/90 dark:!bg-secondary hover:!bg-muted"
           />
         </div>
       )}

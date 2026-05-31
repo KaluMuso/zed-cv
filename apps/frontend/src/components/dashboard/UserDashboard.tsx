@@ -31,7 +31,6 @@ export type UserDashboardProps = {
   subscriptionTierLabel?: string;
   profileCompleteness?: { percent: number; hints: readonly string[] };
   applicationsCount?: number;
-  applicationFunnel?: ApplicationFunnel;
 };
 
 function mapMatchToCondensed(m: MatchData) {
@@ -54,7 +53,6 @@ export function UserDashboard({
   subscriptionTier = "free",
   profileCompleteness,
   applicationsCount = 0,
-  applicationFunnel,
 }: UserDashboardProps) {
   const data = MOCK_DASHBOARD;
   const displayName = userName ?? data.userName;

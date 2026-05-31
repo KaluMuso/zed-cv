@@ -51,7 +51,7 @@ export function PaymentModal({
         aria-label="Close payment modal"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg rounded-xl bg-background p-6 shadow-lg border border-line">
+      <div className="relative z-10 w-full max-w-lg rounded-xl card p-6 shadow-lg">
         <Script
           src={lencoScriptUrl}
           strategy="afterInteractive"

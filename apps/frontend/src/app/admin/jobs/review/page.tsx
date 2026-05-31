@@ -117,7 +117,10 @@ export default function AdminJobReviewPage() {
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap gap-2">
                   {job.reasons.map((reason) => (
-                    <span key={reason} className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-900">
+                    <span
+                      key={reason}
+                      className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/80 dark:text-amber-100"
+                    >
                       {reason.replaceAll("_", " ")}
                     </span>
                   ))}

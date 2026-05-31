@@ -36,7 +36,7 @@ const config: Config = {
           "dark-muted": "#A1A1AA",
         },
         border: {
-          DEFAULT: "#E5E5DB",
+          DEFAULT: "hsl(var(--border))",
           dark: "#1F2937",
         },
         success: {
@@ -54,27 +54,31 @@ const config: Config = {
           DEFAULT: "#DC2626",
           foreground: "#FFFFFF",
         },
-        /* shadcn-style aliases → semantic tokens */
-        background: "#FAFAF7",
-        foreground: "#0F172A",
+        /* shadcn-style aliases — follow .dark via globals.css HSL channels */
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         card: {
-          DEFAULT: "#FFFFFF",
-          foreground: "#0F172A",
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
         secondary: {
-          DEFAULT: "#FFFFFF",
-          foreground: "#0F172A",
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         muted: {
-          DEFAULT: "#52525B",
-          foreground: "#52525B",
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         destructive: {
-          DEFAULT: "#DC2626",
-          foreground: "#FFFFFF",
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
-        input: "#E5E5DB",
-        ring: "#0E5C3A",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
         /* legacy aliases — migrate to semantic tokens over time */
         brand: {
           50: "#ECFDF5",

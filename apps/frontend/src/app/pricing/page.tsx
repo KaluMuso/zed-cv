@@ -34,9 +34,6 @@ import {
   tierMatchesFaqAnswer,
 } from "@/lib/tier-marketing";
 import { PricingSkeleton } from "@/components/shared/skeletons/PageSkeletons";
-import { TrustSection } from "@/components/marketing/TrustSection";
-import { surfaceCardClass } from "@/lib/cn-ui";
-import { cn } from "@/lib/utils";
 
 const LENCO_SCRIPT_URL = getLencoScriptUrl();
 

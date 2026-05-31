@@ -29,7 +29,7 @@ export function UsersTab({ token }: { token: string }) {
 
   const { sorted, sortProps } = useClientTable(data, {
     getSortValue: (row, key) => {
-      if (key === "created_at") return sortIsoDate(row.created_at);
+      if (key === "created_at") return new Date(row.created_at).getTime();
       const v = row[key as keyof AdminUserRow];
       if (typeof v === "number") return v;
       return String(v ?? "").toLowerCase();
@@ -155,21 +155,31 @@ export function UsersTab({ token }: { token: string }) {
             <TableHeader>
               <TableRow>
                 <TableHead>
-                  <AdminSortableHead label="Name" sortProps={sortProps("full_name")} />
+                  <button type="button" className="w-full text-left" {...sortProps("full_name")}>
+                    Name
+                  </button>
                 </TableHead>
                 <TableHead>
-                  <AdminSortableHead label="Phone" sortProps={sortProps("phone")} />
+                  <button type="button" className="w-full text-left" {...sortProps("phone")}>
+                    Phone
+                  </button>
                 </TableHead>
                 <TableHead>
-                  <AdminSortableHead label="Tier" sortProps={sortProps("subscription_tier")} />
+                  <button type="button" className="w-full text-left" {...sortProps("subscription_tier")}>
+                    Tier
+                  </button>
                 </TableHead>
                 <TableHead>
-                  <AdminSortableHead label="Matches" sortProps={sortProps("matches_used")} />
+                  <button type="button" className="w-full text-left" {...sortProps("matches_used")}>
+                    Matches
+                  </button>
                 </TableHead>
                 <TableHead>Welcome bonus until</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>
-                  <AdminSortableHead label="Joined" sortProps={sortProps("created_at")} />
+                  <button type="button" className="w-full text-left" {...sortProps("created_at")}>
+                    Joined
+                  </button>
                 </TableHead>
               </TableRow>
             </TableHeader>

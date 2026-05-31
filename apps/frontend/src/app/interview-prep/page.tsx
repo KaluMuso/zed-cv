@@ -90,19 +90,19 @@ export default function InterviewPrepPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 mb-10">
-        <Link href="/interview-prep/mock" className="card p-6 block hover:border-[var(--green-600)] transition-colors">
+        <Link href="/interview-prep/mock" className="card p-6 block hover:border-[var(--green-500)] transition-colors">
           <h2 className="font-display text-xl mb-2">Mock interview</h2>
           <p className="text-sm" style={{ color: "var(--ink-2)" }}>
             Seven STAR questions with live feedback from Bwana.
           </p>
         </Link>
-        <Link href="/interview-prep/aptitude" className="card p-6 block hover:border-[var(--green-600)] transition-colors">
+        <Link href="/interview-prep/aptitude" className="card p-6 block hover:border-[var(--green-500)] transition-colors">
           <h2 className="font-display text-xl mb-2">Aptitude tests</h2>
           <p className="text-sm" style={{ color: "var(--ink-2)" }}>
             Numerical, verbal, and abstract reasoning packs (20 questions each).
           </p>
         </Link>
-        <Link href="/interview-prep/history" className="card p-6 block hover:border-[var(--green-600)] transition-colors md:col-span-2">
+        <Link href="/interview-prep/history" className="card p-6 block hover:border-[var(--green-500)] transition-colors md:col-span-2">
           <h2 className="font-display text-xl mb-2">History</h2>
           <p className="text-sm" style={{ color: "var(--ink-2)" }}>
             Review past mock sessions and aptitude percentiles.

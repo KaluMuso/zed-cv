@@ -350,7 +350,13 @@ export default function JobsPageClient() {
 
       {/* Filter bar */}
       {/* Filter bar — search is debounced (300ms); no submit button. */}
-      <div className="sticky-surface-bar sticky top-[65px] z-30 -mx-6 px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+      <div
+        className="sticky top-[65px] z-30 -mx-6 px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center border-b border-border"
+        style={{
+          background: "color-mix(in srgb, var(--bg) 92%, transparent)",
+          backdropFilter: "blur(12px)",
+        }}
+      >
         <div className="relative flex-1">
           <Icon
             name="search"

@@ -17,29 +17,7 @@ import {
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
 import { TIER_NAV_LABELS } from "@/lib/tier-display";
 import { computeProfileCompleteness } from "@/lib/profileCompleteness";
-import { columnForStatus } from "@/lib/application-status";
-import type { ApplicationFunnel } from "@/components/dashboard/DashboardInsights";
 import { DashboardSkeleton } from "@/components/shared/skeletons/PageSkeletons";
-import type { SavedJobApplication } from "@/lib/api";
-
-function buildFunnel(rows: SavedJobApplication[]): ApplicationFunnel {
-  const funnel: ApplicationFunnel = {
-    saved: 0,
-    applied: 0,
-    interviewing: 0,
-    offered: 0,
-    closed: 0,
-  };
-  for (const row of rows) {
-    const col = columnForStatus(row.application_status);
-    if (col === "saved") funnel.saved += 1;
-    else if (col === "applied") funnel.applied += 1;
-    else if (col === "interviewing") funnel.interviewing += 1;
-    else if (col === "offered") funnel.offered += 1;
-    else funnel.closed += 1;
-  }
-  return funnel;
-}
 
 export function DashboardPageClient() {
   const router = useRouter();
@@ -56,13 +34,6 @@ export function DashboardPageClient() {
     hints: string[];
   } | null>(null);
   const [applicationsCount, setApplicationsCount] = useState(0);
-  const [applicationFunnel, setApplicationFunnel] = useState<ApplicationFunnel>({
-    saved: 0,
-    applied: 0,
-    interviewing: 0,
-    offered: 0,
-    closed: 0,
-  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,18 +66,9 @@ export function DashboardPageClient() {
         const sorted = [...matchRes.matches].sort((a, b) => b.score - a.score);
         setTopMatches(sorted.slice(0, 3));
         setSavedCount(savedRes.jobs.length);
-        const appRows =
-          (savedRes.applications?.length ?? 0) > 0
-            ? savedRes.applications!
-            : savedRes.jobs.map((job) => ({
-                job,
-                application_status: "saved" as const,
-                status_updated_at: null,
-                application_notes: null,
-                interview_date: null,
-              }));
-        setApplicationsCount(appRows.length);
-        setApplicationFunnel(buildFunnel(appRows));
+        setApplicationsCount(
+          savedRes.applications?.length ?? savedRes.jobs.length,
+        );
         setTotalMatchCount(sorted.length);
         if (sorted.length > 0) {
           const avg = Math.round(
@@ -137,7 +99,6 @@ export function DashboardPageClient() {
       subscriptionTierLabel={TIER_NAV_LABELS[subscriptionTier] ?? subscriptionTier}
       profileCompleteness={profileCompleteness ?? undefined}
       applicationsCount={applicationsCount}
-      applicationFunnel={applicationFunnel}
       liveData={{
         totalMatches: totalMatchCount,
         savedJobs: savedCount,

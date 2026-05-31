@@ -149,9 +149,9 @@ export function JobDetailMatchPanel({
                 key={s}
                 className="tag tag-mono inline-flex items-center gap-1"
                 style={{
-                  background: "rgba(0,0,0,0.04)",
+                  background: "color-mix(in srgb, var(--copper-500) 12%, var(--surface))",
                   color: "var(--copper-600)",
-                  border: "1px solid rgba(180, 100, 40, 0.25)",
+                  border: "1px solid color-mix(in srgb, var(--copper-500) 30%, var(--line))",
                 }}
               >
                 {s}

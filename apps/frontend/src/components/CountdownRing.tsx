@@ -46,7 +46,7 @@ export function CountdownRing({ phase, total, secondsLeft }: CountdownRingProps)
           cy={SIZE / 2}
           r={R}
           fill="none"
-          stroke="var(--green-600)"
+          stroke="var(--green-500)"
           strokeWidth={STROKE}
           strokeLinecap="round"
           strokeDasharray={CIRC}
