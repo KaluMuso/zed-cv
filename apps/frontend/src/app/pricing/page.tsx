@@ -127,7 +127,7 @@ const comparisonFeatures: ComparisonFeature[] = [
   { name: "Job matches / month", free: freeTierComparisonMatches(), starter: "50", pro: "125", super_standard: "Unlimited" },
   { name: "WhatsApp alerts", free: true, starter: true, pro: true, super_standard: true },
   { name: "CV analysis", free: "Basic", starter: "Advanced", pro: "Advanced", super_standard: "Advanced" },
-  { name: "Tailored CVs", free: false, starter: true, pro: true, super_standard: true },
+  { name: "Tailored CVs", free: false, starter: false, pro: true, super_standard: true },
   { name: "Cover letters", free: false, starter: false, pro: true, super_standard: true },
   { name: "Score breakdowns", free: false, starter: true, pro: true, super_standard: true },
   { name: "CV rewriting per role", free: false, starter: false, pro: true, super_standard: true },

@@ -91,15 +91,19 @@ When healthy, `GET /api/v1/health` returns 200.
 
 ---
 
-## Step 4 — Real K10 payment smoke test
+## Step 4 — Real K125 Starter payment smoke test
 
 Use a private/incognito browser session. You will spend real money — refund in
 Step 5.
 
 - [ ] Redeploy Vercel frontend (uncheck build cache) with production Lenco keys
 - [ ] Open [https://zedapply.com/pricing](https://zedapply.com/pricing)
-- [ ] Upgrade to the smallest paid tier or run a **K10** test if exposed in UI
+- [ ] Sign in with a test account on **Free**, then choose **Starter (K125/mo)**
+      (checkout shows K62.50 while the launch 50% promo is active — still maps to
+      Starter tier after webhook)
 - [ ] Complete MTN/Airtel mobile money with your PIN
+- [ ] Confirm pricing page copy: Starter lists score breakdowns (not tailored CVs);
+      Professional lists cover letters + tailored CVs
 - [ ] Backend logs show Lenco webhook **without** `lenco_webhook_invalid_signature`:
 
   ```bash
@@ -114,7 +118,7 @@ Step 5.
 
 ## Step 5 — Refund test payment
 
-- [ ] Refund **K10** (or the test amount) in the Lenco merchant dashboard
+- [ ] Refund the **K125** (or promo K62.50) test charge in the Lenco merchant dashboard
 - [ ] Do not leave test revenue on the merchant account
 
 ---
@@ -146,7 +150,7 @@ SUPABASE_URL=https://fake.supabase.co SUPABASE_KEY=fake GEMINI_API_KEY=fake JWT_
   LENCO_PUBLIC_KEY=pub python3 -c "import main"
 # Expect: AssertionError: WEBHOOK_SECRET must be set in production
 
-python3 -m pytest tests/test_lenco_production_hardening.py tests/test_lenco_webhook.py -v
+python3 -m pytest tests/test_lenco_production_hardening.py tests/test_lenco_webhook.py tests/test_lenco_payment_ref.py tests/test_webhooks.py -v
 ```
 
 ---

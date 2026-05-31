@@ -1571,7 +1571,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             class="text-sm leading-relaxed m-0"
             style="color: var(--ink-2);"
           >
-            50 matches + tailored CVs
+            50 matches + score breakdowns
           </p>
           <div
             class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
@@ -5202,7 +5202,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             class="text-sm leading-relaxed m-0"
             style="color: var(--ink-2);"
           >
-            50 matches + tailored CVs
+            50 matches + score breakdowns
           </p>
           <div
             class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"

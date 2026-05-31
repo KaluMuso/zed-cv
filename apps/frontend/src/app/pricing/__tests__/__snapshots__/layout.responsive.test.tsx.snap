@@ -283,7 +283,33 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
                 />
               </svg>
             </span>
-            AI-generated tailored CVs
+            Advanced CV analysis
+          </li>
+          <li
+            class="flex items-start gap-2.5 text-sm"
+            style="color: var(--ink-2);"
+          >
+            <span
+              class="mt-0.5 shrink-0"
+              style="color: var(--green-500);"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="14"
+              >
+                <path
+                  d="M20 6L9 17l-5-5"
+                />
+              </svg>
+            </span>
+            Match score breakdowns
           </li>
           <li
             class="flex items-start gap-2.5 text-sm"
@@ -336,32 +362,6 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
               </svg>
             </span>
             WhatsApp + web dashboard
-          </li>
-          <li
-            class="flex items-start gap-2.5 text-sm"
-            style="color: var(--ink-2);"
-          >
-            <span
-              class="mt-0.5 shrink-0"
-              style="color: var(--green-500);"
-            >
-              <svg
-                class=""
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.75"
-                viewBox="0 0 24 24"
-                width="14"
-              >
-                <path
-                  d="M20 6L9 17l-5-5"
-                />
-              </svg>
-            </span>
-            Score breakdowns
           </li>
         </ul>
         <button
@@ -1010,21 +1010,11 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
               <td
                 class="py-3 px-4 text-center"
               >
-                <svg
-                  class="mx-auto"
-                  fill="none"
-                  height="16"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="16"
+                <span
+                  style="color: var(--muted-2);"
                 >
-                  <path
-                    d="M20 6L9 17l-5-5"
-                  />
-                </svg>
+                  —
+                </span>
               </td>
               <td
                 class="py-3 px-4 text-center"
@@ -2210,7 +2200,33 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
                 />
               </svg>
             </span>
-            AI-generated tailored CVs
+            Advanced CV analysis
+          </li>
+          <li
+            class="flex items-start gap-2.5 text-sm"
+            style="color: var(--ink-2);"
+          >
+            <span
+              class="mt-0.5 shrink-0"
+              style="color: var(--green-500);"
+            >
+              <svg
+                class=""
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="14"
+              >
+                <path
+                  d="M20 6L9 17l-5-5"
+                />
+              </svg>
+            </span>
+            Match score breakdowns
           </li>
           <li
             class="flex items-start gap-2.5 text-sm"
@@ -2263,32 +2279,6 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
               </svg>
             </span>
             WhatsApp + web dashboard
-          </li>
-          <li
-            class="flex items-start gap-2.5 text-sm"
-            style="color: var(--ink-2);"
-          >
-            <span
-              class="mt-0.5 shrink-0"
-              style="color: var(--green-500);"
-            >
-              <svg
-                class=""
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.75"
-                viewBox="0 0 24 24"
-                width="14"
-              >
-                <path
-                  d="M20 6L9 17l-5-5"
-                />
-              </svg>
-            </span>
-            Score breakdowns
           </li>
         </ul>
         <button
@@ -2937,21 +2927,11 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
               <td
                 class="py-3 px-4 text-center"
               >
-                <svg
-                  class="mx-auto"
-                  fill="none"
-                  height="16"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="16"
+                <span
+                  style="color: var(--muted-2);"
                 >
-                  <path
-                    d="M20 6L9 17l-5-5"
-                  />
-                </svg>
+                  —
+                </span>
               </td>
               <td
                 class="py-3 px-4 text-center"

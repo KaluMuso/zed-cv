@@ -42,10 +42,10 @@ export const TIER_MARKETING_FEATURES: Record<string, string[]> = {
   ],
   starter: [
     "50 job matches per month",
-    "AI-generated tailored CVs",
+    "Advanced CV analysis",
+    "Match score breakdowns",
     "Priority matching",
     "WhatsApp + web dashboard",
-    "Score breakdowns",
   ],
   professional: [
     "125 job matches per month",

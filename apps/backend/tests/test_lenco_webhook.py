@@ -158,6 +158,18 @@ class TestExtractEventFields:
         assert fields["is_failed"] is False
         assert fields["company_ref"] == "zedapply-abc"
 
+    def test_company_ref_alias_from_companyRef_field(self):
+        payload = {
+            "event": "collection.successful",
+            "data": {
+                "companyRef": "zedapply-widget-ref",
+                "status": "successful",
+                "amount": 12500,
+            },
+        }
+        fields = extract_event_fields(payload)
+        assert fields["company_ref"] == "zedapply-widget-ref"
+
     def test_collection_failed_marks_failed(self):
         payload = {
             "event": "collection.failed",

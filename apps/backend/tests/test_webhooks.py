@@ -104,6 +104,73 @@ def _post_dpo(client):
 # ── 1. Idempotency ───────────────────────────────────────────────────────
 
 
+def test_dpo_webhook_legacy_company_ref_uuid_lookup(client, fake_supabase):
+    """Legacy DPO rows stored payment UUID in CompanyRef — lookup by payments.id."""
+    payment_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    fake_supabase.set_table(
+        "payments",
+        _UpdateSpyQuery(
+            data=[
+                {
+                    "id": payment_id,
+                    "user_id": "test-user-id",
+                    "amount": 12500,
+                    "status": "pending",
+                    "provider_ref": "legacy-provider-ref",
+                    "subscriptions": {
+                        "id": "sub-1",
+                        "user_id": "test-user-id",
+                        "tier": "free",
+                        "current_period_end": None,
+                    },
+                }
+            ]
+        ),
+    )
+    fake_supabase.set_table("users", _UpdateSpyQuery(data=[{"phone": "+260971234567"}]))
+
+    parse = patch(
+        "app.services.dpo_pay.parse_dpo_webhook_xml",
+        return_value={
+            "company_ref": payment_id,
+            "company_token": "test-dpo-merchant-token",
+            "transaction_token": "dpo-txn-token-only",
+            "transaction_ref": "REF-legacy",
+            "transaction_amount": "125.00",
+            "transaction_currency": "ZMW",
+            "result_code": "000",
+            "result_explanation": "ok",
+            "customer_phone": "+260971234567",
+        },
+    )
+    verify = patch(
+        "app.services.dpo_pay.verify_payment",
+        new_callable=AsyncMock,
+        return_value={
+            "is_paid": True,
+            "result_code": "000",
+            "result_explanation": "ok",
+            "transaction_ref": "REF-legacy",
+            "customer_phone": "+260971234567",
+            "amount": "125.00",
+            "currency": "ZMW",
+        },
+    )
+    with parse, verify, patch(
+        "app.api.v1.webhooks.send_whatsapp_message", new_callable=AsyncMock
+    ), patch(
+        "app.api.v1.webhooks.send_payment_confirmation_email", new_callable=AsyncMock
+    ), patch(
+        "app.services.subscription_billing.activate_subscription_after_payment",
+        return_value={"start": "2026-01-01T00:00:00+00:00", "end": "2026-02-01T00:00:00+00:00"},
+    ) as activate:
+        resp = _post_dpo(client)
+
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "completed"}
+    activate.assert_called_once()
+
+
 def test_dpo_webhook_idempotency(client, fake_supabase):
     """A webhook for an already-completed payment returns already_processed
     and does NOT touch the subscription."""
