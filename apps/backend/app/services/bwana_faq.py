@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 
 from app.schemas.subscription import TIER_LIMITS, TIER_PRICES
+from app.services.tier_marketing import TIER_WHATSAPP_BLURB
 
 _ESCALATION_PHRASES = (
     "talk to human",
@@ -164,14 +165,14 @@ def match_faq(message: str) -> FaqMatch | None:
         return FaqMatch(
             "starter_tier",
             f"Starter: {_kwacha(TIER_PRICES['starter'])}/mo, {TIER_LIMITS['starter']} matches, "
-            "tailored CVs. See /pricing to upgrade.",
+            f"{TIER_WHATSAPP_BLURB['starter']}. Tailored CVs from Professional. See /pricing.",
         )
 
     if _contains_any(norm, ("professional", " pro plan", "pro tier")):
         return FaqMatch(
             "professional_tier",
             f"Professional: {_kwacha(TIER_PRICES['professional'])}/mo, "
-            f"{TIER_LIMITS['professional']} matches, cover letters + tailored CVs.",
+            f"{TIER_LIMITS['professional']} matches, {TIER_WHATSAPP_BLURB['professional']}.",
         )
 
     if _contains_any(norm, ("super standard", "unlimited matches")):

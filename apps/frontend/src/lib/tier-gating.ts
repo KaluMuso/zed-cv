@@ -1,5 +1,6 @@
-/** Client-side tier gates — backend remains source of truth. */
+/** Client-side tier gates — backend remains source of truth (tier_gating.py). */
 
+/** Tailored CV per match — Professional and Super Standard only (not Starter). */
 const MATCH_TAILORED_CV_TIERS = new Set(["professional", "super_standard"]);
 const COVER_LETTER_EDITOR_TIERS = new Set(["professional", "super_standard"]);
 

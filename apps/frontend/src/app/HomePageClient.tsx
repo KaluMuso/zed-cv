@@ -37,7 +37,7 @@ const plans: Plan[] = [
     name: "Starter",
     price: "K125",
     period: "/month",
-    blurb: "50 matches + tailored CVs",
+    blurb: "50 matches + score breakdowns",
     highlight: true,
   },
   {
