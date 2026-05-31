@@ -34,9 +34,15 @@ class TestGetMatches:
         assert resp.status_code in (401, 403)
 
     @patch(
-        "app.api.v1.matches.check_match_quota",
+        "app.api.v1.matches.build_match_quota_snapshot",
         new_callable=AsyncMock,
-        return_value=(True, 5),
+        return_value={
+            "matches_used": 0,
+            "credited_count": 0,
+            "matches_limit": 50,
+            "matches_unlimited": False,
+            "remaining_quota": 5,
+        },
     )
     def test_get_matches_empty(
         self, mock_quota, client, auth_headers, fake_supabase
@@ -49,9 +55,15 @@ class TestGetMatches:
         assert body["matches"] == []
 
     @patch(
-        "app.api.v1.matches.check_match_quota",
+        "app.api.v1.matches.build_match_quota_snapshot",
         new_callable=AsyncMock,
-        return_value=(True, 3),
+        return_value={
+            "matches_used": 0,
+            "credited_count": 0,
+            "matches_limit": 50,
+            "matches_unlimited": False,
+            "remaining_quota": 3,
+        },
     )
     def test_get_matches_with_results(
         self, mock_quota, client, auth_headers, fake_supabase
@@ -101,9 +113,15 @@ class TestGetMatches:
 
 class TestGetMatchesForUser:
     @patch(
-        "app.api.v1.matches.check_match_quota",
+        "app.api.v1.matches.build_match_quota_snapshot",
         new_callable=AsyncMock,
-        return_value=(True, 5),
+        return_value={
+            "matches_used": 0,
+            "credited_count": 0,
+            "matches_limit": 125,
+            "matches_unlimited": False,
+            "remaining_quota": 5,
+        },
     )
     @patch(
         "app.api.v1.matches.run_matching_for_user",

@@ -18,6 +18,7 @@ from app.schemas.subscription import (
     SubscriptionCancelResponse,
 )
 from app.core.tier_gating import get_effective_match_limit, welcome_bonus_active
+from app.schemas.tier_config import UNLIMITED_MATCHES
 from app.services.matching import get_credited_match_count
 from app.services.pricing import load_user_promotion_until
 
@@ -59,6 +60,7 @@ async def get_subscription(
         tier=tier,
         matches_used=matches_used,
         matches_limit=matches_limit,
+        matches_unlimited=matches_limit >= UNLIMITED_MATCHES,
         active=sub["status"] == "active",
         expires_at=sub.get("current_period_end"),
         welcome_match_bonus=user_data.get("welcome_match_bonus"),

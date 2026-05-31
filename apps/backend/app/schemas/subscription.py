@@ -38,6 +38,10 @@ class Subscription(BaseModel):
     tier: SubscriptionTier
     matches_used: int = 0
     matches_limit: int = 3
+    matches_unlimited: bool = Field(
+        False,
+        description="True when matches_limit is the unlimited sentinel (99999).",
+    )
     active: bool = True
     expires_at: Optional[datetime] = None
     welcome_match_bonus: Optional[int] = Field(

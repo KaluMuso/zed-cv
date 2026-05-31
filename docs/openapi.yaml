@@ -1609,9 +1609,11 @@ components:
       type: object
       properties:
         matches: { type: array, items: { $ref: '#/components/schemas/MatchResult' } }
-        remaining_quota: { type: integer }
-        credited_count: { type: integer }
-        matches_limit: { type: integer }
+        remaining_quota: { type: integer, description: 'Deliveries left this billing period' }
+        matches_used: { type: integer, description: 'Unique jobs credited this billing period' }
+        credited_count: { type: integer, description: 'Alias of matches_used' }
+        matches_limit: { type: integer, description: 'Monthly cap; 99999 = unlimited' }
+        matches_unlimited: { type: boolean, description: 'True when matches_limit is unlimited sentinel' }
         last_batch_run_at: { type: string, format: date-time, nullable: true }
         from_cache: { type: boolean, default: false }
 
@@ -1621,6 +1623,10 @@ components:
         - type: object
           properties:
             message: { type: string, nullable: true }
+            refresh_computing:
+              type: boolean
+              default: false
+              description: True during first-time on-demand matching; show progress until next refresh
 
     BatchMatchAcceptedResponse:
       type: object
@@ -1840,6 +1846,7 @@ components:
         tier: { type: string, enum: [free, starter, professional, super_standard] }
         matches_used: { type: integer }
         matches_limit: { type: integer }
+        matches_unlimited: { type: boolean, description: 'True when matches_limit is unlimited sentinel (99999)' }
         active: { type: boolean }
         expires_at: { type: string, format: date-time, nullable: true }
         welcome_match_bonus:
