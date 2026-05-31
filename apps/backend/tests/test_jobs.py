@@ -66,6 +66,12 @@ class TestStripHtml:
         s = "Latency must be < 10ms but > 2ms baseline."
         assert _strip_html(s) == s
 
+    def test_strips_scraper_footer_lines(self):
+        from app.api.v1.jobs import _strip_html
+
+        html = "<p>Role summary</p><p>Scraped from bestjobs.co</p>"
+        assert _strip_html(html) == "Role summary"
+
 
 class TestJobList:
     def test_list_jobs_public(self, client):

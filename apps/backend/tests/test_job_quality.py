@@ -55,6 +55,25 @@ class TestDescriptionQualityOk:
         assert ok is True
 
 
+class TestStripScraperMetadata:
+    def test_removes_footer_lines(self):
+        raw = "\n".join(
+            [
+                "Key responsibilities",
+                "• Sell products",
+                "First Posted: 2024-01-01",
+                "Scraped from LinkedIn",
+            ]
+        )
+        assert job_quality.strip_scraper_metadata(raw) == "\n".join(
+            ["Key responsibilities", "• Sell products"]
+        )
+
+    def test_collapses_extra_blank_lines(self):
+        raw = "Role summary\n\n\nScraped from gozambiajobs.com"
+        assert job_quality.strip_scraper_metadata(raw) == "Role summary"
+
+
 class TestNormalizeDescriptionMarkdown:
     SEC_RAW = """JOB PURPOSE
 Provide security services across Lusaka sites.

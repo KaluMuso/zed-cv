@@ -20,22 +20,63 @@ export interface ApplyAction {
   secondary?: ApplyAction;
 }
 
+export type ApplyContactKind = "email" | "whatsapp" | "phone" | "website";
+
+export interface ApplyContactMethod {
+  kind: ApplyContactKind;
+  label: string;
+  display: string;
+  copyValue: string;
+  href?: string;
+  applySource: ApplyClickSource;
+}
+
 const SUPPORT_MAIL =
   "mailto:support@zedapply.com?subject=Help%20applying%20to%20a%20job";
+
+/** Known Zambian job-board hosts — never treat as direct employer apply links. */
+const AGGREGATOR_HOSTS = new Set([
+  "jobwebzambia.com",
+  "gozambiajobs.com",
+  "jobsearchzambia.com",
+  "jobsearchzm.com",
+  "careersinafrica.com",
+  "everjobs.com.zm",
+]);
+
+function hostnameFromUrl(url: string): string | null {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.startsWith("www.") ? host.slice(4) : host;
+  } catch {
+    return null;
+  }
+}
+
+/** True when apply_url points at a job-board aggregator, not the employer. */
+export function isAggregatorApplyUrl(url: string | null | undefined): boolean {
+  if (!url?.trim()) return false;
+  const host = hostnameFromUrl(url.trim());
+  if (!host) return false;
+  if (AGGREGATOR_HOSTS.has(host)) return true;
+  return [...AGGREGATOR_HOSTS].some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+}
 
 function mailtoApply(email: string, job: ApplyJobFields): string {
   const subject = encodeURIComponent(`Application: ${job.title}`);
   const body = encodeURIComponent(
     `Dear hiring manager,\n\nI am writing to apply for the ${job.title} role${
       job.company ? ` at ${job.company}` : ""
-    }.\n\nI found this opportunity on ZedApply and would welcome the chance to discuss my application.\n\nKind regards`
+    }.\n\nI found this opportunity on ZedApply and would welcome the chance to discuss my application.\n\nKind regards`,
   );
   return `mailto:${email}?subject=${subject}&body=${body}`;
 }
 
 function applySourceFromField(
   job: ApplyJobFields,
-  field: "url" | "email"
+  field: "url" | "email",
 ): ApplyClickSource {
   if (job.apply_source === "description_email" || job.apply_source === "description_url") {
     return "description_email";
@@ -52,15 +93,22 @@ function normalizePhone(raw: string): string | null {
   return null;
 }
 
+function employerApplyUrl(job: ApplyJobFields): string | null {
+  const url = job.apply_url?.trim();
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  if (isAggregatorApplyUrl(url)) return null;
+  return url;
+}
+
 /** Resolve primary apply affordance for compact job cards. */
 export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
-  const hasUrl = Boolean(job.apply_url && /^https?:\/\//i.test(job.apply_url));
+  const url = employerApplyUrl(job);
   const hasEmail = Boolean(job.apply_email?.trim());
   const phone = job.contact_phone ? normalizePhone(job.contact_phone) : null;
 
-  if (hasUrl) {
+  if (url) {
     return {
-      href: job.apply_url as string,
+      href: url,
       label: "Apply on company site",
       applySource: applySourceFromField(job, "url"),
       external: true,
@@ -94,6 +142,9 @@ export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
   return null;
 }
 
+/** Alias used in Phase 3 specs — same as {@link resolveApplyAction}. */
+export const resolveApplyUrl = resolveApplyAction;
+
 /** Legacy fallback when no structured contact exists (admin-only / stale clients). */
 export function resolveApplyActionOrSupport(job: ApplyJobFields): ApplyAction {
   return (
@@ -104,4 +155,69 @@ export function resolveApplyActionOrSupport(job: ApplyJobFields): ApplyAction {
       external: false,
     }
   );
+}
+
+/** All structured apply channels for job detail + Apply modal. */
+export function resolveApplyContactMethods(job: ApplyJobFields): ApplyContactMethod[] {
+  const methods: ApplyContactMethod[] = [];
+  const seen = new Set<string>();
+
+  const push = (method: ApplyContactMethod) => {
+    const key = `${method.kind}:${method.copyValue.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    methods.push(method);
+  };
+
+  const url = employerApplyUrl(job);
+  if (url) {
+    push({
+      kind: "website",
+      label: "Apply on company site",
+      display: url.replace(/^https?:\/\//i, "").replace(/\/$/, ""),
+      copyValue: url,
+      href: url,
+      applySource: applySourceFromField(job, "url"),
+    });
+  }
+
+  const email = job.apply_email?.trim();
+  if (email) {
+    push({
+      kind: "email",
+      label: "Email application",
+      display: email,
+      copyValue: email,
+      href: mailtoApply(email, job),
+      applySource: applySourceFromField(job, "email"),
+    });
+  }
+
+  const phone = job.contact_phone ? normalizePhone(job.contact_phone) : null;
+  if (phone) {
+    const waDigits = phone.replace(/\D/g, "");
+    push({
+      kind: "phone",
+      label: "Call",
+      display: phone,
+      copyValue: phone,
+      href: `tel:${phone}`,
+      applySource: "direct",
+    });
+    push({
+      kind: "whatsapp",
+      label: "WhatsApp",
+      display: phone,
+      copyValue: phone,
+      href: `https://wa.me/${waDigits}`,
+      applySource: "direct",
+    });
+  }
+
+  return methods;
+}
+
+/** True when the job has at least one listable apply channel in structured fields. */
+export function hasStructuredApplyContact(job: ApplyJobFields): boolean {
+  return resolveApplyContactMethods(job).length > 0;
 }
