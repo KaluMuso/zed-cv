@@ -12,6 +12,20 @@ full-database write access to ingest and admin surfaces.
 | `INGEST_API_KEY` | `INGEST_API_KEY`, `X-INGEST-API-KEY` | `POST /api/v1/jobs/ingest`, deep-enrich ticks, some scraper callbacks |
 | `ADMIN_API_KEY` | `ADMIN_API_KEY`, `X-ADMIN-API-KEY` | Admin cron, email-health, WAHA bootstrap, LLM cost panels. Falls back to `INGEST_API_KEY` when unset |
 
+### Admin console (browser) vs automation
+
+The **admin UI** at `/admin/*` signs in with a normal user OTP session. The frontend sends
+`Authorization: Bearer <user JWT>` where `users.role` is `admin` or `superadmin`.
+
+**Do not** paste that session JWT into `X-ADMIN-API-KEY` or treat it as `ADMIN_API_KEY`.
+Service keys are separate secrets in OCI `.env`; user JWTs expire and are tied to a phone.
+
+| Caller | Auth |
+| --- | --- |
+| Admin dashboard (Next.js) | Bearer JWT, role `admin` or `superadmin` |
+| n8n / cron / curl ops | `X-ADMIN-API-KEY: <ADMIN_API_KEY>` (or `INGEST_API_KEY` where documented) |
+| Tier config PATCH | Superadmin JWT **or** admin API key (`require_admin_api_key_or_superadmin`) |
+
 Superadmin **Bearer JWT** can also call many `/admin/*` routes when the DB `users.role`
 is `superadmin`. Prefer API keys for n8n automation so tokens are not long-lived user JWTs.
 

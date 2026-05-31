@@ -731,6 +731,24 @@ components:
             webhook_summary: { type: object, nullable: true, additionalProperties: true }
             tier_inferred: { type: string, nullable: true }
 
+    LegalDoc:
+      type: object
+      description: Legal page row (markdown source + bleach-sanitized HTML)
+      properties:
+        slug: { type: string, enum: [privacy, terms, cookies, refund] }
+        version: { type: string }
+        content_md: { type: string }
+        content_html: { type: string }
+        last_modified_by: { type: string, format: uuid, nullable: true }
+        last_modified_at: { type: string, format: date-time, nullable: true }
+
+    LegalDocUpdate:
+      type: object
+      required: [version, content_md]
+      properties:
+        version: { type: string, maxLength: 32 }
+        content_md: { type: string, minLength: 1, maxLength: 100000 }
+
     AdminBillingHealth:
       type: object
       properties:
@@ -3096,6 +3114,63 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminPaymentList' }
         '403': { description: Superadmin only }
+
+  /legal/{slug}:
+    get:
+      operationId: getPublicLegalDoc
+      summary: Public legal page content (DB fallback for ISR pages)
+      tags: [Legal]
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, enum: [privacy, terms, cookies, refund] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalDoc' }
+        '404': { description: No row for slug }
+
+  /admin/legal/{slug}:
+    get:
+      operationId: getAdminLegalDoc
+      summary: Load legal doc for admin editor (empty shell if never saved)
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, enum: [privacy, terms, cookies, refund] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalDoc' }
+        '403': { description: Admin only }
+    patch:
+      operationId: upsertAdminLegalDoc
+      summary: Save legal markdown; server renders and bleach-sanitizes HTML
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string, enum: [privacy, terms, cookies, refund] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LegalDocUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LegalDoc' }
+        '403': { description: Admin only }
+        '422': { description: Validation error }
 
   /cv/upload:
     post:

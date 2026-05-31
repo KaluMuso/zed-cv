@@ -61,7 +61,8 @@ export function PrivacySection() {
           <span>
             <span className="text-sm font-medium block">Show profile to employers</span>
             <span className="text-xs" style={{ color: "var(--muted)" }}>
-              Featured employers can see your CV when relevant.
+              On by default. Verified employers can discover your profile in search; they
+              must get your WhatsApp YES before seeing your phone or email.
             </span>
           </span>
           <input

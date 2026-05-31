@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { adminLegal, type AdminLegalDoc, type LegalSlug, ApiError } from "@/lib/api";
 import { notify } from "@/lib/toast";
 import { LegalMarkdown } from "@/app/legal/_components/LegalMarkdown";
+import { LegalPublishedPreview } from "@/app/legal/_components/LegalPublishedPreview";
 
 const SLUGS: { slug: LegalSlug; label: string; description: string }[] = [
   {
@@ -83,10 +84,13 @@ export function LegalTab({ token }: { token: string }) {
   );
 }
 
+type PreviewMode = "draft" | "published";
+
 function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
   const [doc, setDoc] = useState<AdminLegalDoc | null>(null);
   const [version, setVersion] = useState("");
   const [contentMd, setContentMd] = useState("");
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("draft");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -239,7 +243,33 @@ function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
         </div>
 
         <div>
-          <div className="eyebrow mb-2">Live preview</div>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div className="eyebrow">Preview</div>
+            <div className="flex rounded-md border border-[var(--line)] overflow-hidden text-xs">
+              <button
+                type="button"
+                className="px-3 py-1.5 font-medium"
+                style={{
+                  background: previewMode === "draft" ? "var(--bg-2)" : "transparent",
+                  color: previewMode === "draft" ? "var(--ink)" : "var(--muted)",
+                }}
+                onClick={() => setPreviewMode("draft")}
+              >
+                Draft (markdown)
+              </button>
+              <button
+                type="button"
+                className="px-3 py-1.5 font-medium border-l border-[var(--line)]"
+                style={{
+                  background: previewMode === "published" ? "var(--bg-2)" : "transparent",
+                  color: previewMode === "published" ? "var(--ink)" : "var(--muted)",
+                }}
+                onClick={() => setPreviewMode("published")}
+              >
+                Published (DB HTML)
+              </button>
+            </div>
+          </div>
           <div
             className="overflow-y-auto"
             style={{
@@ -251,8 +281,17 @@ function LegalEditor({ token, slug }: { token: string; slug: LegalSlug }) {
               background: "var(--surface)",
             }}
           >
-            <LegalMarkdown markdown={contentMd} />
+            {previewMode === "draft" ? (
+              <LegalMarkdown markdown={contentMd} />
+            ) : (
+              <LegalPublishedPreview html={doc?.content_html ?? ""} />
+            )}
           </div>
+          {previewMode === "published" && (
+            <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
+              Matches what candidates see after save — HTML is bleach-sanitized on the server.
+            </p>
+          )}
         </div>
       </div>
     </div>

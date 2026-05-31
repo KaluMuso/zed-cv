@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   admin,
   type AdminPaymentRow,
@@ -16,13 +16,17 @@ import {
   AdminExportButton,
   AdminSortableHead,
   AdminTableEmptyRow,
+  AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
+
+const PAYMENTS_PER_PAGE = 25;
 
 export function SubscriptionsTab({ token }: { token: string }) {
   const [metrics, setMetrics] = useState<AdminSubscriptionMetrics | null>(null);
   const [breakdown, setBreakdown] = useState<AdminTierBreakdown | null>(null);
   const [payments, setPayments] = useState<AdminPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payPage, setPayPage] = useState(1);
 
   const { sorted, sortProps } = useClientTable(payments, {
     getSortValue: (row, key) => {
@@ -32,6 +36,20 @@ export function SubscriptionsTab({ token }: { token: string }) {
       return String(v ?? "").toLowerCase();
     },
   });
+
+  const payPages = Math.max(1, Math.ceil(sorted.length / PAYMENTS_PER_PAGE));
+  const pagedPayments = useMemo(() => {
+    const start = (payPage - 1) * PAYMENTS_PER_PAGE;
+    return sorted.slice(start, start + PAYMENTS_PER_PAGE);
+  }, [sorted, payPage]);
+
+  useEffect(() => {
+    if (payPage > payPages) setPayPage(payPages);
+  }, [payPage, payPages]);
+
+  useEffect(() => {
+    setPayPage(1);
+  }, [payments.length]);
 
   useEffect(() => {
     setLoading(true);
@@ -168,7 +186,7 @@ export function SubscriptionsTab({ token }: { token: string }) {
                 ) : sorted.length === 0 ? (
                   <AdminTableEmptyRow colSpan={5} title="No payments yet" />
                 ) : (
-                  sorted.map((p) => (
+                  pagedPayments.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="text-xs whitespace-nowrap">
                         {formatDate(p.completed_at ?? p.created_at)}
@@ -183,6 +201,7 @@ export function SubscriptionsTab({ token }: { token: string }) {
               </TableBody>
             </Table>
           </div>
+          <AdminTablePagination page={payPage} pages={payPages} onPageChange={setPayPage} />
         </CardContent>
       </Card>
     </div>

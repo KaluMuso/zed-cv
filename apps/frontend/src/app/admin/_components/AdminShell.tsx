@@ -62,7 +62,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </nav>
 
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">
+          {children}
+          <p className="mt-10 text-xs text-muted-foreground leading-relaxed max-w-2xl">
+            API automation: use{" "}
+            <code className="text-[11px]">Authorization: Bearer &lt;superadmin JWT&gt;</code> or{" "}
+            <code className="text-[11px]">X-ADMIN-API-KEY</code> — do not use a browser session JWT
+            as the API key (<span className="font-mono text-[11px]">docs/ADMIN_API_KEYS.md</span>).
+          </p>
+        </div>
       </div>
     </div>
   );

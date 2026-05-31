@@ -29,6 +29,103 @@ class FilteringSupabaseQuery(FakeSupabaseQuery):
         return result
 
 
+class StatefulContactRequestsQuery(FakeSupabaseQuery):
+    """Tracks inserts/updates for employer consent E2E tests."""
+
+    def __init__(self):
+        super().__init__(data=[])
+        self._rows: list[dict] = []
+        self._pending_update: dict | None = None
+        self._pending_id: str | None = None
+        self._filters: list[tuple[str, object, str, bool]] = []
+        self._negate_next_is = False
+
+    def insert(self, data):
+        row = dict(data)
+        row.setdefault("id", f"ccr-{len(self._rows) + 1}")
+        row.setdefault("created_at", "2026-05-01T00:00:00Z")
+        self._rows.append(row)
+        self._data = self._rows
+        return self
+
+    def update(self, data):
+        self._pending_update = dict(data)
+        return self
+
+    def eq(self, col, val):
+        if self._pending_update is not None:
+            self._pending_id = str(val)
+        else:
+            self._filters.append((col, val, "eq", False))
+        return self
+
+    def is_(self, col, val):
+        self._filters.append((col, val, "is", self._negate_next_is))
+        self._negate_next_is = False
+        return self
+
+    @property
+    def not_(self):
+        self._negate_next_is = True
+        return self
+
+    def order(self, *a, **kw):
+        return self
+
+    def limit(self, *a):
+        return self
+
+    def execute(self):
+        if self._pending_update is not None and self._pending_id:
+            for row in self._rows:
+                if str(row.get("id")) == self._pending_id:
+                    row.update(self._pending_update)
+                    break
+            self._pending_update = None
+            self._pending_id = None
+            self._data = self._rows
+            result = super().execute()
+            result.data = self._rows
+            return result
+
+        rows = list(self._rows)
+        for col, val, op, negate in self._filters:
+            if op == "eq":
+                rows = [r for r in rows if r.get(col) == val]
+            elif op == "is" and val == "null":
+                if negate:
+                    rows = [r for r in rows if r.get(col) is not None]
+                else:
+                    rows = [r for r in rows if r.get(col) is None]
+        self._filters = []
+
+        result = super().execute()
+        result.data = rows
+        result.count = len(rows)
+        return result
+
+
+class FilteringUsersQuery(FakeSupabaseQuery):
+    """users.eq(...) for consent webhook (phone) and contact list (id)."""
+
+    def __init__(self, data=None):
+        super().__init__(data, count=None)
+        self._filters: list[tuple[str, object]] = []
+
+    def eq(self, col, val):
+        self._filters.append((col, val))
+        return self
+
+    def execute(self):
+        rows = list(self._data or [])
+        for col, val in self._filters:
+            rows = [r for r in rows if r.get(col) == val]
+        self._filters = []
+        result = super().execute()
+        result.data = rows
+        return result
+
+
 def _token(user_id: str) -> str:
     import os
 
@@ -191,8 +288,37 @@ class TestEmployerConsent:
             json={"company_name": "ABC Personnel"},
         )
 
-        ccr_table = FakeSupabaseQuery(data=[])
+        ccr_table = StatefulContactRequestsQuery()
         employer_a_setup.set_table("candidate_contact_requests", ccr_table)
+        employer_a_setup.set_table(
+            "users",
+            FilteringUsersQuery(
+                data=[
+                    {
+                        "id": "owner-a",
+                        "phone": "+260971111111",
+                        "role": "user",
+                        "profile_visible_to_employers": True,
+                        "is_active": True,
+                    },
+                    {
+                        "id": "owner-b",
+                        "phone": "+260972222222",
+                        "role": "user",
+                    },
+                    {
+                        "id": "cand-1",
+                        "phone": "+260973333333",
+                        "email": "cand@example.com",
+                        "full_name": "Jane Accountant",
+                        "location": "Lusaka",
+                        "years_experience": 5,
+                        "profile_visible_to_employers": True,
+                        "is_active": True,
+                    },
+                ]
+            ),
+        )
 
         resp = client.post(
             "/api/v1/employers/candidates/cand-1/contact",
@@ -204,6 +330,7 @@ class TestEmployerConsent:
         )
         assert resp.status_code == 200
         mock_notify.assert_awaited_once()
+        assert ccr_table._rows[0].get("candidate_consented") is None
 
         with patch(
             "app.services.whatsapp.send_whatsapp_message",
@@ -221,6 +348,19 @@ class TestEmployerConsent:
             )
         assert wa.status_code == 200
         assert wa.json().get("employer_consent") is True
+        assert ccr_table._rows[0].get("candidate_consented") is True
+
+        contacts = client.get(
+            "/api/v1/employers/me/contacts",
+            headers=_headers("owner-a"),
+        )
+        assert contacts.status_code == 200
+        body = contacts.json()
+        assert body["total"] == 1
+        row = body["contacts"][0]
+        assert row["status"] == "consented"
+        assert row["candidate_phone"] == "+260973333333"
+        assert row["candidate_email"] == "cand@example.com"
 
 
 class TestEmployerIsolation:
