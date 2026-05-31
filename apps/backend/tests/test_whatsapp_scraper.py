@@ -318,6 +318,10 @@ class TestWhatsappScraperWebhook:
         assert resp.json()["ingest_result"] == "ingested"
         assert inserted
         assert inserted[0].get("ocr_source_text") == ocr
+        assert (
+            inserted[0].get("source")
+            == "whatsapp_120363401234567890_at_newsletter"
+        )
 
 
 class TestWave25IngestSkills:
@@ -356,6 +360,92 @@ class TestWave25IngestSkills:
         assert resp.json()["ingested"] == 1
         mock_resolve.assert_called()
         assert mock_resolve.call_args.kwargs.get("source") == "job_ingest"
+
+
+def test_whatsapp_source_for_channel_slug():
+    from app.services.whatsapp_scraper import whatsapp_source_for_channel
+
+    assert (
+        whatsapp_source_for_channel(CHANNEL_A)
+        == "whatsapp_120363401234567890_at_newsletter"
+    )
+
+
+def test_classification_to_job_create_uses_whatsapp_source():
+    from app.services.whatsapp_classifier import WhatsappJobClassification
+    from app.services.whatsapp_ingest import classification_to_job_create
+
+    job = classification_to_job_create(
+        WhatsappJobClassification.model_validate(CLASSIFIED_JOB),
+        channel_id=CHANNEL_A,
+        message_id="wa-src-1",
+    )
+    assert job.source == "whatsapp_120363401234567890_at_newsletter"
+    assert job.whatsapp_message_id == "wa-src-1"
+
+
+class TestWhatsappScraperWebhookAuth:
+    def test_scraper_webhook_rejects_invalid_token(self, client):
+        resp = client.post(
+            "/api/v1/whatsapp/scraper-webhook",
+            headers={"X-Webhook-Token": "wrong-token"},
+            json=_payload(body=JOB_TEXT),
+        )
+        assert resp.status_code == 401
+
+    def test_scraper_webhook_rejects_missing_token(self, client):
+        resp = client.post(
+            "/api/v1/whatsapp/scraper-webhook",
+            json=_payload(body=JOB_TEXT),
+        )
+        assert resp.status_code == 401
+
+
+class TestIngestPhoneValidation:
+    @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
+    @patch("app.api.v1.jobs.resolve_skill_ids", new_callable=AsyncMock)
+    def test_ingest_clears_invalid_contact_phone(
+        self, mock_resolve, mock_embed, client, fake_supabase
+    ):
+        mock_embed.return_value = [0.1] * 768
+        mock_resolve.return_value = []
+        fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
+
+        inserted: list[dict] = []
+
+        class _JobsInsert(FakeSupabaseQuery):
+            def insert(self, data):
+                if isinstance(data, dict):
+                    row = dict(data)
+                    row["id"] = "job-phone-1"
+                    inserted.append(row)
+                    self._data = [row]
+                return self
+
+        fake_supabase.set_table("jobs", _JobsInsert())
+
+        job = {
+            "title": "Software Engineer at Tech Co Ltd",
+            "company": "Tech Co Ltd",
+            "location": "Lusaka",
+            "description": (
+                "Hiring Software Engineer in Lusaka. Python and Django required. "
+                "Apply jobs@techco.zm for details and requirements."
+            ),
+            "skills_required": ["python"],
+            "apply_email": "jobs@techco.zm",
+            "contact_phone": "+260813252760",
+            "source": "scraper",
+            "source_url": "https://example.com/jobs/phone-test",
+        }
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "test-ingest-key", "jobs": [job]},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ingested"] == 1
+        assert inserted
+        assert inserted[0].get("contact_phone") is None
 
 
 def test_no_link_job_skills_symbol_in_backend():

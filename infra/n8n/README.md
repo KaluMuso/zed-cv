@@ -90,6 +90,35 @@ Repo export `bwana_chat_pipeline.json` uses these weights in:
 
 Bwana live workflow already uses `$env.OPENROUTER_API_KEY` and `$env.WAHA_API_KEY` (no literals in nodes). Job Scraper **must** be patched on n8n — live still had ingest key in JSON body at export time.
 
+## Job Scraper — patch live workflow (`rsgZLi6UAcC3lXvu`)
+
+Repo export `job_scraper.json` is the source of truth. Live n8n must match it before the next scrape run.
+
+1. Sign in to `https://automation.vergeo.company`.
+2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
+3. Open the **Send to Zed CV** HTTP Request node.
+4. Set **Method** `POST` and URL:
+   `={{ ($env.FASTAPI_URL || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
+5. **Body** → JSON (expression mode):
+   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $env.INGEST_API_KEY }) }}`
+   There must be **no literal** `api_key` string in the node — only `$env.INGEST_API_KEY`.
+6. **Settings** → **Variables** (instance): confirm `INGEST_API_KEY` and `FASTAPI_URL` are set (same values as OCI `apps/backend/.env` ingest secret and public API base).
+7. **Save** → **Publish** (activate if the toggle was off).
+8. **Execute workflow** (manual test) → open the execution → **Send to Zed CV** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
+9. If the old ingest key ever appeared in git, n8n execution logs, or Slack: **rotate** `INGEST_API_KEY` on OCI and n8n, then `docker compose up -d --force-recreate zedcv-backend` (not `restart`).
+
+Optional: re-import `job_scraper.json` via **Import from File** on a draft copy, diff nodes, then merge credential mappings — do not overwrite live credentials blindly.
+
+### Duplicate Supabase heartbeat (`Gun5al1RkCKPSlfW`)
+
+Two heartbeats were active on 2026-05-30. Keep **`qA4Zi46MAWx3gTTL`** (repo: `heartbeat_workflow.json`) and **deactivate** the duplicate:
+
+1. **Workflows** → **Zed CV - Supabase Heartbeat** (ID `Gun5al1RkCKPSlfW`).
+2. Toggle **Inactive** (unpublish).
+3. Confirm **Supabase Heartbeat** (`qA4Zi46MAWx3gTTL`) stays **Active** with the 6h schedule.
+
+No API access from this repo — ops performs the toggle in the n8n UI.
+
 ## Required n8n environment variables
 
 ```

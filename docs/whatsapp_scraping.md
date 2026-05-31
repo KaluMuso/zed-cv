@@ -2,6 +2,17 @@
 
 Ingest Zambian job posts from public WhatsApp **channels** (`@newsletter`) into `public.jobs` using the same pipeline as n8n (`POST /api/v1/jobs/ingest`): fingerprint dedup, embeddings, and Wave 2.5 skill resolution.
 
+## Track 4c vs legacy channel ingest
+
+| Path | Env | Webhook |
+| --- | --- | --- |
+| **Track 4c (this doc)** | `WHATSAPP_SCRAPE_CHANNELS`, `WHATSAPP_SCRAPER_WEBHOOK_TOKEN` | `POST /api/v1/whatsapp/scraper-webhook` |
+| Legacy single-channel | `whatsapp_jobs_ingest_enabled=true`, `whatsapp_channel_jobs_id` | Main WAHA webhook in `webhooks.py` |
+
+Use Track 4c for production multi-channel scraping. Keep legacy flags **off** unless you are A/B testing the old single-channel extractor.
+
+**OCR:** Image posters are supported in production (no feature flag). WAHA `hasMedia` + `image/*` → Gemini Vision via OpenRouter; `ocr_text` is stored on `jobs.ocr_source_text`.
+
 ## Prerequisites
 
 1. **WAHA session WORKING** — see `AGENTS.md` §3.3. OTP and scraping share the `default` session on OCI (`WAHA_API_URL=http://waha:3000` inside Docker).
@@ -91,6 +102,10 @@ curl -X POST http://localhost:8000/api/v1/whatsapp/scraper-webhook \
   -H "Content-Type: application/json" \
   -d '{"event":"message","payload":{"id":"test-1","from":"120363401234567890@newsletter","body":"Hiring: Software Engineer at Tech Co Ltd, Lusaka. Apply: jobs@techco.zm. Python, Django"}}'
 ```
+
+## n8n job sites (separate from channels)
+
+Site scrapes use workflow **ZedApply Job Scraper** (`rsgZLi6UAcC3lXvu`) → `POST /api/v1/jobs/ingest` with `api_key: $env.INGEST_API_KEY` only. Patch steps: `infra/n8n/README.md` § Job Scraper.
 
 ## Tests
 

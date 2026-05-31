@@ -375,8 +375,11 @@ class JobCreate(BaseModel):
         if s.lower().startswith(("http://", "https://", "wa.me/", "whatsapp.com/")):
             return s[:64]
         from app.services.description_body_extractor import normalize_zambian_phone
+        from app.services.job_quality import normalize_contact_phone
 
-        return normalize_zambian_phone(s) or s[:64]
+        candidate = normalize_zambian_phone(s) or s
+        validated = normalize_contact_phone(candidate)
+        return validated
 
     @field_validator("contact_email", mode="before")
     @classmethod
