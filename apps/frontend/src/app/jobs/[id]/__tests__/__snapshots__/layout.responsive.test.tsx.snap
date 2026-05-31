@@ -63,7 +63,7 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
         class="flex flex-wrap gap-2"
       >
         <span
-          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+          class="inline-flex items-center rounded-full font-medium text-green-500 dark:text-green-400 text-xs px-3 py-1"
         >
           Closes in 194 days
         </span>
@@ -136,7 +136,8 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
           class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
         >
           <a
-            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[160px] justify-center"
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px] justify-center gap-2"
+            data-testid="job-detail-apply-primary"
             href="https://example.com/apply"
             rel="noopener noreferrer"
             target="_blank"
@@ -483,7 +484,7 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
         class="flex flex-wrap gap-2"
       >
         <span
-          class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium bg-muted/50 text-foreground/90 border border-border/60"
+          class="inline-flex items-center rounded-full font-medium text-green-500 dark:text-green-400 text-xs px-3 py-1"
         >
           Closes in 194 days
         </span>
@@ -556,7 +557,8 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
           class="flex flex-col sm:flex-row flex-wrap gap-3 mb-8"
         >
           <a
-            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[160px] justify-center"
+            class="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px] justify-center gap-2"
+            data-testid="job-detail-apply-primary"
             href="https://example.com/apply"
             rel="noopener noreferrer"
             target="_blank"

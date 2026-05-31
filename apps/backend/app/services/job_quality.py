@@ -82,6 +82,39 @@ NUMBERED_ROLE_BODY_PATTERN = re.compile(
 _H2_HEADER_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 _BLANK_RUN_RE = re.compile(r"\n{3,}")
 
+# Candidate-facing descriptions must not expose scraper provenance footers.
+_SCRAPER_LINE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"^\s*first\s+posted\b", re.I),
+    re.compile(r"^\s*scraped\s+from\b", re.I),
+    re.compile(r"^\s*source\s*:\s*", re.I),
+    re.compile(r"^\s*posted\s+via\b", re.I),
+    re.compile(r"^\s*view\s+(the\s+)?original\s+(posting|job)\b", re.I),
+    re.compile(r"^\s*see\s+original\s+(posting|job)\b", re.I),
+    re.compile(r"linkedin\.com", re.I),
+    re.compile(r"bestjobs\.co", re.I),
+    re.compile(r"gozambiajobs", re.I),
+    re.compile(r"jobwebzambia", re.I),
+    re.compile(r"jobartis", re.I),
+    re.compile(r"myjobmag", re.I),
+    re.compile(r"reliefweb\.int", re.I),
+]
+
+
+def _is_scraper_metadata_line(line: str) -> bool:
+    trimmed = line.strip()
+    if not trimmed:
+        return False
+    return any(pattern.search(trimmed) for pattern in _SCRAPER_LINE_PATTERNS)
+
+
+def strip_scraper_metadata(text: str) -> str:
+    """Remove scraper/source footer lines from plain-text job descriptions."""
+    if not text:
+        return ""
+    lines = [line for line in text.split("\n") if not _is_scraper_metadata_line(line)]
+    cleaned = "\n".join(lines)
+    return _BLANK_RUN_RE.sub("\n\n", cleaned).strip()
+
 
 class LlmClient(Protocol):
     """Minimal OpenAI-compatible client for tests."""
@@ -390,7 +423,9 @@ def apply_ingest_quality_to_job_data(
     if not desc_ok and desc_reason:
         deactivation_reasons.append(desc_reason)
 
-    normalized_md = normalize_description_markdown(description)
+    normalized_md = strip_scraper_metadata(
+        normalize_description_markdown(description)
+    )
     job_data["description"] = normalized_md
     job_data["description_markdown"] = normalized_md
     job_data.update(extract_sections(normalized_md))

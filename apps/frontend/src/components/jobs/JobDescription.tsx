@@ -3,6 +3,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { plainTextToMarkdown } from "@/lib/markdownNormalizer";
+import { stripScraperMetadata } from "@/components/jobs/jobDetailHtml";
 import { cn } from "@/lib/utils";
 
 const MAIN_SUBTITLE_HEADINGS = new Set([
@@ -276,9 +277,10 @@ export function JobDescription({
     );
   }
 
-  const md =
+  const md = stripScraperMetadata(
     (descriptionMarkdown && descriptionMarkdown.trim()) ||
-    plainTextToMarkdown(description || "");
+      plainTextToMarkdown(description || ""),
+  );
 
   if (!md) {
     return (

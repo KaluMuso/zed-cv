@@ -130,10 +130,11 @@ export function MatchCard({
               href={apply.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary btn-sm w-40 text-center"
+              className="btn btn-primary btn-sm w-40 text-center gap-1.5"
               data-testid="match-apply-external"
             >
               {apply.label}
+              <Icon name="external" size={13} />
             </a>
           ) : apply ? (
             <button

@@ -45,6 +45,7 @@ from app.services.description_body_extractor import merge_description_extraction
 from app.services.job_quality import (
     apply_ingest_quality_to_job_data,
     split_multi_role_listing,
+    strip_scraper_metadata,
 )
 from app.services.job_activation import apply_review_state_to_row, compute_review_state
 from app.services.job_publication import (
@@ -202,7 +203,7 @@ def _strip_html(text: str | None) -> str:
     # whitespace-pre-wrap keeps the visual structure.
     s = _re.sub(r"[ \t ]+", " ", s)
     s = _re.sub(r"\n{3,}", "\n\n", s)
-    return s.strip()
+    return strip_scraper_metadata(s.strip())
 
 
 def _fingerprint(title: str, company: str | None, description: str) -> str:

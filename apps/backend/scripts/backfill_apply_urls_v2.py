@@ -244,6 +244,10 @@ async def run_backfill(
             stats["applied"] += 1
 
     after = count_aggregator_apply_urls(supabase) if apply else before
+    proposed_n = stats.get("proposed_update", 0)
+    still_n = stats.get("still_aggregator", 0)
+    projected_remaining = before - proposed_n if not apply else after
+
     print(f"aggregator_apply_urls_after: {after}")
     print(f"delta: {before - after}")
     print("per_domain_jobs:")
@@ -263,8 +267,37 @@ async def run_backfill(
         for job_id, title, url in still_aggregator[:15]:
             print(f"  {job_id} | {title[:50]} | {url}")
 
+    print("--- dry_run_summary ---")
+    print(f"candidates_processed: {len(candidates)}")
+    print(f"proposed_update: {proposed_n}")
+    print(f"still_aggregator: {still_n}")
+    print(f"projected_aggregator_remaining: {projected_remaining}")
+    log.info(
+        "backfill complete apply=%s before=%s after=%s proposed=%s still=%s",
+        apply,
+        before,
+        after,
+        proposed_n,
+        still_n,
+    )
+
     if not apply:
         print("Dry-run: pass --apply to persist updates and audit log.")
+        print(
+            "Human approval gate (see docs/APPLY_URL_BACKFILL_V2_RUNBOOK.md §3): "
+            "review all proposed_changes_sample URLs; projected remaining must be < 20; "
+            "ops owner must reply Y before --apply."
+        )
+        if projected_remaining > 20:
+            log.warning(
+                "projected_aggregator_remaining=%s exceeds target < 20",
+                projected_remaining,
+            )
+    elif after >= 20:
+        log.warning(
+            "aggregator_apply_urls_after=%s — manual queue may still be large",
+            after,
+        )
     return 0
 
 

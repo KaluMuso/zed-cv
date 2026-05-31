@@ -6,7 +6,7 @@ import { SaveJobButton } from "@/components/SaveJobButton";
 import { Avatar } from "@/components/ui/Avatar";
 import type { Job, MatchData } from "@/lib/api";
 import { JobDescription } from "@/components/jobs/JobDescription";
-import { deadlineLabel } from "@/components/jobs/DeadlineBadge";
+import { DeadlineBadge } from "@/components/jobs/DeadlineBadge";
 import { ApplyModal } from "@/components/jobs/ApplyModal";
 import { JobDetailMatchPanel } from "@/components/jobs/JobDetailMatchPanel";
 import { JobDetailSimilarMatches } from "@/components/jobs/JobDetailSimilarMatches";
@@ -20,7 +20,13 @@ import {
   PAY_FREQUENCY_LABEL,
   formatSalary,
 } from "@/components/jobs/jobDetailFormatters";
-import { buildApplyContactMethods } from "@/components/jobs/applyContacts";
+import {
+  hasStructuredApplyContact,
+  resolveApplyAction,
+  resolveApplyContactMethods,
+  type ApplyJobFields,
+} from "@/lib/applyLink";
+import { trackApplyClick } from "@/lib/trackApplyClick";
 import { JobShareButtons } from "@/components/share/JobShareButtons";
 import { isJobListingClosed } from "@/lib/isJobListingClosed";
 import { cn } from "@/lib/utils";
@@ -91,7 +97,10 @@ export function JobDetailBody({
   const [moreOpen, setMoreOpen] = useState(false);
 
   const listingClosed = isJobListingClosed(job);
-  const applyMethods = listingClosed ? [] : buildApplyContactMethods(job);
+  const applyFields = job as ApplyJobFields;
+  const primaryApply = listingClosed ? null : resolveApplyAction(applyFields);
+  const applyMethods = listingClosed ? [] : resolveApplyContactMethods(applyFields);
+  const multipleApplyChannels = applyMethods.length > 1;
 
   const jobTypeLabel = job.employment_type
     ? EMPLOYMENT_TYPE_LABEL[job.employment_type] || job.employment_type
@@ -104,7 +113,6 @@ export function JobDetailBody({
       ? PAY_FREQUENCY_LABEL[job.pay_frequency]
       : "/mo";
 
-  const closesLabel = deadlineLabel(job.closing_date);
   const benefits = job.benefits ?? [];
   const tools = job.tools_tech_stack ?? [];
   const hasMoreSection = Boolean(
@@ -147,7 +155,9 @@ export function JobDetailBody({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {closesLabel && <MetaPill>{closesLabel}</MetaPill>}
+          {job.closing_date ? (
+            <DeadlineBadge closingDate={job.closing_date} className="text-xs px-3 py-1" />
+          ) : null}
           {salary && (
             <MetaPill>
               <span className="font-mono">
@@ -214,30 +224,51 @@ export function JobDetailBody({
         <div className="order-2 lg:order-1 min-w-0">
           {/* Action row */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-8">
-            {applyMethods.map((method) =>
-              method.href ? (
+            {primaryApply ? (
+              multipleApplyChannels ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px] justify-center gap-2"
+                    onClick={() => setApplyOpen(true)}
+                    data-testid="job-detail-apply-open"
+                  >
+                    Apply now
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline flex-1 sm:flex-none justify-center"
+                    onClick={() => setApplyOpen(true)}
+                  >
+                    All apply options
+                  </button>
+                </>
+              ) : (
                 <a
-                  key={`${method.kind}-${method.copyValue}`}
-                  href={method.href}
-                  className="btn btn-primary flex-1 sm:flex-none sm:min-w-[160px] justify-center"
-                  target={
-                    method.kind === "website" || method.kind === "whatsapp"
-                      ? "_blank"
-                      : undefined
-                  }
-                  rel={
-                    method.kind === "website" || method.kind === "whatsapp"
-                      ? "noopener noreferrer"
-                      : undefined
-                  }
+                  href={primaryApply.href}
+                  className="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px] justify-center gap-2"
+                  target={primaryApply.external ? "_blank" : undefined}
+                  rel={primaryApply.external ? "noopener noreferrer" : undefined}
+                  data-testid="job-detail-apply-primary"
+                  onClick={() => {
+                    if (authToken) {
+                      trackApplyClick(authToken, job.id, primaryApply.applySource);
+                    }
+                  }}
                 >
-                  {method.label}
-                  {(method.kind === "website" || method.kind === "whatsapp") && (
-                    <Icon name="external" size={14} />
-                  )}
+                  {primaryApply.label}
+                  {primaryApply.external ? <Icon name="external" size={14} /> : null}
                 </a>
-              ) : null,
-            )}
+              )
+            ) : !listingClosed && hasStructuredApplyContact(applyFields) ? (
+              <button
+                type="button"
+                className="btn btn-primary flex-1 sm:flex-none sm:min-w-[200px] justify-center"
+                onClick={() => setApplyOpen(true)}
+              >
+                How to apply
+              </button>
+            ) : null}
             <SaveJobButton
               jobId={job.id}
               saved={jobSaved}
