@@ -11,6 +11,25 @@ Sanitized JSON snapshots of production workflows on `https://automation.vergeo.c
 | Notification Digest (Every 24h) | `MW5KETbBdrAOk04y` | **No** | `notification_digest_every_24h.json` |
 | Bwana Chat Pipeline | `TPDJ5S1HaRKZTdb1` | Yes | `bwana_chat_pipeline.json` |
 | Job Scraper | `rsgZLi6UAcC3lXvu` | Yes | `job_scraper.json` |
+| Sentry → WhatsApp Alert | _(import from repo)_ | **No** | `sentry_whatsapp_alert.json` |
+
+## Sentry → WhatsApp alerts (Wave A.1)
+
+Forwards Sentry issue-alert webhooks to the operator via WAHA. Full setup and **test fire** steps: `docs/SENTRY_ALERTS.md`.
+
+**Import / activate**
+
+1. n8n → **Workflows** → **Import from File** → `sentry_whatsapp_alert.json`
+2. Env: `WAHA_API_URL`, `WAHA_API_KEY`, `ADMIN_ALERT_PHONE` (+260 E.164)
+3. **Activate** and copy the **production** webhook URL (`…/webhook/sentry-alert`)
+4. Sentry → **Alerts** → create rule → action **Webhooks** → paste URL
+5. Smoke: `curl -X POST …/webhook/sentry-alert` with sample JSON (see docs) or trigger a test error
+
+## Uptime monitoring
+
+UptimeRobot free-tier setup for `GET /api/v1/health`: `UPTIME_MONITORING.md` in this directory.
+
+Expected JSON includes `"status": "healthy"`, `"supabase": true`, `"waha": true`, plus config flags `redis_configured`, `vapid_configured`, `resend_configured`, `sentry_configured`.
 
 ## Digest cron: which to keep?
 
@@ -83,7 +102,10 @@ WAHA_API_KEY=...
 OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=google/gemini-2.0-flash-001
 ADMIN_ALERT_PHONE=+260...
+SENTRY_ALERT_WEBHOOK_PATH=sentry-alert
 ```
+
+`SENTRY_ALERT_WEBHOOK_PATH` is informational — the path is fixed in `sentry_whatsapp_alert.json`. Sentry alert rules should target the n8n production webhook URL for that path.
 
 Gemini scraper nodes use n8n credential type **Google PaLM/Gemini API** (`googlePalmApi`), not env vars.
 

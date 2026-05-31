@@ -139,10 +139,16 @@ def check_sentry(settings: Any | None) -> CheckResult:
     return CheckResult("SENTRY_DSN set", "yellow", "empty — error tracking disabled")
 
 
-def check_redis_url() -> CheckResult:
+def check_redis_url(*, production: bool = False) -> CheckResult:
     url = os.getenv("REDIS_URL", "").strip()
     if url:
         return CheckResult("REDIS_URL set", "green", "shared rate-limit storage")
+    if production:
+        return CheckResult(
+            "REDIS_URL set",
+            "red",
+            "unset in production — rate limits reset on container recreate",
+        )
     return CheckResult(
         "REDIS_URL set",
         "yellow",
@@ -366,14 +372,14 @@ def _load_settings() -> Any | None:
         return None
 
 
-def run_audit(*, skip_db: bool) -> list[CheckResult]:
+def run_audit(*, skip_db: bool, production: bool = False) -> list[CheckResult]:
     settings = _load_settings()
     results: list[CheckResult] = [
         check_debug(settings),
         check_lenco_url(settings),
         check_lenco_key(settings),
         check_sentry(settings),
-        check_redis_url(),
+        check_redis_url(production=production),
         check_migration_files(),
     ]
 
@@ -422,9 +428,14 @@ def main() -> int:
         action="store_true",
         help="Only env/file checks (no Supabase queries)",
     )
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        help="Stricter checks (e.g. REDIS_URL required)",
+    )
     args = parser.parse_args()
     print("ZedApply production readiness audit\n")
-    results = run_audit(skip_db=args.skip_db)
+    results = run_audit(skip_db=args.skip_db, production=args.production)
     _print_results(results)
     return 1 if any(r.status == "red" for r in results) else 0
 

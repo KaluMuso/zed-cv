@@ -2149,12 +2149,18 @@ components:
         redis_configured:
           type: boolean
           description: True when REDIS_URL is set (shared rate-limit storage).
+        redis:
+          type: boolean
+          description: True when REDIS_URL is set and a PING succeeds. Omitted when REDIS_URL is unset.
         vapid_configured:
           type: boolean
           description: True when VAPID keys are set for web push.
         resend_configured:
           type: boolean
           description: True when RESEND_API_KEY is set (email OTP/digests).
+        sentry_configured:
+          type: boolean
+          description: True when SENTRY_DSN is set (error tracking active).
 
 paths:
   /health:

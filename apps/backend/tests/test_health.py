@@ -16,6 +16,7 @@ class TestHealth:
         assert "redis_configured" in body
         assert "vapid_configured" in body
         assert "resend_configured" in body
+        assert "sentry_configured" in body
 
     def test_health_no_auth_required(self, client):
         """Health endpoint should be accessible without auth."""
