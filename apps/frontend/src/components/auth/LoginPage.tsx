@@ -49,9 +49,21 @@ export function LoginPage({
       >
         Enter your number
       </h2>
-      <p className="text-sm mb-6 sm:mb-8 leading-relaxed" style={{ color: "var(--muted)" }}>
+      <p className="text-sm mb-4 sm:mb-6 leading-relaxed" style={{ color: "var(--muted)" }}>
         We&apos;ll send a 6-digit code by email or WhatsApp. Your email receives daily match
         digests.
+      </p>
+      <p
+        className="mb-6 sm:mb-8 flex items-center gap-2 text-xs"
+        style={{ color: "var(--muted)" }}
+      >
+        <Icon name="shield" size={14} className="shrink-0 text-primary" aria-hidden />
+        <span>
+          Encrypted CV storage · no password to phish ·{" "}
+          <Link href="/security" className="underline" style={{ color: "var(--green-700)" }}>
+            Security overview
+          </Link>
+        </span>
       </p>
 
       <form onSubmit={onSubmit}>

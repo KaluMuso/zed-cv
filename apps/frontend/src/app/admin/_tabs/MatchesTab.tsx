@@ -5,9 +5,16 @@ import { admin, type AdminMatchRow } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/toast";
 import { formatDate, SkeletonTableRows } from "./shared";
+import { useClientTable, sortIsoDate } from "@/components/admin/useClientTable";
+import {
+  AdminExportButton,
+  AdminSortableHead,
+  AdminTableEmptyRow,
+  AdminTablePagination,
+} from "@/components/admin/AdminTableTools";
 
 export function MatchesTab({ token }: { token: string }) {
   const [data, setData] = useState<AdminMatchRow[]>([]);
@@ -15,6 +22,15 @@ export function MatchesTab({ token }: { token: string }) {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [minScore, setMinScore] = useState<number | "">("");
+
+  const { sorted, sortProps } = useClientTable(data, {
+    getSortValue: (row, key) => {
+      if (key === "score") return row.score;
+      if (key === "created_at") return sortIsoDate(row.created_at);
+      const v = row[key as keyof AdminMatchRow];
+      return String(v ?? "").toLowerCase();
+    },
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -35,8 +51,11 @@ export function MatchesTab({ token }: { token: string }) {
     <Card>
       <CardContent className="p-0">
         <div className="flex flex-wrap gap-2 p-3 border-b border-border items-center">
-          <label className="text-xs text-muted-foreground">Min score</label>
-          <input
+          <label className="text-xs text-muted-foreground" htmlFor="admin-min-score">
+            Min score
+          </label>
+          <Input
+            id="admin-min-score"
             type="number"
             min={0}
             max={100}
@@ -45,19 +64,40 @@ export function MatchesTab({ token }: { token: string }) {
               setMinScore(e.target.value === "" ? "" : Number(e.target.value));
               setPage(1);
             }}
-            className="h-9 w-24 rounded-md border border-input bg-background px-2 text-sm"
+            className="h-9 w-24"
             placeholder="—"
+          />
+          <AdminExportButton
+            filename={`zedapply-matches-p${page}.csv`}
+            headers={["user_phone", "job_title", "company", "score", "status", "created"]}
+            rows={sorted.map((m) => [
+              m.user_phone ?? "",
+              m.job_title,
+              m.job_company ?? "",
+              String(Math.round(m.score)),
+              m.status ?? "",
+              formatDate(m.created_at),
+            ])}
+            disabled={loading}
           />
         </div>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Job</TableHead>
-                <TableHead>Score</TableHead>
+                <TableHead>
+                  <AdminSortableHead label="User" sortProps={sortProps("user_phone")} />
+                </TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Job" sortProps={sortProps("job_title")} />
+                </TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Score" sortProps={sortProps("score")} />
+                </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Created" sortProps={sortProps("created_at")} />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -67,15 +107,15 @@ export function MatchesTab({ token }: { token: string }) {
                   widths={["w-28", "w-40", "w-10", "w-16", "w-20"]}
                 />
               )}
-              {!loading && data.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                    No matches yet.
-                  </TableCell>
-                </TableRow>
+              {!loading && sorted.length === 0 && (
+                <AdminTableEmptyRow
+                  colSpan={5}
+                  title="No matches yet"
+                  description="Matches appear when users run the matching pipeline."
+                />
               )}
               {!loading &&
-                data.map((m) => (
+                sorted.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell className="font-mono text-xs">{m.user_phone || "—"}</TableCell>
                     <TableCell className="max-w-xs truncate" title={m.job_title}>
@@ -102,31 +142,7 @@ export function MatchesTab({ token }: { token: string }) {
             </TableBody>
           </Table>
         </div>
-        {pages > 1 && (
-          <div className="p-3 flex items-center justify-end gap-2 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              className="min-h-9"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {page} of {pages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="min-h-9"
-              disabled={page >= pages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        )}
+        <AdminTablePagination page={page} pages={pages} onPageChange={setPage} />
       </CardContent>
     </Card>
   );

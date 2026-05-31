@@ -34,6 +34,9 @@ import {
   tierMatchesFaqAnswer,
 } from "@/lib/tier-marketing";
 import { PricingSkeleton } from "@/components/shared/skeletons/PageSkeletons";
+import { TrustSection } from "@/components/marketing/TrustSection";
+import { surfaceCardClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 
 const LENCO_SCRIPT_URL = getLencoScriptUrl();
 
@@ -593,6 +596,8 @@ export default function PricingPage() {
         </div>
       </div>
 
+      <TrustSection className="mb-16 md:mb-24" />
+
       <div className="max-w-2xl mx-auto mb-16">
         <div className="text-center mb-8">
           <div className="eyebrow mb-2">FAQ</div>
@@ -606,7 +611,7 @@ export default function PricingPage() {
 
         <Accordion className="space-y-2">
           {faqs.map((faq, i) => (
-            <AccordionItem key={faq.q} value={`faq-${i}`} className="card border border-line px-0">
+            <AccordionItem key={faq.q} value={`faq-${i}`} className={cn(surfaceCardClass, "px-0")}>
               <AccordionTrigger className="px-5 py-4 text-left text-sm font-medium hover:no-underline">
                 {faq.q}
               </AccordionTrigger>

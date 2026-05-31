@@ -6,6 +6,9 @@ import { FinalCtaSection } from "@/components/marketing/FinalCtaSection";
 import { FourStepsSection } from "@/components/marketing/FourStepsSection";
 import { HeroVisualComposition } from "@/components/marketing/HeroVisualComposition";
 import { ScoreMathSection } from "@/components/marketing/ScoreMathSection";
+import { TrustSection } from "@/components/marketing/TrustSection";
+import { btnClass, surfaceCardClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 import { Icon } from "@/components/ui/Icon";
 import { Counter } from "@/components/ui/Counter";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
@@ -200,10 +203,10 @@ export default function HomePageClient() {
               </p>
 
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link href={primaryHref} className="btn btn-primary btn-lg">
+                <Link href={primaryHref} className={btnClass("primary", "lg")}>
                   {primaryLabel} <Icon name="arrowRight" size={16} />
                 </Link>
-                <Link href="/jobs" className="btn btn-ghost btn-lg">
+                <Link href="/jobs" className={btnClass("ghost", "lg")}>
                   Browse jobs
                 </Link>
               </div>
@@ -304,7 +307,7 @@ export default function HomePageClient() {
             <Link
               key={p.name}
               href="/pricing"
-              className="card card-hover job-card p-5 sm:p-6 reveal block"
+              className={cn(surfaceCardClass, "card-hover job-card p-5 sm:p-6 reveal block")}
               style={{
                 transitionDelay: `${i * 75}ms`,
                 border: p.highlight
@@ -369,6 +372,8 @@ export default function HomePageClient() {
           ))}
         </div>
       </section>
+
+      <TrustSection />
 
       {/* ────────────────────────── FAQ ────────────────────────── */}
       <section
@@ -483,7 +488,7 @@ function FaqList({
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <div className="card divide-y" style={{ borderColor: "var(--line)" }}>
+    <div className={cn(surfaceCardClass, "divide-y")} style={{ borderColor: "var(--line)" }}>
       {items.map((item, i) => {
         const isOpen = open === i;
         return (

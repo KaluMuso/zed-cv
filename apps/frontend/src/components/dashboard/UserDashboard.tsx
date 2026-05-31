@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { btnClass } from "@/lib/cn-ui";
 import type { MatchData, Subscription } from "@/lib/api";
 import { MOCK_DASHBOARD } from "./dashboard-mock-data";
 import { formatDashboardHeaderDate } from "./format-dashboard-date";
@@ -13,12 +14,21 @@ import {
   RecentActivityTimeline,
   UpgradeBanner,
 } from "./DashboardWidgets";
+import { DashboardInsights, type ApplicationFunnel } from "./DashboardInsights";
 
 export type DashboardLiveData = {
   totalMatches: number;
   savedJobs: number;
   avgScore: number | null;
   topMatches: MatchData[];
+};
+
+const EMPTY_FUNNEL: ApplicationFunnel = {
+  saved: 0,
+  applied: 0,
+  interviewing: 0,
+  offered: 0,
+  closed: 0,
 };
 
 export type UserDashboardProps = {
@@ -29,6 +39,7 @@ export type UserDashboardProps = {
   subscriptionTierLabel?: string;
   profileCompleteness?: { percent: number; hints: readonly string[] };
   applicationsCount?: number;
+  applicationFunnel?: ApplicationFunnel;
 };
 
 function mapMatchToCondensed(m: MatchData) {
@@ -51,6 +62,7 @@ export function UserDashboard({
   subscriptionTier = "free",
   profileCompleteness,
   applicationsCount = 0,
+  applicationFunnel,
 }: UserDashboardProps) {
   const data = MOCK_DASHBOARD;
   const displayName = userName ?? data.userName;
@@ -124,6 +136,16 @@ export function UserDashboard({
         <PlanUsageCard tier={subscriptionTier} sub={subscription ?? null} />
       ) : null}
 
+      {useLive && liveData ? (
+        <DashboardInsights
+          totalMatches={liveData.totalMatches}
+          avgScore={liveData.avgScore}
+          topScore={liveData.topMatches[0]?.score ?? null}
+          subscription={subscription ?? null}
+          funnel={applicationFunnel ?? EMPTY_FUNNEL}
+        />
+      ) : null}
+
       <section
         className="rounded-xl border p-5 sm:p-6"
         style={{ borderColor: "var(--line)", background: "var(--surface)" }}
@@ -137,10 +159,10 @@ export function UserDashboard({
             : "Upload your CV and run matching to see roles here."}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Link href="/matches" className="btn btn-primary btn-sm">
+          <Link href="/matches" className={btnClass("primary", "sm")}>
             View matches
           </Link>
-          <Link href="/profile?tab=cv-skills" className="btn btn-outline btn-sm">
+          <Link href="/profile?tab=cv-skills" className={btnClass("outline", "sm")}>
             Upload CV
           </Link>
         </div>

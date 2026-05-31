@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { notify } from "@/lib/toast";
 import { Loader2 } from "lucide-react";
 import { formatDate, SkeletonTableRows } from "./shared";
+import { useClientTable } from "@/components/admin/useClientTable";
+import {
+  AdminExportButton,
+  AdminSortableHead,
+  AdminTableEmptyRow,
+  AdminTablePagination,
+} from "@/components/admin/AdminTableTools";
 
 const EMPTY_FORM: AdminJobCreate = {
   title: "",
@@ -81,6 +88,17 @@ export function JobsTab({ token }: { token: string }) {
   const [editSaving, setEditSaving] = useState(false);
   const [editSources, setEditSources] = useState<ScrapingSourceEntry[]>([]);
   const [forcePublish, setForcePublish] = useState(false);
+
+  const { sorted, sortProps } = useClientTable(data, {
+    getSortValue: (row, key) => {
+      if (key === "closing_date") {
+        return row.closing_date ? new Date(row.closing_date).getTime() : 0;
+      }
+      const v = row[key as keyof AdminJobRow];
+      if (typeof v === "boolean") return v ? 1 : 0;
+      return String(v ?? "").toLowerCase();
+    },
+  });
 
   const load = useCallback(() => {
     setLoading(true);
@@ -266,6 +284,19 @@ export function JobsTab({ token }: { token: string }) {
           >
             {bulkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Deactivate expired"}
           </Button>
+          <AdminExportButton
+            filename={`zedapply-jobs-p${page}-${filter}.csv`}
+            headers={["title", "company", "source", "quality", "active", "closes"]}
+            rows={sorted.map((j) => [
+              j.title,
+              j.company ?? "",
+              j.source,
+              String(j.quality_score ?? ""),
+              j.is_active ? "yes" : "no",
+              formatDate(j.closing_date),
+            ])}
+            disabled={loading}
+          />
         </div>
 
         {showForm && (
@@ -460,12 +491,22 @@ export function JobsTab({ token }: { token: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Source</TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Title" sortProps={sortProps("title")} />
+                </TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Company" sortProps={sortProps("company")} />
+                </TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Source" sortProps={sortProps("source")} />
+                </TableHead>
                 <TableHead>Quality</TableHead>
-                <TableHead>Active</TableHead>
-                <TableHead>Closes</TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Active" sortProps={sortProps("is_active")} />
+                </TableHead>
+                <TableHead>
+                  <AdminSortableHead label="Closes" sortProps={sortProps("closing_date")} />
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -476,15 +517,15 @@ export function JobsTab({ token }: { token: string }) {
                   widths={["w-40", "w-32", "w-12", "w-8", "w-16", "w-20", "w-24"]}
                 />
               )}
-              {!loading && data.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-sm text-muted-foreground">
-                    No jobs match this filter.
-                  </TableCell>
-                </TableRow>
+              {!loading && sorted.length === 0 && (
+                <AdminTableEmptyRow
+                  colSpan={7}
+                  title="No jobs match this filter"
+                  description="Try a different filter or post a new job."
+                />
               )}
               {!loading &&
-                data.map((j) => (
+                sorted.map((j) => (
                   <TableRow key={j.id}>
                     <TableCell className="max-w-xs truncate" title={j.title}>{j.title}</TableCell>
                     <TableCell>{j.company || <span className="text-muted-foreground">—</span>}</TableCell>
@@ -525,13 +566,7 @@ export function JobsTab({ token }: { token: string }) {
             </TableBody>
           </Table>
         </div>
-        {pages > 1 && (
-          <div className="p-3 flex items-center justify-end gap-2 border-t border-border">
-            <Button variant="outline" size="sm" className="min-h-9" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <span className="text-sm text-muted-foreground">Page {page} of {pages}</span>
-            <Button variant="outline" size="sm" className="min-h-9" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>Next</Button>
-          </div>
-        )}
+        <AdminTablePagination page={page} pages={pages} onPageChange={setPage} />
       </CardContent>
     </Card>
   );

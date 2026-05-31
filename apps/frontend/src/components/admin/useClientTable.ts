@@ -4,6 +4,13 @@ import { useMemo, useState } from "react";
 
 export type SortDirection = "asc" | "desc";
 
+/** Sort key helper for ISO date strings (null/empty → 0). */
+export function sortIsoDate(value: string | null | undefined): number {
+  if (!value) return 0;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? 0 : t;
+}
+
 export function useClientTable<T>(
   rows: T[],
   options: {
@@ -45,14 +52,15 @@ export function useClientTable<T>(
     }
   };
 
-  const sortProps = (key: keyof T & string) => ({
-    "aria-sort":
-      sortKey === key
-        ? ((sortDir === "asc" ? "ascending" : "descending") as const)
-        : ("none" as const),
-    onClick: () => toggleSort(key),
-    className: "cursor-pointer select-none hover:text-foreground",
-  });
+  const sortProps = (key: keyof T & string) => {
+    const ariaSort: "ascending" | "descending" | "none" =
+      sortKey === key ? (sortDir === "asc" ? "ascending" : "descending") : "none";
+    return {
+      "aria-sort": ariaSort,
+      onClick: () => toggleSort(key),
+      className: "cursor-pointer select-none hover:text-foreground",
+    };
+  };
 
   return {
     sorted,

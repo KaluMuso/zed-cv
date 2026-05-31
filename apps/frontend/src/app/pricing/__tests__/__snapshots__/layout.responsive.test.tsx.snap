@@ -1399,6 +1399,244 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         </table>
       </div>
     </div>
+    <section
+      aria-labelledby="trust-heading"
+      class="py-12 sm:py-16 md:py-20 mb-16 md:mb-24"
+    >
+      <div
+        class="max-w-[1280px] mx-auto px-5 sm:px-6"
+      >
+        <div
+          class="text-center max-w-2xl mx-auto mb-10"
+        >
+          <p
+            class="eyebrow mb-2"
+          >
+            Trust
+          </p>
+          <h2
+            class="type-h2"
+            id="trust-heading"
+            style="color: var(--ink);"
+          >
+            Built for Zambian professionals
+          </h2>
+          <p
+            class="type-body mt-3"
+            style="color: var(--muted);"
+          >
+            Security, transparency, and local delivery — see our
+             
+            <a
+              class="underline"
+              href="/security"
+              style="color: var(--green-700);"
+            >
+              security overview
+            </a>
+            .
+          </p>
+        </div>
+        <ul
+          class="grid gap-4 sm:grid-cols-3 mb-12"
+        >
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="none"
+              height="22"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              Encrypted & private
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              CV data encrypted in transit and at rest. We never sell your CV to employers.
+            </p>
+          </li>
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="currentColor"
+              height="22"
+              stroke="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="0"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              WhatsApp-native
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              Daily match digests and OTP sign-in — built for how Zambia actually hires.
+            </p>
+          </li>
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="none"
+              height="22"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              Transparent scoring
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              Every match shows skill overlap, semantic fit, and local signals — not a black box.
+            </p>
+          </li>
+        </ul>
+        <div
+          aria-label="Organizations using ZedApply"
+          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6 sm:p-8 mb-10"
+        >
+          <p
+            class="type-section-title text-center mb-4"
+          >
+            Trusted by teams across Zambia
+          </p>
+          <div
+            class="flex flex-wrap justify-center gap-3"
+          >
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              NGO partners
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Zambian employers
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Job boards
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Career centres
+            </span>
+          </div>
+          <p
+            class="text-center text-xs mt-4"
+            style="color: var(--muted);"
+          >
+            Replace with verified customer logos when available.
+          </p>
+        </div>
+        <div
+          class="grid gap-4 md:grid-cols-2"
+        >
+          <blockquote
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            style="border-left: 3px solid var(--copper-500);"
+          >
+            <p
+              class="type-body italic"
+              style="color: var(--ink-2);"
+            >
+              “
+              I stopped scrolling five job sites. ZedApply surfaces roles that actually fit my CV.
+              ”
+            </p>
+            <footer
+              class="mt-4 type-caption"
+            >
+              <strong
+                style="color: var(--ink);"
+              >
+                Placeholder — Lusaka
+              </strong>
+              <span>
+                 · 
+                Finance professional
+              </span>
+            </footer>
+          </blockquote>
+          <blockquote
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            style="border-left: 3px solid var(--copper-500);"
+          >
+            <p
+              class="type-body italic"
+              style="color: var(--ink-2);"
+            >
+              “
+              The WhatsApp digest means I never miss a closing date. Worth upgrading for tailored CVs.
+              ”
+            </p>
+            <footer
+              class="mt-4 type-caption"
+            >
+              <strong
+                style="color: var(--ink);"
+              >
+                Placeholder — Kitwe
+              </strong>
+              <span>
+                 · 
+                Engineering graduate
+              </span>
+            </footer>
+          </blockquote>
+        </div>
+        <div
+          class="mt-10 text-center"
+        >
+          <a
+            class="text-sm font-medium hover:underline"
+            href="/employer"
+            style="color: var(--green-700);"
+          >
+            Hiring in Zambia? Explore the employer portal →
+          </a>
+        </div>
+      </div>
+    </section>
     <div
       class="max-w-2xl mx-auto mb-16"
     >
@@ -1425,7 +1663,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         role="region"
       >
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="0"
           data-orientation="vertical"
@@ -1489,7 +1727,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="1"
           data-orientation="vertical"
@@ -1554,7 +1792,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="2"
           data-orientation="vertical"
@@ -1619,7 +1857,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="3"
           data-orientation="vertical"
@@ -3088,6 +3326,244 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </table>
       </div>
     </div>
+    <section
+      aria-labelledby="trust-heading"
+      class="py-12 sm:py-16 md:py-20 mb-16 md:mb-24"
+    >
+      <div
+        class="max-w-[1280px] mx-auto px-5 sm:px-6"
+      >
+        <div
+          class="text-center max-w-2xl mx-auto mb-10"
+        >
+          <p
+            class="eyebrow mb-2"
+          >
+            Trust
+          </p>
+          <h2
+            class="type-h2"
+            id="trust-heading"
+            style="color: var(--ink);"
+          >
+            Built for Zambian professionals
+          </h2>
+          <p
+            class="type-body mt-3"
+            style="color: var(--muted);"
+          >
+            Security, transparency, and local delivery — see our
+             
+            <a
+              class="underline"
+              href="/security"
+              style="color: var(--green-700);"
+            >
+              security overview
+            </a>
+            .
+          </p>
+        </div>
+        <ul
+          class="grid gap-4 sm:grid-cols-3 mb-12"
+        >
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="none"
+              height="22"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              Encrypted & private
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              CV data encrypted in transit and at rest. We never sell your CV to employers.
+            </p>
+          </li>
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="currentColor"
+              height="22"
+              stroke="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="0"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              WhatsApp-native
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              Daily match digests and OTP sign-in — built for how Zambia actually hires.
+            </p>
+          </li>
+          <li
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+          >
+            <svg
+              class="text-primary mb-3"
+              fill="none"
+              height="22"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.75"
+              viewBox="0 0 24 24"
+              width="22"
+            >
+              <path
+                d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+              />
+            </svg>
+            <h3
+              class="type-card-title mb-1"
+            >
+              Transparent scoring
+            </h3>
+            <p
+              class="type-caption m-0"
+            >
+              Every match shows skill overlap, semantic fit, and local signals — not a black box.
+            </p>
+          </li>
+        </ul>
+        <div
+          aria-label="Organizations using ZedApply"
+          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6 sm:p-8 mb-10"
+        >
+          <p
+            class="type-section-title text-center mb-4"
+          >
+            Trusted by teams across Zambia
+          </p>
+          <div
+            class="flex flex-wrap justify-center gap-3"
+          >
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              NGO partners
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Zambian employers
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Job boards
+            </span>
+            <span
+              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+            >
+              Career centres
+            </span>
+          </div>
+          <p
+            class="text-center text-xs mt-4"
+            style="color: var(--muted);"
+          >
+            Replace with verified customer logos when available.
+          </p>
+        </div>
+        <div
+          class="grid gap-4 md:grid-cols-2"
+        >
+          <blockquote
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            style="border-left: 3px solid var(--copper-500);"
+          >
+            <p
+              class="type-body italic"
+              style="color: var(--ink-2);"
+            >
+              “
+              I stopped scrolling five job sites. ZedApply surfaces roles that actually fit my CV.
+              ”
+            </p>
+            <footer
+              class="mt-4 type-caption"
+            >
+              <strong
+                style="color: var(--ink);"
+              >
+                Placeholder — Lusaka
+              </strong>
+              <span>
+                 · 
+                Finance professional
+              </span>
+            </footer>
+          </blockquote>
+          <blockquote
+            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            style="border-left: 3px solid var(--copper-500);"
+          >
+            <p
+              class="type-body italic"
+              style="color: var(--ink-2);"
+            >
+              “
+              The WhatsApp digest means I never miss a closing date. Worth upgrading for tailored CVs.
+              ”
+            </p>
+            <footer
+              class="mt-4 type-caption"
+            >
+              <strong
+                style="color: var(--ink);"
+              >
+                Placeholder — Kitwe
+              </strong>
+              <span>
+                 · 
+                Engineering graduate
+              </span>
+            </footer>
+          </blockquote>
+        </div>
+        <div
+          class="mt-10 text-center"
+        >
+          <a
+            class="text-sm font-medium hover:underline"
+            href="/employer"
+            style="color: var(--green-700);"
+          >
+            Hiring in Zambia? Explore the employer portal →
+          </a>
+        </div>
+      </div>
+    </section>
     <div
       class="max-w-2xl mx-auto mb-16"
     >
@@ -3114,7 +3590,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         role="region"
       >
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="0"
           data-orientation="vertical"
@@ -3178,7 +3654,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="1"
           data-orientation="vertical"
@@ -3243,7 +3719,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="2"
           data-orientation="vertical"
@@ -3308,7 +3784,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           </h3>
         </div>
         <div
-          class="not-last:border-b card border border-line px-0"
+          class="not-last:border-b rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark px-0"
           data-closed=""
           data-index="3"
           data-orientation="vertical"

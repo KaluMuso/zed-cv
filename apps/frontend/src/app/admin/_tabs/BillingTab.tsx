@@ -29,6 +29,13 @@ import {
 } from "@/components/ui/dialog";
 import { notify } from "@/lib/toast";
 import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
+import { useClientTable, sortIsoDate } from "@/components/admin/useClientTable";
+import {
+  AdminExportButton,
+  AdminSortableHead,
+  AdminTableEmptyRow,
+  AdminTablePagination,
+} from "@/components/admin/AdminTableTools";
 
 function healthTone(ready: boolean): "default" | "destructive" | "secondary" {
   return ready ? "default" : "destructive";
@@ -188,6 +195,24 @@ export function BillingTab({
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [paymentDetail, setPaymentDetail] = useState<AdminPaymentDetail | null>(null);
 
+  const { sorted: sortedSubs, sortProps: subSortProps } = useClientTable(subs, {
+    getSortValue: (row, key) => {
+      if (key === "matches_used") return row.matches_used;
+      if (key === "current_period_end") return sortIsoDate(row.current_period_end);
+      const v = row[key as keyof AdminSubscriptionRow];
+      return String(v ?? "").toLowerCase();
+    },
+  });
+
+  const { sorted: sortedPayments, sortProps: paySortProps } = useClientTable(payments, {
+    getSortValue: (row, key) => {
+      if (key === "amount") return row.amount;
+      if (key === "created_at") return sortIsoDate(row.created_at);
+      const v = row[key as keyof AdminPaymentRow];
+      return String(v ?? "").toLowerCase();
+    },
+  });
+
   const loadHealth = useCallback(() => {
     admin
       .billingHealth(token)
@@ -313,15 +338,35 @@ export function BillingTab({
               <option value="professional">Professional</option>
               <option value="super_standard">Super Standard</option>
             </select>
+            <AdminExportButton
+              filename={`zedapply-subs-p${subPage}.csv`}
+              headers={["phone", "tier", "usage", "period_end", "status"]}
+              rows={sortedSubs.map((s) => [
+                s.user_phone ?? "",
+                s.tier,
+                `${s.matches_used}/${s.matches_limit >= 99999 ? "unlimited" : s.matches_limit}`,
+                formatDate(s.current_period_end),
+                s.cancelled_at ? "cancelling" : s.status,
+              ])}
+              disabled={loadingSubs}
+            />
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Period end</TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Phone" sortProps={subSortProps("user_phone")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Tier" sortProps={subSortProps("tier")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Usage" sortProps={subSortProps("matches_used")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Period end" sortProps={subSortProps("current_period_end")} />
+                  </TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -329,15 +374,11 @@ export function BillingTab({
                 {loadingSubs && (
                   <SkeletonTableRows rows={4} widths={["w-28", "w-16", "w-20", "w-20", "w-16"]} />
                 )}
-                {!loadingSubs && subs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                      No subscriptions.
-                    </TableCell>
-                  </TableRow>
+                {!loadingSubs && sortedSubs.length === 0 && (
+                  <AdminTableEmptyRow colSpan={5} title="No subscriptions" />
                 )}
                 {!loadingSubs &&
-                  subs.map((s) => (
+                  sortedSubs.map((s) => (
                     <TableRow key={s.user_id}>
                       <TableCell className="font-mono text-xs">{s.user_phone ?? "—"}</TableCell>
                       <TableCell>{s.tier.replace("_", " ")}</TableCell>
@@ -361,19 +402,7 @@ export function BillingTab({
               </TableBody>
             </Table>
           </div>
-          {subPages > 1 && (
-            <div className="p-3 flex items-center justify-end gap-2 border-t border-border">
-              <Button variant="outline" size="sm" disabled={subPage <= 1} onClick={() => setSubPage((p) => p - 1)}>
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {subPage} of {subPages}
-              </span>
-              <Button variant="outline" size="sm" disabled={subPage >= subPages} onClick={() => setSubPage((p) => p + 1)}>
-                Next
-              </Button>
-            </div>
-          )}
+          <AdminTablePagination page={subPage} pages={subPages} onPageChange={setSubPage} />
         </CardContent>
       </Card>
 
@@ -411,17 +440,42 @@ export function BillingTab({
               Lifetime completed:{" "}
               <span className="font-medium text-foreground">{formatNgwee(totalCompleted)}</span>
             </p>
+            <AdminExportButton
+              filename={`zedapply-payments-p${payPage}.csv`}
+              headers={["invoice", "phone", "amount_ngwee", "provider", "status", "created"]}
+              rows={sortedPayments.map((p) => [
+                p.invoice_number ?? "",
+                p.user_phone ?? "",
+                String(p.amount),
+                p.provider ?? "",
+                p.status,
+                formatDate(p.created_at),
+              ])}
+              disabled={loadingPayments}
+            />
           </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Invoice" sortProps={paySortProps("invoice_number")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Phone" sortProps={paySortProps("user_phone")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Amount" sortProps={paySortProps("amount")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Provider" sortProps={paySortProps("provider")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Status" sortProps={paySortProps("status")} />
+                  </TableHead>
+                  <TableHead>
+                    <AdminSortableHead label="Created" sortProps={paySortProps("created_at")} />
+                  </TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -429,15 +483,11 @@ export function BillingTab({
                 {loadingPayments && (
                   <SkeletonTableRows rows={5} widths={["w-20", "w-28", "w-16", "w-12", "w-16", "w-20", "w-12"]} />
                 )}
-                {!loadingPayments && payments.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-sm text-muted-foreground">
-                      No payments yet.
-                    </TableCell>
-                  </TableRow>
+                {!loadingPayments && sortedPayments.length === 0 && (
+                  <AdminTableEmptyRow colSpan={7} title="No payments yet" />
                 )}
                 {!loadingPayments &&
-                  payments.map((p) => (
+                  sortedPayments.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-mono text-xs">{p.invoice_number ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{p.user_phone ?? "—"}</TableCell>
@@ -467,19 +517,7 @@ export function BillingTab({
               </TableBody>
             </Table>
           </div>
-          {payPages > 1 && (
-            <div className="p-3 flex items-center justify-end gap-2 border-t border-border">
-              <Button variant="outline" size="sm" disabled={payPage <= 1} onClick={() => setPayPage((p) => p - 1)}>
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {payPage} of {payPages}
-              </span>
-              <Button variant="outline" size="sm" disabled={payPage >= payPages} onClick={() => setPayPage((p) => p + 1)}>
-                Next
-              </Button>
-            </div>
-          )}
+          <AdminTablePagination page={payPage} pages={payPages} onPageChange={setPayPage} />
         </CardContent>
       </Card>
 
