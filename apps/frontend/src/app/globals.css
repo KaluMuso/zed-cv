@@ -977,9 +977,12 @@ a.link-copper:hover,
     flex-direction: row !important;
     align-items: stretch !important;
   }
-  .match-actions .btn {
+  .match-actions [data-slot="button"],
+  .match-actions a[class*="inline-flex"],
+  .match-actions button {
     width: auto !important;
     flex: 1;
+    min-width: 0;
   }
   .breakdown-grid {
     grid-template-columns: 1fr !important;

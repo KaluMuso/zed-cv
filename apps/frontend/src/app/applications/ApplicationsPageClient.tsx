@@ -285,7 +285,12 @@ export function ApplicationsPageClient() {
           ))}
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div
+          className="flex gap-4 overflow-x-auto overscroll-x-contain scroll-thin pb-4 snap-x snap-mandatory"
+          role="region"
+          aria-label="Application pipeline board"
+          tabIndex={0}
+        >
           {KANBAN_COLUMNS.map((column) => (
             <KanbanColumn
               key={column.id}

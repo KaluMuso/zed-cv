@@ -41,6 +41,8 @@ import { isJobListingClosed } from "@/lib/isJobListingClosed";
 import { trackApplyClick } from "@/lib/trackApplyClick";
 import { ApplyModal } from "@/components/jobs/ApplyModal";
 import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
+import { btnClass, surfaceCardClass, tagClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 
 // Human-friendly tier label. Free → "Free", super_standard → "Super",
 // etc. Falls back to the raw key if we don't recognize it so we don't
@@ -265,7 +267,7 @@ export default function MatchesPageClient() {
     // (circular score badge · title+meta · button stack). Same outer
     // padding as the loaded page so there's no layout shift on resolve.
     return (
-      <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+      <div className="max-w-[1280px] mx-auto px-5 sm:px-6 py-8 md:py-12">
         <div
           className="matches-header grid gap-8 items-start mb-10"
           style={{ gridTemplateColumns: "1.4fr 1fr" }}
@@ -276,7 +278,7 @@ export default function MatchesPageClient() {
             <div className="skeleton h-14 md:h-20 w-3/4 mb-4" />
             <div className="skeleton h-4 w-2/3" />
           </div>
-          <div className="card p-6">
+          <div className={cn(surfaceCardClass, "p-6")}>
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="skeleton h-3 w-20 mb-3" />
@@ -311,7 +313,7 @@ export default function MatchesPageClient() {
 
         <div className="flex flex-col gap-3.5">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card overflow-hidden">
+            <div key={i} className={cn(surfaceCardClass, "overflow-hidden")}>
               <div
                 className="match-row p-5 sm:p-6 grid gap-6 items-center"
                 style={{ gridTemplateColumns: "auto 1fr auto" }}
@@ -425,7 +427,7 @@ export default function MatchesPageClient() {
       : "Your first matches are computing — check back in a moment. After that, matches refresh nightly at 02:00.");
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+    <div className="max-w-[1280px] mx-auto px-5 sm:px-6 py-8 md:py-12">
       <PushPermissionPrompt creditedMatchCount={matchesUsed} />
       {/* Header */}
       <div
@@ -461,7 +463,7 @@ export default function MatchesPageClient() {
         </div>
 
         {/* Quota card */}
-        <div className="card p-6">
+        <div className={cn(surfaceCardClass, "p-6")}>
           <div className="flex justify-between items-start">
             <div>
               <div className="eyebrow">This month</div>
@@ -492,7 +494,7 @@ export default function MatchesPageClient() {
                 matches delivered
               </div>
             </div>
-            <span className="tag tag-copper">
+            <span className={tagClass("copper", "inline-flex items-center gap-1")}>
               <Icon name="zap" size={11} /> {tierLabel}
             </span>
           </div>
@@ -562,12 +564,13 @@ export default function MatchesPageClient() {
       {prefs && _preferencesAreEmpty(prefs) && (
         <Link
           href="/profile?tab=preferences"
-          className="card p-4 mb-6 flex items-center gap-3"
+          className={cn(
+            surfaceCardClass,
+            "p-4 mb-6 flex items-center gap-3 border-dashed no-underline",
+          )}
           style={{
             borderColor: "var(--copper-500)",
-            borderStyle: "dashed",
             color: "var(--ink)",
-            textDecoration: "none",
           }}
         >
           <Icon name="sliders" size={18} />
@@ -592,17 +595,14 @@ export default function MatchesPageClient() {
           ].map(([v, l]) => (
             <button
               key={String(v)}
+              type="button"
               onClick={() => setScoreFilter(v as number)}
-              className="btn btn-sm"
-              style={{
-                background:
-                  scoreFilter === v ? "var(--green-700)" : "transparent",
-                color: scoreFilter === v ? "#faf7f2" : "var(--ink-2)",
-                border:
-                  scoreFilter === v
-                    ? "none"
-                    : "1px solid var(--line-2)",
-              }}
+              aria-pressed={scoreFilter === v}
+              className={cn(
+                btnClass("outline", "sm"),
+                scoreFilter === v &&
+                  "border-transparent bg-primary text-primary-foreground hover:bg-primary/90",
+              )}
             >
               {l as string}
             </button>
@@ -640,29 +640,23 @@ export default function MatchesPageClient() {
           ].map(([v, l]) => (
             <button
               key={v}
+              type="button"
               onClick={() => setSort(v as "score" | "closing")}
-              className="btn btn-sm"
-              style={{
-                background: sort === v ? "var(--bg-2)" : "transparent",
-                color: "var(--ink-2)",
-                border: "1px solid var(--line)",
-                fontWeight: sort === v ? 600 : 400,
-              }}
+              aria-pressed={sort === v}
+              className={cn(
+                btnClass("outline", "sm"),
+                sort === v && "bg-muted font-semibold",
+              )}
             >
               {l}
             </button>
           ))}
           <button
+            type="button"
             onClick={handleRefreshMatches}
             disabled={showRefreshProgress || refreshCooldown}
             title={refreshTitle}
-            className="btn btn-sm flex items-center gap-2"
-            style={{
-              background: "var(--green-700)",
-              color: "#faf7f2",
-              opacity: showRefreshProgress || refreshCooldown ? 0.6 : 1,
-              cursor: showRefreshProgress || refreshCooldown ? "not-allowed" : "pointer",
-            }}
+            className={cn(btnClass("primary", "sm"), "gap-2")}
             aria-busy={showRefreshProgress}
           >
             <Icon
@@ -710,16 +704,14 @@ export default function MatchesPageClient() {
             Upload your CV to get started, then refresh your matches.
           </p>
           <div className="flex gap-3 justify-center">
-            <Link href="/profile" className="btn btn-primary">
+            <Link href="/profile" className={btnClass("primary")}>
               Upload CV <Icon name="upload" size={14} />
             </Link>
             <button
+              type="button"
               onClick={handleRefreshMatches}
               disabled={showRefreshProgress || refreshCooldown}
-              className="btn btn-ghost"
-              style={{
-                opacity: showRefreshProgress || refreshCooldown ? 0.6 : 1,
-              }}
+              className={btnClass("ghost")}
             >
               <Icon name="refresh" size={14} />
               {showRefreshProgress ? "Refreshing\u2026" : "Refresh matches"}
@@ -733,7 +725,7 @@ export default function MatchesPageClient() {
             return (
             <article
               key={match.id}
-              className="card overflow-hidden relative"
+              className={cn(surfaceCardClass, "overflow-hidden relative")}
               style={{ opacity: expired ? 0.5 : 1 }}
             >
               {expired && (
@@ -847,16 +839,15 @@ export default function MatchesPageClient() {
                   {expired ? (
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm w-40"
+                      className={cn(btnClass("primary", "sm"), "w-full sm:w-40")}
                       disabled
-                      style={{ cursor: "not-allowed" }}
                     >
                       Application closed
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm w-40"
+                      className={cn(btnClass("primary", "sm"), "w-full sm:w-40")}
                       onClick={() => {
                         setApplyJob(match.job);
                         if (token) {
@@ -889,7 +880,7 @@ export default function MatchesPageClient() {
                     <button
                       type="button"
                       onClick={() => setTailorFor(match)}
-                      className="btn btn-accent btn-sm w-40"
+                      className={cn(btnClass("accent", "sm"), "w-full sm:w-40")}
                       title="Generate a CV tailored to this role"
                       data-testid="match-tailor-cv"
                     >
@@ -898,10 +889,9 @@ export default function MatchesPageClient() {
                   ) : (
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm w-40"
+                      className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
                       disabled
                       title="Professional or Super Standard — tailored CV per match. Upgrade at /pricing."
-                      style={{ opacity: 0.55, cursor: "not-allowed" }}
                       data-testid="match-tailor-cv-locked"
                     >
                       Tailor my CV
@@ -911,7 +901,7 @@ export default function MatchesPageClient() {
                     <button
                       type="button"
                       onClick={() => setCoverLetterFor(match)}
-                      className="btn btn-outline btn-sm w-40"
+                      className={cn(btnClass("outline", "sm"), "w-full sm:w-40")}
                       title="Generate and edit a cover letter for this match"
                       data-testid="match-cover-letter"
                     >
@@ -920,10 +910,9 @@ export default function MatchesPageClient() {
                   ) : (
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm w-40"
+                      className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
                       disabled
                       title="Professional or Super Standard — cover letter editor. Upgrade at /pricing."
-                      style={{ opacity: 0.55, cursor: "not-allowed" }}
                       data-testid="match-cover-letter-locked"
                     >
                       Cover letter
@@ -931,8 +920,9 @@ export default function MatchesPageClient() {
                   )}
                   {sub?.tier === "super_standard" ? (
                     <button
+                      type="button"
                       onClick={() => setPrepFor(match)}
-                      className="btn btn-accent btn-sm w-40"
+                      className={cn(btnClass("accent", "sm"), "w-full sm:w-40")}
                       title="Generate interview prep notes for this role"
                     >
                       Interview Call <Icon name="zap" size={13} />
@@ -940,9 +930,8 @@ export default function MatchesPageClient() {
                   ) : (
                     <Link
                       href="/pricing"
-                      className="btn btn-ghost btn-sm w-40"
+                      className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
                       title="Interview Prep is a Super Standard feature"
-                      style={{ opacity: 0.85 }}
                     >
                       Unlock prep <Icon name="zap" size={13} />
                     </Link>
@@ -950,7 +939,7 @@ export default function MatchesPageClient() {
                   <button
                     type="button"
                     onClick={() => setDetailMatch(match)}
-                    className="btn btn-ghost btn-sm w-40"
+                    className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
                   >
                     Why this match? <Icon name="chevronRight" size={13} />
                   </button>
@@ -1045,7 +1034,7 @@ export default function MatchesPageClient() {
               lifts callback rates by 2-3x.
             </p>
           </div>
-          <Link href="/pricing" className="btn btn-accent">
+          <Link href="/pricing" className={btnClass("accent")}>
             See pricing <Icon name="arrowRight" size={14} />
           </Link>
         </div>

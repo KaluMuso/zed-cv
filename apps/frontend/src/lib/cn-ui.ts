@@ -21,7 +21,7 @@ export function btnClass(
 
 /** Pill chips (replaces `.tag` / `.tag-green` etc.) */
 export function tagClass(
-  tone: "default" | "green" | "copper" | "orange" = "default",
+  tone: "default" | "green" | "copper" | "orange" | "mono" = "default",
   className?: string,
 ) {
   const toneClass =
@@ -31,7 +31,9 @@ export function tagClass(
         ? "border-transparent bg-accent/15 text-accent-600 dark:text-accent"
         : tone === "orange"
           ? "border-transparent bg-warning/15 text-warning"
-          : "";
+          : tone === "mono"
+            ? "font-mono text-[11px] tracking-wide"
+            : "";
   return cn(
     badgeVariants({ variant: "outline" }),
     "h-auto rounded-full px-2.5 py-0.5 text-xs font-medium",

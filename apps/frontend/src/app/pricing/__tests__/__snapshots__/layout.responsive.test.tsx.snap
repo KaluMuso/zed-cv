@@ -1541,24 +1541,40 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
             class="flex flex-wrap justify-center gap-3"
           >
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              NGO partners
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                NGO partners
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Zambian employers
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Zambian employers
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Job boards
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Job boards
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Career centres
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Career centres
+              </span>
             </span>
           </div>
           <p
@@ -1628,7 +1644,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
           class="mt-10 text-center"
         >
           <a
-            class="text-sm font-medium hover:underline"
+            class="inline-flex min-h-11 items-center text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 rounded-sm px-1"
             href="/employer"
             style="color: var(--green-700);"
           >
@@ -3468,24 +3484,40 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
             class="flex flex-wrap justify-center gap-3"
           >
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              NGO partners
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                NGO partners
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Zambian employers
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Zambian employers
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Job boards
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Job boards
+              </span>
             </span>
             <span
-              class="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
+              class="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30"
             >
-              Career centres
+              <span
+                class="text-xs font-medium text-muted-foreground"
+              >
+                Career centres
+              </span>
             </span>
           </div>
           <p
@@ -3555,7 +3587,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
           class="mt-10 text-center"
         >
           <a
-            class="text-sm font-medium hover:underline"
+            class="inline-flex min-h-11 items-center text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 rounded-sm px-1"
             href="/employer"
             style="color: var(--green-700);"
           >

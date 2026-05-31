@@ -43,7 +43,27 @@ const TESTIMONIALS = [
   },
 ] as const;
 
-export function TrustSection({ className }: { className?: string }) {
+/** Optional verified logo — pass `src` only for assets you are licensed to display. */
+export type TrustLogo = {
+  name: string;
+  src?: string;
+  href?: string;
+};
+
+export function TrustSection({
+  className,
+  logos,
+}: {
+  className?: string;
+  /** Real logo URLs when marketing provides them; otherwise category placeholders */
+  logos?: TrustLogo[];
+}) {
+  const logoItems: TrustLogo[] =
+    logos ??
+    PLACEHOLDER_LOGOS.map((name) => ({
+      name,
+    }));
+
   return (
     <section className={cn("py-12 sm:py-16 md:py-20", className)} aria-labelledby="trust-heading">
       <div className="max-w-[1280px] mx-auto px-5 sm:px-6">
@@ -77,18 +97,48 @@ export function TrustSection({ className }: { className?: string }) {
         >
           <p className="type-section-title text-center mb-4">Trusted by teams across Zambia</p>
           <div className="flex flex-wrap justify-center gap-3">
-            {PLACEHOLDER_LOGOS.map((label) => (
-              <span
-                key={label}
-                className="rounded-full border border-border px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30"
-              >
-                {label}
-              </span>
-            ))}
+            {logoItems.map((logo) => {
+              const inner = logo.src ? (
+                // eslint-disable-next-line @next/next/no-img-element -- marketing URLs vary by deploy
+                <img
+                  src={logo.src}
+                  alt={logo.name}
+                  width={120}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">{logo.name}</span>
+              );
+              const className =
+                "inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 py-2 bg-muted/30";
+              if (logo.href && logo.src) {
+                return (
+                  <a
+                    key={logo.name}
+                    href={logo.href}
+                    className={className}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {inner}
+                  </a>
+                );
+              }
+              return (
+                <span key={logo.name} className={className}>
+                  {inner}
+                </span>
+              );
+            })}
           </div>
-          <p className="text-center text-xs mt-4" style={{ color: "var(--muted)" }}>
-            Replace with verified customer logos when available.
-          </p>
+          {!logos?.some((l) => l.src) ? (
+            <p className="text-center text-xs mt-4" style={{ color: "var(--muted)" }}>
+              Replace with verified customer logos when available.
+            </p>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -110,7 +160,11 @@ export function TrustSection({ className }: { className?: string }) {
         </div>
 
         <div className="mt-10 text-center">
-          <Link href="/employer" className="text-sm font-medium hover:underline" style={{ color: "var(--green-700)" }}>
+          <Link
+            href="/employer"
+            className="inline-flex min-h-11 items-center text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 rounded-sm px-1"
+            style={{ color: "var(--green-700)" }}
+          >
             Hiring in Zambia? Explore the employer portal →
           </Link>
         </div>

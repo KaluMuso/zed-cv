@@ -10,14 +10,14 @@
 
 | Dimension | Score (1–10) | Notes |
 | --- | ---: | --- |
-| Visual consistency | 8.0 | Unified `cn-ui` helpers; homepage/pricing/dashboard migrated on high-traffic CTAs |
-| Design system migration | 7.5 | Legacy `.btn`/`.card`/`.tag` retained as aliases; ~60% of call sites still use legacy classes |
+| Visual consistency | 8.5 | Unified `cn-ui` helpers; `/jobs` and `/matches` migrated to `btnClass` / `surfaceCardClass` / `tagClass` |
+| Design system migration | 8.5 | Legacy `.btn`/`.card`/`.tag` retained as aliases; secondary pages only |
 | Dashboard experience | 8.5 | Live insights, funnel bars, quota trends, theme-safe widgets |
 | Admin tables | 8.5 | Jobs, Matches, Billing (payments + subs), Subscriptions tab: sort, export, pagination, empty states |
 | Conversion / trust | 8.0 | `TrustSection` on home + pricing; signup security line; `/security` page (prior pass) |
-| Accessibility | 7.0 | Focus rings on buttons; sortable table headers; manual audits recommended pre-launch |
-| Mobile | 7.5 | Prior UX pass (nav, safe areas, sticky bars); tables scroll horizontally |
-| **Overall launch readiness** | **7.8 / 10** | **Soft launch ready**; polish remaining on matches/jobs legacy classes |
+| Accessibility | 7.5 | `aria-sort` on match sort; labeled apply/status modals; Kanban drag handles; focus-visible on cn-ui buttons |
+| Mobile | 8.0 | 320px padding on jobs/matches; Kanban snap scroll + 44px drag handles; match actions flex row |
+| **Overall launch readiness** | **8.2 / 10** | **Soft launch ready**; replace TrustSection placeholders before paid ads |
 
 ---
 
@@ -77,7 +77,7 @@ Shared: `AdminTableTools.tsx`, `useClientTable.ts`.
 
 | Issue | Severity | Effort |
 | --- | --- | --- |
-| `MatchesPageClient` / `JobsPageClient` still use `.btn` / `.card` heavily | Low (visual only) | Medium — mechanical migration |
+| `jobs/[id]` detail page still uses legacy `.btn` / `.tag` | Low (visual only) | Small — mirror `btnClass` migration |
 | Match performance bands in dashboard are illustrative (not live counts) | Low | Requires read-only API aggregate (out of scope) |
 | Placeholder testimonials/logos in `TrustSection` | Low | Content/marketing |
 | axe / keyboard audit not automated | Medium | Add `@axe-core/playwright` or Lighthouse CI |
@@ -100,8 +100,9 @@ Shared: `AdminTableTools.tsx`, `useClientTable.ts`.
 ## Pre-launch checklist
 
 - [ ] Replace `TrustSection` placeholders with verified assets
-- [ ] Run axe DevTools on `/`, `/pricing`, `/auth`, `/dashboard`, `/matches` at 320px and 1280px
-- [ ] Keyboard-only pass: nav, Cmd+K, modals, sortable tables
+- [ ] Run axe DevTools on `/`, `/pricing`, `/auth`, `/dashboard`, `/matches`, `/jobs` at 320px and 1280px
+- [ ] Keyboard-only pass: nav, Cmd+K, modals, match sort buttons, Kanban drag handles
+- [ ] Manual: `/jobs` and `/matches` at 320px — filter bar scroll, match action row, dark mode upgrade banner contrast
 - [ ] Confirm Vercel env: `NEXT_PUBLIC_API_URL`, Lenco public key
 - [ ] Smoke: OTP → CV upload → matches → pricing upgrade (staging)
 - [ ] Merge after CI green (frontend tests + lint)

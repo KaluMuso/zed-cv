@@ -23,6 +23,8 @@ import {
 import { authPath } from "@/lib/auth-paths";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
+import { btnClass, tagClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 
 const ZAMBIAN_LOCATIONS = [
   "All Locations",
@@ -411,7 +413,7 @@ export default function JobsPageClient() {
   };
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 py-8 md:py-12">
+    <div className="max-w-[1280px] mx-auto px-5 sm:px-6 py-8 md:py-12">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -433,17 +435,17 @@ export default function JobsPageClient() {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
-            className="btn btn-outline btn-sm gap-1.5"
+            className={cn(btnClass("outline", "sm"), "gap-1.5")}
             onClick={() => onListPresetChange("saved")}
             aria-pressed={listPreset === "saved"}
           >
             <Icon name="bookmark" size={14} />
             Saved
             {savedJobIds.size > 0 ? (
-              <span className="tag tag-green text-xs ml-0.5">{savedJobIds.size}</span>
+              <span className={tagClass("green", "text-xs ml-0.5")}>{savedJobIds.size}</span>
             ) : null}
           </button>
-          <Link href="/matches" className="btn btn-primary btn-sm gap-1.5">
+          <Link href="/matches" className={cn(btnClass("primary", "sm"), "gap-1.5")}>
             My matches
             <Icon name="arrowRight" size={14} />
           </Link>
@@ -453,7 +455,7 @@ export default function JobsPageClient() {
       {/* Filter bar */}
       {/* Filter bar — search is debounced (300ms); no submit button. */}
       <div
-        className="sticky top-[65px] z-30 -mx-6 px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center border-b border-border"
+        className="sticky top-[65px] z-30 -mx-5 sm:-mx-6 px-5 sm:px-6 py-4 mb-6 flex flex-col md:flex-row gap-3 items-stretch md:items-center border-b border-border"
         style={{
           background: "color-mix(in srgb, var(--bg) 92%, transparent)",
           backdropFilter: "blur(12px)",
@@ -477,8 +479,7 @@ export default function JobsPageClient() {
               }
             }}
             placeholder="Search jobs, skills, companies..."
-            className="field pl-10"
-            style={{ height: 44 }}
+            className="field pl-10 min-h-11"
             aria-label="Search jobs"
             list="job-recent-searches"
           />
@@ -497,7 +498,7 @@ export default function JobsPageClient() {
             setLocation(e.target.value);
             setPage(1);
           }}
-          className="field"
+          className="field min-h-11"
           style={{ width: "auto", minWidth: 160 }}
           aria-label="Filter by location"
         >
@@ -514,7 +515,7 @@ export default function JobsPageClient() {
             setSort(e.target.value as "relevance" | "recent" | "closing");
             setPage(1);
           }}
-          className="field"
+          className="field min-h-11"
           style={{ width: "auto", minWidth: 140 }}
           aria-label="Sort jobs"
         >
@@ -531,7 +532,7 @@ export default function JobsPageClient() {
               <button
                 key={term}
                 type="button"
-                className="tag tag-mono shrink-0"
+                className={tagClass("mono", "shrink-0 cursor-pointer")}
                 onClick={() => {
                   setSearchInput(term);
                   setSearchQuery(term);
@@ -543,7 +544,7 @@ export default function JobsPageClient() {
             ))}
             <button
               type="button"
-              className="text-xs underline"
+              className="min-h-11 px-2 text-xs underline"
               style={{ color: "var(--muted)" }}
               onClick={clearRecentSearches}
             >
@@ -565,7 +566,7 @@ export default function JobsPageClient() {
               setEmploymentType(e.target.value as "" | EmploymentType);
               setPage(1);
             }}
-            className="field"
+            className="field min-h-11"
             style={{ width: "auto", minWidth: 140 }}
             aria-label="Filter by employment type"
           >
@@ -584,7 +585,7 @@ export default function JobsPageClient() {
               setWorkArrangement(e.target.value as "" | WorkArrangement);
               setPage(1);
             }}
-            className="field"
+            className="field min-h-11"
             style={{ width: "auto", minWidth: 140 }}
             aria-label="Filter by work arrangement"
           >
@@ -598,7 +599,7 @@ export default function JobsPageClient() {
 
         <button
           type="button"
-          className="btn btn-ghost dark:text-foreground dark:border-border dark:hover:bg-muted"
+          className={btnClass("ghost")}
           disabled={!hasActiveFilters}
           onClick={resetFilters}
         >
@@ -612,8 +613,9 @@ export default function JobsPageClient() {
           A horizontal scroll on mobile keeps the row inline rather
           than wrapping into a wall of chips on narrow viewports. */}
       <div
-        className="mb-6 flex gap-1.5 overflow-x-auto scroll-thin pb-1"
+        className="mb-6 flex gap-1.5 overflow-x-auto scroll-thin pb-1 overscroll-x-contain snap-x snap-mandatory"
         style={{ scrollbarWidth: "thin" }}
+        role="group"
         aria-label="Filter by skill"
       >
         {selectedSkills.length > 0 && (
@@ -622,12 +624,7 @@ export default function JobsPageClient() {
               setSelectedSkills([]);
               setPage(1);
             }}
-            className="tag tag-mono shrink-0"
-            style={{
-              cursor: "pointer",
-              borderColor: "var(--copper-500)",
-              color: "var(--copper-600)",
-            }}
+            className={tagClass("mono", "shrink-0 cursor-pointer border-accent text-accent-600")}
             type="button"
             aria-label="Clear all skill filters"
           >
@@ -640,8 +637,9 @@ export default function JobsPageClient() {
             <button
               key={skill}
               onClick={() => toggleSkill(skill)}
-              className={`tag tag-mono shrink-0 ${active ? "tag-green" : ""}`}
-              style={{ cursor: "pointer", textTransform: "capitalize" }}
+              className={cn(
+                tagClass(active ? "green" : "mono", "shrink-0 cursor-pointer capitalize snap-start"),
+              )}
               type="button"
               aria-pressed={active}
             >
@@ -664,7 +662,7 @@ export default function JobsPageClient() {
           <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
             Sign in to see jobs you have saved.
           </p>
-          <a href="/auth?next=/jobs" className="btn btn-primary btn-sm">
+          <a href="/auth?next=/jobs" className={btnClass("primary", "sm")}>
             Sign in
           </a>
         </div>

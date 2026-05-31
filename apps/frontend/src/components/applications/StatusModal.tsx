@@ -85,12 +85,13 @@ export function StatusModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="application-status" className="block space-y-1 text-sm">
             <span className="font-medium" style={{ color: "var(--ink)" }}>
               Status
             </span>
             <select
-              className="w-full rounded-lg border px-3 py-2 text-sm"
+              id="application-status"
+              className="min-h-11 w-full rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "var(--line)", background: "var(--surface)" }}
               value={status}
               onChange={(event) => setStatus(event.target.value as ApplicationStatus)}
@@ -106,26 +107,28 @@ export function StatusModal({
             </span>
           </label>
 
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="application-interview-date" className="block space-y-1 text-sm">
             <span className="font-medium" style={{ color: "var(--ink)" }}>
               Interview date
             </span>
             <input
+              id="application-interview-date"
               type="date"
-              className="w-full rounded-lg border px-3 py-2 text-sm"
+              className="min-h-11 w-full rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "var(--line)", background: "var(--surface)" }}
               value={interviewDate}
               onChange={(event) => setInterviewDate(event.target.value)}
             />
           </label>
 
-          <label className="block space-y-1 text-sm">
+          <label htmlFor="application-notes" className="block space-y-1 text-sm">
             <span className="font-medium" style={{ color: "var(--ink)" }}>
               Notes
             </span>
             <textarea
+              id="application-notes"
               rows={4}
-              className="w-full rounded-lg border px-3 py-2 text-sm resize-y"
+              className="min-h-[88px] w-full rounded-lg border px-3 py-2 text-sm resize-y"
               style={{ borderColor: "var(--line)", background: "var(--surface)" }}
               placeholder="Recruiter contact, prep reminders, feedback…"
               value={notes}

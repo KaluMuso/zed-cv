@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/Icon";
+import { btnClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 import { notify } from "@/lib/toast";
 import type { ApplyModalJob } from "@/components/jobs/applyContacts";
 import {
@@ -90,7 +92,7 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
           <div className="flex flex-col gap-2">
             <a
               href={primary.href}
-              className="btn btn-primary w-full justify-center gap-2"
+              className={cn(btnClass("primary"), "w-full justify-center gap-2")}
               target={primary.external ? "_blank" : undefined}
               rel={primary.external ? "noopener noreferrer" : undefined}
               data-testid="apply-modal-primary"
@@ -101,7 +103,7 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
             {primary.secondary ? (
               <a
                 href={primary.secondary.href}
-                className="btn btn-outline w-full justify-center gap-2"
+                className={cn(btnClass("outline"), "w-full justify-center gap-2")}
                 target={primary.secondary.external ? "_blank" : undefined}
                 rel={
                   primary.secondary.external ? "noopener noreferrer" : undefined
@@ -124,8 +126,9 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
               </p>
             ) : null}
             <ul className="flex flex-col gap-3">
-              {methods.map((method) => {
+              {methods.map((method, index) => {
                 const key = `${method.kind}-${method.copyValue}`;
+                const fieldId = `apply-method-${index}`;
                 return (
                   <li
                     key={key}
@@ -138,9 +141,12 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
                       <Icon name={KIND_ICON[method.kind]} size={16} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-muted-foreground">
+                      <label
+                        htmlFor={method.href ? undefined : fieldId}
+                        className="text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-muted-foreground"
+                      >
                         {method.label}
-                      </p>
+                      </label>
                       {method.href ? (
                         <a
                           href={method.href}
@@ -159,7 +165,10 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
                           {method.display}
                         </a>
                       ) : (
-                        <p className="truncate text-sm font-medium text-foreground dark:text-foreground">
+                        <p
+                          id={fieldId}
+                          className="truncate text-sm font-medium text-foreground dark:text-foreground"
+                        >
                           {method.display}
                         </p>
                       )}

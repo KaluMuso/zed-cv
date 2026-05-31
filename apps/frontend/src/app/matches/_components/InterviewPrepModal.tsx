@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { ModalPortal } from "@/components/shared/ModalPortal";
+import { btnClass } from "@/lib/cn-ui";
 
 export function InterviewPrepModal({
   open,
@@ -95,9 +96,10 @@ export function InterviewPrepModal({
             )}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+            aria-label="Close interview prep"
+            className="shrink-0 flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30"
             style={{ border: "1px solid var(--line-2)", color: "var(--muted)" }}
           >
             <Icon name="x" size={14} />
@@ -124,7 +126,7 @@ export function InterviewPrepModal({
                 Interview prep notes are part of the Super Standard plan (K500/mo). It includes
                 everything in Professional plus unlimited matches and tailored prep briefs.
               </p>
-              <Link href="/pricing" className="btn btn-accent">
+              <Link href="/pricing" className={btnClass("accent")}>
                 See pricing <Icon name="arrowRight" size={14} />
               </Link>
             </div>
@@ -147,7 +149,7 @@ export function InterviewPrepModal({
             <span className="text-xs" style={{ color: "var(--muted)" }}>
               {data.word_count} words{data.cached ? " · cached" : ""}
             </span>
-            <button onClick={onCopy} className="btn btn-ghost btn-sm">
+            <button type="button" onClick={onCopy} className={btnClass("ghost", "sm")}>
               {copied ? "Copied!" : "Copy notes"}
             </button>
           </footer>

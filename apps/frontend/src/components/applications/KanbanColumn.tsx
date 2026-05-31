@@ -3,6 +3,7 @@
 import type { SavedJobApplication } from "@/lib/api";
 import type { KanbanColumnId } from "@/lib/application-status";
 import { KanbanCard } from "./KanbanCard";
+import { cn } from "@/lib/utils";
 
 export interface KanbanColumnProps {
   id: KanbanColumnId;
@@ -38,6 +39,7 @@ export function KanbanColumn({
   onDragOverColumn,
 }: KanbanColumnProps) {
   const highlighted = dropHighlight === id;
+  const dropLabel = `${label} column. Drop applications here.`;
 
   const handleDragOver = (event: React.DragEvent) => {
     event.preventDefault();
@@ -56,9 +58,12 @@ export function KanbanColumn({
   const body = (
     <div
       data-kanban-column={id}
-      className={`kanban-column-body flex min-h-[120px] flex-col gap-2 rounded-xl border p-2 transition-colors ${
-        highlighted ? "ring-2 ring-[var(--copper-500)]" : ""
-      }`}
+      role="list"
+      aria-label={dropLabel}
+      className={cn(
+        "kanban-column-body flex min-h-[120px] flex-col gap-2 rounded-xl border p-2 transition-colors",
+        highlighted && "ring-2 ring-accent",
+      )}
       style={{
         borderColor: highlighted ? "var(--copper-500)" : "var(--line)",
         background: "var(--bg-2)",
@@ -90,12 +95,18 @@ export function KanbanColumn({
 
   if (mobileAccordion) {
     return (
-      <section className="kanban-accordion-column rounded-xl border" style={{ borderColor: "var(--line)" }}>
+      <section
+        className="kanban-accordion-column rounded-xl border"
+        style={{ borderColor: "var(--line)" }}
+        aria-labelledby={`kanban-heading-${id}`}
+      >
         <button
           type="button"
-          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          id={`kanban-heading-${id}`}
+          className="flex min-h-11 w-full items-center justify-between px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 rounded-xl"
           onClick={onToggle}
           aria-expanded={expanded}
+          aria-controls={`kanban-panel-${id}`}
         >
           <span className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
             {label}
@@ -105,20 +116,32 @@ export function KanbanColumn({
             <IconChevron expanded={expanded} />
           </span>
         </button>
-        {expanded ? <div className="px-2 pb-2">{body}</div> : null}
+        {expanded ? (
+          <div id={`kanban-panel-${id}`} className="px-2 pb-2">
+            {body}
+          </div>
+        ) : null}
       </section>
     );
   }
 
   return (
-    <section className="kanban-column flex min-w-[240px] flex-1 flex-col gap-2">
+    <section
+      className="kanban-column flex min-w-[min(85vw,240px)] flex-1 flex-col gap-2 snap-center"
+      aria-labelledby={`kanban-col-${id}`}
+    >
       <header className="flex items-center justify-between px-1">
-        <h2 className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+        <h2
+          id={`kanban-col-${id}`}
+          className="text-xs font-bold uppercase tracking-widest"
+          style={{ color: "var(--muted)" }}
+        >
           {label}
         </h2>
         <span
           className="rounded-full px-2 py-0.5 text-xs font-mono"
           style={{ background: "var(--bg-2)", color: "var(--muted)" }}
+          aria-label={`${applications.length} applications`}
         >
           {applications.length}
         </span>
