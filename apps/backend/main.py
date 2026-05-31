@@ -138,6 +138,9 @@ def create_app() -> FastAPI:
     application.include_router(tier_config_routes.public_router, prefix="/api/v1")
     application.include_router(tier_config_routes.admin_router, prefix="/api/v1")
     application.include_router(tier_config_routes.admin_tiers_router, prefix="/api/v1")
+    from app.api.v1 import health
+
+    application.include_router(health.router, prefix="/api/v1")
 
     @application.on_event("startup")
     async def bootstrap_waha_session() -> None:
@@ -168,35 +171,6 @@ def create_app() -> FastAPI:
         from app.services.whatsapp_scraper import bootstrap_scrape_channels
 
         asyncio.create_task(bootstrap_scrape_channels())
-
-    @application.get("/api/v1/health")
-    async def health_check():
-        import os
-
-        from app.services.web_push import vapid_configured
-        from app.services.whatsapp import check_waha_health
-        from app.core.deps import get_supabase
-
-        waha_ok = await check_waha_health()
-        supabase_ok = False
-        try:
-            supabase_ok = bool(get_supabase().rpc("heartbeat").execute().data)
-        except Exception:
-            pass
-        st = (
-            "healthy"
-            if (supabase_ok and waha_ok)
-            else ("unhealthy" if not supabase_ok else "degraded")
-        )
-        return {
-            "status": st,
-            "version": settings.app_version,
-            "supabase": supabase_ok,
-            "waha": waha_ok,
-            "redis_configured": bool(os.environ.get("REDIS_URL", "").strip()),
-            "vapid_configured": vapid_configured(settings),
-            "resend_configured": bool(settings.resend_api_key.strip()),
-        }
 
     if settings.debug:
 

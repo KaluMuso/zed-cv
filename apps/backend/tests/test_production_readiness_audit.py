@@ -81,6 +81,24 @@ class TestSchemaSentinels081To085:
         assert audit_module.SECURITY_INVOKER_VIEWS == ("public_jobs", "llm_usage_daily")
 
 
+class TestProductionRedisCheck:
+    def test_redis_yellow_when_unset_dev_mode(self, audit_module, monkeypatch):
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        result = audit_module.check_redis_url(production=False)
+        assert result.status == "yellow"
+
+    def test_redis_red_when_unset_production_mode(self, audit_module, monkeypatch):
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        result = audit_module.check_redis_url(production=True)
+        assert result.status == "red"
+        assert "production" in result.detail
+
+    def test_redis_green_when_set(self, audit_module, monkeypatch):
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        result = audit_module.check_redis_url(production=True)
+        assert result.status == "green"
+
+
 class TestEmployerRlsTables:
     def test_rls_tables_include_employer_portal(self, audit_module):
         for table in ("employers", "employer_subscriptions", "cv_access_audit"):

@@ -1,0 +1,85 @@
+{
+  "name": "Zed CV - Sentry Alert to WhatsApp",
+  "meta": {
+    "description": "Receives Sentry issue-alert webhooks and forwards a short summary to the operator via WAHA sendText. Secrets via n8n env only.",
+    "requiredEnv": [
+      "WAHA_API_URL",
+      "WAHA_API_KEY",
+      "ADMIN_ALERT_PHONE"
+    ]
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sentry-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Sentry Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-560, 160],
+      "webhookId": "zedcv-sentry-alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst body = raw.body ?? raw;\n\nfunction pick(...vals) {\n  for (const v of vals) {\n    if (v !== undefined && v !== null && String(v).trim() !== '') return v;\n  }\n  return '';\n}\n\nconst issue = body.data?.issue ?? body.issue ?? {};\nconst event = body.data?.event ?? body.event ?? {};\n\nconst title = pick(\n  issue.title,\n  body.message,\n  event.title,\n  event.message,\n  body.culprit,\n  'Sentry alert'\n);\nconst level = pick(issue.level, body.level, event.level, 'error');\nconst project = pick(\n  issue.project?.name,\n  body.project_name,\n  body.project,\n  issue.project?.slug,\n  'unknown'\n);\nconst url = pick(\n  issue.web_url,\n  issue.permalink,\n  body.url,\n  event.web_url,\n  ''\n);\nconst rule = pick(\n  body.triggering_rules?.[0],\n  body.data?.triggered_rule,\n  body.action,\n  'alert'\n);\nconst env = pick(event.environment, body.environment, issue.environment, '');\n\nconst lines = [\n  `🚨 Sentry ${level}`,\n  `Project: ${project}`,\n  `Rule: ${rule}`,\n  title.slice(0, 280),\n];\nif (env) lines.push(`Env: ${env}`);\nif (url) lines.push(url);\n\nconst phone = String($env.ADMIN_ALERT_PHONE || '').trim();\nif (!phone) {\n  throw new Error('ADMIN_ALERT_PHONE is not set in n8n env');\n}\n\nreturn [{\n  json: {\n    text: lines.join('\\n'),\n    chatId: phone.replace('+', '') + '@c.us',\n    wahaUrl: $env.WAHA_API_URL,\n    wahaKey: $env.WAHA_API_KEY,\n  }\n}];"
+      },
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-288, 160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.wahaUrl }}/api/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "={{ $json.wahaKey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatId: $json.chatId, text: $json.text, session: 'default' }) }}"
+      },
+      "name": "WhatsApp Operator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [0, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true }) }}"
+      },
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [256, 160]
+    }
+  ],
+  "connections": {
+    "Sentry Webhook": {
+      "main": [[{ "node": "Format Alert Message", "type": "main", "index": 0 }]]
+    },
+    "Format Alert Message": {
+      "main": [[{ "node": "WhatsApp Operator", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Operator": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  }
+}
