@@ -85,8 +85,8 @@ Overall: **acceptable for soft launch** after P0/P1 items below. Not yet at ente
 ### M3 — Employer candidate data
 
 - **Finding:** Consent via WhatsApp YES + `profile_visible_to_employers` gate — **good design**.
-- **Gap:** `employers` / `employer_subscriptions` lack RLS (service-only today).
-- **Mitigation:** Add RLS before any direct Supabase client reads.
+- **Gap:** ~~`employers` / `employer_subscriptions` lack RLS (service-only today).~~ **Addressed (088):** RLS + org-scoped SELECT policies on `employers`, `employer_subscriptions`, `cv_access_audit`; backend still uses service_role.
+- **Mitigation:** Keep employer reads/writes on FastAPI routes; do not expose service key to clients.
 
 ### M4 — XSS
 

@@ -18,8 +18,8 @@ Use this before every production deploy and before taking paying customers.
 
 ## Supabase
 
-- [ ] List applied migrations vs repo `080_apply_url_backfill_log.sql`
-- [ ] Apply pending: **073** (if bulk-fix), **074–080** as needed
+- [ ] List applied migrations vs repo `088_employer_rls_policies.sql` (includes 081–087 pending)
+- [ ] Apply pending: **073** (if bulk-fix), **074–088** as needed
 - [ ] Sentinel probe (automated):
 
 ```bash
@@ -27,7 +27,7 @@ cd apps/backend && python scripts/production_readiness_audit.py
 ```
 
 - [ ] `tier_config` has all four consumer tiers
-- [ ] `schema_guard_rls` — 10 audited tables enabled
+- [ ] `schema_guard_rls` — 13 audited tables enabled (040 Track-1 + 088 employer)
 - [ ] No active jobs without `apply_url` or `apply_email` (audit red = blocker)
 - [ ] n8n heartbeat workflow enabled (6h)
 
@@ -95,7 +95,7 @@ See **[docs/APPLY_URL_BACKFILL_V2_RUNBOOK.md](docs/APPLY_URL_BACKFILL_V2_RUNBOOK
 
 ## Go / no-go
 
-**Go** if: audit script 0 red, health OK, Lenco prod smoke done, migrations through 080 applied, Vercel build green.
+**Go** if: audit script 0 red, health OK, Lenco prod smoke done, migrations through 088 applied, Vercel build green.
 
 **No-go** if: any P0 in `TODO.md` open, WAHA down, or active jobs missing apply paths.
 

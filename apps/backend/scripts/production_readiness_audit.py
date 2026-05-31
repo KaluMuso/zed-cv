@@ -52,8 +52,11 @@ RLS_TABLES = (
     "job_fingerprints",
     "ai_cache",
     "legal_docs",
+    "employers",
+    "employer_subscriptions",
+    "cv_access_audit",
 )
-# Latest migration sentinel columns (Track 4e / tier_config).
+# Column probes for applied migrations (Track 4e+ / tier_config / 081–084).
 SCHEMA_SENTINELS: tuple[tuple[str, str], ...] = (
     ("jobs", "is_review_required"),
     ("jobs", "review_reason"),
@@ -64,7 +67,15 @@ SCHEMA_SENTINELS: tuple[tuple[str, str], ...] = (
     ("cover_letter_versions", "version_number"),
     ("cvs", "generated_pdf_path"),
     ("web_push_subscriptions", "endpoint"),
+    # 081_welcome_email_sent
+    ("users", "welcome_email_sent"),
+    # 084_prod_schema_guard_alignment (082 is ledger DML only; 083/085 use RPC checks)
+    ("cv_generations", "cv_id"),
+    ("users", "whatsapp_alerts"),
+    ("users", "language"),
+    ("users", "referral_match_bonus"),
 )
+SECURITY_INVOKER_VIEWS = ("public_jobs", "llm_usage_daily")
 
 
 @dataclass
@@ -235,16 +246,74 @@ def check_active_jobs_apply_path(supabase) -> CheckResult:
     return CheckResult("Active jobs have apply path", "green", "no orphaned active jobs")
 
 
+def check_schema_guard_columns_rpc(supabase) -> CheckResult:
+    """Migration 083: schema_guard_columns RPC for CI live drift detection."""
+    try:
+        resp = supabase.rpc("schema_guard_columns", {}).execute()
+        rows = resp.data or []
+    except Exception as exc:
+        return CheckResult(
+            "schema_guard_columns RPC (083)",
+            "red",
+            f"missing or failed — apply migration 083: {exc}",
+        )
+    if not rows:
+        return CheckResult(
+            "schema_guard_columns RPC (083)",
+            "yellow",
+            "RPC returned no rows (empty public schema?)",
+        )
+    return CheckResult(
+        "schema_guard_columns RPC (083)",
+        "green",
+        f"returns {len(rows)} column row(s)",
+    )
+
+
+def check_security_invoker_views(supabase) -> CheckResult:
+    """Migration 085: public_jobs and llm_usage_daily use security_invoker."""
+    try:
+        resp = supabase.rpc("schema_guard_security_invoker_views", {}).execute()
+        rows = resp.data or []
+    except Exception as exc:
+        return CheckResult(
+            "security_invoker views (085)",
+            "red",
+            f"schema_guard_security_invoker_views missing — apply migrations 085+088: {exc}",
+        )
+    by_name = {r.get("view_name"): r.get("security_invoker") for r in rows}
+    missing = [v for v in SECURITY_INVOKER_VIEWS if v not in by_name]
+    if missing:
+        return CheckResult(
+            "security_invoker views (085)",
+            "red",
+            f"views not found: {missing}",
+        )
+    off = [v for v in SECURITY_INVOKER_VIEWS if not by_name.get(v)]
+    if off:
+        return CheckResult(
+            "security_invoker views (085)",
+            "red",
+            f"security_invoker not enabled: {off}",
+        )
+    return CheckResult(
+        "security_invoker views (085)",
+        "green",
+        "public_jobs and llm_usage_daily use security_invoker",
+    )
+
+
 def check_rls(supabase) -> CheckResult:
-    """RLS enabled on Track-1 audited tables (migration 043 RPC)."""
+    """RLS enabled on audited tables (schema_guard_rls RPC; 040 + 088 employer)."""
+    label = f"RLS on {len(RLS_TABLES)} audited tables"
     try:
         resp = supabase.rpc("schema_guard_rls", {}).execute()
         rows = resp.data or []
     except Exception as exc:
         return CheckResult(
-            "RLS on 10 audited tables",
+            label,
             "yellow",
-            "schema_guard_rls RPC missing — apply migration 043; manual SQL: "
+            "schema_guard_rls RPC missing — apply migrations 043/088; manual SQL: "
             "SELECT relname, relrowsecurity FROM pg_class c JOIN pg_namespace n "
             f"ON n.oid = c.relnamespace WHERE n.nspname='public' AND relname = ANY(...); "
             f"({exc})",
@@ -254,13 +323,17 @@ def check_rls(supabase) -> CheckResult:
     off = [r.get("table_name") for r in rows if not r.get("rls_enabled")]
     if missing_tables:
         return CheckResult(
-            "RLS on 10 audited tables",
+            label,
             "red",
             f"tables not found: {missing_tables}",
         )
     if off:
-        return CheckResult("RLS on 10 audited tables", "red", f"RLS disabled: {off}")
-    return CheckResult("RLS on 10 audited tables", "green", "all 10 tables have RLS enabled")
+        return CheckResult(label, "red", f"RLS disabled: {off}")
+    return CheckResult(
+        label,
+        "green",
+        f"all {len(RLS_TABLES)} tables have RLS enabled",
+    )
 
 
 async def check_waha() -> CheckResult:
@@ -321,6 +394,8 @@ def run_audit(*, skip_db: bool) -> list[CheckResult]:
         results.extend(
             [
                 check_schema_sentinels(sb),
+                check_schema_guard_columns_rpc(sb),
+                check_security_invoker_views(sb),
                 check_tier_config(sb),
                 check_active_jobs_apply_path(sb),
                 check_rls(sb),

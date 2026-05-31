@@ -37,7 +37,7 @@ Prioritized from the 2026-05-28 audit. **P0 = launch blocker.**
 
 ## P2 — Post-launch (2–4 weeks)
 
-- [ ] RLS on `employers`, `employer_subscriptions`, `cv_access_audit`
+- [x] RLS on `employers`, `employer_subscriptions`, `cv_access_audit` (migration 088)
 - [ ] CSP headers on Next.js
 - [ ] `npm audit` / `pip audit` in CI (advisory)
 - [ ] UptimeRobot on `/api/v1/health`

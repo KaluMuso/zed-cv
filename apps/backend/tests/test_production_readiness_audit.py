@@ -60,3 +60,86 @@ class TestFindRepoOrBackendRoot:
             assert "not container" in result.detail
         else:
             assert result.status in ("green", "red")
+
+
+class TestSchemaSentinels081To085:
+    """Column/RPC sentinels for migrations 081–085."""
+
+    def test_welcome_email_sent_sentinel(self, audit_module):
+        assert ("users", "welcome_email_sent") in audit_module.SCHEMA_SENTINELS
+
+    def test_schema_guard_alignment_sentinels(self, audit_module):
+        for pair in (
+            ("cv_generations", "cv_id"),
+            ("users", "whatsapp_alerts"),
+            ("users", "language"),
+            ("users", "referral_match_bonus"),
+        ):
+            assert pair in audit_module.SCHEMA_SENTINELS
+
+    def test_security_invoker_view_names(self, audit_module):
+        assert audit_module.SECURITY_INVOKER_VIEWS == ("public_jobs", "llm_usage_daily")
+
+
+class TestEmployerRlsTables:
+    def test_rls_tables_include_employer_portal(self, audit_module):
+        for table in ("employers", "employer_subscriptions", "cv_access_audit"):
+            assert table in audit_module.RLS_TABLES
+        assert len(audit_module.RLS_TABLES) == 13
+
+
+class TestAuditRpcChecks:
+    def test_check_schema_guard_columns_rpc_green(self, audit_module):
+        class _Rpc:
+            def execute(self):
+                return type("R", (), {"data": [{"table_name": "users", "column_name": "id"}]})()
+
+        class _Sb:
+            def rpc(self, name, _payload):
+                assert name == "schema_guard_columns"
+                return _Rpc()
+
+        result = audit_module.check_schema_guard_columns_rpc(_Sb())
+        assert result.status == "green"
+        assert "083" in result.name
+
+    def test_check_security_invoker_views_red_when_off(self, audit_module):
+        class _Rpc:
+            def execute(self):
+                return type(
+                    "R",
+                    (),
+                    {
+                        "data": [
+                            {"view_name": "public_jobs", "security_invoker": False},
+                            {"view_name": "llm_usage_daily", "security_invoker": True},
+                        ]
+                    },
+                )()
+
+        class _Sb:
+            def rpc(self, name, _payload):
+                assert name == "schema_guard_security_invoker_views"
+                return _Rpc()
+
+        result = audit_module.check_security_invoker_views(_Sb())
+        assert result.status == "red"
+        assert "public_jobs" in result.detail
+
+    def test_check_rls_employer_tables(self, audit_module):
+        rows = [
+            {"table_name": t, "rls_enabled": True} for t in audit_module.RLS_TABLES
+        ]
+
+        class _Rpc:
+            def execute(self):
+                return type("R", (), {"data": rows})()
+
+        class _Sb:
+            def rpc(self, name, _payload):
+                assert name == "schema_guard_rls"
+                return _Rpc()
+
+        result = audit_module.check_rls(_Sb())
+        assert result.status == "green"
+        assert "13" in result.detail
