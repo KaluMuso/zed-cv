@@ -165,6 +165,41 @@ def _log_escalation(
         logger.warning("bwana_escalation_log insert failed: %s", exc)
 
 
+def _fetch_user_email(supabase: Client, user_id: str) -> str | None:
+    try:
+        row = (
+            supabase.table("users")
+            .select("email")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not row.data:
+            return None
+        email = row.data[0].get("email")
+        if not email or not str(email).strip():
+            return None
+        return str(email).strip().lower()
+    except Exception as exc:
+        logger.warning("bwana user email lookup failed: %s", exc)
+        return None
+
+
+async def _send_user_escalation_ack(
+    config: BwanaConfig,
+    *,
+    ticket_id: str,
+    user_email: str,
+) -> bool:
+    if not config.enable_user_escalation_ack:
+        return False
+    subject = f"ZedApply support — reference {ticket_id}"
+    body = render_template(config.user_escalation_ack_template, config, ticket_id=ticket_id)
+    html = f"<p>{escape(body)}</p>"
+    idem = f"bwana-user-ack-{ticket_id}"
+    return _send(user_email, subject, html, idempotency_key=idem)
+
+
 async def _send_escalation_email(
     config: BwanaConfig,
     *,
@@ -217,6 +252,12 @@ async def _notify_escalation(
         reason=reason,
     ):
         channels.append("email")
+
+    user_email = _fetch_user_email(supabase, user_id)
+    if user_email and await _send_user_escalation_ack(
+        config, ticket_id=ticket_id, user_email=user_email
+    ):
+        channels.append("user_email")
 
     _log_escalation(
         supabase,

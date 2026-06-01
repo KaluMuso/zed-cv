@@ -2008,6 +2008,8 @@ export interface BwanaConfig {
   public_knowledge_extra: string;
   faq_intents_json: FaqIntentItem[];
   enable_email_escalation: boolean;
+  enable_user_escalation_ack: boolean;
+  user_escalation_ack_template: string;
   updated_at?: string | null;
   updated_by?: string | null;
 }

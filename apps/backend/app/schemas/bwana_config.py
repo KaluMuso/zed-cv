@@ -35,6 +35,9 @@ class BwanaConfigBase(BaseModel):
     public_knowledge_extra: str = Field(default="", max_length=2000)
     faq_intents_json: list[FaqIntentItem] = Field(default_factory=list)
     enable_email_escalation: bool = True
+    enable_user_escalation_ack: bool = True
+    user_escalation_ack_template: str = Field(..., min_length=10, max_length=2000)
+
 
 
     @field_validator("support_email")
@@ -80,6 +83,11 @@ class BwanaConfigPatch(BaseModel):
     public_knowledge_extra: str | None = Field(default=None, max_length=2000)
     faq_intents_json: list[FaqIntentItem] | None = None
     enable_email_escalation: bool | None = None
+    enable_user_escalation_ack: bool | None = None
+    user_escalation_ack_template: str | None = Field(
+        default=None, min_length=10, max_length=2000
+    )
+
 
 
     @field_validator("support_email")

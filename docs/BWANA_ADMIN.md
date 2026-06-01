@@ -14,6 +14,8 @@ Admin UI: **https://www.zedapply.com/admin/bwana** (requires admin or superadmin
 | `faq_intents_json` | Admin-editable FAQ array (see below) |
 | `public_knowledge_extra` | Max 2000 chars appended to Bwana system prompt (no secrets) |
 | `enable_email_escalation` | When true, escalations also email `support_email` |
+| `enable_user_escalation_ack` | When true and the user has an email on file, send acknowledgement via Resend |
+| `user_escalation_ack_template` | Email body for user ack; supports `{ticket_id}`, `{operator}`, `{sla}`, `{email}`, `{phone}` |
 
 Do **not** store API keys, ingest secrets, or scraper credentials in this table.
 
@@ -52,7 +54,7 @@ Default seed: `convergeozambia@gmail.com`, `+260761359005` (matches `admin_alert
 
 ## n8n pipeline
 
-`infra/n8n/bwana_chat_pipeline.json` is optional. On OCI, leave `BWANA_N8N_WEBHOOK_URL` empty to run FAQ + escalation + LLM **in-process** on the backend (recommended). Escalation WAHA still uses `escalation_whatsapp_phone` from DB (falls back to env `ADMIN_ALERT_PHONE` only when the table is missing).
+`infra/n8n/bwana_chat_pipeline.json` is optional. On OCI, leave `BWANA_N8N_WEBHOOK_URL` empty to run FAQ + escalation + LLM **in-process** on the backend (recommended). If you re-enable the n8n webhook, the exported workflow mirrors backend FAQ routing (50/20/15/10/5 matching, Starter without tailored CV, unsatisfied/contact-admin paths, chatbot identity in the LLM node). Escalation WAHA still uses `escalation_whatsapp_phone` from DB (falls back to env `ADMIN_ALERT_PHONE` only when the table is missing).
 
 ## Smoke checklist
 

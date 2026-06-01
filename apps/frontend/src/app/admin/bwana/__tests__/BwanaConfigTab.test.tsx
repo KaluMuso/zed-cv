@@ -29,7 +29,10 @@ const mockConfig = {
   unsatisfied_reply_template: "Sorry {email}",
   contact_admin_reply_template: "Contact {email}",
   public_knowledge_extra: "",
+  faq_intents_json: [],
   enable_email_escalation: true,
+  enable_user_escalation_ack: true,
+  user_escalation_ack_template: "Thanks {ticket_id}",
 };
 
 describe("BwanaConfigTab", () => {

@@ -74,6 +74,32 @@ cd ~/n8n-docker && docker compose build zedcv-backend && docker compose up -d --
 
 ---
 
+## Phase 3 completion report
+
+**Migration:** `094_bwana_user_escalation_email.sql`
+
+### Features
+
+1. **FAQ intent form UI** — `BwanaFaqIntentsEditor` (add/remove rows, comma-separated triggers, optional raw JSON).
+2. **User escalation acknowledgement email** — Resend to the user's profile email when an escalation opens (`channels` includes `user_email` in `bwana_escalation_log`).
+3. **n8n alignment** — `bwana_chat_pipeline.json` FAQ router + OpenRouter system prompt aligned with `bwana_faq.py` / `bwana_config.py` (chatbot wording, 50/20/15/10/5, Starter tier copy).
+
+### Apply migration
+
+```bash
+psql "$DATABASE_URL" -f infra/supabase/migrations/094_bwana_user_escalation_email.sql
+```
+
+### Smoke
+
+| # | Action | Expected |
+|---|--------|----------|
+| 1 | Escalate as user with email on profile | User receives ack with `{ticket_id}` |
+| 2 | Save custom FAQ via form rows | Persists in `faq_intents_json` |
+| 3 | n8n only if `BWANA_N8N_WEBHOOK_URL` set | Same tier/matching copy as backend |
+
+---
+
 ## Cursor Cloud prompt — Phase 2 only (reference)
 
 Use when re-running or extending Phase 2 on a fresh branch:

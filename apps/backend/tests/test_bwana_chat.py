@@ -33,6 +33,10 @@ BWANA_CONFIG_ROW = {
     "public_knowledge_extra": "",
     "faq_intents_json": [],
     "enable_email_escalation": False,
+    "enable_user_escalation_ack": True,
+    "user_escalation_ack_template": (
+        "Thanks — reference {ticket_id}. {operator} will email you at {email} within {sla}h."
+    ),
 }
 
 
@@ -120,6 +124,45 @@ async def test_contact_admin_returns_email_without_waha(
     assert turn.intent_id == "contact_admin"
     assert "support@zedapply.com" in turn.response
     mock_wa.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_user_escalation_ack_email_sent(fake_supabase, bwana_cache_table):
+    fake_supabase.set_table(
+        "users",
+        FakeSupabaseQuery(
+            data=[
+                {
+                    "id": "test-user-id",
+                    "email": "user@example.com",
+                }
+            ]
+        ),
+    )
+    with patch(
+        "app.services.bwana_chat.send_whatsapp_message",
+        new_callable=AsyncMock,
+    ) as mock_wa:
+        mock_wa.return_value = {"sent": True}
+        with patch(
+            "app.services.bwana_chat._send",
+            return_value=True,
+        ) as mock_send:
+            turn = await process_bwana_message(
+                user_id="test-user-id",
+                message="I want to speak to a human",
+                session_id="sess-user-email",
+                supabase=fake_supabase,
+            )
+    assert turn.source == "escalated"
+    user_calls = [
+        c
+        for c in mock_send.call_args_list
+        if c.args and c.args[0] == "user@example.com"
+    ]
+    assert user_calls
+    logs = fake_supabase._tables["bwana_escalation_log"]._data
+    assert "user_email" in logs[0].get("channels", [])
 
 
 @pytest.mark.asyncio

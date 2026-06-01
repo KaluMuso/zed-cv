@@ -1987,6 +1987,8 @@ components:
         - unsatisfied_reply_template
         - contact_admin_reply_template
         - enable_email_escalation
+        - enable_user_escalation_ack
+        - user_escalation_ack_template
       properties:
         id: { type: integer }
         chatbot_display_name: { type: string }
@@ -2003,6 +2005,8 @@ components:
           type: array
           items: { $ref: '#/components/schemas/FaqIntentItem' }
         enable_email_escalation: { type: boolean }
+        enable_user_escalation_ack: { type: boolean }
+        user_escalation_ack_template: { type: string, maxLength: 2000 }
         updated_at: { type: string, format: date-time, nullable: true }
         updated_by: { type: string, format: uuid, nullable: true }
 
@@ -2053,6 +2057,8 @@ components:
           type: array
           items: { $ref: '#/components/schemas/FaqIntentItem' }
         enable_email_escalation: { type: boolean }
+        enable_user_escalation_ack: { type: boolean }
+        user_escalation_ack_template: { type: string, maxLength: 2000 }
 
     BwanaConfigPreview:
       type: object

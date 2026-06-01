@@ -24,6 +24,7 @@ function toForm(cfg: BwanaConfig): EditableConfig {
 
 export function BwanaConfigTab({ token }: { token: string }) {
   const [form, setForm] = useState<EditableConfig | null>(null);
+  const [faqIntents, setFaqIntents] = useState<FaqIntentItem[]>([]);
   const [preview, setPreview] = useState<string>("");
   const [previewChars, setPreviewChars] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -91,9 +92,12 @@ export function BwanaConfigTab({ token }: { token: string }) {
         public_knowledge_extra: form.public_knowledge_extra,
         faq_intents_json: faqIntents,
         enable_email_escalation: form.enable_email_escalation,
+        enable_user_escalation_ack: form.enable_user_escalation_ack,
+        user_escalation_ack_template: form.user_escalation_ack_template,
       };
       const saved = await adminBwana.patchConfig(token, body);
       setForm(toForm(saved));
+      setFaqIntents(saved.faq_intents_json ?? []);
       const prev = await adminBwana.preview(token);
       setPreview(prev.system_prompt_preview);
       setPreviewChars(prev.char_count);
@@ -198,6 +202,17 @@ export function BwanaConfigTab({ token }: { token: string }) {
             />
             Email escalations to support address
           </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.enable_user_escalation_ack}
+              onChange={(e) =>
+                update({ enable_user_escalation_ack: e.target.checked })
+              }
+            />
+            Email acknowledgement to user when escalation opens (requires email on
+            profile)
+          </label>
         </CardContent>
       </Card>
 
@@ -210,6 +225,7 @@ export function BwanaConfigTab({ token }: { token: string }) {
               ["human_escalation_reply_template", "Human escalation"],
               ["unsatisfied_reply_template", "Unsatisfied user"],
               ["contact_admin_reply_template", "Contact admin (info only)"],
+              ["user_escalation_ack_template", "User escalation acknowledgement email"],
             ] as const
           ).map(([key, label]) => (
             <label key={key} className="text-sm block space-y-1">
