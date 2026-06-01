@@ -119,7 +119,7 @@ export function AdminJobManualForm({ token }: AdminJobManualFormProps) {
       if (!query.trim()) return;
       try {
         const res = await cvApi.suggestSkills(token, query);
-        setSkillSuggestions(res.suggestions ?? []);
+        setSkillSuggestions(res.skills.map((s) => s.name));
       } catch {
         setSkillSuggestions([]);
       }

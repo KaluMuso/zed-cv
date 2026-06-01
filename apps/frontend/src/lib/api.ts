@@ -1521,6 +1521,8 @@ export interface MatchData {
     apply_email?: string | null;
     source_url?: string | null;
     apply_source?: string | null;
+    is_active?: boolean;
+    visibility_status?: "open" | "recently_closed" | "archived" | null;
   };
 }
 

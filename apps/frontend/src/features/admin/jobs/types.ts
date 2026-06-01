@@ -45,11 +45,13 @@ export type AdminJobCreatePayload = {
   application_instructions?: string | null;
   apply_url?: string | null;
   apply_email?: string | null;
+  contact_phone?: string | null;
   closing_date?: string | null;
   posted_at?: string | null;
   reference_number?: string | null;
   company_description?: string | null;
   source_url?: string | null;
+  source_platform?: string | null;
   salary_text?: string | null;
 
   // Always "manual" for wizard-created jobs. Backend defaults to manual

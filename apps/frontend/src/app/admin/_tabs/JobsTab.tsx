@@ -20,7 +20,7 @@ import { formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable } from "@/components/admin/useClientTable";
 import {
   AdminExportButton,
-  AdminSortableHead,
+  AdminSortableTableHead,
   AdminTableEmptyRow,
   AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
@@ -498,22 +498,12 @@ export function JobsTab({ token }: { token: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <AdminSortableHead label="Title" sortProps={sortProps("title")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Company" sortProps={sortProps("company")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Source" sortProps={sortProps("source")} />
-                </TableHead>
+                <AdminSortableTableHead label="Title" sortProps={sortProps("title")} />
+                <AdminSortableTableHead label="Company" sortProps={sortProps("company")} />
+                <AdminSortableTableHead label="Source" sortProps={sortProps("source")} />
                 <TableHead>Quality</TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Active" sortProps={sortProps("is_active")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Closes" sortProps={sortProps("closing_date")} />
-                </TableHead>
+                <AdminSortableTableHead label="Active" sortProps={sortProps("is_active")} />
+                <AdminSortableTableHead label="Closes" sortProps={sortProps("closing_date")} />
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

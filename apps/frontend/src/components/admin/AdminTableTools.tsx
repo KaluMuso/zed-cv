@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { TableCell, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
 import { exportRowsToCsv } from "./useClientTable";
@@ -12,9 +12,14 @@ export function AdminSortableHead({
   className,
 }: {
   label: string;
-  sortProps: { onClick: () => void; "aria-sort": React.AriaAttributes["aria-sort"] };
+  sortProps: {
+    onClick: () => void;
+    "aria-sort": React.AriaAttributes["aria-sort"];
+  };
   className?: string;
 }) {
+  // aria-sort belongs on <th>, not <button> (jsx-a11y/role-supports-aria-props).
+  // Callers wrap this in <TableHead aria-sort={sortProps["aria-sort"]}>.
   return (
     <button
       type="button"
@@ -23,7 +28,6 @@ export function AdminSortableHead({
         className,
       )}
       onClick={sortProps.onClick}
-      aria-sort={sortProps["aria-sort"]}
     >
       {label}
       <span className="text-[10px] text-muted-foreground" aria-hidden>
@@ -34,6 +38,26 @@ export function AdminSortableHead({
             : "↕"}
       </span>
     </button>
+  );
+}
+
+/** Sortable column header — aria-sort on &lt;th&gt;, not the inner button. */
+export function AdminSortableTableHead({
+  label,
+  sortProps,
+  className,
+}: {
+  label: string;
+  sortProps: {
+    onClick: () => void;
+    "aria-sort": React.AriaAttributes["aria-sort"];
+  };
+  className?: string;
+}) {
+  return (
+    <TableHead aria-sort={sortProps["aria-sort"]} className={className}>
+      <AdminSortableHead label={label} sortProps={sortProps} />
+    </TableHead>
   );
 }
 

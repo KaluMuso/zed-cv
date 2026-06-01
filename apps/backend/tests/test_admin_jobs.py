@@ -353,6 +353,7 @@ def _valid_payload(**overrides) -> dict:
         "requirements": ["5+ years backend experience"],
         "skills_required": ["python"],
         "apply_email": "jobs@zedtech.com",
+        "source_url": "https://careers.zedtech.com/jobs/backend-engineer",
         "closing_date": "2026-12-31",
     }
     base.update(overrides)

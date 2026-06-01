@@ -11,7 +11,7 @@ import { formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable, sortIsoDate } from "@/components/admin/useClientTable";
 import {
   AdminExportButton,
-  AdminSortableHead,
+  AdminSortableTableHead,
   AdminTableEmptyRow,
   AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
@@ -85,19 +85,11 @@ export function MatchesTab({ token }: { token: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <AdminSortableHead label="User" sortProps={sortProps("user_phone")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Job" sortProps={sortProps("job_title")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Score" sortProps={sortProps("score")} />
-                </TableHead>
+                <AdminSortableTableHead label="User" sortProps={sortProps("user_phone")} />
+                <AdminSortableTableHead label="Job" sortProps={sortProps("job_title")} />
+                <AdminSortableTableHead label="Score" sortProps={sortProps("score")} />
                 <TableHead>Status</TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Created" sortProps={sortProps("created_at")} />
-                </TableHead>
+                <AdminSortableTableHead label="Created" sortProps={sortProps("created_at")} />
               </TableRow>
             </TableHeader>
             <TableBody>

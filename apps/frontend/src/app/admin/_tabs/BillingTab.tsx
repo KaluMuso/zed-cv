@@ -32,7 +32,7 @@ import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable, sortIsoDate } from "@/components/admin/useClientTable";
 import {
   AdminExportButton,
-  AdminSortableHead,
+  AdminSortableTableHead,
   AdminTableEmptyRow,
   AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
@@ -355,18 +355,10 @@ export function BillingTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <AdminSortableHead label="Phone" sortProps={subSortProps("user_phone")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Tier" sortProps={subSortProps("tier")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Usage" sortProps={subSortProps("matches_used")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Period end" sortProps={subSortProps("current_period_end")} />
-                  </TableHead>
+                  <AdminSortableTableHead label="Phone" sortProps={subSortProps("user_phone")} />
+                  <AdminSortableTableHead label="Tier" sortProps={subSortProps("tier")} />
+                  <AdminSortableTableHead label="Usage" sortProps={subSortProps("matches_used")} />
+                  <AdminSortableTableHead label="Period end" sortProps={subSortProps("current_period_end")} />
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -458,24 +450,12 @@ export function BillingTab({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <AdminSortableHead label="Invoice" sortProps={paySortProps("invoice_number")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Phone" sortProps={paySortProps("user_phone")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Amount" sortProps={paySortProps("amount")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Provider" sortProps={paySortProps("provider")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Status" sortProps={paySortProps("status")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Created" sortProps={paySortProps("created_at")} />
-                  </TableHead>
+                  <AdminSortableTableHead label="Invoice" sortProps={paySortProps("invoice_number")} />
+                  <AdminSortableTableHead label="Phone" sortProps={paySortProps("user_phone")} />
+                  <AdminSortableTableHead label="Amount" sortProps={paySortProps("amount")} />
+                  <AdminSortableTableHead label="Provider" sortProps={paySortProps("provider")} />
+                  <AdminSortableTableHead label="Status" sortProps={paySortProps("status")} />
+                  <AdminSortableTableHead label="Created" sortProps={paySortProps("created_at")} />
                   <TableHead />
                 </TableRow>
               </TableHeader>
