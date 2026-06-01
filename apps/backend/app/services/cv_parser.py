@@ -12,6 +12,12 @@ from typing import Any, Optional
 from functools import lru_cache
 
 from openai import OpenAI, AuthenticationError, RateLimitError, APIError
+from app.lib.llm_json import (
+    build_json_schema_response_format,
+    is_response_format_rejected,
+    repair_llm_json,
+)
+from app.services.cv_parse_context import CVParseDebugContext
 from pydantic import BaseModel, Field, ValidationError, field_validator
 from PyPDF2 import PdfReader
 from docx import Document
@@ -187,6 +193,14 @@ def _get_openrouter_client() -> OpenAI:
     )
 
 
+def count_pdf_pages(file_bytes: bytes) -> int:
+    """Return page count for a PDF payload (0 if unreadable)."""
+    try:
+        return len(PdfReader(io.BytesIO(file_bytes)).pages)
+    except Exception:
+        return 0
+
+
 async def extract_text_from_file(file_bytes: bytes, file_type: str) -> str:
     if file_type == "pdf":
         reader = PdfReader(io.BytesIO(file_bytes))
@@ -199,7 +213,50 @@ async def extract_text_from_file(file_bytes: bytes, file_type: str) -> str:
     raise ValueError(f"Unsupported file type: {file_type}")
 
 
-async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
+def _add_cv_parse_breadcrumb(
+    message: str,
+    *,
+    level: str = "warning",
+    context: CVParseDebugContext | None = None,
+    extra: dict[str, Any] | None = None,
+) -> None:
+    data: dict[str, Any] = {}
+    if context is not None:
+        data.update(context.as_breadcrumb_data())
+    if extra:
+        data.update(extra)
+    try:
+        import sentry_sdk
+
+        sentry_sdk.add_breadcrumb(
+            category="cv.parse",
+            message=message,
+            level=level,
+            data=data,
+        )
+    except Exception:
+        logger.debug("Sentry breadcrumb skipped for CV parse", exc_info=True)
+
+
+def _cv_parse_response_formats() -> list[dict[str, Any] | None]:
+    """Prefer JSON Schema (Gemini structured output); fall back to json_object."""
+    schema = CVParseResult.model_json_schema()
+    return [
+        build_json_schema_response_format(
+            name="cv_parse_result",
+            schema=schema,
+            strict=False,
+        ),
+        {"type": "json_object"},
+        None,
+    ]
+
+
+async def parse_cv_with_llm(
+    raw_text: str,
+    *,
+    debug_context: CVParseDebugContext | None = None,
+) -> dict[str, Any]:
     """Parse CV text into structured data using Gemini Flash via OpenRouter.
 
     The LLM's JSON output is validated through CVParseResult before being
@@ -218,51 +275,97 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
     client = _get_openrouter_client()
 
     def _call():
-        try:
-            response = create_chat_completion_with_retries(
-                client,
-                log_prefix="cv_parser",
-                log_context=LlmLogContext(
-                    feature=FEATURE_CV_PARSING,
-                    route="POST /api/v1/cv/upload",
+        ctx = debug_context or CVParseDebugContext(extracted_text_length=len(raw_text))
+        messages = [
+            {
+                "role": "system",
+                "content": augment_system_prompt(CV_PARSE_SYSTEM_PROMPT),
+            },
+            {
+                "role": "user",
+                "content": build_delimited_user_message(
+                    "Parse this CV and return JSON:",
+                    wrap_user_data_block(
+                        "CV_TEXT",
+                        raw_text,
+                        max_chars=MAX_CV_TEXT_CHARS,
+                    ),
                 ),
-                model=settings.llm_model,
-                # 4096 to accommodate the structured "sections" object —
-                # 12 nested arrays can easily exceed the old 1024 cap and
-                # we were truncating mid-JSON for richer CVs (task #59).
-                max_tokens=4096,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": augment_system_prompt(CV_PARSE_SYSTEM_PROMPT),
-                    },
-                    {
-                        "role": "user",
-                        "content": build_delimited_user_message(
-                            "Parse this CV and return JSON:",
-                            wrap_user_data_block(
-                                "CV_TEXT",
-                                raw_text,
-                                max_chars=MAX_CV_TEXT_CHARS,
-                            ),
-                        ),
-                    },
-                ],
-                response_format={"type": "json_object"},
-            )
+            },
+        ]
+        log_ctx = LlmLogContext(
+            feature=FEATURE_CV_PARSING,
+            route="POST /api/v1/cv/upload",
+        )
+        response = None
+        text = ""
+        last_format_error: APIError | None = None
 
-            text = get_completion_content(response, default="")
-            if text is None:
+        try:
+            for response_format in _cv_parse_response_formats():
+                kwargs: dict[str, Any] = {
+                    "client": client,
+                    "log_prefix": "cv_parser",
+                    "log_context": log_ctx,
+                    "model": settings.llm_model,
+                    # 4096 to accommodate the structured "sections" object —
+                    # 12 nested arrays can easily exceed the old 1024 cap and
+                    # we were truncating mid-JSON for richer CVs (task #59).
+                    "max_tokens": 4096,
+                    "messages": messages,
+                }
+                if response_format is not None:
+                    kwargs["response_format"] = response_format
+                try:
+                    response = create_chat_completion_with_retries(**kwargs)
+                    break
+                except APIError as fmt_exc:
+                    if response_format is not None and is_response_format_rejected(fmt_exc):
+                        last_format_error = fmt_exc
+                        logger.warning(
+                            "cv_parser: OpenRouter rejected response_format=%s (%s); retrying",
+                            response_format.get("type") if isinstance(response_format, dict) else response_format,
+                            fmt_exc,
+                        )
+                        continue
+                    raise
+
+            if response is None:
+                raise last_format_error or ValueError(
+                    "Could not parse your CV. Please try uploading a clearer document."
+                )
+
+            text = get_completion_content(response, default="") or ""
+            ctx_with_llm = CVParseDebugContext(
+                file_size=ctx.file_size,
+                page_count=ctx.page_count,
+                extracted_text_length=ctx.extracted_text_length,
+                llm_response_length=len(text),
+            )
+            if not text.strip():
                 logger.warning("cv_parser_skip: bad response: empty choices")
+                _add_cv_parse_breadcrumb(
+                    "cv_parse_empty_llm_response",
+                    context=ctx_with_llm,
+                )
                 raise ValueError(
                     "Could not parse your CV. Please try uploading a clearer document."
                 )
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
 
-            raw = json.loads(text.strip())
+            raw = repair_llm_json(text)
+            if raw is None:
+                logger.error(
+                    "Failed to parse LLM response as JSON. preview=%r",
+                    text[:200],
+                )
+                _add_cv_parse_breadcrumb(
+                    "cv_parse_json_decode_failed",
+                    context=ctx_with_llm,
+                    extra={"response_preview": text[:200]},
+                )
+                raise ValueError(
+                    "Could not parse your CV. Please try uploading a clearer document."
+                )
 
             try:
                 validated = CVParseResult(**raw)
@@ -270,6 +373,11 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
                 logger.error(
                     "LLM returned malformed CV JSON. raw=%r errors=%s",
                     raw, ve.errors(),
+                )
+                _add_cv_parse_breadcrumb(
+                    "cv_parse_pydantic_validation_failed",
+                    context=ctx_with_llm,
+                    extra={"validation_errors": ve.errors()[:5]},
                 )
                 raise ValueError(
                     "Could not understand the CV structure. "
@@ -289,6 +397,15 @@ async def parse_cv_with_llm(raw_text: str) -> dict[str, Any]:
             raise ValueError("CV parsing service is temporarily unavailable. Please try again later.")
         except json.JSONDecodeError:
             logger.error("Failed to parse LLM response as JSON")
+            _add_cv_parse_breadcrumb(
+                "cv_parse_json_decode_failed",
+                context=CVParseDebugContext(
+                    file_size=ctx.file_size,
+                    page_count=ctx.page_count,
+                    extracted_text_length=ctx.extracted_text_length,
+                    llm_response_length=len(text),
+                ),
+            )
             raise ValueError("Could not parse your CV. Please try uploading a clearer document.")
 
     return await asyncio.to_thread(_call)

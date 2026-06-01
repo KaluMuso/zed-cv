@@ -7,11 +7,17 @@ from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, UploadFile, File
 
+from app.core.errors import ProblemHTTPException
 from app.core.deps import get_supabase, get_current_user, get_current_user_id, is_superadmin
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.schemas.cv_sections import CVSections
-from app.services.cv_parser import extract_text_from_file, parse_cv_with_llm
+from app.services.cv_parser import (
+    count_pdf_pages,
+    extract_text_from_file,
+    parse_cv_with_llm,
+)
+from app.services.cv_parse_context import CVParseDebugContext
 from app.services.cv_generator import analyze_cv, generate_cv_structured, _render_sections_to_text
 from app.services.cv_pdf_renderer import render_cv_pdf
 from app.services.cv_scratch import suggest_professional_summary, suggest_role_bullets
@@ -355,8 +361,30 @@ async def upload_cv(
         raw_text = await extract_text_from_file(file_bytes, file_type)
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    if not raw_text or len(raw_text.strip()) < 50:
-        raise HTTPException(status_code=422, detail="Could not extract enough text. Please upload a clearer document.")
+
+    page_count = count_pdf_pages(file_bytes) if file_type == "pdf" else None
+    extracted_len = len(raw_text.strip())
+
+    if file_type == "pdf" and extracted_len < 50:
+        raise ProblemHTTPException(
+            status_code=422,
+            code="image_scanned_pdf",
+            user_message=(
+                "We couldn't read text from this PDF — it looks like a scanned image. "
+                "Please re-upload an OCR'd or text-based PDF."
+            ),
+        )
+    if not raw_text or extracted_len < 50:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not extract enough text. Please upload a clearer document.",
+        )
+
+    parse_debug = CVParseDebugContext(
+        file_size=len(file_bytes),
+        page_count=page_count,
+        extracted_text_length=extracted_len,
+    )
 
     # ai_cache lookup for parse + embedding.
     # Same CV text -> Gemini is deterministic enough to cache (temperature 0.1).
@@ -377,7 +405,7 @@ async def upload_cv(
     parsed = _cache_get(supabase, parse_cache_key)
     if parsed is None:
         try:
-            parsed = await parse_cv_with_llm(raw_text)
+            parsed = await parse_cv_with_llm(raw_text, debug_context=parse_debug)
         except ValueError as e:
             msg = str(e).lower()
             if "busy" in msg or "rate" in msg or "temporarily" in msg:

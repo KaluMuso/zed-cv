@@ -52,12 +52,20 @@ export class ApiError extends Error {
   detail: string;
   /** Machine-readable RFC 7807 detail when the API returns a problem code. */
   code?: string;
-  constructor(status: number, detail: string, code?: string) {
+  /** Structured problem payload when the API returns an object detail (e.g. CV upload). */
+  problem?: Record<string, unknown>;
+  constructor(
+    status: number,
+    detail: string,
+    code?: string,
+    problem?: Record<string, unknown>
+  ) {
     super(detail);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
     this.code = code;
+    this.problem = problem;
   }
 }
 
@@ -1214,6 +1222,14 @@ export interface BuildFromScratchResult {
   render_time_ms: number;
 }
 
+function parseUploadProblemDetail(
+  body: Record<string, unknown>,
+  fallbackStatusText: string
+): { message: string; code?: string; problem?: Record<string, unknown> } {
+  const parsed = parseProblemBody(body, fallbackStatusText);
+  return { ...parsed, problem: body };
+}
+
 export const cv = {
   upload: async (token: string, file: File): Promise<CVUploadResult> => {
     const formData = new FormData();
@@ -1224,11 +1240,9 @@ export const cv = {
       body: formData,
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new ApiError(
-        res.status,
-        (body as { detail?: string }).detail || "Upload failed"
-      );
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      const { message, code, problem } = parseUploadProblemDetail(body, res.statusText);
+      throw new ApiError(res.status, message, code, problem);
     }
     return res.json() as Promise<CVUploadResult>;
   },

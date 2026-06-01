@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { cv as cvApi, type CVSections, type UserProfile } from "@/lib/api";
+import { cv as cvApi, ApiError, type CVSections, type UserProfile } from "@/lib/api";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 
@@ -24,6 +24,8 @@ export function CvSkillsTab({
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+  const [uploadErrorCode, setUploadErrorCode] = useState<string | null>(null);
+  const [showScanFix, setShowScanFix] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +41,8 @@ export function CvSkillsTab({
       }
       setUploading(true);
       setUploadMsg("");
+      setUploadErrorCode(null);
+      setShowScanFix(false);
       try {
         const result = await cvApi.upload(token, file);
         // parsed_skills is the canonical field per docs/openapi.yaml.
@@ -53,17 +57,20 @@ export function CvSkillsTab({
         }
         onUploaded();
       } catch (err) {
-        // Distinguish network errors (CORS-masked 500s, offline) from
-        // app-level errors so users know to retry vs. fix input.
         let msg: string;
+        let code: string | null = null;
         if (err instanceof TypeError && /fetch/i.test(err.message)) {
           msg = "Couldn't reach the server. Please check your connection and try again.";
+        } else if (err instanceof ApiError) {
+          msg = err.detail || "Upload failed";
+          code = err.code ?? null;
         } else if (err instanceof Error) {
           msg = err.message;
         } else {
           msg = "Upload failed";
         }
         setUploadMsg(msg);
+        setUploadErrorCode(code);
       } finally {
         setUploading(false);
       }
@@ -183,17 +190,45 @@ export function CvSkillsTab({
         )}
 
         {uploadMsg && (
-          <p
-            className="mt-3 text-sm"
-            style={{
-              color:
-                uploadMsg.includes("failed") || uploadMsg.includes("Please")
-                  ? "var(--danger)"
-                  : "var(--success)",
-            }}
-          >
-            {uploadMsg}
-          </p>
+          <div className="mt-3">
+            <p
+              className="text-sm"
+              style={{
+                color:
+                  uploadMsg.includes("failed") ||
+                  uploadMsg.includes("Please") ||
+                  uploadMsg.includes("couldn't") ||
+                  uploadMsg.includes("Couldn't") ||
+                  uploadErrorCode === "image_scanned_pdf"
+                    ? "var(--danger)"
+                    : "var(--success)",
+              }}
+            >
+              {uploadMsg}
+            </p>
+            {uploadErrorCode === "image_scanned_pdf" && (
+              <div className="mt-2 text-sm" style={{ color: "var(--ink-2)" }}>
+                <button
+                  type="button"
+                  className="font-medium underline"
+                  style={{ color: "var(--green-700)" }}
+                  onClick={() => setShowScanFix((v) => !v)}
+                >
+                  How to fix
+                </button>
+                {showScanFix && (
+                  <ul className="mt-2 ml-4 list-disc space-y-1 text-xs" style={{ color: "var(--muted)" }}>
+                    <li>Re-export your CV from Word or Google Docs as a PDF (not a photo scan).</li>
+                    <li>
+                      If you only have a paper copy, scan with OCR enabled (Adobe Scan, Microsoft Lens, or
+                      Google Drive scan).
+                    </li>
+                    <li>Upload a DOCX or a searchable PDF — we need selectable text, not just an image.</li>
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

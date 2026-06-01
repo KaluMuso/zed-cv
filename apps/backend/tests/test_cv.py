@@ -204,3 +204,26 @@ class TestCVUpload:
         # Critical: cache hit short-circuited the LLM call.
         mock_parse.assert_not_called()
         mock_embed.assert_not_called()
+
+    @patch("app.api.v1.cv._sniff_mime", side_effect=_mime_for_pdf)
+    @patch("app.api.v1.cv.extract_text_from_file", new_callable=AsyncMock)
+    def test_upload_image_scanned_pdf_rejected(
+        self,
+        mock_extract,
+        mock_sniff,
+        client,
+        auth_headers,
+    ):
+        """Scanned PDFs with no extractable text return a structured 422."""
+        mock_extract.return_value = "   \n  "
+
+        resp = client.post(
+            "/api/v1/cv/upload",
+            headers=auth_headers,
+            files={"file": ("scan.pdf", b"fake-pdf-content", "application/pdf")},
+        )
+
+        assert resp.status_code == 422, resp.text
+        body = resp.json()
+        assert body["detail"] == "image_scanned_pdf"
+        assert "scanned image" in body["user_message"].lower()
