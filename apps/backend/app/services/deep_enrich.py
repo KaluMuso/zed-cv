@@ -14,6 +14,7 @@ import httpx
 from openai import OpenAI
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from app.services.deep_link_parsers.base import sanitize_listing_source_url
 from app.services.job_page_text_extractor import extract_page_text_for_description
 from app.services.skill_resolver import resolve_skill_ids
 from app.core.config import get_settings
@@ -123,11 +124,11 @@ def _http_url(url: str | None) -> bool:
 
 
 def _resolve_fetch_url(row: dict[str, Any]) -> str | None:
-    source = (row.get("source_url") or "").strip()
-    if _http_url(source):
+    source = sanitize_listing_source_url((row.get("source_url") or "").strip() or None)
+    if source and _http_url(source):
         return source
-    apply_url = (row.get("apply_url") or "").strip()
-    if _http_url(apply_url):
+    apply_url = sanitize_listing_source_url((row.get("apply_url") or "").strip() or None)
+    if apply_url and _http_url(apply_url):
         host = (urlparse(apply_url).netloc or "").lower()
         aggregator_hints = (
             "jobwebzambia",

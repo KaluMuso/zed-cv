@@ -71,6 +71,49 @@ def is_aggregator_url(url: str) -> bool:
     return any(host.endswith(f".{domain}") for domain in AGGREGATOR_DOMAINS)
 
 
+# Index paths on aggregator sites — not usable as per-job listing URLs.
+_AGGREGATOR_ROOT_PATHS = frozenset(
+    {
+        "",
+        "jobs",
+        "job",
+        "vacancies",
+        "careers",
+        "index.php",
+        "index.html",
+    }
+)
+
+
+def is_aggregator_site_root(url: str) -> bool:
+    """True when URL is an aggregator domain homepage or jobs index (no listing slug)."""
+    if not (url or "").strip():
+        return False
+    if not is_aggregator_url(url):
+        return False
+    parsed = urlparse(url.strip())
+    path = (parsed.path or "").strip("/")
+    if not path:
+        return True
+    segments = [s for s in path.split("/") if s]
+    if len(segments) == 1 and segments[0].lower() in _AGGREGATOR_ROOT_PATHS:
+        return True
+    return False
+
+
+def sanitize_listing_source_url(url: str | None) -> str | None:
+    """Drop aggregator homepages; keep per-job listing URLs for deep-link fetch."""
+    if not url:
+        return None
+    cleaned = url.strip()
+    lower = cleaned.lower()
+    if not (lower.startswith("http://") or lower.startswith("https://")):
+        return None
+    if is_aggregator_site_root(cleaned):
+        return None
+    return cleaned
+
+
 def is_non_apply_url(url: str) -> bool:
     host = normalize_hostname(url)
     if not host:
