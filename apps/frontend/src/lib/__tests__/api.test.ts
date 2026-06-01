@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
+  API_UNAVAILABLE_MESSAGE,
   DEVICE_TOKEN_KEY,
   REFERRAL_STORAGE_KEY,
   apiFetch,
@@ -109,13 +110,30 @@ describe("apiFetch", () => {
     });
   });
 
-  it("uses fallback message when error body is not JSON", async () => {
+  it("maps 502 gateway errors to a friendly API-unavailable message", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response("upstream error", { status: 502, statusText: "Bad Gateway" }),
     );
     const err = await apiFetch("/broken").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiError);
-    expect(err).toMatchObject({ status: 502, detail: "Bad Gateway" });
+    expect(err).toMatchObject({
+      status: 502,
+      detail: API_UNAVAILABLE_MESSAGE,
+      code: "api_unreachable",
+    });
+  });
+
+  it("maps fetch network failures to API-unavailable (not raw Failed to fetch)", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    const err = await apiFetch("/auth/login", { method: "POST" }).catch(
+      (e: unknown) => e
+    );
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({
+      status: 0,
+      detail: API_UNAVAILABLE_MESSAGE,
+      code: "api_unreachable",
+    });
   });
 
   it("maps machine code without user_message to friendly delivery copy", async () => {

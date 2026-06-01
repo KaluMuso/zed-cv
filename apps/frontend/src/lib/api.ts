@@ -71,6 +71,13 @@ export class ApiError extends Error {
 
 const MACHINE_CODE_RE = /^[a-z][a-z0-9_]*$/;
 
+/** Shown when fetch fails (browser "Failed to fetch") or the API returns 502/503/504. */
+export const API_UNAVAILABLE_MESSAGE =
+  "Our servers are temporarily unavailable. Please try again in a few minutes.";
+
+/** Proxy/upstream failures only — not app 503s (OTP delivery, etc.). */
+const GATEWAY_STATUSES = new Set([502, 504]);
+
 function reportApi5xxToSentry(
   status: number,
   path: string,
@@ -120,11 +127,23 @@ export async function apiFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...fetchOptions,
-    headers,
-    body: prepareRequestBody(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...fetchOptions,
+      headers,
+      body: prepareRequestBody(body),
+    });
+  } catch (err) {
+    if (err instanceof TypeError) {
+      reportApi5xxToSentry(0, path, {
+        detail: "network_error",
+        message: err.message,
+      });
+      throw new ApiError(0, API_UNAVAILABLE_MESSAGE, "api_unreachable");
+    }
+    throw err;
+  }
 
   if (!res.ok) {
     const body = (await res.json().catch(() => ({
@@ -132,6 +151,9 @@ export async function apiFetch<T>(
     }))) as Record<string, unknown>;
     const { message, code } = parseProblemBody(body, res.statusText);
     reportApi5xxToSentry(res.status, path, body);
+    if (GATEWAY_STATUSES.has(res.status)) {
+      throw new ApiError(res.status, API_UNAVAILABLE_MESSAGE, "api_unreachable");
+    }
     throw new ApiError(res.status, message, code);
   }
 
