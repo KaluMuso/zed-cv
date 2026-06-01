@@ -3,42 +3,98 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
-import { formatTierNavSubtitle } from "@/lib/tier-display";
+import { settingsPath } from "@/app/settings/settings-nav";
 
 type MenuItem = {
   href: string;
   label: string;
   icon: string;
-  onClick?: () => void;
 };
+
+function MenuSection({
+  title,
+  items,
+  onClose,
+}: {
+  title: string;
+  items: MenuItem[];
+  onClose: () => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="py-1">
+      <div
+        className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
+        style={{ color: "var(--muted)" }}
+      >
+        {title}
+      </div>
+      {items.map((item) => (
+        <Link
+          key={item.href + item.label}
+          href={item.href}
+          onClick={onClose}
+          className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-2)] transition-colors"
+          style={{ color: "var(--ink-2)" }}
+          role="menuitem"
+        >
+          <Icon name={item.icon} size={16} className="shrink-0 opacity-80" />
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function canAccessCvGenerator(tier: string | null | undefined): boolean {
+  return (
+    tier === "starter" ||
+    tier === "professional" ||
+    tier === "super_standard"
+  );
+}
 
 export function UserMenuDropdown({
   displayName,
   tierSubtitle,
+  subscriptionTier,
   onClose,
   onSignOut,
   showAdmin,
 }: {
   displayName: string;
   tierSubtitle: string;
+  subscriptionTier?: string | null;
   onClose: () => void;
   onSignOut: () => void;
   showAdmin?: boolean;
 }) {
-  const items: MenuItem[] = [
+  const engagement: MenuItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
-    { href: "/profile", label: "Profile", icon: "user" },
-    { href: "/profile?tab=cv-generator", label: "CV Generator", icon: "file" },
-    { href: "/applications", label: "Applications", icon: "briefcase" },
-    { href: "/matches", label: "My matches", icon: "sparkle" },
     { href: "/settings/notifications", label: "Notifications", icon: "bell" },
-    { href: "/settings/account", label: "Account settings", icon: "settings" },
-    { href: "/settings/privacy", label: "Privacy & data", icon: "shield" },
   ];
 
-  if (showAdmin) {
-    items.push({ href: "/admin", label: "Admin (internal)", icon: "shield" });
-  }
+  const careerData: MenuItem[] = [
+    { href: "/profile", label: "Profile (CV & Skills)", icon: "user" },
+    ...(canAccessCvGenerator(subscriptionTier)
+      ? [
+          {
+            href: "/profile?tab=cv-generator",
+            label: "CV Generator",
+            icon: "file",
+          },
+        ]
+      : []),
+    { href: "/matches", label: "My matches", icon: "sparkle" },
+  ];
+
+  const account: MenuItem[] = [
+    { href: settingsPath("account"), label: "Settings", icon: "settings" },
+    ...(showAdmin
+      ? [{ href: "/admin", label: "Admin", icon: "shield" }]
+      : []),
+  ];
 
   return (
     <div
@@ -61,19 +117,9 @@ export function UserMenuDropdown({
         ) : null}
       </div>
 
-      {items.map((item) => (
-        <Link
-          key={item.href + item.label}
-          href={item.href}
-          onClick={onClose}
-          className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-2)] transition-colors"
-          style={{ color: "var(--ink-2)" }}
-          role="menuitem"
-        >
-          <Icon name={item.icon} size={16} className="shrink-0 opacity-80" />
-          {item.label}
-        </Link>
-      ))}
+      <MenuSection title="Engagement" items={engagement} onClose={onClose} />
+      <MenuSection title="Career data" items={careerData} onClose={onClose} />
+      <MenuSection title="Account" items={account} onClose={onClose} />
 
       <hr style={{ borderColor: "var(--line)" }} className="my-1" />
       <button
@@ -109,6 +155,7 @@ export function UserMenuTrigger({
       className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-[var(--bg-2)] transition-colors"
       aria-expanded={open}
       aria-haspopup="menu"
+      aria-label={`${displayName} account menu`}
     >
       <Avatar name={displayName} size={36} />
       <Icon name="chevronDown" size={14} />

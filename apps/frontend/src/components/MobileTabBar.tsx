@@ -1,47 +1,78 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { useAuth } from "@/lib/auth";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { settingsPath } from "@/app/settings/settings-nav";
 
-const TABS = [
-  { id: "matches", label: "Matches", icon: "sparkles", href: "/matches" },
-  { id: "jobs", label: "Browse", icon: "briefcase", href: "/jobs" },
-  { id: "applications", label: "Track", icon: "briefcase", href: "/applications" },
+const MAIN_TABS = [
+  { id: "jobs", label: "Jobs", icon: "briefcase", href: "/jobs" },
+  { id: "matches", label: "Matches", icon: "sparkle", href: "/matches" },
+  { id: "applications", label: "Applications", icon: "briefcase", href: "/applications" },
   { id: "profile", label: "Profile", icon: "user", href: "/profile" },
+] as const;
+
+const MORE_LINKS = [
+  { href: "/dashboard", label: "Dashboard", icon: "home" },
+  { href: settingsPath("account"), label: "Settings", icon: "settings" },
+  { href: "/pricing", label: "Pricing", icon: "star" },
+  { href: "/interview-prep", label: "Interview Prep", icon: "target" },
 ] as const;
 
 /**
  * Mobile bottom tab bar — pill-style with sliding copper indicator.
  * Only visible on screens < 768px. Hidden on desktop.
- * Matches the ZedApply mobile prototype design.
  */
 export function MobileTabBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout, isAuthenticated } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  // Only show on authenticated pages
-  const showOn = ["/matches", "/jobs", "/profile", "/pricing", "/applications", "/dashboard"];
-  const shouldShow = showOn.some((p) => pathname.startsWith(p));
+  const showOn = [
+    "/matches",
+    "/jobs",
+    "/profile",
+    "/pricing",
+    "/applications",
+    "/dashboard",
+    "/settings",
+    "/interview-prep",
+  ];
+  const shouldShow =
+    isAuthenticated && showOn.some((p) => pathname.startsWith(p));
   if (!shouldShow) return null;
 
-  const activeIndex = TABS.findIndex((t) => pathname.startsWith(t.href));
+  const mainActiveIndex = MAIN_TABS.findIndex((t) => pathname.startsWith(t.href));
+  const moreActive =
+    MORE_LINKS.some((l) => pathname.startsWith(l.href)) ||
+    pathname.startsWith("/settings");
+  const indicatorIndex = moreActive ? MAIN_TABS.length : Math.max(mainActiveIndex, 0);
 
   return (
     <>
       <nav className="mobile-tab-bar" aria-label="Mobile navigation">
-        {/* Sliding indicator */}
         <div
           className="tab-indicator"
           style={{
-            transform: `translateX(calc(${Math.max(activeIndex, 0)} * (100% + 6px)))`,
+            transform: `translateX(calc(${indicatorIndex} * (100% + 6px)))`,
           }}
         />
 
-        {TABS.map((tab) => {
+        {MAIN_TABS.map((tab) => {
           const isActive = pathname.startsWith(tab.href);
           return (
             <button
               key={tab.id}
+              type="button"
               className={`tab-btn ${isActive ? "active" : ""}`}
               onClick={() => router.push(tab.href)}
               aria-label={tab.label}
@@ -52,10 +83,54 @@ export function MobileTabBar() {
             </button>
           );
         })}
+
+        <button
+          type="button"
+          className={`tab-btn ${moreActive ? "active" : ""}`}
+          onClick={() => setMoreOpen(true)}
+          aria-label="More"
+          aria-expanded={moreOpen}
+          aria-haspopup="dialog"
+        >
+          <Icon name="menu" size={18} />
+          <span className="tab-label">More</span>
+        </button>
       </nav>
 
-      {/* Spacer to prevent content from hiding behind the fixed tab bar */}
-      {shouldShow && <div className="mobile-tab-spacer" />}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+          <SheetHeader>
+            <SheetTitle>More</SheetTitle>
+          </SheetHeader>
+          <nav className="flex flex-col gap-1 px-2" aria-label="More navigation">
+            {MORE_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMoreOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium hover:bg-muted/50"
+              >
+                <Icon name={link.icon} size={18} className="opacity-80" />
+                {link.label}
+              </Link>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false);
+                logout();
+              }}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium hover:bg-muted/50"
+              style={{ color: "var(--danger)" }}
+            >
+              <Icon name="arrowLeft" size={18} className="opacity-80" />
+              Sign out
+            </button>
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      {shouldShow ? <div className="mobile-tab-spacer" /> : null}
 
       <style jsx>{`
         .mobile-tab-bar {
@@ -103,7 +178,7 @@ export function MobileTabBar() {
           position: absolute;
           top: 6px;
           bottom: 6px;
-          width: calc((100% - 12px) / 4);
+          width: calc((100% - 12px) / 5);
           background: linear-gradient(135deg, #d27a3f 0%, #a86224 100%);
           border-radius: 999px;
           transition: transform 480ms cubic-bezier(0.34, 1.4, 0.5, 1);
@@ -143,14 +218,6 @@ export function MobileTabBar() {
           letter-spacing: 0.02em;
         }
 
-        /* Hide desktop navbar on mobile when tab bar is showing */
-        @media (max-width: 767px) {
-          :global(.desktop-nav-hide-mobile) {
-            display: none !important;
-          }
-        }
-
-        /* Respect reduced motion */
         @media (prefers-reduced-motion: reduce) {
           .mobile-tab-bar {
             animation: none;
