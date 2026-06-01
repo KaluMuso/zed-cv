@@ -96,12 +96,22 @@ Repo export `bwana_chat_pipeline.json` uses these weights in:
 
 Bwana live workflow already uses `$env.OPENROUTER_API_KEY` and `$env.WAHA_API_KEY` (no literals in nodes). Job Scraper **must** be patched on n8n — live still had ingest key in JSON body at export time.
 
+### Job scraper 403 `PERMISSION_DENIED` (Google AI)
+
+If **AI Parse \*** nodes return `Your project has been denied access`, the live workflow is still calling **Google AI Studio** (`generativelanguage.googleapis.com`) with a blocked project. Re-import repo `job_scraper.json`: all four **AI Parse** nodes now use **OpenRouter** (`OPENROUTER_API_KEY`), same as the backend.
+
+### Combine All Sources: jobs with `source_url: null`
+
+OpenRouter can return valid `choices[0].message.content` while every job still has `source_url` / `apply_url` null and `posted_at` like `9h ago`. **Prep \*** nodes extract `href` links into `extractedLinks` before HTML strip; **Normalize and Deduplicate** reads those links from each Prep node (by branch index) and fuzzy-matches titles to URLs when the LLM omitted `source_url`. It also converts relative `posted_at` to ISO `YYYY-MM-DD`. Re-import `job_scraper.json` after any change to Prep or Normalize nodes.
+
 ## Job Scraper — patch live workflow (`rsgZLi6UAcC3lXvu`)
 
 Repo export `job_scraper.json` is the source of truth. Live n8n must match it before the next scrape run.
 
 1. Sign in to `https://automation.vergeo.company`.
 2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
+3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.5-flash`.
+4. Re-import `infra/n8n/job_scraper.json` or update all four **AI Parse \*** nodes to POST `https://openrouter.ai/api/v1/chat/completions` with Bearer auth (remove **Google AI** credential).
 3. Open the **Send to Zed CV** HTTP Request node.
 4. Set **Method** `POST` and URL:
    `={{ ($env.FASTAPI_URL || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`

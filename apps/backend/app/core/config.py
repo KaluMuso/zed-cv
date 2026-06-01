@@ -27,12 +27,11 @@ class Settings(BaseSettings):
 
     # AI: LLM via OpenRouter
     # Stable OpenRouter slug for Gemini 2.0 Flash. The shorthand
-    # 'google/gemini-flash-2.0' (without version suffix) is rejected by
-    # OpenRouter with 400 BadRequestError. Use ':free' suffix for the
-    # zero-cost experimental tier, or the -001 stable model below.
+    # OpenRouter model slug. `google/gemini-2.0-flash-001` was retired 2026-06-01.
+    # Override via LLM_MODEL in .env after `docker compose up --force-recreate`.
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_model: str = "google/gemini-2.0-flash-001"
+    llm_model: str = "google/gemini-2.5-flash"
     # Image-scanned PDF fallback: render pages → Gemini vision (OpenRouter).
     cv_vision_ocr_enabled: bool = True
     # Global daily AI budget guards (0 = disabled). Checked against
@@ -95,7 +94,7 @@ class Settings(BaseSettings):
     # Track 4c: multi-channel WhatsApp job scraper (separate webhook from OTP).
     whatsapp_scrape_channels: str = ""
     whatsapp_scraper_webhook_token: str = ""
-    openrouter_vision_model: str = "google/gemini-2.0-flash-001"
+    openrouter_vision_model: str = "google/gemini-2.5-flash"
     waha_session_name: str = "default"
     # Admin ops alerts (review queue backlog → WhatsApp via WAHA).
     enable_admin_whatsapp_alerts: bool = True

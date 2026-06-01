@@ -38,6 +38,7 @@ DASHBOARD_FEATURES = (
 # OpenRouter USD per 1M tokens (input / output). Source: openrouter.ai/models
 # snapshots 2026-05; unknown models fall back to DEFAULT_OPENROUTER_PRICING.
 OPENROUTER_PRICE_PER_MILLION: dict[str, tuple[float, float]] = {
+    "google/gemini-2.5-flash": (0.15, 0.60),
     "google/gemini-2.0-flash-001": (0.10, 0.40),
     "google/gemini-2.0-flash-exp:free": (0.0, 0.0),
     "google/gemini-flash-1.5": (0.075, 0.30),

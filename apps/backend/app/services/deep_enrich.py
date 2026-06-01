@@ -90,7 +90,8 @@ Return as JSON: {"jobs": [...]}
 Skip if not a real Zambian job posting. Return {"jobs": []} only if truly empty.
 """.strip()
 
-DEEP_ENRICH_MODEL = "google/gemini-2.0-flash-001"
+def _deep_enrich_model() -> str:
+    return get_settings().llm_model
 
 
 class DeepEnrichRole(BaseModel):
@@ -178,7 +179,7 @@ def _call_deep_enrich_llm(page_text: str, llm_client: Any) -> list[DeepEnrichRol
     response = create_chat_completion_with_retries(
         llm_client,
         log_prefix="deep_enrich",
-        model=DEEP_ENRICH_MODEL,
+        model=_deep_enrich_model(),
         max_tokens=8192,
         messages=[
             {"role": "system", "content": DEEP_ENRICH_LLM_PROMPT},

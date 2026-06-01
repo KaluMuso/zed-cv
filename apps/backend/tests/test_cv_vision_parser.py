@@ -51,7 +51,7 @@ async def test_vision_parser_uses_gemini_multimodal():
     assert result["full_name"] == "Jane Banda"
     mock_create.assert_called_once()
     call_kwargs = mock_create.call_args.kwargs
-    assert call_kwargs["model"] == "google/gemini-2.0-flash-001"
+    assert call_kwargs["model"] == "google/gemini-2.5-flash"
     messages = call_kwargs["messages"]
     user_content = messages[1]["content"]
     assert user_content[0]["type"] == "text"

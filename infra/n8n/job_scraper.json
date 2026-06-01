@@ -1,9 +1,9 @@
 {
   "name": "ZedApply Job Scraper",
   "meta": {
-    "description": "Scrapes 4 Zambian job sites every 12h. Gemini 2.5 Flash (thinking disabled). Ingest auth via INGEST_API_KEY env only.",
+    "description": "Scrapes 4 Zambian job sites every 12h. LLM via OpenRouter (google/gemini-2.5-flash). Ingest auth via INGEST_API_KEY env only.",
     "n8nWorkflowId": "rsgZLi6UAcC3lXvu",
-    "exportNote": "Import into n8n; set Google AI credential on Gemini nodes; set INGEST_API_KEY in n8n env."
+    "exportNote": "Import into n8n; set OPENROUTER_API_KEY (+ optional OPENROUTER_MODEL) in n8n env; set INGEST_API_KEY."
   },
   "settings": {
     "executionOrder": "v1"
@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = ($json.data || '');\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. For each job, set source_url to the full per-job listing page URL when visible in the text (never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + '\\n\\nTEXT:\\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    }\n  }\n}];"
+        "jsCode": "const SITE_BASE = 'https://www.gozambiajobs.com';\nconst raw = ($json.data || '');\nconst absUrl = (href) => {\n  if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:')) return null;\n  try {\n    if (href.startsWith('http://') || href.startsWith('https://')) return href.split('#')[0];\n    if (href.startsWith('/')) return SITE_BASE.replace(/\\/$/, '') + href.split('#')[0];\n  } catch (e) {}\n  return null;\n};\nconst listingLinks = [];\nconst hrefRe = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\nlet hm;\nwhile ((hm = hrefRe.exec(raw)) !== null && listingLinks.length < 200) {\n  const u = absUrl(hm[1]);\n  if (!u) continue;\n  const low = u.toLowerCase();\n  if ((low.includes('gozambiajobs') && /\\/job\\//.test(low)) || low.includes('/job') || low.includes('/vacanc') || low.includes('/career') || low.includes('/position') || low.includes('/opportunit')) {\n    if (!listingLinks.includes(u)) listingLinks.push(u);\n  }\n}\nconst linksBlock = listingLinks.length\n  ? '\\n\\nEXTRACTED_LISTING_LINKS (use the best match as source_url per job):\\n' + listingLinks.join('\\n')\n  : '';\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. posted_at must be ISO YYYY-MM-DD or null (never relative like 9h ago). For each job, set source_url from EXTRACTED_LISTING_LINKS when it matches that job (full per-job URL only; never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + linksBlock + '\n\nTEXT:\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    },\n    extractedLinks: listingLinks,\n    siteHost: SITE_BASE.replace(/^https?:\\/\\//, '').replace(/\\/$/, ''),\n  }\n}];"
       },
       "name": "Prep GoZambia Body",
       "type": "n8n-nodes-base.code",
@@ -73,12 +73,32 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googlePalmApi",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://www.zedapply.com"
+            },
+            {
+              "name": "X-Title",
+              "value": "ZedApply Job Scraper"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.geminiBody) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -117,7 +137,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = ($json.data || '');\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. For each job, set source_url to the full per-job listing page URL when visible in the text (never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + '\\n\\nTEXT:\\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    }\n  }\n}];"
+        "jsCode": "const SITE_BASE = 'https://jobwebzambia.com';\nconst raw = ($json.data || '');\nconst absUrl = (href) => {\n  if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:')) return null;\n  try {\n    if (href.startsWith('http://') || href.startsWith('https://')) return href.split('#')[0];\n    if (href.startsWith('/')) return SITE_BASE.replace(/\\/$/, '') + href.split('#')[0];\n  } catch (e) {}\n  return null;\n};\nconst listingLinks = [];\nconst hrefRe = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\nlet hm;\nwhile ((hm = hrefRe.exec(raw)) !== null && listingLinks.length < 200) {\n  const u = absUrl(hm[1]);\n  if (!u) continue;\n  const low = u.toLowerCase();\n  if ((low.includes('jobwebzambia') && /\\/jobs\\/[^\\/]+/.test(low)) || low.includes('/job') || low.includes('/vacanc') || low.includes('/career') || low.includes('/position') || low.includes('/opportunit')) {\n    if (!listingLinks.includes(u)) listingLinks.push(u);\n  }\n}\nconst linksBlock = listingLinks.length\n  ? '\\n\\nEXTRACTED_LISTING_LINKS (use the best match as source_url per job):\\n' + listingLinks.join('\\n')\n  : '';\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. posted_at must be ISO YYYY-MM-DD or null (never relative like 9h ago). For each job, set source_url from EXTRACTED_LISTING_LINKS when it matches that job (full per-job URL only; never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + linksBlock + '\n\nTEXT:\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    },\n    extractedLinks: listingLinks,\n    siteHost: SITE_BASE.replace(/^https?:\\/\\//, '').replace(/\\/$/, ''),\n  }\n}];"
       },
       "name": "Prep JobWebZambia Body",
       "type": "n8n-nodes-base.code",
@@ -130,12 +150,32 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googlePalmApi",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://www.zedapply.com"
+            },
+            {
+              "name": "X-Title",
+              "value": "ZedApply Job Scraper"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.geminiBody) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -174,7 +214,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = ($json.data || '');\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. For each job, set source_url to the full per-job listing page URL when visible in the text (never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + '\\n\\nTEXT:\\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    }\n  }\n}];"
+        "jsCode": "const SITE_BASE = 'https://www.linkedin.com';\nconst raw = ($json.data || '');\nconst absUrl = (href) => {\n  if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:')) return null;\n  try {\n    if (href.startsWith('http://') || href.startsWith('https://')) return href.split('#')[0];\n    if (href.startsWith('/')) return SITE_BASE.replace(/\\/$/, '') + href.split('#')[0];\n  } catch (e) {}\n  return null;\n};\nconst listingLinks = [];\nconst hrefRe = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\nlet hm;\nwhile ((hm = hrefRe.exec(raw)) !== null && listingLinks.length < 200) {\n  const u = absUrl(hm[1]);\n  if (!u) continue;\n  const low = u.toLowerCase();\n  if (low.includes('/job') || low.includes('/vacanc') || low.includes('/career') || low.includes('/position') || low.includes('/opportunit')) {\n    if (!listingLinks.includes(u)) listingLinks.push(u);\n  }\n}\nconst linksBlock = listingLinks.length\n  ? '\\n\\nEXTRACTED_LISTING_LINKS (use the best match as source_url per job):\\n' + listingLinks.join('\\n')\n  : '';\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. posted_at must be ISO YYYY-MM-DD or null (never relative like 9h ago). For each job, set source_url from EXTRACTED_LISTING_LINKS when it matches that job (full per-job URL only; never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + linksBlock + '\n\nTEXT:\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    },\n    extractedLinks: listingLinks,\n    siteHost: SITE_BASE.replace(/^https?:\\/\\//, '').replace(/\\/$/, ''),\n  }\n}];"
       },
       "name": "Prep LinkedIn Body",
       "type": "n8n-nodes-base.code",
@@ -187,12 +227,32 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googlePalmApi",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://www.zedapply.com"
+            },
+            {
+              "name": "X-Title",
+              "value": "ZedApply Job Scraper"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.geminiBody) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -231,7 +291,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = ($json.data || '');\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. For each job, set source_url to the full per-job listing page URL when visible in the text (never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + '\\n\\nTEXT:\\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    }\n  }\n}];"
+        "jsCode": "const SITE_BASE = 'https://www.jobsearchzm.com';\nconst raw = ($json.data || '');\nconst absUrl = (href) => {\n  if (!href || href.startsWith('javascript:') || href.startsWith('#') || href.startsWith('mailto:')) return null;\n  try {\n    if (href.startsWith('http://') || href.startsWith('https://')) return href.split('#')[0];\n    if (href.startsWith('/')) return SITE_BASE.replace(/\\/$/, '') + href.split('#')[0];\n  } catch (e) {}\n  return null;\n};\nconst listingLinks = [];\nconst hrefRe = /href\\s*=\\s*[\"']([^\"']+)[\"']/gi;\nlet hm;\nwhile ((hm = hrefRe.exec(raw)) !== null && listingLinks.length < 200) {\n  const u = absUrl(hm[1]);\n  if (!u) continue;\n  const low = u.toLowerCase();\n  if ((low.includes('jobsearchzm') && /\\/(job|jobs|vacanc)[\\/\\-]/i.test(low)) || low.includes('/job') || low.includes('/vacanc') || low.includes('/career') || low.includes('/position') || low.includes('/opportunit')) {\n    if (!listingLinks.includes(u)) listingLinks.push(u);\n  }\n}\nconst linksBlock = listingLinks.length\n  ? '\\n\\nEXTRACTED_LISTING_LINKS (use the best match as source_url per job):\\n' + listingLinks.join('\\n')\n  : '';\nconst text = raw\n  .replace(/<script[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/<style[\\s\\S]*?<\\/style>/gi, '')\n  .replace(/<!--[\\s\\S]*?-->/g, '')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim()\n  .substring(0, 80000);\nconst prompt = 'Extract ALL real Zambian job listings from the cleaned-text below (not ads, sidebars, navigation, or category labels). Be CONCISE: cap each description at 600 chars; no repeated whitespace or boilerplate. Return ONLY valid JSON: {\"jobs\":[{\"title\":\"\",\"company\":\"\",\"location\":\"\",\"description\":\"\",\"requirements\":[],\"skills_required\":[],\"apply_url\":null,\"source_url\":null,\"closing_date\":null,\"posted_at\":null}]}. posted_at must be ISO YYYY-MM-DD or null (never relative like 9h ago). For each job, set source_url from EXTRACTED_LISTING_LINKS when it matches that job (full per-job URL only; never the site homepage). Normalize locations to Zambian cities (leave null if unclear). Skip expired or non-Zambia roles. Return {\"jobs\":[]} ONLY if there are literally zero job postings.';\nreturn [{\n  json: {\n    geminiBody: {\n      contents: [{ parts: [{ text: prompt + linksBlock + '\n\nTEXT:\n' + text }] }],\n      generationConfig: {\n        temperature: 0.1,\n        maxOutputTokens: 32768,\n        responseMimeType: 'application/json',\n        thinkingConfig: { thinkingBudget: 0 }\n      }\n    },\n    extractedLinks: listingLinks,\n    siteHost: SITE_BASE.replace(/^https?:\\/\\//, '').replace(/\\/$/, ''),\n  }\n}];"
       },
       "name": "Prep JobSearchZM Body",
       "type": "n8n-nodes-base.code",
@@ -244,12 +304,32 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googlePalmApi",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "https://www.zedapply.com"
+            },
+            {
+              "name": "X-Title",
+              "value": "ZedApply Job Scraper"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.geminiBody) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -280,7 +360,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normSourceUrl(raw) {\n  if (!raw) return null;\n  try {\n    const u = new URL(String(raw).trim());\n    const host = (u.hostname || '').toLowerCase().replace(/^www\\./, '');\n    const agg = ['jobwebzambia.com','gozambiajobs.com','jobsearchzambia.com','jobsearchzm.com'];\n    const path = (u.pathname || '/').replace(/\\/+$/, '') || '/';\n    const pathOnly = path === '/' ? '' : path.replace(/^\\//, '');\n    const seg = pathOnly.split('/').filter(Boolean);\n    if (agg.some(d => host === d || host.endsWith('.' + d))) {\n      if (!seg.length || (seg.length === 1 && ['jobs','job','vacancies','careers'].includes(seg[0].toLowerCase()))) return null;\n    }\n    return String(raw).trim().substring(0, 2000);\n  } catch { return null; }\n}\nconst allJobs = [];\nconst seen = new Set();\nfor (const item of $input.all()) {\n  let data;\n  try {\n    if (item.json.jobs && Array.isArray(item.json.jobs)) {\n      data = item.json;\n    } else if (item.json.candidates && item.json.candidates[0]) {\n      const text = item.json.candidates[0].content.parts[0].text;\n      const m = text.match(/\\{[\\s\\S]*\"jobs\"[\\s\\S]*\\}/);\n      if (m) data = JSON.parse(m[0]);\n    } else if (item.json.text) {\n      const text = typeof item.json.text === 'string' ? item.json.text : JSON.stringify(item.json.text);\n      const m = text.match(/\\{[\\s\\S]*\"jobs\"[\\s\\S]*\\}/);\n      if (m) data = JSON.parse(m[0]);\n    } else {\n      const text = JSON.stringify(item.json);\n      const m = text.match(/\\{[\\s\\S]*\"jobs\"[\\s\\S]*\\}/);\n      if (m) data = JSON.parse(m[0]);\n    }\n  } catch (e) { continue; }\n  if (!data || !data.jobs) continue;\n  for (const j of data.jobs) {\n    if (!j.title) continue;\n    const hasRef = j.apply_url || j.apply_email;\n    const descRaw = (j.description || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    if (descRaw.length < 10 && !hasRef) continue;\n    const description = descRaw.length >= 10\n      ? descRaw.substring(0, 5000)\n      : (j.title + (j.company ? ' at ' + j.company : '') + (j.location ? ' in ' + j.location : '') + '. Full details: ' + (j.apply_url || j.apply_email) + '.');\n    const k = (j.title + '|' + (j.company || '')).toLowerCase().trim();\n    if (seen.has(k)) continue;\n    seen.add(k);\n    allJobs.push({\n      title: (j.title || '').trim().substring(0, 200),\n      company: (j.company || '').trim().substring(0, 200) || null,\n      location: (j.location || '').trim() || null,\n      description,\n      requirements: Array.isArray(j.requirements) ? j.requirements : [],\n      skills_required: Array.isArray(j.skills_required) ? j.skills_required : [],\n      salary_min: j.salary_min || null,\n      salary_max: j.salary_max || null,\n      apply_url: j.apply_url || null,\n      apply_email: j.apply_email || null,\n      source: 'scraper',\n      source_url: normSourceUrl(j.source_url || j.apply_url),\n      closing_date: j.closing_date || null,\n      posted_at: j.posted_at || null,\n    });\n  }\n}\nreturn [{ json: { jobs: allJobs, count: allJobs.length } }];"
+        "jsCode": "function normSourceUrl(raw) {\n  if (!raw) return null;\n  try {\n    const u = new URL(String(raw).trim());\n    const host = (u.hostname || '').toLowerCase().replace(/^www\\./, '');\n    const agg = ['jobwebzambia.com','gozambiajobs.com','jobsearchzambia.com','jobsearchzm.com'];\n    const path = (u.pathname || '/').replace(/\\/+$/, '') || '/';\n    const pathOnly = path === '/' ? '' : path.replace(/^\\//, '');\n    const seg = pathOnly.split('/').filter(Boolean);\n    if (agg.some(d => host === d || host.endsWith('.' + d))) {\n      if (!seg.length || (seg.length === 1 && ['jobs','job','vacancies','careers'].includes(seg[0].toLowerCase()))) return null;\n    }\n    return String(raw).trim().substring(0, 2000);\n  } catch { return null; }\n}\n\nfunction normPostedAt(raw) {\n  if (!raw) return null;\n  const s = String(raw).trim();\n  if (/^\\d{4}-\\d{2}-\\d{2}/.test(s)) return s.substring(0, 10);\n  const parsed = Date.parse(s);\n  if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().substring(0, 10);\n  const rel = s.match(/^(\\d+)\\s*(h|hour|hr|d|day|w|week|m|month)s?\\s+ago$/i);\n  if (rel) {\n    const n = parseInt(rel[1], 10);\n    const u = rel[2].toLowerCase()[0];\n    const d = new Date();\n    if (u === 'h') d.setHours(d.getHours() - n);\n    else if (u === 'd') d.setDate(d.getDate() - n);\n    else if (u === 'w') d.setDate(d.getDate() - n * 7);\n    else if (u === 'm') d.setMonth(d.getMonth() - n);\n    return d.toISOString().substring(0, 10);\n  }\n  return null;\n}\n\nfunction slugify(t) {\n  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');\n}\n\nfunction matchLinkForJob(job, links) {\n  if (!links || !links.length) return null;\n  const titleSlug = slugify(job.title);\n  const words = titleSlug.split('-').filter(w => w.length > 3);\n  let best = null;\n  let bestScore = 0;\n  for (const url of links) {\n    const path = url.toLowerCase();\n    let score = 0;\n    if (titleSlug.length > 8 && path.includes(titleSlug.slice(0, 48))) score += 12;\n    for (const w of words) {\n      if (path.includes(w)) score += 2;\n    }\n    if (score > bestScore) {\n      bestScore = score;\n      best = url;\n    }\n  }\n  return bestScore >= 3 ? best : null;\n}\n\nfunction parseJobsPayload(item) {\n  if (item.json.error) return null;\n  if (item.json.jobs && Array.isArray(item.json.jobs)) return item.json;\n  let text = null;\n  if (item.json.choices?.[0]?.message?.content) {\n    text = item.json.choices[0].message.content;\n  } else if (item.json.candidates?.[0]) {\n    text = item.json.candidates[0].content.parts[0].text;\n  } else if (item.json.text) {\n    text = typeof item.json.text === 'string' ? item.json.text : JSON.stringify(item.json.text);\n  }\n  if (text) {\n    const m = text.match(/\\{[\\s\\S]*\"jobs\"[\\s\\S]*\\}/);\n    if (m) return JSON.parse(m[0]);\n  }\n  const blob = JSON.stringify(item.json);\n  const m = blob.match(/\\{[\\s\\S]*\"jobs\"[\\s\\S]*\\}/);\n  if (m) return JSON.parse(m[0]);\n  return null;\n}\n\nconst prepNames = [\n  'Prep GoZambia Body',\n  'Prep JobWebZambia Body',\n  'Prep LinkedIn Body',\n  'Prep JobSearchZM Body',\n];\n\nfunction linksForBranch(index) {\n  try {\n    const prep = $(prepNames[index]).first();\n    const links = prep?.json?.extractedLinks;\n    return Array.isArray(links) ? links : [];\n  } catch {\n    return [];\n  }\n}\n\nconst allJobs = [];\nconst seen = new Set();\nconst inputs = $input.all();\n\nfor (let branch = 0; branch < inputs.length; branch++) {\n  const item = inputs[branch];\n  const linkPool = linksForBranch(branch);\n  let data;\n  try {\n    data = parseJobsPayload(item);\n  } catch {\n    continue;\n  }\n  if (!data?.jobs) continue;\n\n  for (const j of data.jobs) {\n    if (!j.title) continue;\n    const hasRef = j.apply_url || j.apply_email;\n    const descRaw = (j.description || '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n    if (descRaw.length < 10 && !hasRef) continue;\n\n    let sourceUrl = normSourceUrl(j.source_url || j.apply_url);\n    if (!sourceUrl) {\n      const guessed = matchLinkForJob(j, linkPool);\n      if (guessed) sourceUrl = normSourceUrl(guessed);\n    }\n\n    const description = descRaw.length >= 10\n      ? descRaw.substring(0, 5000)\n      : (j.title + (j.company ? ' at ' + j.company : '') + (j.location ? ' in ' + j.location : '') + '.');\n\n    const k = (j.title + '|' + (j.company || '')).toLowerCase().trim();\n    if (seen.has(k)) continue;\n    seen.add(k);\n\n    allJobs.push({\n      title: (j.title || '').trim().substring(0, 200),\n      company: (j.company || '').trim().substring(0, 200) || null,\n      location: (j.location || '').trim() || null,\n      description,\n      requirements: Array.isArray(j.requirements) ? j.requirements : [],\n      skills_required: Array.isArray(j.skills_required) ? j.skills_required : [],\n      salary_min: j.salary_min || null,\n      salary_max: j.salary_max || null,\n      apply_url: j.apply_url || null,\n      apply_email: j.apply_email || null,\n      source: 'scraper',\n      source_url: sourceUrl,\n      closing_date: j.closing_date || null,\n      posted_at: normPostedAt(j.posted_at),\n    });\n  }\n}\n\nreturn [{ json: { jobs: allJobs, count: allJobs.length } }];"
       },
       "name": "Normalize and Deduplicate",
       "type": "n8n-nodes-base.code",
