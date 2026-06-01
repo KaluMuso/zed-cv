@@ -181,7 +181,7 @@ class TestMatchCoverLetterVersions:
         assert listed["latest"]["version_number"] == 2
 
     @patch(
-        "app.api.v1.match_cover_letter.generate_tailored_cover_letter",
+        "app.api.v1.match_cover_letter.generate_cover_letter",
         new_callable=AsyncMock,
     )
     def test_generate_creates_ai_version(
@@ -208,8 +208,9 @@ class TestMatchCoverLetterVersions:
         _VersionsTable._counter = 0
         fake_supabase.set_table("cover_letter_versions", _VersionsTable(data=[]))
         mock_generate.return_value = {
-            "content": "Dear Hiring Manager,\n\nAI letter body.",
+            "letter": "Dear Hiring Manager,\n\nAI letter body.",
             "word_count": 12,
+            "tone": "formal",
         }
 
         resp = client.post(

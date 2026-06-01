@@ -61,7 +61,7 @@ class TestJobCoverLetterEndpoint:
         assert resp.status_code == 422
 
     @patch(
-        "app.api.v1.job_cover_letter.generate_tailored_cover_letter",
+        "app.api.v1.job_cover_letter.generate_cover_letter",
         new_callable=AsyncMock,
     )
     def test_success_stores_document(
@@ -92,8 +92,9 @@ class TestJobCoverLetterEndpoint:
             FakeSupabaseQuery(data=[]),
         )
         mock_generate.return_value = {
-            "content": "Dear Hiring Manager,\n\nI am applying...",
+            "letter": "Dear Hiring Manager,\n\nI am applying...",
             "word_count": 220,
+            "tone": "formal",
         }
 
         resp = client.post(

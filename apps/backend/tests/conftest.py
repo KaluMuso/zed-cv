@@ -1,6 +1,6 @@
 """Shared fixtures for Zed CV backend tests.
 
-Overrides all external dependencies (Supabase, OpenAI, WhatsApp) so tests
+Overrides all external dependencies (Supabase, OpenRouter, WhatsApp) so tests
 run without network access or real credentials.
 """
 import os, sys
@@ -28,7 +28,7 @@ os.environ.setdefault("DPO_PAY_COMPANY_TOKEN", "test-dpo-merchant-token")
 # Cheap to keep; safe to remove in a follow-up cleanup.
 os.environ.setdefault("SUPABASE_ANON_KEY", "fake-anon-key")
 os.environ.setdefault("SUPABASE_SERVICE_KEY", "fake-service-key")
-os.environ.setdefault("OPENAI_API_KEY", "sk-fake")
+os.environ.setdefault("OPENROUTER_API_KEY", "sk-fake-openrouter")
 
 # Ensure the app package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

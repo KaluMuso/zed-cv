@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from app.core.deps import get_current_user, get_supabase, is_superadmin
 from app.core.rate_limit import limiter
 from app.core.tier_gating import FEATURE_COVER_LETTER, verify_tier_access
-from app.services.ai_service import generate_tailored_cover_letter
+from app.services.cover_letter import generate_cover_letter
 from app.services.cover_letter_versions import (
     assert_match_owned,
     list_cover_letter_versions,
@@ -213,16 +213,16 @@ async def generate_cover_letter_for_match(
     cv_text = cv_res.data[0]["raw_text"]
 
     try:
-        result = await generate_tailored_cover_letter(
+        result = await generate_cover_letter(
             user_cv_text=cv_text,
+            job_title=job["title"],
             job_description=job.get("description") or "",
-            company_name=job.get("company"),
-            role=job["title"],
+            company=job.get("company"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    content = (result.get("content") or "").strip()
+    content = (result.get("letter") or "").strip()
     if not content:
         raise HTTPException(status_code=503, detail="Cover letter generation returned empty content")
 

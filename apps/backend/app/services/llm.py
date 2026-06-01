@@ -53,7 +53,7 @@ GEMINI_EMBED_PRICE_PER_MILLION: dict[str, float] = {
 }
 DEFAULT_GEMINI_EMBED_PRICE_PER_MILLION = 0.15
 
-# OpenAI direct (cover letters via ai_service.py).
+# OpenAI direct (legacy direct-api callers only; cover letters use OpenRouter).
 OPENAI_PRICE_PER_MILLION: dict[str, tuple[float, float]] = {
     "gpt-4o-mini": (0.15, 0.60),
 }

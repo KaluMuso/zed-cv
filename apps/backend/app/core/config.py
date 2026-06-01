@@ -25,9 +25,6 @@ class Settings(BaseSettings):
     embedding_model: str = "gemini-embedding-001"
     embedding_dimensions: int = 768
 
-    # AI: OpenAI (cover letters via ai_service.py)
-    openai_api_key: str = ""
-
     # AI: LLM via OpenRouter
     # Stable OpenRouter slug for Gemini 2.0 Flash. The shorthand
     # 'google/gemini-flash-2.0' (without version suffix) is rejected by

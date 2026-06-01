@@ -1,10 +1,10 @@
-"""Job-scoped cover letter generation (OpenAI via ai_service)."""
+"""Job-scoped cover letter generation (OpenRouter via cover_letter service)."""
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.deps import get_current_user, get_supabase, is_superadmin
 from app.core.rate_limit import limiter
-from app.services.ai_service import generate_tailored_cover_letter
+from app.services.cover_letter import generate_cover_letter
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
@@ -74,14 +74,21 @@ async def generate_job_cover_letter(
     job = job_result.data[0]
 
     try:
-        result = await generate_tailored_cover_letter(
+        result = await generate_cover_letter(
             user_cv_text=cv_text,
+            job_title=job["title"],
             job_description=job.get("description") or "",
-            company_name=job.get("company"),
-            role=job["title"],
+            company=job.get("company"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    letter = (result.get("letter") or "").strip()
+    if not letter:
+        raise HTTPException(
+            status_code=503,
+            detail="Cover letter generation returned empty content",
+        )
 
     doc_result = (
         supabase.table("generated_documents")
@@ -90,10 +97,10 @@ async def generate_job_cover_letter(
                 "user_id": user_id,
                 "job_id": job_id,
                 "doc_type": "cover_letter",
-                "content": result["content"],
+                "content": letter,
                 "metadata": {
                     "word_count": result["word_count"],
-                    "provider": "openai",
+                    "provider": "openrouter",
                     "role": job["title"],
                     "company": job.get("company"),
                 },
@@ -105,7 +112,7 @@ async def generate_job_cover_letter(
     doc_id = doc_result.data[0]["id"] if doc_result.data else "unknown"
 
     return JobCoverLetterResponse(
-        content=result["content"],
+        content=letter,
         word_count=result["word_count"],
         document_id=doc_id,
     )
