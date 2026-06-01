@@ -13,13 +13,37 @@ import { UserMenuDropdown, UserMenuTrigger } from "@/components/nav/UserMenuDrop
 import { formatTierNavSubtitle } from "@/lib/tier-display";
 import { AUTH_GET_STARTED } from "@/lib/auth-paths";
 import { InterviewPrepNav } from "@/components/nav/InterviewPrepNav";
+import { settingsPath } from "@/app/settings/settings-nav";
 import { cn } from "@/lib/utils";
 
 type NavProfile = {
   fullName: string;
   tierSubtitle: string;
+  subscriptionTier: string;
   showAdmin: boolean;
 };
+
+type NavLink = {
+  href: string;
+  label: string;
+  authOnly?: boolean;
+  guestOnly?: boolean;
+};
+
+const SIGNED_IN_LINKS: NavLink[] = [
+  { href: "/jobs", label: "Jobs" },
+  { href: "/matches", label: "Matches" },
+  { href: "/applications", label: "Applications", authOnly: true },
+  { href: "/pricing", label: "Pricing" },
+];
+
+const SIGNED_OUT_LINKS: NavLink[] = [
+  { href: "/jobs", label: "Jobs" },
+  { href: "/matches", label: "Matches" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/auth", label: "Log in", guestOnly: true },
+  { href: AUTH_GET_STARTED, label: "Get started", guestOnly: true },
+];
 
 export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,7 +55,7 @@ export function Navbar() {
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
 
-  const showInterviewPrep = subscriptionTier === "super_standard";
+  const showInterviewPrep = isAuthenticated;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -47,6 +71,7 @@ export function Navbar() {
   useEffect(() => {
     if (!token) {
       setNavProfile(null);
+      setSubscriptionTier(null);
       return;
     }
     Promise.all([
@@ -67,6 +92,7 @@ export function Navbar() {
         setNavProfile({
           fullName,
           tierSubtitle,
+          subscriptionTier: profile.subscription_tier,
           showAdmin: profile.role === "admin" || profile.role === "superadmin",
         });
       })
@@ -76,19 +102,17 @@ export function Navbar() {
       });
   }, [token]);
 
-  const navLinks = [
-    { href: "/jobs", label: "Jobs" },
-    { href: "/matches", label: "Matches" },
-    { href: "/applications", label: "Applications", authOnly: true },
-    { href: "/profile", label: "Profile", authOnly: true },
-    { href: "/pricing", label: "Pricing" },
-  ];
-
-  const visibleNavLinks = navLinks.filter(
-    (link) => !link.authOnly || isAuthenticated,
-  );
+  const navLinks = isAuthenticated ? SIGNED_IN_LINKS : SIGNED_OUT_LINKS;
+  const visibleNavLinks = navLinks.filter((link) => {
+    if (link.authOnly && !isAuthenticated) return false;
+    if (link.guestOnly && isAuthenticated) return false;
+    return true;
+  });
 
   const displayName = navProfile?.fullName ?? "Account";
+
+  const linkActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <>
@@ -113,19 +137,11 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`nav-link ${pathname === link.href || pathname.startsWith(`${link.href}/`) ? "active" : ""}`}
+                className={`nav-link ${linkActive(link.href) ? "active" : ""}`}
               >
                 {link.label}
               </Link>
             ))}
-            {isAuthenticated ? (
-              <Link
-                href="/dashboard"
-                className={`nav-link ${pathname === "/dashboard" ? "active" : ""}`}
-              >
-                Dashboard
-              </Link>
-            ) : null}
             {showInterviewPrep ? <InterviewPrepNav /> : null}
           </div>
 
@@ -149,7 +165,7 @@ export function Navbar() {
                   open={dropdownOpen}
                   onToggle={() => setDropdownOpen(!dropdownOpen)}
                 />
-                {dropdownOpen && (
+                {dropdownOpen ? (
                   <>
                     <div
                       className="fixed inset-0 z-40"
@@ -159,32 +175,15 @@ export function Navbar() {
                     <UserMenuDropdown
                       displayName={displayName}
                       tierSubtitle={navProfile?.tierSubtitle ?? ""}
+                      subscriptionTier={navProfile?.subscriptionTier ?? subscriptionTier}
                       showAdmin={navProfile?.showAdmin}
                       onClose={() => setDropdownOpen(false)}
                       onSignOut={logout}
                     />
                   </>
-                )}
+                ) : null}
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/auth"
-                  className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
-                  title="Returning user? Sign in with your phone number"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href={AUTH_GET_STARTED}
-                  className={cn(buttonVariants({ variant: "primary", size: "sm" }))}
-                  title="New here? Create your account in under a minute"
-                >
-                  Get started
-                  <Icon name="arrowRight" size={14} className="ml-1 inline" />
-                </Link>
-              </div>
-            )}
+            ) : null}
           </div>
 
           <button
@@ -197,7 +196,7 @@ export function Navbar() {
           </button>
         </div>
 
-        {menuOpen && (
+        {menuOpen ? (
           <div
             className="md:hidden fixed inset-0 top-[70px] z-40 overflow-y-auto"
             style={{ background: "var(--surface)" }}
@@ -210,8 +209,7 @@ export function Navbar() {
                   onClick={() => setMenuOpen(false)}
                   className="font-display text-3xl py-3 transition-colors"
                   style={{
-                    color:
-                      pathname === link.href ? "var(--green-700)" : "var(--ink)",
+                    color: linkActive(link.href) ? "var(--green-700)" : "var(--ink)",
                     borderBottom: "1px solid var(--line)",
                   }}
                 >
@@ -256,20 +254,6 @@ export function Navbar() {
                       <Icon name="home" size={16} /> Dashboard
                     </Link>
                     <Link
-                      href="/applications"
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
-                    >
-                      <Icon name="briefcase" size={16} /> Applications
-                    </Link>
-                    <Link
-                      href="/profile"
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
-                    >
-                      <Icon name="user" size={16} /> Profile
-                    </Link>
-                    <Link
                       href="/settings/notifications"
                       onClick={() => setMenuOpen(false)}
                       className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
@@ -277,18 +261,11 @@ export function Navbar() {
                       <Icon name="bell" size={16} /> Notifications
                     </Link>
                     <Link
-                      href="/settings/account"
+                      href={settingsPath("account")}
                       onClick={() => setMenuOpen(false)}
                       className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
                     >
-                      <Icon name="settings" size={16} /> Account settings
-                    </Link>
-                    <Link
-                      href="/settings/privacy"
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
-                    >
-                      <Icon name="shield" size={16} /> Privacy &amp; data
+                      <Icon name="settings" size={16} /> Settings
                     </Link>
                     <button
                       type="button"
@@ -302,29 +279,11 @@ export function Navbar() {
                       Sign out
                     </button>
                   </>
-                ) : (
-                  <>
-                    <Link
-                      href="/auth"
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "ghost" }), "w-full")}
-                    >
-                      Log in
-                    </Link>
-                    <Link
-                      href={AUTH_GET_STARTED}
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "primary" }), "w-full justify-center gap-2")}
-                    >
-                      Get started
-                      <Icon name="arrowRight" size={16} />
-                    </Link>
-                  </>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </nav>
     </>
   );
