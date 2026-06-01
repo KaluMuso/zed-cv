@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase
+from app.core.rate_limit import normalize_redis_url
 from app.services.web_push import vapid_configured
 from app.services.whatsapp import check_waha_health
 
@@ -22,7 +23,7 @@ _REDIS_PING_TIMEOUT_SEC = 1.5
 
 async def _check_redis() -> bool | None:
     """Return True/False when REDIS_URL is set; None when unset."""
-    redis_url = os.environ.get("REDIS_URL", "").strip()
+    redis_url = normalize_redis_url(os.environ.get("REDIS_URL", ""))
     if not redis_url:
         return None
 

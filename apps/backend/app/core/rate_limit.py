@@ -32,13 +32,26 @@ from slowapi.util import get_remote_address
 logger = logging.getLogger(__name__)
 
 
+def normalize_redis_url(raw: str) -> str:
+    """Extract redis:// or rediss:// URL when REDIS_URL was pasted from a CLI snippet."""
+    url = raw.strip()
+    if not url:
+        return ""
+    for scheme in ("rediss://", "redis://"):
+        idx = url.find(scheme)
+        if idx >= 0:
+            # Stop at whitespace — e.g. after `redis-cli --tls -u <url>`
+            return url[idx:].split()[0]
+    return url
+
+
 def _build_limiter() -> Limiter:
     """Construct the limiter with Redis if REDIS_URL is set, else in-memory.
 
     Kept as a function so tests can re-import after monkeypatching env. The
     module-level `limiter` below calls this once at import time.
     """
-    redis_url = os.environ.get("REDIS_URL", "").strip()
+    redis_url = normalize_redis_url(os.environ.get("REDIS_URL", ""))
     if redis_url:
         try:
             return Limiter(
