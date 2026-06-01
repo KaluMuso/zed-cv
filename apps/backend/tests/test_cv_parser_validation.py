@@ -9,7 +9,7 @@ trust the LLM" refactor can't regress past failures back into prod.
 import pytest
 from pydantic import ValidationError
 
-from app.services.cv_parser import CVParseResult
+from app.services.cv_parser import CVParseResult, validate_cv_parse_raw
 from app.schemas.cv_sections import (
     CVSections,
     WorkExperience,
@@ -347,3 +347,104 @@ class TestProfessionalSummary:
     def test_default_empty(self):
         s = ProfessionalSummary()
         assert s.text == ""
+
+
+# Shape from Sentry ZEDCV-BACKEND-N (Sylvia Nkumbwa): flat fields valid;
+# sections had string references, string education rows, and dict dates.
+SYLVIA_BACKEND_N_RAW = {
+    "full_name": "Sylvia Nkumbwa",
+    "email": "sylvia.nkumbwa@example.com",
+    "phone": "+260971234567",
+    "location": "Lusaka, Zambia",
+    "years_experience": 3,
+    "skills": [
+        "laboratory management",
+        "atomic absorption spectrometry",
+        "aas",
+        "quality control",
+        "iso 17025",
+    ],
+    "experience_summary": (
+        "Laboratory professional with experience in atomic absorption "
+        "spectrometry and quality systems."
+    ),
+    "education": ["BSc Chemistry, University of Zambia"],
+    "confidence": 0.88,
+    "sections": {
+        "professional_summary": {
+            "text": "Dedicated laboratory scientist based in Lusaka.",
+        },
+        "work_experience": [
+            {
+                "title": "Laboratory Analyst",
+                "company": "Zambia Bureau of Standards",
+                "location": "Lusaka",
+                "start_date": {"year": 2022, "month": 1},
+                "end_date": "Present",
+                "achievements": ["Maintained ISO 17025 compliance"],
+            }
+        ],
+        "education": [
+            "BSc Chemistry, University of Zambia",
+        ],
+        "references": [
+            "Mr. Banda, Quality Manager, ZABS",
+            "Dr. Phiri, University of Zambia",
+        ],
+        "languages": [{"name": "English", "proficiency": "fluent"}],
+    },
+}
+
+
+class TestCVSectionsCoercion:
+    def test_work_experience_bare_string_becomes_title(self):
+        s = CVSections(work_experience=["Senior Analyst at ZABS"])
+        assert len(s.work_experience) == 1
+        assert s.work_experience[0].title == "Senior Analyst at ZABS"
+        assert s.work_experience[0].company == ""
+
+    def test_education_string_becomes_degree(self):
+        s = CVSections(education=["BSc Chemistry, UNZA"])
+        assert s.education[0].degree == "BSc Chemistry, UNZA"
+        assert s.education[0].institution == ""
+
+    def test_references_string_becomes_name(self):
+        s = CVSections(references=["Dr. Banda, UNZA"])
+        assert s.references[0].name == "Dr. Banda, UNZA"
+
+    def test_work_experience_dict_date_coerced(self):
+        w = WorkExperience(
+            title="Analyst",
+            company="ZABS",
+            start_date={"year": 2022, "month": 1},
+            end_date="Present",
+        )
+        assert w.start_date == "2022-01"
+        assert w.end_date is None
+
+
+class TestValidateCvParseRaw:
+    def test_sylvia_backend_n_payload_parses_without_error(self):
+        r = validate_cv_parse_raw(SYLVIA_BACKEND_N_RAW)
+        assert r.full_name == "Sylvia Nkumbwa"
+        assert "laboratory management" in r.skills
+        assert r.education == ["BSc Chemistry, University of Zambia"]
+        assert r.sections is not None
+        assert len(r.sections.work_experience) == 1
+        assert r.sections.work_experience[0].start_date == "2022-01"
+        assert len(r.sections.references) == 2
+        assert r.sections.references[0].name.startswith("Mr. Banda")
+
+    def test_lenient_parse_keeps_flat_when_one_section_invalid(self):
+        raw = {
+            **{k: v for k, v in SYLVIA_BACKEND_N_RAW.items() if k != "sections"},
+            "sections": {
+                "header": {"linkedin_url": "not-a-valid-url"},
+                "languages": [{"name": "English", "proficiency": "fluent"}],
+            },
+        }
+        r = validate_cv_parse_raw(raw)
+        assert r.full_name == "Sylvia Nkumbwa"
+        assert r.sections is not None
+        assert len(r.sections.languages) == 1
+        assert r.sections.header is None
