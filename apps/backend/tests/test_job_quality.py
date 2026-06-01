@@ -15,12 +15,19 @@ class TestValidateSourceUrl:
         assert ok is False
         assert reason == "missing_source_url"
 
-    def test_aggregator_domain_rejected(self):
+    def test_aggregator_homepage_rejected(self):
         ok, reason = job_quality.validate_source_url(
-            "https://www.gozambiajobs.com/job/123", None
+            "https://www.jobwebzambia.com/", None
         )
         assert ok is False
-        assert reason == "source_url_is_aggregator:gozambiajobs.com"
+        assert reason == "source_url_is_aggregator_homepage:jobwebzambia.com"
+
+    def test_aggregator_listing_url_accepted(self):
+        ok, reason = job_quality.validate_source_url(
+            "https://www.gozambiajobs.com/job/accounts-officer-123", None
+        )
+        assert ok is True
+        assert reason is None
 
     def test_employer_url_accepted(self):
         ok, reason = job_quality.validate_source_url(

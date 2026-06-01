@@ -14,6 +14,8 @@ import httpx
 from openai import OpenAI
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from app.services.deep_link_parsers.base import sanitize_listing_source_url
+from app.services.job_activation import apply_review_state_to_row, compute_review_state
 from app.services.job_page_text_extractor import extract_page_text_for_description
 from app.services.skill_resolver import resolve_skill_ids
 from app.core.config import get_settings
@@ -67,10 +69,12 @@ return them as separate items. Each item must include:
 - title (clean role name)
 - company
 - location (normalized to Zambian city or null)
-- description_md (full job description in markdown — keep section headers like
-  "## Responsibilities", "## Requirements", "## Qualifications", "## Benefits",
-  "## How to apply", "## About the company". Use bullets for lists. Use *italics*
-  for emphasis and **bold** for key terms only sparingly)
+- description_md (FULL job description in markdown, at least 400 characters when
+  the page supports it — do not summarize away duties or requirements. Keep section
+  headers like "## Responsibilities", "## Requirements", "## Qualifications",
+  "## Benefits", "## How to apply", "## About the company". Use blank lines between
+  sections. Use bullet lists for duties. Use *italics* for emphasis and **bold**
+  for key terms only sparingly)
 - requirements (array of explicit requirements)
 - skills_required (array of named technical/professional skills — at minimum 5
   if the description supports it; max 15)
@@ -123,11 +127,11 @@ def _http_url(url: str | None) -> bool:
 
 
 def _resolve_fetch_url(row: dict[str, Any]) -> str | None:
-    source = (row.get("source_url") or "").strip()
-    if _http_url(source):
+    source = sanitize_listing_source_url((row.get("source_url") or "").strip() or None)
+    if source and _http_url(source):
         return source
-    apply_url = (row.get("apply_url") or "").strip()
-    if _http_url(apply_url):
+    apply_url = sanitize_listing_source_url((row.get("apply_url") or "").strip() or None)
+    if apply_url and _http_url(apply_url):
         host = (urlparse(apply_url).netloc or "").lower()
         aggregator_hints = (
             "jobwebzambia",
@@ -220,7 +224,9 @@ def _role_to_job_patch(
         "apply_email": role.apply_email or parent.get("apply_email"),
         "contact_phone": normalize_contact_phone(role.contact_phone)
         or parent.get("contact_phone"),
-        "source_url": parent.get("source_url"),
+        "source_url": sanitize_listing_source_url(
+            str(parent.get("source_url") or "") or None
+        ),
         "source": parent.get("source") or "scraper",
         "posted_at": parent.get("posted_at"),
         "closing_date": (
@@ -252,6 +258,13 @@ def _role_to_job_patch(
     )
     patch["description_html"] = description_html or None
     patch["section_html"] = section_html or None
+    review = compute_review_state(
+        apply_url=patch.get("apply_url"),
+        apply_email=patch.get("apply_email"),
+        contact_phone=patch.get("contact_phone"),
+        closing_date=patch.get("closing_date"),
+    )
+    apply_review_state_to_row(patch, review)
     apply_contact_activation(patch)
     return patch
 

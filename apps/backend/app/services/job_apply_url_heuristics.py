@@ -10,8 +10,10 @@ from app.services.deep_link_parsers import (
 )
 from app.services.deep_link_parsers.base import (
     AGGREGATOR_DOMAINS,
+    is_aggregator_site_root,
     is_aggregator_url,
     normalize_hostname,
+    sanitize_listing_source_url,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,8 +65,10 @@ def extract_real_apply_url(page_html: str, source_url: str) -> str | None:
 
 
 async def resolve_apply_contacts_from_aggregator_url(apply_url: str) -> ApplyContacts:
-    url = (apply_url or "").strip()
+    url = sanitize_listing_source_url((apply_url or "").strip()) or ""
     if not url.startswith(("http://", "https://")) or not is_aggregator(url):
+        return ApplyContacts()
+    if is_aggregator_site_root(url):
         return ApplyContacts()
 
     from app.services.deep_link_enricher import fetch_page

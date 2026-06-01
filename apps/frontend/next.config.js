@@ -63,6 +63,20 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     disableLogger: true,
     widenClientFileUpload: false,
     hideSourceMaps: true,
+    // Sentry API 500s during `releases new` must not fail Vercel builds.
+    release: {
+      create: false,
+      finalize: false,
+    },
+    sourcemaps: {
+      deleteSourcemapsAfterUpload: true,
+    },
+    errorHandler: (err) => {
+      console.warn(
+        "[sentry] source map upload failed (non-fatal):",
+        err?.message || err
+      );
+    },
   });
 } else {
   module.exports = configWithPwa;

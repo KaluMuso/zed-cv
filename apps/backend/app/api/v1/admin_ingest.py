@@ -93,23 +93,6 @@ async def trigger_daily_digest_whatsapp(
     return DailyDigestSendResponse(**stats)
 
 
-@router.post("/trigger-renewal-reminders", response_model=DailyDigestSendResponse)
-async def trigger_renewal_reminders(
-    admin_api_key: str | None = Header(None, alias="ADMIN_API_KEY"),
-    x_admin_api_key: str | None = Header(None, alias="X-ADMIN-API-KEY"),
-    ingest_api_key: str | None = Header(None, alias="INGEST_API_KEY"),
-    x_ingest_api_key: str | None = Header(None, alias="X-INGEST-API-KEY"),
-    supabase=Depends(get_supabase),
-    settings: Settings = Depends(get_settings),
-):
-    """Daily cron: email paid users whose plan renews within the next 3 days."""
-    _require_cron_auth(
-        settings, admin_api_key, x_admin_api_key, ingest_api_key, x_ingest_api_key
-    )
-    stats = await run_renewal_reminder_emails(supabase)
-    return DailyDigestSendResponse(**stats)
-
-
 @router.get("/trigger-daily-digest", response_model=DailyDigestBatchResponse)
 async def trigger_daily_digest(
     admin_api_key: str | None = Header(None, alias="ADMIN_API_KEY"),
@@ -164,7 +147,11 @@ async def batch_match(
     )
 
 
-@router.post("/trigger-renewal-reminders", response_model=RenewalReminderSendResponse)
+@router.post(
+    "/trigger-renewal-reminders",
+    response_model=RenewalReminderSendResponse,
+    operation_id="admin_trigger_renewal_reminders",
+)
 async def trigger_renewal_reminders(
     admin_api_key: str | None = Header(None, alias="ADMIN_API_KEY"),
     x_admin_api_key: str | None = Header(None, alias="X-ADMIN-API-KEY"),
@@ -177,7 +164,5 @@ async def trigger_renewal_reminders(
     _require_cron_auth(
         settings, admin_api_key, x_admin_api_key, ingest_api_key, x_ingest_api_key
     )
-    from app.services.renewal_reminders import run_renewal_reminder_emails
-
     stats = await run_renewal_reminder_emails(supabase)
     return RenewalReminderSendResponse(**stats)

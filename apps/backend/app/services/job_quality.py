@@ -12,6 +12,11 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
 from app.lib.retry import circuit_is_open
+from app.services.deep_link_parsers.base import (
+    is_aggregator_site_root,
+    is_aggregator_url,
+    sanitize_listing_source_url,
+)
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -155,14 +160,22 @@ If the listing is a single role, return a one-element array."""
 def validate_source_url(
     source_url: str | None, apply_url: str | None
 ) -> tuple[bool, str | None]:
-    """Returns (ok, reason_if_not_ok). source_url must be present and not an aggregator."""
+    """Returns (ok, reason_if_not_ok).
+
+    Per-job listing URLs on known aggregators are allowed (deep-link parsers
+    extract employer contacts). Bare aggregator homepages are rejected.
+    """
     del apply_url  # reserved for future cross-checks
-    if not source_url:
+    cleaned = sanitize_listing_source_url(source_url)
+    if not cleaned:
+        if source_url and is_aggregator_site_root(str(source_url)):
+            host = (source_url or "").lower()
+            for domain in AGGREGATOR_DOMAINS:
+                if domain in host:
+                    return False, f"source_url_is_aggregator_homepage:{domain}"
         return False, "missing_source_url"
-    url_lower = source_url.lower()
-    for domain in AGGREGATOR_DOMAINS:
-        if domain in url_lower:
-            return False, f"source_url_is_aggregator:{domain}"
+    if is_aggregator_url(cleaned):
+        return True, None
     return True, None
 
 
@@ -401,8 +414,16 @@ def apply_ingest_quality_to_job_data(
     original_contact_phone: str | None,
 ) -> None:
     """Mutate insert payload: quality gates, normalized description, sections."""
-    source_url = job_data.get("source_url")
-    apply_url = job_data.get("apply_url")
+    raw_source = job_data.get("source_url")
+    raw_apply = job_data.get("apply_url")
+    source_url = sanitize_listing_source_url(
+        str(raw_source) if raw_source else None
+    )
+    apply_url = sanitize_listing_source_url(str(raw_apply) if raw_apply else None)
+    if not source_url and apply_url:
+        source_url = apply_url
+    job_data["source_url"] = source_url
+    job_data["apply_url"] = apply_url
     description = str(job_data.get("description") or "")
 
     deactivation_reasons: list[str] = []
