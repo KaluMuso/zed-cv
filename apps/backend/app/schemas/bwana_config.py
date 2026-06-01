@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -11,6 +11,13 @@ from app.core.phone import normalize_zambian_e164_phone
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 BwanaEscalationReason = Literal["human_request", "unsatisfied", "contact_admin"]
+
+
+class FaqIntentItem(BaseModel):
+    intent_id: str = Field(..., min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$")
+    enabled: bool = True
+    triggers: list[str] = Field(..., min_length=1, max_length=20)
+    response: str = Field(..., min_length=5, max_length=1200)
 
 
 class BwanaConfigBase(BaseModel):
@@ -26,7 +33,9 @@ class BwanaConfigBase(BaseModel):
     unsatisfied_reply_template: str = Field(..., min_length=10, max_length=2000)
     contact_admin_reply_template: str = Field(..., min_length=10, max_length=2000)
     public_knowledge_extra: str = Field(default="", max_length=2000)
+    faq_intents_json: list[FaqIntentItem] = Field(default_factory=list)
     enable_email_escalation: bool = True
+
 
     @field_validator("support_email")
     @classmethod
@@ -69,7 +78,9 @@ class BwanaConfigPatch(BaseModel):
         default=None, min_length=10, max_length=2000
     )
     public_knowledge_extra: str | None = Field(default=None, max_length=2000)
+    faq_intents_json: list[FaqIntentItem] | None = None
     enable_email_escalation: bool | None = None
+
 
     @field_validator("support_email")
     @classmethod
@@ -96,3 +107,36 @@ class BwanaPublicConfig(BaseModel):
 class BwanaConfigPreview(BaseModel):
     system_prompt_preview: str
     char_count: int
+
+
+class BwanaFaqIntentCount(BaseModel):
+    intent_id: str
+    count: int
+
+
+class BwanaAnalyticsSummary(BaseModel):
+    period_days: int
+    total_messages: int
+    total_escalations: int
+    escalation_rate_percent: float
+    messages_by_source: dict[str, int]
+    escalations_by_reason: dict[str, int]
+    top_faq_intents: list[BwanaFaqIntentCount]
+
+    @field_validator("top_faq_intents", mode="before")
+    @classmethod
+    def _coerce_top_faq(cls, value: Any) -> list[BwanaFaqIntentCount]:
+        if not value:
+            return []
+        out: list[BwanaFaqIntentCount] = []
+        for row in value:
+            if isinstance(row, BwanaFaqIntentCount):
+                out.append(row)
+            elif isinstance(row, dict):
+                out.append(
+                    BwanaFaqIntentCount(
+                        intent_id=str(row["intent_id"]),
+                        count=int(row["count"]),
+                    )
+                )
+        return out

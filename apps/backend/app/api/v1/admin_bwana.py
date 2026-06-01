@@ -4,9 +4,16 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.deps import get_supabase, require_admin
-from app.schemas.bwana_config import BwanaConfig, BwanaConfigPatch, BwanaConfigPreview
+from app.schemas.bwana_config import (
+    BwanaAnalyticsSummary,
+    BwanaConfig,
+    BwanaConfigPatch,
+    BwanaConfigPreview,
+)
+from app.services.bwana_analytics import fetch_bwana_analytics
 from app.services.bwana_config import (
     clear_bwana_config_cache,
+    config_row_for_db,
     get_bwana_config,
     preview_system_prompt,
 )
@@ -47,7 +54,7 @@ async def patch_admin_bwana_config(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    row = validated.model_dump()
+    row = config_row_for_db(validated)
     row.pop("id", None)
     supabase.table("bwana_platform_config").upsert(
         {"id": 1, **row},
@@ -64,6 +71,16 @@ async def get_bwana_prompt_preview(
     prompt, count = await preview_system_prompt(supabase)
     truncated = prompt[:8000] + ("…" if len(prompt) > 8000 else "")
     return BwanaConfigPreview(system_prompt_preview=truncated, char_count=count)
+
+
+@router.get("/analytics", response_model=BwanaAnalyticsSummary)
+async def get_bwana_analytics(
+    days: int = 7,
+    supabase=Depends(get_supabase),
+) -> BwanaAnalyticsSummary:
+    if days < 1 or days > 90:
+        raise HTTPException(status_code=422, detail="days must be 1–90")
+    return fetch_bwana_analytics(supabase, days=days)
 
 
 @router.post("/test-escalation")

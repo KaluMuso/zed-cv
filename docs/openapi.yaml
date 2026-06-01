@@ -1942,6 +1942,28 @@ components:
           enum: [faq, llm, escalated]
         took_ms: { type: integer }
         session_id: { type: string }
+        escalation_ticket_id:
+          type: string
+          nullable: true
+          description: Present when source=escalated (e.g. ZD-A1B2C3D4)
+        intent_id:
+          type: string
+          nullable: true
+          description: FAQ intent id when source=faq
+
+    FaqIntentItem:
+      type: object
+      required: [intent_id, enabled, triggers, response]
+      properties:
+        intent_id:
+          type: string
+          pattern: '^[a-z][a-z0-9_]*$'
+        enabled: { type: boolean }
+        triggers:
+          type: array
+          items: { type: string }
+          minItems: 1
+        response: { type: string, minLength: 5, maxLength: 1200 }
 
     BwanaPublicConfig:
       type: object
@@ -1977,9 +1999,42 @@ components:
         unsatisfied_reply_template: { type: string }
         contact_admin_reply_template: { type: string }
         public_knowledge_extra: { type: string, maxLength: 2000 }
+        faq_intents_json:
+          type: array
+          items: { $ref: '#/components/schemas/FaqIntentItem' }
         enable_email_escalation: { type: boolean }
         updated_at: { type: string, format: date-time, nullable: true }
         updated_by: { type: string, format: uuid, nullable: true }
+
+    BwanaAnalyticsSummary:
+      type: object
+      required:
+        - period_days
+        - total_messages
+        - total_escalations
+        - escalation_rate_percent
+        - messages_by_source
+        - escalations_by_reason
+        - top_faq_intents
+      properties:
+        period_days: { type: integer }
+        total_messages: { type: integer }
+        total_escalations: { type: integer }
+        escalation_rate_percent: { type: number }
+        messages_by_source:
+          type: object
+          additionalProperties: { type: integer }
+        escalations_by_reason:
+          type: object
+          additionalProperties: { type: integer }
+        top_faq_intents:
+          type: array
+          items:
+            type: object
+            required: [intent_id, count]
+            properties:
+              intent_id: { type: string }
+              count: { type: integer }
 
     BwanaConfigPatch:
       type: object
@@ -1994,6 +2049,9 @@ components:
         unsatisfied_reply_template: { type: string }
         contact_admin_reply_template: { type: string }
         public_knowledge_extra: { type: string, maxLength: 2000 }
+        faq_intents_json:
+          type: array
+          items: { $ref: '#/components/schemas/FaqIntentItem' }
         enable_email_escalation: { type: boolean }
 
     BwanaConfigPreview:
@@ -4009,6 +4067,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/BwanaConfigPreview' }
+        '403': { description: Admin only }
+
+  /admin/bwana/analytics:
+    get:
+      operationId: getAdminBwanaAnalytics
+      summary: Bwana chat analytics (admin)
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 90, default: 7 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BwanaAnalyticsSummary' }
         '403': { description: Admin only }
 
   /admin/bwana/test-escalation:

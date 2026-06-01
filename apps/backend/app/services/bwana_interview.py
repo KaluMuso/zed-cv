@@ -11,7 +11,10 @@ from openai import APIError, AuthenticationError, OpenAI, RateLimitError
 
 from app.core.config import get_settings
 from app.lib.retry import DEGRADED_LLM_USER_MESSAGE, circuit_is_open
+from app.services.bwana_config import build_bwana_interview_system_prompt, get_bwana_config
 from app.services.llm import FEATURE_APTITUDE, LlmLogContext
+from app.services.prompt_safety import wrap_user_content
+from supabase import Client
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -30,18 +33,6 @@ PACK_TIME_LIMITS: dict[str, int] = {
     "verbal": 20 * 60,
     "abstract": 15 * 60,
 }
-
-
-def _system_prompt(role: str) -> str:
-    return (
-        f"You are Bwana Interview, a professional career coach interviewing a "
-        f"candidate for the role of {role}. Ask STAR-method behavioural questions "
-        f"and role-specific technical questions. After each answer, score 0-10 on "
-        f"STAR completeness and give one-sentence constructive feedback. After "
-        f"{MOCK_QUESTION_COUNT} questions total, write a final summary: overall_score "
-        f"(0-100), 3 strengths, 3 improvements, 3 suggested practice areas. "
-        f"Keep all responses under 100 words."
-    )
 
 
 def _strip_json_fences(text: str) -> str:
@@ -79,6 +70,7 @@ async def _call_openrouter(
     max_tokens: int = 350,
     user_id: str | None = None,
     route: str = "POST /api/v1/interview/mock",
+    supabase: Client | None = None,
 ) -> dict[str, Any]:
     settings = get_settings()
     if not settings.openrouter_api_key:
@@ -86,14 +78,24 @@ async def _call_openrouter(
     if circuit_is_open():
         return {"degraded": True, "message": DEGRADED_LLM_USER_MESSAGE}
 
+    if supabase is None:
+        raise ValueError("Bwana Interview requires database config")
+
+    config = get_bwana_config(supabase)
+    system_prompt = build_bwana_interview_system_prompt(config, role)
+
     client = OpenAI(
         api_key=settings.openrouter_api_key,
         base_url="https://openrouter.ai/api/v1",
     )
     payload_messages: list[dict[str, str]] = [
-        {"role": "system", "content": _system_prompt(role)},
-        *messages,
+        {"role": "system", "content": system_prompt},
     ]
+    for msg in messages:
+        content = msg["content"]
+        if msg["role"] == "user":
+            content = wrap_user_content(content)
+        payload_messages.append({"role": msg["role"], "content": content})
 
     def _sync_call() -> dict[str, Any]:
         try:
@@ -127,10 +129,16 @@ async def _call_openrouter(
     return await asyncio.to_thread(_sync_call)
 
 
-async def generate_first_question(role: str, *, user_id: str | None = None) -> str:
+async def generate_first_question(
+    role: str,
+    *,
+    user_id: str | None = None,
+    supabase: Client,
+) -> str:
     data = await _call_openrouter(
         role=role,
         user_id=user_id,
+        supabase=supabase,
         messages=[
             {
                 "role": "user",
@@ -155,6 +163,7 @@ async def score_answer(
     question_number: int,
     prior_turns: list[dict[str, str]],
     user_id: str | None = None,
+    supabase: Client,
 ) -> dict[str, Any]:
     """Score one answer on STAR completeness."""
     history = list(prior_turns)
@@ -168,7 +177,9 @@ async def score_answer(
             ),
         },
     )
-    data = await _call_openrouter(role=role, messages=history, user_id=user_id)
+    data = await _call_openrouter(
+        role=role, messages=history, user_id=user_id, supabase=supabase
+    )
     return {
         "star_score": float(data.get("star_score") or 0),
         "feedback": str(data.get("feedback") or "").strip()
@@ -182,6 +193,7 @@ async def generate_next_question(
     question_number: int,
     prior_turns: list[dict[str, str]],
     user_id: str | None = None,
+    supabase: Client,
 ) -> str:
     history = list(prior_turns)
     history.append(
@@ -193,7 +205,9 @@ async def generate_next_question(
             ),
         },
     )
-    data = await _call_openrouter(role=role, messages=history, user_id=user_id)
+    data = await _call_openrouter(
+        role=role, messages=history, user_id=user_id, supabase=supabase
+    )
     next_q = str(data.get("question") or data.get("next_question") or "").strip()
     if not next_q:
         raise ValueError("Bwana Interview did not return the next question.")
@@ -205,6 +219,7 @@ async def generate_final_summary(
     role: str,
     transcript: list[dict[str, Any]],
     user_id: str | None = None,
+    supabase: Client,
 ) -> dict[str, Any]:
     lines = []
     for i, row in enumerate(transcript, start=1):
@@ -215,10 +230,11 @@ async def generate_final_summary(
     data = await _call_openrouter(
         role=role,
         user_id=user_id,
+        supabase=supabase,
         messages=[
             {
                 "role": "user",
-                "content": (
+                "content": wrap_user_content(
                     "Interview transcript:\n"
                     + "\n\n".join(lines)
                     + "\n\nReturn JSON only: overall_score (0-100), strengths "

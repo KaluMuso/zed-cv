@@ -42,6 +42,14 @@ class BwanaChatResponse(BaseModel):
     )
     took_ms: int
     session_id: str
+    escalation_ticket_id: str | None = Field(
+        default=None,
+        description="Present when source=escalated (e.g. ZD-A1B2C3D4)",
+    )
+    intent_id: str | None = Field(
+        default=None,
+        description="FAQ intent id when source=faq",
+    )
 
 
 @router.post("/chat", response_model=BwanaChatResponse)
@@ -56,7 +64,7 @@ async def bwana_chat(
     del request
     session_id = (body.session_id or "").strip() or str(uuid.uuid4())
     try:
-        response, source, took_ms = await handle_bwana_chat(
+        response, source, took_ms, ticket_id, intent_id = await handle_bwana_chat(
             user_id=current_user["id"],
             message=body.message.strip(),
             session_id=session_id,
@@ -70,4 +78,6 @@ async def bwana_chat(
         source=source,
         took_ms=took_ms,
         session_id=session_id,
+        escalation_ticket_id=ticket_id,
+        intent_id=intent_id,
     )

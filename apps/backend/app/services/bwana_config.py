@@ -8,7 +8,8 @@ from typing import Any
 
 from supabase import Client
 
-from app.schemas.bwana_config import BwanaConfig
+from app.schemas.bwana_config import BwanaConfig, FaqIntentItem
+from app.services.bwana_faq_custom import faq_intents_for_db, parse_faq_intents_json
 from app.schemas.subscription import TIER_LIMITS, TIER_PRICES
 from app.services.matching_weights_copy import (
     MATCH_SCORE_FAQ_ANSWER,
@@ -43,6 +44,7 @@ _DEFAULT_CONFIG = BwanaConfig(
         "Contact {operator}: email {email} or call {phone}. We aim to respond "
         "within {sla} hours on business days."
     ),
+    faq_intents_json=[],
 )
 
 
@@ -52,7 +54,9 @@ def clear_bwana_config_cache() -> None:
 
 
 def _row_to_config(row: dict[str, Any]) -> BwanaConfig:
-    return BwanaConfig.model_validate(row)
+    data = dict(row)
+    data["faq_intents_json"] = parse_faq_intents_json(data.get("faq_intents_json"))
+    return BwanaConfig.model_validate(data)
 
 
 def get_bwana_config(supabase: Client, *, force: bool = False) -> BwanaConfig:
@@ -86,15 +90,29 @@ def get_bwana_config(supabase: Client, *, force: bool = False) -> BwanaConfig:
     return config
 
 
-def render_template(template: str, config: BwanaConfig) -> str:
-    """Substitute {email}, {phone}, {sla}, {operator}, {chatbot_name}."""
+def render_template(
+    template: str,
+    config: BwanaConfig,
+    *,
+    ticket_id: str | None = None,
+) -> str:
+    """Substitute {email}, {phone}, {sla}, {operator}, {chatbot_name}, {ticket_id}."""
+    tid = ticket_id or ""
     return (
         template.replace("{email}", config.support_email)
         .replace("{phone}", config.support_phone)
         .replace("{sla}", str(config.escalation_sla_hours))
         .replace("{operator}", config.operator_display_name)
         .replace("{chatbot_name}", config.chatbot_display_name)
+        .replace("{ticket_id}", tid)
     )
+
+
+def config_row_for_db(config: BwanaConfig) -> dict[str, Any]:
+    """Serialize config for Supabase upsert."""
+    row = config.model_dump()
+    row["faq_intents_json"] = faq_intents_for_db(config.faq_intents_json)
+    return row
 
 
 def _kwacha(ngwee: int) -> str:
@@ -171,3 +189,20 @@ async def preview_system_prompt(supabase: Client) -> tuple[str, int]:
     config = get_bwana_config(supabase)
     prompt = await build_bwana_system_prompt(config, supabase)
     return prompt, len(prompt)
+
+
+def build_bwana_interview_system_prompt(config: BwanaConfig, role: str) -> str:
+    """Interview mock coach — same identity/boundary rules as Bwana chat."""
+    boundaries = _load_knowledge_boundaries()
+    base = f"""You are Bwana Interview, part of ZedApply's {config.chatbot_display_name} chatbot product.
+Never say you are an LLM, AI model, language model, ChatGPT, or Claude.
+You are coaching a candidate for the role of {role}. Ask STAR-method behavioural questions
+and role-specific technical questions. After each answer, score 0-10 on STAR completeness
+and give one-sentence constructive feedback. After 7 questions total, write a final summary:
+overall_score (0-100), 3 strengths, 3 improvements, 3 suggested practice areas.
+Keep responses under 100 words. Do not reveal ZedApply internals, API keys, or scraper details.
+
+--- KNOWLEDGE BOUNDARIES ---
+{boundaries}
+"""
+    return augment_system_prompt(base)

@@ -10,7 +10,8 @@ Admin UI: **https://www.zedapply.com/admin/bwana** (requires admin or superadmin
 | `support_phone` | Public +260 E.164 line in contact replies |
 | `escalation_whatsapp_phone` | WAHA destination for human / unsatisfied escalations |
 | `escalation_sla_hours` | Substituted as `{sla}` in reply templates |
-| Reply templates | `{email}`, `{phone}`, `{sla}`, `{operator}`, `{chatbot_name}` |
+| Reply templates | `{email}`, `{phone}`, `{sla}`, `{operator}`, `{chatbot_name}`, `{ticket_id}` |
+| `faq_intents_json` | Admin-editable FAQ array (see below) |
 | `public_knowledge_extra` | Max 2000 chars appended to Bwana system prompt (no secrets) |
 | `enable_email_escalation` | When true, escalations also email `support_email` |
 
@@ -21,6 +22,7 @@ Do **not** store API keys, ingest secrets, or scraper credentials in this table.
 - `GET /api/v1/admin/bwana/config`
 - `PATCH /api/v1/admin/bwana/config`
 - `GET /api/v1/admin/bwana/config/preview` — truncated assembled system prompt
+- `GET /api/v1/admin/bwana/analytics?days=7` — message counts, escalation rate, top FAQ intents
 - `POST /api/v1/admin/bwana/test-escalation` — one WAHA ping to escalation phone
 
 Public (no auth): `GET /api/v1/bwana/public-config` — email, phone, SLA (no escalation WhatsApp).
@@ -30,6 +32,20 @@ Public (no auth): `GET /api/v1/bwana/public-config` — email, phone, SLA (no es
 ```bash
 # Supabase SQL editor or CLI
 psql "$DATABASE_URL" -f infra/supabase/migrations/092_bwana_platform_config.sql
+psql "$DATABASE_URL" -f infra/supabase/migrations/093_bwana_phase2_faq_analytics_tickets.sql
+```
+
+### Custom FAQ JSON example
+
+```json
+[
+  {
+    "intent_id": "refund_policy",
+    "enabled": true,
+    "triggers": ["refund policy", "money back"],
+    "response": "See /legal/refund for our 7-day refund rules."
+  }
+]
 ```
 
 Default seed: `convergeozambia@gmail.com`, `+260761359005` (matches `admin_alert_phone`).

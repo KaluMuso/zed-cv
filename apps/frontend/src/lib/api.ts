@@ -1976,6 +1976,8 @@ export interface BwanaChatResponse {
   source: BwanaChatSource;
   took_ms: number;
   session_id: string;
+  escalation_ticket_id?: string | null;
+  intent_id?: string | null;
 }
 
 export interface BwanaPublicConfig {
@@ -1983,6 +1985,13 @@ export interface BwanaPublicConfig {
   support_email: string;
   support_phone: string;
   escalation_sla_hours: number;
+}
+
+export interface FaqIntentItem {
+  intent_id: string;
+  enabled: boolean;
+  triggers: string[];
+  response: string;
 }
 
 export interface BwanaConfig {
@@ -1997,9 +2006,20 @@ export interface BwanaConfig {
   unsatisfied_reply_template: string;
   contact_admin_reply_template: string;
   public_knowledge_extra: string;
+  faq_intents_json: FaqIntentItem[];
   enable_email_escalation: boolean;
   updated_at?: string | null;
   updated_by?: string | null;
+}
+
+export interface BwanaAnalyticsSummary {
+  period_days: number;
+  total_messages: number;
+  total_escalations: number;
+  escalation_rate_percent: number;
+  messages_by_source: Record<string, number>;
+  escalations_by_reason: Record<string, number>;
+  top_faq_intents: { intent_id: string; count: number }[];
 }
 
 export type BwanaConfigPatch = Partial<
@@ -2040,6 +2060,11 @@ export const adminBwana = {
       method: "POST",
       token,
     }),
+  analytics: (token: string, days = 7) =>
+    apiFetch<BwanaAnalyticsSummary>(
+      `/admin/bwana/analytics?days=${encodeURIComponent(String(days))}`,
+      { token },
+    ),
 };
 
 // ── Contact form (task #65) ──

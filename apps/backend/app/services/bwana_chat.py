@@ -4,6 +4,7 @@ import hashlib
 import logging
 import time
 import uuid
+from dataclasses import dataclass
 from html import escape
 from typing import Any, Literal
 
@@ -27,6 +28,7 @@ from app.services.bwana_faq import (
     match_faq,
     wants_callback,
 )
+from app.services.bwana_faq_custom import match_custom_faq
 from app.services.email import _send
 from app.services.llm import FEATURE_BWANA, LlmLogContext
 from app.services.openrouter_helpers import (
@@ -39,6 +41,18 @@ from app.services.whatsapp import send_whatsapp_message
 logger = logging.getLogger(__name__)
 
 BwanaSource = Literal["faq", "llm", "escalated"]
+
+
+@dataclass(frozen=True)
+class BwanaTurnResult:
+    response: str
+    source: BwanaSource
+    intent_id: str | None = None
+    escalation_ticket_id: str | None = None
+
+
+def _new_escalation_ticket_id() -> str:
+    return f"ZD-{uuid.uuid4().hex[:8].upper()}"
 
 
 def session_cache_key(user_id: str, session_id: str) -> str:
@@ -129,6 +143,7 @@ def append_and_persist_history(
 def _log_escalation(
     supabase: Client,
     *,
+    ticket_id: str,
     user_id: str,
     session_id: str,
     message: str,
@@ -138,6 +153,7 @@ def _log_escalation(
     try:
         supabase.table("bwana_escalation_log").insert(
             {
+                "ticket_id": ticket_id,
                 "user_id": user_id,
                 "session_id": session_id,
                 "message_excerpt": message[:500],
@@ -152,19 +168,20 @@ def _log_escalation(
 async def _send_escalation_email(
     config: BwanaConfig,
     *,
+    ticket_id: str,
     user_id: str,
     message: str,
     reason: BwanaEscalationReason,
 ) -> bool:
     if not config.enable_email_escalation:
         return False
-    subject = f"[Bwana {reason}] User {user_id[:8]}…"
+    subject = f"[Bwana {ticket_id}] {reason} — user {user_id[:8]}…"
     html = (
-        f"<p>Bwana escalation (<b>{escape(reason)}</b>)</p>"
+        f"<p>Bwana escalation <b>{escape(ticket_id)}</b> (<b>{escape(reason)}</b>)</p>"
         f"<p>User ID: <code>{escape(user_id)}</code></p>"
         f"<p>Message excerpt:</p><pre>{escape(message[:500])}</pre>"
     )
-    idem = f"bwana-esc-{user_id}-{reason}-{hashlib.sha256(message.encode()).hexdigest()[:16]}"
+    idem = f"bwana-esc-{ticket_id}"
     return _send(config.support_email, subject, html, idempotency_key=idem)
 
 
@@ -177,38 +194,76 @@ async def _notify_escalation(
     message: str,
     reason: BwanaEscalationReason,
     notify_whatsapp: bool = True,
-) -> list[str]:
-    """WAHA + optional email + audit log. Returns channels used."""
+) -> tuple[str, list[str]]:
+    """WAHA + optional email + audit log. Returns (ticket_id, channels used)."""
+    ticket_id = _new_escalation_ticket_id()
     channels: list[str] = []
     phone = config.escalation_whatsapp_phone.strip()
     if notify_whatsapp and phone:
-        text = f"Bwana [{reason}] from user {user_id}: {message[:500]}"
+        text = (
+            f"Bwana {ticket_id} [{reason}] from user {user_id}: {message[:480]}"
+        )
         try:
             await send_whatsapp_message(phone, text)
             channels.append("whatsapp")
         except Exception as exc:
             logger.warning("Bwana escalation WAHA failed: %s", exc)
 
-    if await _send_escalation_email(config, user_id=user_id, message=message, reason=reason):
+    if await _send_escalation_email(
+        config,
+        ticket_id=ticket_id,
+        user_id=user_id,
+        message=message,
+        reason=reason,
+    ):
         channels.append("email")
 
     _log_escalation(
         supabase,
+        ticket_id=ticket_id,
         user_id=user_id,
         session_id=session_id,
         message=message,
         reason=reason,
         channels=channels,
     )
-    return channels
+    return ticket_id, channels
 
 
-def _escalation_reply(config: BwanaConfig, reason: BwanaEscalationReason) -> str:
+def _escalation_reply(
+    config: BwanaConfig,
+    reason: BwanaEscalationReason,
+    *,
+    ticket_id: str | None = None,
+) -> str:
     if reason == "unsatisfied":
-        return render_template(config.unsatisfied_reply_template, config)
-    if reason == "contact_admin":
-        return render_template(config.contact_admin_reply_template, config)
-    return render_template(config.human_escalation_reply_template, config)
+        tpl = config.unsatisfied_reply_template
+    elif reason == "contact_admin":
+        tpl = config.contact_admin_reply_template
+    else:
+        tpl = config.human_escalation_reply_template
+    return render_template(tpl, config, ticket_id=ticket_id)
+
+
+def _log_chat_event(
+    supabase: Client,
+    *,
+    user_id: str,
+    session_id: str,
+    source: BwanaSource,
+    intent_id: str | None,
+) -> None:
+    try:
+        supabase.table("bwana_event_log").insert(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "source": source,
+                "intent_id": intent_id,
+            }
+        ).execute()
+    except Exception as exc:
+        logger.warning("bwana_event_log insert failed: %s", exc)
 
 
 async def _call_openrouter_llm(
@@ -284,7 +339,7 @@ async def process_bwana_message(
     session_id: str,
     supabase: Client,
     history: list[dict[str, str]] | None = None,
-) -> tuple[str, BwanaSource]:
+) -> BwanaTurnResult:
     """Run FAQ → escalate → LLM pipeline (in-process)."""
     text = message.strip()
     if not text:
@@ -294,12 +349,15 @@ async def process_bwana_message(
 
     faq = match_faq(text)
     if faq:
-        return faq.response, "faq"
+        return BwanaTurnResult(faq.response, "faq", intent_id=faq.intent_id)
+
+    custom = match_custom_faq(text, config.faq_intents_json)
+    if custom:
+        return BwanaTurnResult(custom.response, "faq", intent_id=custom.intent_id)
 
     if is_contact_admin_request(text):
-        reply = _escalation_reply(config, "contact_admin")
         if wants_callback(text):
-            await _notify_escalation(
+            ticket_id, _ = await _notify_escalation(
                 supabase,
                 config,
                 user_id=user_id,
@@ -307,11 +365,17 @@ async def process_bwana_message(
                 message=text,
                 reason="contact_admin",
             )
-            return reply, "escalated"
-        return reply, "faq"
+            reply = _escalation_reply(
+                config, "contact_admin", ticket_id=ticket_id
+            )
+            return BwanaTurnResult(
+                reply, "escalated", escalation_ticket_id=ticket_id
+            )
+        reply = _escalation_reply(config, "contact_admin")
+        return BwanaTurnResult(reply, "faq", intent_id="contact_admin")
 
     if is_unsatisfied_request(text):
-        await _notify_escalation(
+        ticket_id, _ = await _notify_escalation(
             supabase,
             config,
             user_id=user_id,
@@ -319,10 +383,14 @@ async def process_bwana_message(
             message=text,
             reason="unsatisfied",
         )
-        return _escalation_reply(config, "unsatisfied"), "escalated"
+        return BwanaTurnResult(
+            _escalation_reply(config, "unsatisfied", ticket_id=ticket_id),
+            "escalated",
+            escalation_ticket_id=ticket_id,
+        )
 
     if is_escalation_request(text):
-        await _notify_escalation(
+        ticket_id, _ = await _notify_escalation(
             supabase,
             config,
             user_id=user_id,
@@ -330,7 +398,11 @@ async def process_bwana_message(
             message=text,
             reason="human_request",
         )
-        return _escalation_reply(config, "human_request"), "escalated"
+        return BwanaTurnResult(
+            _escalation_reply(config, "human_request", ticket_id=ticket_id),
+            "escalated",
+            escalation_ticket_id=ticket_id,
+        )
 
     hist = history if history is not None else load_conversation_history(
         supabase, user_id, session_id
@@ -338,7 +410,7 @@ async def process_bwana_message(
     reply = await _call_openrouter_llm(
         text, hist, user_id=user_id, supabase=supabase, config=config
     )
-    return reply, "llm"
+    return BwanaTurnResult(reply, "llm")
 
 
 async def call_n8n_bwana_webhook(
@@ -377,11 +449,12 @@ async def handle_bwana_chat(
     message: str,
     session_id: str,
     supabase: Client,
-) -> tuple[str, BwanaSource, int]:
-    """Full handler: pipeline + ai_cache persistence."""
+) -> tuple[str, BwanaSource, int, str | None, str | None]:
+    """Full handler: pipeline + ai_cache persistence. Returns ticket_id if escalated."""
     started = time.perf_counter()
     history = load_conversation_history(supabase, user_id, session_id)
     settings = get_settings()
+    turn: BwanaTurnResult
 
     if settings.bwana_n8n_webhook_url:
         try:
@@ -397,9 +470,16 @@ async def handle_bwana_chat(
                 source = "llm"
             if not response:
                 raise ValueError("Empty Bwana pipeline response")
+            turn = BwanaTurnResult(
+                response,
+                source,  # type: ignore[arg-type]
+                intent_id=str(data.get("intent_id") or "") or None,
+                escalation_ticket_id=str(data.get("escalation_ticket_id") or "")
+                or None,
+            )
         except Exception as exc:
             logger.warning("n8n Bwana webhook failed, local fallback: %s", exc)
-            response, source = await process_bwana_message(
+            turn = await process_bwana_message(
                 user_id=user_id,
                 message=message,
                 session_id=session_id,
@@ -407,7 +487,7 @@ async def handle_bwana_chat(
                 history=history,
             )
     else:
-        response, source = await process_bwana_message(
+        turn = await process_bwana_message(
             user_id=user_id,
             message=message,
             session_id=session_id,
@@ -415,16 +495,30 @@ async def handle_bwana_chat(
             history=history,
         )
 
+    _log_chat_event(
+        supabase,
+        user_id=user_id,
+        session_id=session_id,
+        source=turn.source,
+        intent_id=turn.intent_id,
+    )
+
     append_and_persist_history(
         supabase,
         user_id=user_id,
         session_id=session_id,
         user_message=message,
-        assistant_message=response,
-        source=source,  # type: ignore[arg-type]
+        assistant_message=turn.response,
+        source=turn.source,
     )
     took_ms = int((time.perf_counter() - started) * 1000)
-    return response, source, took_ms  # type: ignore[return-value]
+    return (
+        turn.response,
+        turn.source,
+        took_ms,
+        turn.escalation_ticket_id,
+        turn.intent_id,
+    )
 
 
 async def send_test_escalation_whatsapp(supabase: Client) -> None:

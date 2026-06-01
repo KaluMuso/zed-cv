@@ -31,6 +31,7 @@ BWANA_CONFIG_ROW = {
     ),
     "contact_admin_reply_template": "Contact {operator}: {email} or {phone}.",
     "public_knowledge_extra": "",
+    "faq_intents_json": [],
     "enable_email_escalation": False,
 }
 
@@ -59,6 +60,7 @@ def bwana_cache_table(fake_supabase):
         FakeSupabaseQuery(data=[BWANA_CONFIG_ROW.copy()]),
     )
     fake_supabase.set_table("bwana_escalation_log", FakeSupabaseQuery(data=[]))
+    fake_supabase.set_table("bwana_event_log", FakeSupabaseQuery(data=[]))
     fake_supabase.set_table("tier_config", FakeSupabaseQuery(data=[]))
     return q
 
@@ -87,14 +89,16 @@ async def test_bwana_escalates_via_pipeline(fake_supabase, bwana_cache_table):
         new_callable=AsyncMock,
     ) as mock_wa:
         mock_wa.return_value = {"sent": True}
-        response, source = await process_bwana_message(
+        turn = await process_bwana_message(
             user_id="test-user-id",
             message="I want to speak to a human",
             session_id="sess-1",
             supabase=fake_supabase,
         )
-    assert source == "escalated"
-    assert "support@zedapply.com" in response
+    assert turn.source == "escalated"
+    assert turn.escalation_ticket_id
+    assert turn.escalation_ticket_id.startswith("ZD-")
+    assert "support@zedapply.com" in turn.response
     mock_wa.assert_awaited_once()
 
 
@@ -106,14 +110,15 @@ async def test_contact_admin_returns_email_without_waha(
         "app.services.bwana_chat.send_whatsapp_message",
         new_callable=AsyncMock,
     ) as mock_wa:
-        response, source = await process_bwana_message(
+        turn = await process_bwana_message(
             user_id="test-user-id",
             message="What's your support email?",
             session_id="sess-contact",
             supabase=fake_supabase,
         )
-    assert source == "faq"
-    assert "support@zedapply.com" in response
+    assert turn.source == "faq"
+    assert turn.intent_id == "contact_admin"
+    assert "support@zedapply.com" in turn.response
     mock_wa.assert_not_awaited()
 
 
@@ -126,18 +131,20 @@ async def test_unsatisfied_triggers_escalation_log(
         new_callable=AsyncMock,
     ) as mock_wa:
         mock_wa.return_value = {"sent": True}
-        response, source = await process_bwana_message(
+        turn = await process_bwana_message(
             user_id="test-user-id",
             message="I'm not satisfied with this",
             session_id="sess-unsat",
             supabase=fake_supabase,
         )
-    assert source == "escalated"
-    assert "Sorry" in response or "support@zedapply.com" in response
+    assert turn.source == "escalated"
+    assert turn.escalation_ticket_id
+    assert "Sorry" in turn.response or "support@zedapply.com" in turn.response
     mock_wa.assert_awaited_once()
     logs = fake_supabase._tables["bwana_escalation_log"]._data
     assert logs
     assert logs[0].get("reason") == "unsatisfied"
+    assert logs[0].get("ticket_id") == turn.escalation_ticket_id
 
 
 @pytest.mark.asyncio
@@ -157,14 +164,14 @@ async def test_bwana_falls_back_to_llm_on_unknown(fake_supabase, bwana_cache_tab
         new_callable=AsyncMock,
     ) as mock_llm:
         mock_llm.return_value = "Use month-year for recent roles; year-only if 10+ years ago."
-        response, source = await process_bwana_message(
+        turn = await process_bwana_message(
             user_id="test-user-id",
             message=question,
             session_id="sess-2",
             supabase=fake_supabase,
         )
-    assert source == "llm"
-    assert "month-year" in response
+    assert turn.source == "llm"
+    assert "month-year" in turn.response
     mock_llm.assert_awaited_once()
 
 
@@ -221,7 +228,9 @@ async def test_bwana_chat_endpoint_escalated(client, auth_headers, fake_supabase
             json={"message": "I want to speak to a human"},
         )
     assert resp.status_code == 200
-    assert resp.json()["source"] == "escalated"
+    body = resp.json()
+    assert body["source"] == "escalated"
+    assert body.get("escalation_ticket_id", "").startswith("ZD-")
     mock_wa.assert_awaited()
 
 

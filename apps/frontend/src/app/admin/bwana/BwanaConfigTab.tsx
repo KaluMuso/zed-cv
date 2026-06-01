@@ -5,14 +5,16 @@ import {
   adminBwana,
   type BwanaConfig,
   type BwanaConfigPatch,
+  type FaqIntentItem,
 } from "@/lib/api";
+import { BwanaAnalyticsPanel } from "./BwanaAnalyticsPanel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/toast";
 
 const TEMPLATE_HINT =
-  "Variables: {email}, {phone}, {sla}, {operator}, {chatbot_name}";
+  "Variables: {email}, {phone}, {sla}, {operator}, {chatbot_name}, {ticket_id}";
 
 type EditableConfig = BwanaConfig;
 
@@ -27,12 +29,16 @@ export function BwanaConfigTab({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [faqJson, setFaqJson] = useState("[]");
+  const [faqJsonError, setFaqJsonError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const cfg = await adminBwana.getConfig(token);
       setForm(toForm(cfg));
+      setFaqJson(JSON.stringify(cfg.faq_intents_json ?? [], null, 2));
+      setFaqJsonError(null);
       const prev = await adminBwana.preview(token);
       setPreview(prev.system_prompt_preview);
       setPreviewChars(prev.char_count);
@@ -51,8 +57,25 @@ export function BwanaConfigTab({ token }: { token: string }) {
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
   };
 
+  const parseFaqJson = (): FaqIntentItem[] | null => {
+    try {
+      const parsed: unknown = JSON.parse(faqJson);
+      if (!Array.isArray(parsed)) {
+        setFaqJsonError("Must be a JSON array");
+        return null;
+      }
+      setFaqJsonError(null);
+      return parsed as FaqIntentItem[];
+    } catch {
+      setFaqJsonError("Invalid JSON");
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     if (!form) return;
+    const faqIntents = parseFaqJson();
+    if (faqIntents === null) return;
     setSaving(true);
     try {
       const body: BwanaConfigPatch = {
@@ -66,6 +89,7 @@ export function BwanaConfigTab({ token }: { token: string }) {
         unsatisfied_reply_template: form.unsatisfied_reply_template,
         contact_admin_reply_template: form.contact_admin_reply_template,
         public_knowledge_extra: form.public_knowledge_extra,
+        faq_intents_json: faqIntents,
         enable_email_escalation: form.enable_email_escalation,
       };
       const saved = await adminBwana.patchConfig(token, body);
@@ -197,6 +221,26 @@ export function BwanaConfigTab({ token }: { token: string }) {
               />
             </label>
           ))}
+        </CardContent>
+      </Card>
+
+      <BwanaAnalyticsPanel token={token} />
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <h2 className="text-lg font-semibold">Custom FAQ intents (JSON)</h2>
+          <p className="text-xs text-muted-foreground">
+            Matched after built-in FAQs. Each item: intent_id (snake_case), enabled,
+            triggers (substring list), response. Max 50 intents.
+          </p>
+          <textarea
+            className="w-full min-h-[160px] font-mono text-xs rounded-md border border-input bg-background px-3 py-2"
+            value={faqJson}
+            onChange={(e) => setFaqJson(e.target.value)}
+          />
+          {faqJsonError && (
+            <p className="text-xs text-destructive">{faqJsonError}</p>
+          )}
         </CardContent>
       </Card>
 
