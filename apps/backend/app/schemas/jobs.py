@@ -437,6 +437,9 @@ class Job(BaseModel):
     closing_date: Optional[date] = None
     posted_at: datetime
     is_active: bool = True
+    visibility_status: Optional[
+        Literal["open", "recently_closed", "archived"]
+    ] = None
 
     # ── task #60: richer job ad shape (response) ──────────────────────
     # All optional + null-safe so legacy rows (pre-migration 016) still

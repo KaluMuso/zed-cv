@@ -44,6 +44,9 @@ _DEFAULT_CONFIG = BwanaConfig(
         "Contact {operator}: email {email} or call {phone}. We aim to respond "
         "within {sla} hours on business days."
     ),
+    user_escalation_ack_template=(
+        "Thanks — reference {ticket_id}. {operator} will email you at {email} within {sla}h."
+    ),
     faq_intents_json=[],
 )
 

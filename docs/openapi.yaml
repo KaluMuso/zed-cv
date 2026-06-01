@@ -1308,6 +1308,11 @@ components:
         closing_date: { type: string, format: date }
         posted_at: { type: string, format: date-time }
         is_active: { type: boolean }
+        visibility_status:
+          type: string
+          enum: [open, recently_closed, archived]
+          nullable: true
+          description: User-feed lifecycle (migration 095 jobs_user_facing view).
         # task #60: richer job ad shape (migration 016). All nullable.
         employment_type:
           type: string
@@ -2798,6 +2803,27 @@ paths:
         '404': { description: User not found }
         '422': { description: No fields to update }
 
+  /admin/jobs/manual:
+    post:
+      operationId: adminCreateJobManual
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Alias of POST /admin/jobs for manual wizard submissions. Runs
+        apply_ingest_quality_to_job_data before insert.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminJobCreate' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '403': { description: Superadmin only }
+        '409': { description: Duplicate fingerprint }
+
   /admin/jobs:
     get:
       operationId: adminListJobs
@@ -3506,7 +3532,11 @@ paths:
         - name: include_closed
           in: query
           schema: { type: boolean, default: false }
-          description: When true, include inactive or past-deadline jobs (admin-style view).
+          description: Deprecated alias for include_archived.
+        - name: include_archived
+          in: query
+          schema: { type: boolean, default: false }
+          description: When true, include archived jobs (hidden after 3-day post-close grace).
       responses:
         '200':
           content:
@@ -3666,6 +3696,14 @@ paths:
       parameters:
         - { name: min_score, in: query, schema: { type: number, default: 50 } }
         - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - name: include_closed
+          in: query
+          schema: { type: boolean, default: false }
+          description: Deprecated alias for include_archived.
+        - name: include_archived
+          in: query
+          schema: { type: boolean, default: false }
+          description: When true, include matches for archived jobs.
       responses:
         '200':
           content:

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   admin,
@@ -19,7 +20,7 @@ import { formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable } from "@/components/admin/useClientTable";
 import {
   AdminExportButton,
-  AdminSortableHead,
+  AdminSortableTableHead,
   AdminTableEmptyRow,
   AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
@@ -260,10 +261,16 @@ export function JobsTab({ token }: { token: string }) {
             <option value="active">Active only</option>
             <option value="expired">Expired & still active</option>
           </select>
+          <Link
+            href="/admin/jobs/new"
+            className="inline-flex min-h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-muted"
+          >
+            New job
+          </Link>
           <Button
             type="button"
             size="sm"
-            className="min-h-9 ml-auto"
+            className="min-h-9"
             disabled={editingId !== null}
             onClick={() => {
               // Close edit mode if it was open, so we never show both
@@ -491,22 +498,12 @@ export function JobsTab({ token }: { token: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <AdminSortableHead label="Title" sortProps={sortProps("title")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Company" sortProps={sortProps("company")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Source" sortProps={sortProps("source")} />
-                </TableHead>
+                <AdminSortableTableHead label="Title" sortProps={sortProps("title")} />
+                <AdminSortableTableHead label="Company" sortProps={sortProps("company")} />
+                <AdminSortableTableHead label="Source" sortProps={sortProps("source")} />
                 <TableHead>Quality</TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Active" sortProps={sortProps("is_active")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Closes" sortProps={sortProps("closing_date")} />
-                </TableHead>
+                <AdminSortableTableHead label="Active" sortProps={sortProps("is_active")} />
+                <AdminSortableTableHead label="Closes" sortProps={sortProps("closing_date")} />
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

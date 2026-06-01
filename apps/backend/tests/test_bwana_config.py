@@ -16,8 +16,12 @@ DEFAULT_ROW = {
     "human_escalation_reply_template": "Human: {email} {phone} {sla} {operator} {chatbot_name}",
     "unsatisfied_reply_template": "Sorry: {email}",
     "contact_admin_reply_template": "Contact {operator} at {email}",
+    "user_escalation_ack_template": (
+        "Thanks — reference {ticket_id}. {operator} will email you at {email} within {sla}h."
+    ),
     "public_knowledge_extra": "",
     "enable_email_escalation": True,
+    "enable_user_escalation_ack": True,
 }
 
 

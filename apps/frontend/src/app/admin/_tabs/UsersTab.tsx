@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { notify } from "@/lib/toast";
 import { formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable, exportRowsToCsv, sortIsoDate } from "@/components/admin/useClientTable";
-import { AdminSortableHead } from "@/components/admin/AdminTableTools";
+import { AdminSortableTableHead } from "@/components/admin/AdminTableTools";
 import { EmptyState } from "@/components/shared/EmptyState";
 
 import type { SubscriptionTier } from "@/lib/api";
@@ -154,23 +154,13 @@ export function UsersTab({ token }: { token: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>
-                  <AdminSortableHead label="Name" sortProps={sortProps("full_name")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Phone" sortProps={sortProps("phone")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Tier" sortProps={sortProps("subscription_tier")} />
-                </TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Matches" sortProps={sortProps("matches_used")} />
-                </TableHead>
+                <AdminSortableTableHead label="Name" sortProps={sortProps("full_name")} />
+                <AdminSortableTableHead label="Phone" sortProps={sortProps("phone")} />
+                <AdminSortableTableHead label="Tier" sortProps={sortProps("subscription_tier")} />
+                <AdminSortableTableHead label="Matches" sortProps={sortProps("matches_used")} />
                 <TableHead>Welcome bonus until</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>
-                  <AdminSortableHead label="Joined" sortProps={sortProps("created_at")} />
-                </TableHead>
+                <AdminSortableTableHead label="Joined" sortProps={sortProps("created_at")} />
               </TableRow>
             </TableHeader>
             <TableBody>

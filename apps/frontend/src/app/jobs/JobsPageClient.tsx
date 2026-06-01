@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
 import { btnClass, tagClass } from "@/lib/cn-ui";
 import { cn } from "@/lib/utils";
+import { isGreyedClosedListing } from "@/lib/jobVisibility";
 
 const ZAMBIAN_LOCATIONS = [
   "All Locations",
@@ -157,6 +158,7 @@ export default function JobsPageClient() {
   // /jobs response is unchanged for users who don't engage with them.
   const [employmentType, setEmploymentType] = useState<"" | EmploymentType>("");
   const [workArrangement, setWorkArrangement] = useState<"" | WorkArrangement>("");
+  const [showClosed, setShowClosed] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -321,6 +323,7 @@ export default function JobsPageClient() {
         work_arrangement: effectiveWorkArrangement ? [effectiveWorkArrangement] : undefined,
         has_salary: listPreset === "with_salary" ? true : undefined,
         saved_only: listPreset === "saved" ? true : undefined,
+        include_archived: showClosed || undefined,
       });
       setJobsList(res.jobs);
       setTotalPages(res.pages);
@@ -342,6 +345,7 @@ export default function JobsPageClient() {
     effectiveWorkArrangement,
     listPreset,
     token,
+    showClosed,
   ]);
 
   useEffect(() => {
@@ -578,6 +582,20 @@ export default function JobsPageClient() {
           </select>
         )}
 
+        <label className="flex items-center gap-2 text-xs min-h-11" style={{ color: "var(--ink-2)" }}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-input"
+            checked={showClosed}
+            onChange={(e) => {
+              setShowClosed(e.target.checked);
+              setPage(1);
+            }}
+            aria-label="Show closed jobs"
+          />
+          Show closed
+        </label>
+
         {FILTERS_AVAILABLE.workArrangement && (
           <select
             value={workArrangement}
@@ -724,6 +742,7 @@ export default function JobsPageClient() {
                     return n;
                   });
                 }}
+                listingClosed={isGreyedClosedListing(job)}
               />
             ))}
             </div>

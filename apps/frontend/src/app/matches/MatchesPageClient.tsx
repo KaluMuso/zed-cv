@@ -21,10 +21,8 @@ import {
   type AutoMatchPreferences,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { MatchScore } from "@/components/MatchScore";
-import { SkillBadge } from "@/components/SkillBadge";
+import { MatchCard } from "@/components/matches/MatchCard";
 import { Icon } from "@/components/ui/Icon";
-import { Avatar } from "@/components/ui/Avatar";
 import { Counter } from "@/components/ui/Counter";
 import Link from "next/link";
 import { notify } from "@/lib/toast";
@@ -32,22 +30,13 @@ import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { MatchExplanationModal } from "./_components/MatchExplanationModal";
 import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
 import { CoverLetterMatchModal } from "@/components/matches/CoverLetterMatchModal";
-import { canTailorCvForMatch, canUseCoverLetterEditor } from "@/lib/tier-gating";
-import { formatMatchedRelative } from "@/lib/formatMatchedRelative";
 import { resolveMatchQuotaDisplay } from "@/lib/matchQuota";
-import { isJobPastClosing } from "@/lib/isJobPastClosing";
-import { isJobHiddenFromUserFeed } from "@/lib/isJobHiddenFromUserFeed";
-import { isJobListingClosed } from "@/lib/isJobListingClosed";
+import { computeJobVisibilityStatus } from "@/lib/jobVisibility";
 import { trackApplyClick } from "@/lib/trackApplyClick";
 import { ApplyModal } from "@/components/jobs/ApplyModal";
 import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
 import { btnClass, surfaceCardClass, tagClass } from "@/lib/cn-ui";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 // Human-friendly tier label. Free → "Free", super_standard → "Super",
 // etc. Falls back to the raw key if we don't recognize it so we don't
@@ -101,7 +90,7 @@ export default function MatchesPageClient() {
 
   const loadMatches = useCallback(async (authToken: string, includeClosed = false) => {
     const [matchesRes, subRes, prefsRes, autoPrefsRes] = await Promise.allSettled([
-      matchesApi.get(authToken, { includeClosed }),
+      matchesApi.get(authToken, { includeArchived: includeClosed }),
       subscriptionApi.get(authToken),
       preferencesApi.get(authToken),
       autoMatchPreferences.get(authToken),
@@ -394,8 +383,7 @@ export default function MatchesPageClient() {
   const keyword = keywordFilter.trim().toLowerCase();
   let filtered = data.matches.filter((m) => {
     if (m.score < scoreFilter) return false;
-    if (!showClosed && isJobListingClosed(m.job)) return false;
-    if (!showClosed && isJobHiddenFromUserFeed(m.job.closing_date)) return false;
+    if (!showClosed && computeJobVisibilityStatus(m.job) === "archived") return false;
     if (
       keyword &&
       !m.job.title.toLowerCase().includes(keyword) &&
@@ -725,239 +713,32 @@ export default function MatchesPageClient() {
         </div>
       ) : (
         <div className="flex flex-col gap-3.5">
-          {filtered.map((match) => {
-            const expired = isJobPastClosing(match.job.closing_date);
-            return (
-            <article
+          {filtered.map((match) => (
+            <MatchCard
               key={match.id}
-              className={cn(surfaceCardClass, "overflow-hidden relative")}
-              style={{ opacity: expired ? 0.5 : 1 }}
-            >
-              {expired && (
-                <span
-                  className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide"
-                  style={{
-                    background: "var(--muted)",
-                    color: "#faf7f2",
-                  }}
-                >
-                  EXPIRED
-                </span>
-              )}
-              <div
-                className="match-row p-5 sm:p-6 grid gap-6 items-center"
-                style={{ gridTemplateColumns: "auto 1fr auto" }}
-              >
-                <MatchScore
-                  score={match.score}
-                  breakdown={{
-                    vector: match.vector_score,
-                    skill: match.skill_score,
-                    bonus: match.bonus_score,
-                  }}
-                  size="lg"
-                />
-
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <Avatar name={match.job.company || "ZC"} size={28} />
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      {match.job.company || "Company"} &middot;{" "}
-                      {match.job.location || "Zambia"}
-                    </span>
-                  </div>
-                  {/* Title links to the public /jobs/[id] page so the
-                      same URL is shareable / openable in another tab.
-                      Keeps card body click-free so the buttons on the
-                      right (Apply, Interview, Why-this-match) remain
-                      the primary affordances. */}
-                  <Link
-                    href={`/jobs/${match.job.id}`}
-                    className="font-display text-2xl md:text-3xl block hover:underline"
-                    style={{ letterSpacing: "-0.01em", lineHeight: 1.1, color: "inherit" }}
-                  >
-                    {match.job.title}
-                  </Link>
-                  {match.created_at ? (
-                    <p
-                      className="text-xs mt-1.5"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      {formatMatchedRelative(match.created_at)}
-                    </p>
-                  ) : null}
-
-                  {/* Match explainability — tells the user WHY the score is
-                      what it is. When matched_skills is non-empty, surface
-                      the actual skill overlap. When it's empty, the match
-                      came purely from vector similarity (CV semantically
-                      similar to the JD even with no overlapping skill
-                      tags), so we say so explicitly instead of leaving
-                      the row label-less. Missing skills are shown after
-                      with a different visual treatment so the user sees
-                      both "what got us in" and "what to grow toward". */}
-                  {(match.matched_skills.length > 0 || match.missing_skills.length > 0) && (
-                    <div className="mt-3">
-                      {match.matched_skills.length > 0 ? (
-                        <div
-                          className="text-[10px] uppercase tracking-wider mb-1.5"
-                          style={{ color: "var(--muted)" }}
-                        >
-                          Matched on
-                        </div>
-                      ) : (
-                        <div
-                          className="text-[10px] uppercase tracking-wider mb-1.5"
-                          style={{ color: "var(--muted)" }}
-                        >
-                          Strong semantic match
-                        </div>
-                      )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {match.matched_skills.map((s) => (
-                          <SkillBadge key={s} skill={s} matched />
-                        ))}
-                        {match.missing_skills.slice(0, 3).map((s) => (
-                          <SkillBadge key={s} skill={s} matched={false} />
-                        ))}
-                      </div>
-                      {match.missing_skills.length > 0 && (
-                        <div
-                          className="text-[10px] mt-1.5"
-                          style={{ color: "var(--muted)" }}
-                        >
-                          Faded chips are skills to grow toward
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="match-actions flex flex-col gap-2 items-end">
-                  {/* Apply button uses the same helper as the public
-                      drawer / standalone job page. Falls back to mailto
-                      then source listing; disables when nothing is
-                      available so we never ship a dead button. */}
-                  {expired ? (
-                    <button
-                      type="button"
-                      className={cn(btnClass("primary", "sm"), "w-full sm:w-40")}
-                      disabled
-                    >
-                      Application closed
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={cn(btnClass("primary", "sm"), "w-full sm:w-40")}
-                      onClick={() => {
-                        setApplyJob(match.job);
-                        if (token) {
-                          void trackApplyClick(token, match.job.id, "direct");
-                        }
-                      }}
-                    >
-                      Apply
-                    </button>
-                  )}
-                  <SaveJobButton
-                    jobId={match.job.id}
-                    saved={savedJobIds.has(match.job.id)}
-                    token={token}
-                    onChange={(jobId, next) => {
-                      setSavedJobIds((prev) => {
-                        const n = new Set(prev);
-                        if (next) n.add(jobId);
-                        else n.delete(jobId);
-                        return n;
-                      });
-                    }}
-                  />
-                  {/* Interview Prep is Super Standard only (backend enforced
-                      in interview_prep.py). Mirror that gate here so users
-                      below SS see a clear upgrade affordance instead of
-                      clicking a button that just 403s. Backend enforcement
-                      remains the source of truth. */}
-                  {canTailorCvForMatch(sub?.tier) ? (
-                    <button
-                      type="button"
-                      onClick={() => setTailorFor(match)}
-                      className={cn(btnClass("accent", "sm"), "w-full sm:w-40")}
-                      title="Generate a CV tailored to this role"
-                      data-testid="match-tailor-cv"
-                    >
-                      Tailor my CV <Icon name="file" size={13} />
-                    </button>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger
-                        type="button"
-                        className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
-                        disabled
-                        style={{ opacity: 0.55, cursor: "not-allowed" }}
-                        data-testid="match-tailor-cv-locked"
-                      >
-                        Tailor my CV
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Professional or Super Standard — tailored CV per match. Upgrade at /pricing.
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {canUseCoverLetterEditor(sub?.tier) ? (
-                    <button
-                      type="button"
-                      onClick={() => setCoverLetterFor(match)}
-                      className={cn(btnClass("outline", "sm"), "w-full sm:w-40")}
-                      title="Generate and edit a cover letter for this match"
-                      data-testid="match-cover-letter"
-                    >
-                      Cover letter <Icon name="file" size={13} />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
-                      disabled
-                      title="Professional or Super Standard — cover letter editor. Upgrade at /pricing."
-                      data-testid="match-cover-letter-locked"
-                    >
-                      Cover letter
-                    </button>
-                  )}
-                  {sub?.tier === "super_standard" ? (
-                    <button
-                      type="button"
-                      onClick={() => setPrepFor(match)}
-                      className={cn(btnClass("accent", "sm"), "w-full sm:w-40")}
-                      title="Generate interview prep notes for this role"
-                    >
-                      Interview Call <Icon name="zap" size={13} />
-                    </button>
-                  ) : (
-                    <Link
-                      href="/pricing"
-                      className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
-                      title="Interview Prep is a Super Standard feature"
-                    >
-                      Unlock prep <Icon name="zap" size={13} />
-                    </Link>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setDetailMatch(match)}
-                    className={cn(btnClass("ghost", "sm"), "w-full sm:w-40")}
-                  >
-                    Why this match? <Icon name="chevronRight" size={13} />
-                  </button>
-                </div>
-              </div>
-            </article>
-            );
-          })}
+              match={match}
+              expired={computeJobVisibilityStatus(match.job) === "archived"}
+              authToken={token}
+              jobSaved={savedJobIds.has(match.job.id)}
+              onSavedChange={(jobId, next) => {
+                setSavedJobIds((prev) => {
+                  const n = new Set(prev);
+                  if (next) n.add(jobId);
+                  else n.delete(jobId);
+                  return n;
+                });
+              }}
+              onApplyClick={() => {
+                setApplyJob(match.job);
+                if (token) {
+                  void trackApplyClick(token, match.job.id, "direct");
+                }
+              }}
+              onTailorCvClick={() => setTailorFor(match)}
+              onCoverLetterClick={() => setCoverLetterFor(match)}
+              onWhyMatchClick={() => setDetailMatch(match)}
+            />
+          ))}
         </div>
       )}
 

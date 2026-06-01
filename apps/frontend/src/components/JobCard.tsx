@@ -34,6 +34,8 @@ interface JobCardProps {
   saveToken?: string | null;
   jobSaved?: boolean;
   onSaveChange?: (jobId: string, nextSaved: boolean) => void;
+  /** Greyed closed listing still visible in the 3-day grace window. */
+  listingClosed?: boolean;
 }
 
 const EMPLOYMENT_TYPE_LABEL: Record<string, string> = {
@@ -207,6 +209,7 @@ export function JobCard({
   saveToken,
   jobSaved = false,
   onSaveChange,
+  listingClosed = false,
 }: JobCardProps) {
   const matchedSet = new Set(matchedSkills.map((s) => s.toLowerCase()));
   const hasCvContext = matchedSet.size > 0;
@@ -222,11 +225,21 @@ export function JobCard({
 
   const cardBody = (
     <>
+      {listingClosed && (
+        <span className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide bg-destructive text-destructive-foreground">
+          CLOSED
+        </span>
+      )}
       <div className="flex items-start gap-3 pr-10 sm:pr-12">
         <Avatar name={company || "ZC"} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="font-display text-lg sm:text-xl leading-snug text-foreground truncate">
+            <h3
+              className={cn(
+                "font-display text-lg sm:text-xl leading-snug text-foreground truncate",
+                listingClosed && "line-through opacity-80",
+              )}
+            >
               {title}
             </h3>
             <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
@@ -294,6 +307,7 @@ export function JobCard({
         "hover:border-border",
         "focus-within:ring-2 focus-within:ring-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background",
       )}
+      style={{ opacity: listingClosed ? 0.6 : 1 }}
     >
       {id && saveToken !== undefined && (
         <div

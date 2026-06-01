@@ -31,6 +31,10 @@ vi.mock("next/navigation", () => {
   };
 });
 
+vi.mock("@/hooks/useUserTier", () => ({
+  useUserTier: () => ({ tier: "professional", loading: false }),
+}));
+
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const MATCH_OBJ = {

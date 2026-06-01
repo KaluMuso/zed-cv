@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from app.core.tier_gating import (
     FEATURE_COVER_LETTER,
+    FEATURE_INTERVIEW_PREP,
     FEATURE_JOB_MATCHES,
     FEATURE_MATCH_TAILORED_CV,
     normalize_tier,
@@ -96,6 +97,25 @@ class TestVerifyTierAccessMatchTailoredCv:
             FEATURE_MATCH_TAILORED_CV, "test-user-id", fake_supabase
         )
         assert tier == "professional"
+
+
+class TestVerifyTierAccessInterviewPrep:
+    @pytest.mark.asyncio
+    async def test_starter_blocked(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="starter")
+        with pytest.raises(HTTPException) as exc:
+            await verify_tier_access(
+                FEATURE_INTERVIEW_PREP, "test-user-id", fake_supabase
+            )
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_super_standard_allowed(self, fake_supabase):
+        _seed_gating_user(fake_supabase, tier="super_standard")
+        tier = await verify_tier_access(
+            FEATURE_INTERVIEW_PREP, "test-user-id", fake_supabase
+        )
+        assert tier == "super_standard"
 
 
 class TestVerifyTierAccessJobMatches:

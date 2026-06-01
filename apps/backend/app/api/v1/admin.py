@@ -1341,6 +1341,7 @@ async def update_user_role(
 # `updated_by_user_id` (migration 027) records the admin who last
 # touched each row.
 
+@router.post("/jobs/manual", response_model=Job, status_code=status.HTTP_201_CREATED)
 @router.post("/jobs", response_model=Job, status_code=status.HTTP_201_CREATED)
 async def create_admin_job(
     body: AdminJobCreate,
@@ -1350,6 +1351,7 @@ async def create_admin_job(
     # Local imports keep admin.py's top free of jobs.py's regex constants.
     from app.api.v1.jobs import _fingerprint, _strip_html
     from app.schemas.jobs import _parse_salary_to_ngwee
+    from app.services.job_quality import apply_ingest_quality_to_job_data
 
     body.description = _strip_html(body.description)
 
@@ -1396,9 +1398,28 @@ async def create_admin_job(
     job_data = body.model_dump(exclude_none=True, mode="json")
     # Input-only fields not stored on jobs.
     job_data.pop("skills_required", None)
-    job_data.pop("salary_text", None)
+    original_phone = job_data.get("contact_phone")
+    salary_text = job_data.pop("salary_text", None)
+    if (
+        job_data.get("salary_min") is None
+        and job_data.get("salary_max") is None
+        and salary_text
+    ):
+        parsed_min, parsed_max = _parse_salary_to_ngwee(salary_text)
+        if parsed_min is not None or parsed_max is not None:
+            job_data["salary_min"] = parsed_min
+            job_data["salary_max"] = parsed_max
+
+    apply_ingest_quality_to_job_data(
+        job_data,
+        original_contact_phone=original_phone,
+    )
     job_data["embedding"] = embedding
     job_data["updated_by_user_id"] = current_user["id"]
+    if not job_data.get("source"):
+        job_data["source"] = "manual"
+    if body.source_platform:
+        job_data["source_platform"] = body.source_platform
 
     result = supabase.table("jobs").insert(job_data).execute()
     if not result.data:

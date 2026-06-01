@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { savedJobs, matches, profile as profileApi, type Job, type MatchData } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { JobDetailBody } from "@/components/JobDetailBody";
+import { computeJobVisibilityStatus } from "@/lib/jobVisibility";
 
 /**
  * Thin client wrapper around JobDetailBody so the parent page can stay
@@ -56,6 +57,7 @@ export function JobDetailClient({ job }: { job: Job }) {
         setSimilarMatches(
           [...res.matches]
             .filter((m) => m.job.id !== job.id)
+            .filter((m) => computeJobVisibilityStatus(m.job) === "open")
             .sort((a, b) => b.score - a.score)
             .slice(0, 3),
         );

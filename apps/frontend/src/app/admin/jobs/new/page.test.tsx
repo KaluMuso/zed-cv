@@ -79,21 +79,18 @@ describe("/admin/jobs/new page", () => {
 
     // Wizard heading is NOT rendered for non-admins.
     expect(
-      screen.queryByRole("heading", { name: /create a job/i }),
+      screen.queryByRole("heading", { name: /new job/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders the wizard for admin users", async () => {
+  it("renders the manual form for admin users", async () => {
     server.use(profileEndpoint("admin"), adminStatsEndpoint());
     renderGuarded();
 
     expect(
-      await screen.findByRole("heading", { name: /create a job/i, level: 1 }),
+      await screen.findByRole("heading", { name: /new job/i, level: 1 }),
     ).toBeInTheDocument();
     expect(routerReplace).not.toHaveBeenCalled();
-    // Wizard's step-1 card is on screen.
-    expect(
-      screen.getByRole("heading", { name: /step 1 of 5/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("admin-job-description-md")).toBeInTheDocument();
   });
 });

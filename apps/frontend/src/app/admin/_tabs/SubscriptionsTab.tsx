@@ -14,7 +14,7 @@ import { StatCard, formatNgwee, formatDate, SkeletonTableRows } from "./shared";
 import { useClientTable, sortIsoDate } from "@/components/admin/useClientTable";
 import {
   AdminExportButton,
-  AdminSortableHead,
+  AdminSortableTableHead,
   AdminTableEmptyRow,
   AdminTablePagination,
 } from "@/components/admin/AdminTableTools";
@@ -163,21 +163,11 @@ export function SubscriptionsTab({ token }: { token: string }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <AdminSortableHead label="When" sortProps={sortProps("created_at")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Phone" sortProps={sortProps("user_phone")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Amount" sortProps={sortProps("amount")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Method" sortProps={sortProps("payment_method")} />
-                  </TableHead>
-                  <TableHead>
-                    <AdminSortableHead label="Status" sortProps={sortProps("status")} />
-                  </TableHead>
+                  <AdminSortableTableHead label="When" sortProps={sortProps("created_at")} />
+                  <AdminSortableTableHead label="Phone" sortProps={sortProps("user_phone")} />
+                  <AdminSortableTableHead label="Amount" sortProps={sortProps("amount")} />
+                  <AdminSortableTableHead label="Method" sortProps={sortProps("payment_method")} />
+                  <AdminSortableTableHead label="Status" sortProps={sortProps("status")} />
                 </TableRow>
               </TableHeader>
               <TableBody>

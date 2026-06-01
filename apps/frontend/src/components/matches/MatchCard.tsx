@@ -9,61 +9,62 @@ import {
   type ApplyJobFields,
 } from "@/lib/applyLink";
 import type { MatchData } from "@/lib/api";
-import { isJobListingClosed } from "@/lib/isJobListingClosed";
+import { isGreyedClosedListing, isRecentlyClosedJob } from "@/lib/jobVisibility";
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { SaveJobButton } from "@/components/SaveJobButton";
+import { TierGate } from "@/components/shared/TierGate";
+import { JobShareButtons } from "@/components/share/JobShareButtons";
+import { btnClass } from "@/lib/cn-ui";
+import { cn } from "@/lib/utils";
 
 export interface MatchCardProps {
   match: MatchData;
   expired?: boolean;
-  /** Opens in-app apply flow (matches page modal). */
+  authToken?: string | null;
+  jobSaved?: boolean;
+  onSavedChange?: (jobId: string, next: boolean) => void;
   onApplyClick?: () => void;
-  /** Professional+ — opens match-tailored CV modal. */
-  canTailorCv?: boolean;
   onTailorCvClick?: () => void;
+  onCoverLetterClick?: () => void;
+  onWhyMatchClick?: () => void;
 }
 
 export function MatchCard({
   match,
   expired = false,
+  authToken,
+  jobSaved = false,
+  onSavedChange,
   onApplyClick,
-  canTailorCv = false,
   onTailorCvClick,
+  onCoverLetterClick,
+  onWhyMatchClick,
 }: MatchCardProps) {
   const apply = resolveApplyAction(match.job as ApplyJobFields);
   const useExternalLink = Boolean(apply?.external && !onApplyClick);
-  const closed = isJobListingClosed(match.job);
-  const dimmed = expired || closed;
+  const recentlyClosed = isRecentlyClosedJob(match.job);
+  const greyed = expired || isGreyedClosedListing(match.job);
+  const closed = expired || recentlyClosed || greyed;
 
   return (
     <article
       className="card job-card overflow-hidden relative"
-      style={{ opacity: dimmed ? 0.55 : 1 }}
+      style={{ opacity: greyed ? 0.6 : 1 }}
       data-testid="match-card"
+      data-visibility={match.job.visibility_status ?? undefined}
     >
       {expired && (
         <span
-          className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide"
-          style={{
-            background: "var(--muted)",
-            color: "#faf7f2",
-          }}
+          className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide bg-muted text-[#faf7f2]"
         >
           EXPIRED
         </span>
       )}
-      {closed && !expired && (
+      {recentlyClosed && !expired && (
         <span
-          className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide"
-          style={{
-            background: "var(--muted)",
-            color: "#faf7f2",
-          }}
+          className="absolute top-3 right-3 z-10 px-2 py-0.5 rounded text-[10px] font-bold font-mono tracking-wide bg-destructive text-destructive-foreground"
+          data-testid="match-closed-badge"
         >
           CLOSED
         </span>
@@ -91,7 +92,10 @@ export function MatchCard({
           </div>
           <Link
             href={`/jobs/${match.job.id}`}
-            className="font-display text-2xl md:text-3xl block hover:underline"
+            className={cn(
+              "font-display text-2xl md:text-3xl block hover:underline",
+              recentlyClosed && "line-through opacity-80",
+            )}
             style={{ letterSpacing: "-0.01em", lineHeight: 1.1, color: "inherit" }}
           >
             {match.job.title}
@@ -115,68 +119,110 @@ export function MatchCard({
           )}
         </div>
 
-        <div className="match-actions flex flex-col gap-2 items-end">
-          {expired || closed ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm w-40"
-              disabled
-              style={{ cursor: "not-allowed" }}
-            >
-              Application closed
-            </button>
-          ) : apply && useExternalLink ? (
-            <a
-              href={apply.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary btn-sm w-40 text-center gap-1.5"
-              data-testid="match-apply-external"
-            >
-              {apply.label}
-              <Icon name="external" size={13} />
-            </a>
-          ) : apply ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm w-40"
-              onClick={onApplyClick}
-              data-testid="match-apply-active"
-            >
-              {apply.label}
-            </button>
-          ) : null}
-          {canTailorCv ? (
-            <button
-              type="button"
-              className="btn btn-accent btn-sm w-40"
-              onClick={onTailorCvClick}
-              data-testid="match-tailor-cv"
-            >
-              Tailor my CV <Icon name="file" size={13} />
-            </button>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger
+        <div className="match-actions flex flex-col gap-2 items-stretch sm:items-end min-w-[10rem] sm:min-w-[12rem]">
+          <div className="grid grid-cols-3 gap-2 w-full">
+            {closed ? (
+              <button
                 type="button"
-                className="btn btn-ghost btn-sm w-40"
+                className={cn(btnClass("primary", "sm"), "col-span-3")}
                 disabled
-                style={{ opacity: 0.55, cursor: "not-allowed" }}
-                data-testid="match-tailor-cv-locked"
+                data-testid="match-apply-closed"
+              >
+                Closed
+              </button>
+            ) : apply && useExternalLink ? (
+              <a
+                href={apply.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  btnClass("primary", "sm"),
+                  "text-center gap-1 flex items-center justify-center",
+                )}
+                data-testid="match-apply-external"
+              >
+                Apply
+                <Icon name="external" size={13} />
+              </a>
+            ) : apply || onApplyClick ? (
+              <button
+                type="button"
+                className={cn(btnClass("primary", "sm"))}
+                onClick={onApplyClick}
+                data-testid="match-apply-active"
+              >
+                {apply?.label ?? "Apply"}
+              </button>
+            ) : (
+              <span />
+            )}
+            {!closed &&
+              (authToken && onSavedChange ? (
+                <SaveJobButton
+                  jobId={match.job.id}
+                  saved={jobSaved}
+                  token={authToken}
+                  onChange={onSavedChange}
+                  className={cn(btnClass("outline", "sm"), "w-full")}
+                />
+              ) : (
+                <span />
+              ))}
+            {!closed && (
+              <div className="flex justify-end">
+                <JobShareButtons
+                  job={{
+                    id: match.job.id,
+                    title: match.job.title,
+                    company: match.job.company,
+                    location: match.job.location,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          {closed && authToken && onSavedChange && (
+            <SaveJobButton
+              jobId={match.job.id}
+              saved={jobSaved}
+              token={authToken}
+              onChange={onSavedChange}
+              className={cn(btnClass("outline", "sm"), "w-full")}
+            />
+          )}
+
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <TierGate feature="tailor_cv">
+              <button
+                type="button"
+                className={cn(btnClass("accent", "sm"), "w-full text-xs")}
+                onClick={onTailorCvClick}
+                data-testid="match-tailor-cv"
               >
                 Tailor my CV
-              </TooltipTrigger>
-              <TooltipContent>
-                Professional or Super Standard — tailored CV per match. Upgrade at /pricing.
-              </TooltipContent>
-            </Tooltip>
-          )}
-          <Link
-            href={`/jobs/${match.job.id}`}
-            className="btn btn-ghost btn-sm w-40 text-center mt-1"
+              </button>
+            </TierGate>
+            <TierGate feature="cover_letter">
+              <button
+                type="button"
+                className={cn(btnClass("outline", "sm"), "w-full text-xs")}
+                onClick={onCoverLetterClick}
+                data-testid="match-cover-letter"
+              >
+                Cover letter
+              </button>
+            </TierGate>
+          </div>
+
+          <button
+            type="button"
+            onClick={onWhyMatchClick}
+            className="text-xs text-left sm:text-right underline-offset-2 hover:underline w-full"
+            style={{ color: "var(--muted)" }}
+            data-testid="match-why-link"
           >
-            Learn more
-          </Link>
+            Why this match?
+          </button>
         </div>
       </div>
     </article>

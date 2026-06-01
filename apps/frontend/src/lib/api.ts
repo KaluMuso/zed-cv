@@ -1354,6 +1354,7 @@ export interface Job {
   section_how_to_apply?: string | null;
   section_about?: string | null;
   is_active?: boolean;
+  visibility_status?: "open" | "recently_closed" | "archived" | null;
   deactivation_reason?: string | null;
   closure_reason?: string | null;
   closed_at?: string | null;
@@ -1402,6 +1403,7 @@ export const jobs = {
     has_salary?: boolean;
     saved_only?: boolean;
     include_closed?: boolean;
+    include_archived?: boolean;
   }) => {
     const query = new URLSearchParams();
     if (params?.page) query.set("page", String(params.page));
@@ -1417,6 +1419,7 @@ export const jobs = {
     if (params?.has_salary) query.set("has_salary", "true");
     if (params?.saved_only) query.set("saved_only", "true");
     if (params?.include_closed) query.set("include_closed", "true");
+    if (params?.include_archived) query.set("include_archived", "true");
     const token = getToken();
     return apiFetch<JobListResponse>(`/jobs?${query}`, { token });
   },
@@ -1518,6 +1521,8 @@ export interface MatchData {
     apply_email?: string | null;
     source_url?: string | null;
     apply_source?: string | null;
+    is_active?: boolean;
+    visibility_status?: "open" | "recently_closed" | "archived" | null;
   };
 }
 
@@ -1555,11 +1560,12 @@ export interface MatchRefreshResponse extends MatchListResponse {
 export const matches = {
   get: (
     token: string,
-    opts?: { minScore?: number; includeClosed?: boolean },
+    opts?: { minScore?: number; includeClosed?: boolean; includeArchived?: boolean },
   ) => {
     const query = new URLSearchParams();
     if (opts?.minScore != null) query.set("min_score", String(opts.minScore));
     if (opts?.includeClosed) query.set("include_closed", "true");
+    if (opts?.includeArchived) query.set("include_archived", "true");
     const qs = query.toString();
     return apiFetch<MatchListResponse>(`/matches${qs ? `?${qs}` : ""}`, { token });
   },

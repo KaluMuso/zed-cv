@@ -14,6 +14,14 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+vi.mock("@/components/shared/TierGate", () => ({
+  TierGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/components/share/JobShareButtons", () => ({
+  JobShareButtons: () => <span data-testid="job-share-stub" />,
+}));
+
 const baseMatch: MatchData = {
   id: "m1",
   score: 88,
@@ -30,6 +38,9 @@ const baseMatch: MatchData = {
     company: "ACME Zambia",
     location: "Lusaka",
     closing_date: null,
+    quality_score: 80,
+    skills: [],
+    description: "Build APIs",
     apply_url: "https://careers.example.com/apply",
     apply_email: null,
     source_url: null,
@@ -57,48 +68,38 @@ describe("MatchCard", () => {
     expect(onApplyClick).toHaveBeenCalledTimes(1);
   });
 
-  it("disables apply when the job is expired", () => {
+  it("disables apply when expired/archived", () => {
     render(<MatchCard match={baseMatch} expired onApplyClick={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /application closed/i })).toBeDisabled();
+    expect(screen.getByTestId("match-apply-closed")).toBeDisabled();
     expect(screen.getByText("EXPIRED")).toBeInTheDocument();
   });
 
-  it("shows CLOSED badge when job is inactive", () => {
+  it("shows CLOSED badge for recently closed jobs", () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
     const match: MatchData = {
       ...baseMatch,
-      job: { ...baseMatch.job, is_active: false },
+      job: {
+        ...baseMatch.job,
+        closing_date: yesterday.toISOString().slice(0, 10),
+        visibility_status: "recently_closed",
+      },
     };
     render(<MatchCard match={match} onApplyClick={vi.fn()} />);
-    expect(screen.getByText("CLOSED")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /application closed/i })).toBeDisabled();
+    expect(screen.getByTestId("match-closed-badge")).toHaveTextContent("CLOSED");
+    expect(screen.getByTestId("match-apply-closed")).toBeDisabled();
   });
 
-  it("shows locked tailor button when canTailorCv is false", () => {
-    render(<MatchCard match={baseMatch} canTailorCv={false} />);
-    expect(screen.getByTestId("match-tailor-cv-locked")).toHaveAttribute(
-      "data-trigger-disabled"
-    );
-  });
-
-  it("calls onTailorCvClick when tailor is enabled", async () => {
+  it("calls onTailorCvClick when button clicked", async () => {
     const user = userEvent.setup();
     const onTailor = vi.fn();
-    render(
-      <MatchCard match={baseMatch} canTailorCv onTailorCvClick={onTailor} />
-    );
+    render(<MatchCard match={baseMatch} onTailorCvClick={onTailor} />);
     await user.click(screen.getByTestId("match-tailor-cv"));
     expect(onTailor).toHaveBeenCalledTimes(1);
   });
 
   it("renders an external apply link when apply_url is set", () => {
-    const withUrl: MatchData = {
-      ...baseMatch,
-      job: {
-        ...baseMatch.job,
-        apply_url: "https://careers.example.com/apply",
-      },
-    };
-    render(<MatchCard match={withUrl} />);
+    render(<MatchCard match={baseMatch} />);
     const link = screen.getByTestId("match-apply-external");
     expect(link).toHaveAttribute("href", "https://careers.example.com/apply");
     expect(link).toHaveAttribute("target", "_blank");

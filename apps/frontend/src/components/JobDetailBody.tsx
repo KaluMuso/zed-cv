@@ -197,11 +197,13 @@ export function JobDetailBody({
           }}
           role="status"
         >
-          <p className="font-medium">This role is no longer accepting applications</p>
+          <p className="font-medium">
+            {job.closing_date
+              ? `This role closed on ${job.closing_date}. Application is no longer accepted.`
+              : "This role is no longer accepting applications."}
+          </p>
           {job.closure_reason ? (
             <p className="mt-1 text-muted-foreground">{job.closure_reason}</p>
-          ) : job.closing_date ? (
-            <p className="mt-1 text-muted-foreground">Closed on {job.closing_date}</p>
           ) : job.deactivation_reason === "split_into_children" ? (
             <p className="mt-1 text-muted-foreground">
               Replaced by separate role listings — browse similar matches below.

@@ -55,6 +55,7 @@ from app.services.job_publication import (
 )
 from app.services.job_scraping_sources import merge_scraping_sources
 from app.services.job_deadline_extractor import extract_closing_date_llm
+from app.services.job_visibility import FEED_STATUSES, visibility_from_row
 from app.services.skill_resolver import resolve_skill_ids
 from app.services import skills_dictionary
 
@@ -275,11 +276,16 @@ async def list_jobs(
     ),
     include_closed: bool = Query(
         False,
-        description="When true, include inactive or past-deadline jobs in the list.",
+        description="Deprecated alias for include_archived.",
+    ),
+    include_archived: bool = Query(
+        False,
+        description="When true, include archived jobs (hidden after 3-day grace).",
     ),
     user_id: str | None = Depends(_optional_user_id),
     supabase=Depends(get_supabase),
 ):
+    show_archived = include_archived or include_closed
     sort_mode = sort if sort in _ALLOWED_SORT else "recent"
 
     if saved_only and not user_id:
@@ -349,23 +355,14 @@ async def list_jobs(
     # Path A: keep the main query flat, then fetch skills in a small
     # follow-up `.in_("job_id", [...])` call. Same outer response shape
     # for the frontend, but two cheap trips instead of one heavy stream.
-    if include_closed:
-        query = (
-            supabase.table("jobs")
-            .select("*", count="estimated")
-            .eq("is_review_required", False)
-            .or_(PUBLIC_JOBS_OR_FILTER)
-        )
-    else:
-        grace_cutoff = _closing_date_grace_cutoff()
-        query = (
-            supabase.table("jobs_user_facing")
-            .select("*", count="estimated")
-            .eq("is_active", True)
-            .eq("is_review_required", False)
-            .or_(PUBLIC_JOBS_OR_FILTER)
-            .or_(f"closing_date.is.null,closing_date.gte.{grace_cutoff}")
-        )
+    query = (
+        supabase.table("jobs_user_facing")
+        .select("*", count="estimated")
+        .eq("is_review_required", False)
+        .or_(PUBLIC_JOBS_OR_FILTER)
+    )
+    if not show_archived:
+        query = query.in_("visibility_status", list(FEED_STATUSES))
 
     if sort_mode == "closing":
         # PostgREST does not support NULLS LAST inline; emulate by filtering

@@ -48,6 +48,7 @@ from app.services.notification_channels import wants_email_digest, wants_whatsap
 from app.services.quiet_hours import user_in_quiet_hours
 from app.services.whatsapp import send_match_digest
 from app.services.notifications import notify_high_match_web_pushes
+from app.services.job_visibility import include_in_default_feed
 
 logger = logging.getLogger(__name__)
 
@@ -273,11 +274,16 @@ async def get_matches(
     limit: int = Query(10, ge=1, le=50),
     include_closed: bool = Query(
         False,
-        description="When true, include matches whose jobs are inactive or past deadline.",
+        description="Deprecated alias for include_archived.",
+    ),
+    include_archived: bool = Query(
+        False,
+        description="When true, include matches for archived jobs.",
     ),
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
 ):
+    show_archived = include_archived or include_closed
     quota = await build_match_quota_snapshot(user_id, supabase)
     # Pull a wider candidate set than `limit` so the preferences-aware
     # re-rank below can actually move things around. Without this, a
@@ -292,18 +298,12 @@ async def get_matches(
 
     preferences = await _load_user_preferences(user_id, supabase)
     matches = _rows_to_match_results(list(result.data or []), preferences)
-    if not include_closed:
-        from datetime import date
-
-        today = date.today()
+    if not show_archived:
         filtered: list[MatchResult] = []
         for m in matches:
-            job = m.job
-            if not job.is_active:
-                continue
-            if job.closing_date and job.closing_date < today:
-                continue
-            filtered.append(m)
+            job_row = m.job.model_dump()
+            if include_in_default_feed(job_row, include_archived=False):
+                filtered.append(m)
         matches = filtered
     return MatchList(matches=matches[:limit], **quota)
 
