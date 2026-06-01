@@ -141,6 +141,76 @@ class CVParseResult(BaseModel):
         return max(0.0, min(f, 1.0))
 
 
+def _try_parse_strict(raw: dict[str, Any]) -> CVParseResult | None:
+    try:
+        return CVParseResult(**raw)
+    except ValidationError:
+        return None
+
+
+def _try_parse_lenient(raw: dict[str, Any]) -> CVParseResult:
+    """Parse flat fields only; drop `sections` when strict validation fails."""
+    sections_attempted = bool(raw.get("sections"))
+    safe = {k: v for k, v in raw.items() if k != "sections"}
+    try:
+        result = CVParseResult(**safe)
+    except ValidationError:
+        raise
+    if sections_attempted:
+        section_keys: list[str] = []
+        raw_sections = raw.get("sections")
+        if isinstance(raw_sections, dict):
+            section_keys = list(raw_sections.keys())
+        _add_cv_parse_breadcrumb(
+            "cv_parse_sections_dropped_due_to_validation",
+            extra={"raw_keys": section_keys},
+        )
+    return result
+
+
+def _parse_individual_sections(raw_sections: dict[str, Any]) -> CVSections | None:
+    if not isinstance(raw_sections, dict):
+        return None
+    allowed = set(CVSections.model_fields.keys())
+    safe_sections: dict[str, Any] = {}
+    for key, value in raw_sections.items():
+        if key not in allowed:
+            continue
+        try:
+            partial = CVSections(**{key: value})
+            safe_sections[key] = getattr(partial, key)
+        except ValidationError:
+            _add_cv_parse_breadcrumb(
+                f"cv_parse_section_{key}_dropped",
+            )
+            continue
+    if not safe_sections:
+        return None
+    try:
+        return CVSections(**safe_sections)
+    except ValidationError:
+        return None
+
+
+def validate_cv_parse_raw(raw: dict[str, Any]) -> CVParseResult:
+    """Validate LLM CV JSON with strict-first, lenient-fallback parsing.
+
+    Flat fields (name, skills, education strings, etc.) are preserved even
+    when the nested ``sections`` object has one bad subsection.
+    """
+    validated = _try_parse_strict(raw)
+    if validated is not None:
+        return validated
+
+    result = _try_parse_lenient(raw)
+    raw_sections = raw.get("sections")
+    if isinstance(raw_sections, dict):
+        salvaged = _parse_individual_sections(raw_sections)
+        if salvaged is not None:
+            return result.model_copy(update={"sections": salvaged})
+    return result
+
+
 CV_PARSE_SYSTEM_PROMPT = """You are a CV/resume parser for the Zambian job market.
 Extract structured information from CV text and return ONLY valid JSON.
 
@@ -368,7 +438,7 @@ async def parse_cv_with_llm(
                 )
 
             try:
-                validated = CVParseResult(**raw)
+                validated = validate_cv_parse_raw(raw)
             except ValidationError as ve:
                 logger.error(
                     "LLM returned malformed CV JSON. raw=%r errors=%s",

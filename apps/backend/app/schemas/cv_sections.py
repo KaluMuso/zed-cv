@@ -13,7 +13,7 @@ locale.
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
@@ -32,6 +32,33 @@ MAX_MEMBERSHIPS = 15
 MAX_VOLUNTEER = 10
 MAX_REFERENCES = 6
 MAX_PROJECT_TECHNOLOGIES = 20
+
+
+def _coerce_optional_date(v: Any) -> Optional[str]:
+    """Normalize LLM date shapes to YYYY-MM / YYYY strings."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return str(int(v))[:20]
+    if isinstance(v, dict):
+        year = v.get("year")
+        month = v.get("month")
+        if year is not None:
+            if month is not None:
+                try:
+                    return f"{int(year):04d}-{int(month):02d}"[:20]
+                except (TypeError, ValueError):
+                    return str(year)[:20]
+            return str(year)[:20]
+        return None
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return None
+        if s.lower() in ("present", "current", "now", "ongoing"):
+            return None
+        return s[:20]
+    return str(v).strip()[:20] or None
 
 
 class CVHeader(BaseModel):
@@ -72,6 +99,11 @@ class WorkExperience(BaseModel):
     start_date: Optional[str] = Field(None, max_length=20)
     end_date: Optional[str] = Field(None, max_length=20)
     achievements: list[str] = Field(default_factory=list)
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _coerce_dates(cls, v: Any) -> Optional[str]:
+        return _coerce_optional_date(v)
 
     @field_validator("achievements", mode="before")
     @classmethod
@@ -220,6 +252,57 @@ class CVSections(BaseModel):
     memberships: list[Membership] = Field(default_factory=list)
     volunteer_work: list[VolunteerWork] = Field(default_factory=list)
     references: list[Reference] = Field(default_factory=list)
+
+    @field_validator("work_experience", mode="before")
+    @classmethod
+    def _coerce_work_experience_entries(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            return []
+        out: list[Any] = []
+        for item in v:
+            if isinstance(item, str):
+                s = item.strip()
+                if s:
+                    out.append({"title": s, "company": ""})
+            elif isinstance(item, dict):
+                out.append(item)
+        return out
+
+    @field_validator("education", mode="before")
+    @classmethod
+    def _coerce_education_entries(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            return []
+        out: list[Any] = []
+        for item in v:
+            if isinstance(item, str):
+                s = item.strip()
+                if s:
+                    out.append({"degree": s, "institution": ""})
+            elif isinstance(item, dict):
+                out.append(item)
+        return out
+
+    @field_validator("references", mode="before")
+    @classmethod
+    def _coerce_reference_entries(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            return []
+        out: list[Any] = []
+        for item in v:
+            if isinstance(item, str):
+                s = item.strip()
+                if s:
+                    out.append({"name": s})
+            elif isinstance(item, dict):
+                out.append(item)
+        return out
 
     @field_validator("work_experience", mode="after")
     @classmethod

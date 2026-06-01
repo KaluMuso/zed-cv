@@ -23,6 +23,7 @@ from app.services.cv_parser import (
     CVParseResult,
     _add_cv_parse_breadcrumb,
     _get_openrouter_client,
+    validate_cv_parse_raw,
 )
 from app.services.llm import (
     FEATURE_CV_PARSING,
@@ -238,7 +239,7 @@ async def parse_cv_via_vision(pdf_bytes: bytes) -> dict[str, Any]:
                 raise ValueError("Vision CV parse returned invalid JSON")
 
             try:
-                validated = CVParseResult.model_validate(raw)
+                validated = validate_cv_parse_raw(raw)
             except ValidationError as ve:
                 _add_cv_parse_breadcrumb(
                     "cv_vision_pydantic_validation_failed",
