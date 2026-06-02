@@ -39,7 +39,7 @@ return [{
       contents: [{ parts: [{ text: fullPrompt }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 32768,
+        maxOutputTokens: 8192,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingBudget: 0 }
       }

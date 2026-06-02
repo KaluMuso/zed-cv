@@ -15,6 +15,7 @@ from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase, require_admin
 from app.schemas.push import PushTestRequest, PushTestResponse
 from app.services.matching import get_credited_match_count
+from app.services.match_delivery_repair import repair_user_match_delivery
 from app.schemas.admin import (
     AdminParserStats,
     AdminLlmCostStats,
@@ -45,6 +46,8 @@ from app.schemas.admin import (
     AdminContactFixJobList,
     AdminJobContactPatch,
     AdminWelcomeBonusUpdate,
+    AdminRepairDeliveryRequest,
+    AdminRepairDeliveryResponse,
     AdminJobReviewRow,
     AdminJobReviewQueue,
     AdminJobReviewUpdate,
@@ -864,6 +867,28 @@ async def update_user_welcome_bonus(
         welcome_match_bonus_until=u.get("welcome_match_bonus_until"),
         created_at=u.get("created_at"),
     )
+
+
+@router.post(
+    "/users/{user_id}/repair-delivery-quota",
+    response_model=AdminRepairDeliveryResponse,
+)
+async def repair_user_delivery_quota(
+    user_id: str,
+    body: AdminRepairDeliveryRequest,
+    supabase=Depends(get_supabase),
+):
+    """Superadmin: cap delivered matches to tier quota (welcome window + re-credit)."""
+    try:
+        result = await repair_user_match_delivery(
+            user_id,
+            supabase,
+            reset_month_credits=body.reset_month_credits,
+            apply_welcome=body.apply_welcome,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return AdminRepairDeliveryResponse(**result)
 
 
 @router.get("/jobs", response_model=AdminJobList)

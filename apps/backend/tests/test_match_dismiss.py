@@ -55,7 +55,10 @@ def test_dismiss_match_sets_status(client, auth_headers):
     body = res.json()
     assert body["match_id"] == MATCH_ID
     assert body["status"] == "dismissed"
-    table.update.assert_called_once_with({"status": "dismissed"})
+    table.update.assert_called_once()
+    update_payload = table.update.call_args[0][0]
+    assert update_payload["status"] == "dismissed"
+    assert "dismissed_at" in update_payload
 
 
 def test_dismiss_match_not_found(client, auth_headers):

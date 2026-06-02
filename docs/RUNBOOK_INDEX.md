@@ -13,6 +13,7 @@ Single entry point for humans and AI agents. **Read [AGENTS.md](../AGENTS.md) fi
 | WhatsApp OTP 503 | [AGENTS.md §3.3](../AGENTS.md) — WAHA session recovery |
 | Email OTP 503 | [AGENTS.md §3.8](../AGENTS.md) — Resend domain |
 | Payment widget broken | [lenco_production_smoke_test.md](lenco_production_smoke_test.md) |
+| User sees 40+ matches / admin shows 0/7 delivered | Admin → Users → **Repair quota** (or `POST /admin/users/{id}/repair-delivery-quota`) — see § Admin match delivery below |
 | Schema 500 after deploy | [migrations.md](migrations.md) + `production_readiness_audit.py` |
 
 ---
@@ -103,6 +104,23 @@ cd apps/backend && python scripts/production_readiness_audit.py
 
 ---
 
+### Admin — match delivery quota
+
+| Action | When to use |
+|--------|-------------|
+| **Admin UI → Users → Repair quota** | Free user saw too many matches; admin credits show `0/N` this month but `/matches` lists many rows; welcome window missing (`welcome_match_bonus_until` empty). |
+| `POST /api/v1/admin/users/{user_id}/repair-delivery-quota` | Same as button; body `{ "apply_welcome": true, "reset_month_credits": true }` (both default true). Superadmin JWT required. |
+
+**What it does:**
+
+1. **Welcome window** (free tier, `apply_welcome`): sets `welcome_match_bonus=7` if unset; sets `welcome_match_bonus_until` to `created_at + 31 days` if missing or expired.
+2. **Re-credit** (`reset_month_credits`): clears `credited_at` for matches credited in the current billing month, then runs `backfill_match_credits` so only the top scores up to the effective tier limit get `credited_at` again.
+3. User should refresh `/matches` — list shows only quota-delivered rows.
+
+Replaces manual Supabase SQL on `users` + `matches`. Apply migrations **097** (dismiss reason) and **098** (skill aliases) when deploying this release.
+
+---
+
 ### n8n — ingest, digests, heartbeat
 
 | Doc | When to use |
@@ -114,6 +132,8 @@ cd apps/backend && python scripts/production_readiness_audit.py
 | [whatsapp_scraping.md](whatsapp_scraping.md) | Channel scraper webhook |
 
 **Ingest key rotation (summary):** generate new `INGEST_API_KEY` → update OCI `apps/backend/.env` + n8n workflow env → remove hardcoded keys from Job Scraper node → `force-recreate` backend. Details: [infra/n8n/README.md § Secret rotation](../infra/n8n/README.md).
+
+**OpenRouter cost (job scraper):** re-import `infra/n8n/job_scraper.json`; set `OPENROUTER_MODEL=google/gemini-2.0-flash` (default in repo). Workflow uses `max_tokens: 8192` per parse (was 32768). Monitor `llm_usage_log` after deploy.
 
 **Heartbeat:** must stay active every 6h on every Supabase free-tier project ([AGENTS.md invariant](../AGENTS.md)).
 

@@ -625,6 +625,49 @@ components:
         welcome_match_bonus: { type: integer, minimum: 1, maximum: 999 }
         welcome_match_bonus_until: { type: string, format: date-time }
 
+    AdminRepairDeliveryRequest:
+      type: object
+      properties:
+        reset_month_credits:
+          type: boolean
+          default: true
+          description: Clear credited_at this billing month, then re-credit up to tier cap.
+        apply_welcome:
+          type: boolean
+          default: true
+          description: Free tier — set 7 welcome matches and extend window if missing/expired.
+
+    AdminRepairDeliveryResponse:
+      type: object
+      required: [user_id, tier, matches_limit, credited_before, credited_after]
+      properties:
+        user_id: { type: string, format: uuid }
+        tier: { type: string }
+        matches_limit: { type: integer }
+        credited_before: { type: integer }
+        credited_after: { type: integer }
+        credits_reset_this_month: { type: integer }
+        newly_credited_job_ids:
+          type: array
+          items: { type: string, format: uuid }
+        welcome_bonus_updated: { type: boolean }
+
+    MatchDismissRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [not_relevant, wrong_location, salary_too_low, experience_mismatch, already_applied, other]
+          nullable: true
+
+    MatchDismissResponse:
+      type: object
+      required: [match_id, status]
+      properties:
+        match_id: { type: string, format: uuid }
+        status: { type: string, enum: [dismissed] }
+        reason: { type: string, nullable: true }
+
     AdminUserList:
       type: object
       properties:
@@ -2804,6 +2847,33 @@ paths:
         '404': { description: User not found }
         '422': { description: No fields to update }
 
+  /admin/users/{user_id}/repair-delivery-quota:
+    post:
+      operationId: adminRepairUserDeliveryQuota
+      summary: Reset and re-apply monthly match delivery quota for a user
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Superadmin repair for over-delivered matches. Clears credited_at for the
+        current billing month (optional), restores free-tier welcome window when
+        missing, then credits top matches up to the effective tier limit.
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminRepairDeliveryRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminRepairDeliveryResponse' }
+        '404': { description: User not found }
+
   /admin/jobs/manual:
     post:
       operationId: adminCreateJobManual
@@ -3736,18 +3806,20 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchDismissRequest' }
       responses:
         '200':
           content:
             application/json:
-              schema:
-                type: object
-                required: [match_id, status]
-                properties:
-                  match_id: { type: string, format: uuid }
-                  status: { type: string, enum: [dismissed] }
+              schema: { $ref: '#/components/schemas/MatchDismissResponse' }
         '404':
           description: Match not found
+        '422':
+          description: Invalid dismiss reason
 
   /matches/{match_id}/tailor-cv:
     post:

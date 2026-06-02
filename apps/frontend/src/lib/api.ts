@@ -1075,6 +1075,25 @@ export const admin = {
         body: JSON.stringify(body),
       }
     ),
+  repairDeliveryQuota: (
+    token: string,
+    userId: string,
+    body?: { reset_month_credits?: boolean; apply_welcome?: boolean },
+  ) =>
+    apiFetch<{
+      user_id: string;
+      tier: string;
+      matches_limit: number;
+      credited_before: number;
+      credited_after: number;
+      credits_reset_this_month: number;
+      newly_credited_job_ids: string[];
+      welcome_bonus_updated: boolean;
+    }>(`/admin/users/${encodeURIComponent(userId)}/repair-delivery-quota`, {
+      method: "POST",
+      token,
+      body: JSON.stringify(body ?? {}),
+    }),
   createJob: (token: string, data: AdminJobCreate) =>
     apiFetch<Job>("/admin/jobs", {
       method: "POST",
@@ -1603,10 +1622,26 @@ export const matches = {
       method: "POST",
       token,
     }),
-  dismiss: (token: string, matchId: string) =>
-    apiFetch<{ match_id: string; status: string }>(
+  dismiss: (
+    token: string,
+    matchId: string,
+    body?: {
+      reason?:
+        | "not_relevant"
+        | "wrong_location"
+        | "salary_too_low"
+        | "experience_mismatch"
+        | "already_applied"
+        | "other";
+    },
+  ) =>
+    apiFetch<{ match_id: string; status: string; reason?: string | null }>(
       `/matches/${encodeURIComponent(matchId)}/dismiss`,
-      { method: "POST", token },
+      {
+        method: "POST",
+        token,
+        body: body ? JSON.stringify(body) : undefined,
+      },
     ),
 };
 

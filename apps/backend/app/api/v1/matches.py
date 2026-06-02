@@ -19,6 +19,11 @@ from app.core.tier_gating import (
 )
 from app.services.cv_generator import generate_tailored_cv_for_match
 from app.core.rate_limit import limiter
+from app.schemas.match_feedback import (
+    VALID_DISMISS_REASONS,
+    MatchDismissRequest,
+    MatchDismissResponse,
+)
 from app.schemas.matching import (
     MatchResult,
     MatchList,
@@ -326,21 +331,21 @@ class MatchTailorCvResponse(BaseModel):
     completion_tokens: Optional[int] = None
 
 
-class MatchDismissResponse(BaseModel):
-    match_id: str
-    status: str = "dismissed"
-
-
 @router.post("/{match_id}/dismiss", response_model=MatchDismissResponse)
 async def dismiss_match(
     match_id: str,
+    body: MatchDismissRequest | None = None,
     user_id: str = Depends(get_current_user_id),
     supabase=Depends(get_supabase),
 ):
     """Soft-hide a match from the user's feed (status dismissed)."""
+    reason = body.reason if body else None
+    if reason is not None and reason not in VALID_DISMISS_REASONS:
+        raise HTTPException(status_code=422, detail="Invalid dismiss reason")
+
     existing = (
         supabase.table("matches")
-        .select("id, status")
+        .select("id, status, job_id")
         .eq("id", match_id)
         .eq("user_id", user_id)
         .limit(1)
@@ -350,17 +355,38 @@ async def dismiss_match(
         raise HTTPException(status_code=404, detail="Match not found")
     row = existing.data[0]
     if row.get("status") == "dismissed":
-        return MatchDismissResponse(match_id=match_id, status="dismissed")
+        return MatchDismissResponse(match_id=match_id, status="dismissed", reason=reason)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    patch: dict[str, str] = {
+        "status": "dismissed",
+        "dismissed_at": now_iso,
+    }
+    if reason:
+        patch["dismiss_reason"] = reason
     updated = (
         supabase.table("matches")
-        .update({"status": "dismissed"})
+        .update(patch)
         .eq("id", match_id)
         .eq("user_id", user_id)
         .execute()
     )
     if not updated.data:
         raise HTTPException(status_code=500, detail="Could not hide match")
-    return MatchDismissResponse(match_id=match_id, status="dismissed")
+    try:
+        supabase.table("analytics_events").insert(
+            {
+                "event": "match_dismissed",
+                "user_id": user_id,
+                "metadata": {
+                    "match_id": match_id,
+                    "job_id": row.get("job_id"),
+                    "reason": reason,
+                },
+            }
+        ).execute()
+    except Exception:
+        logger.debug("match_dismissed analytics insert failed", exc_info=True)
+    return MatchDismissResponse(match_id=match_id, status="dismissed", reason=reason)
 
 
 @router.post("/{match_id}/tailor-cv", response_model=MatchTailorCvResponse)

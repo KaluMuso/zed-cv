@@ -262,7 +262,7 @@ Repo export `job_scraper.json` is the source of truth. Live n8n must match it be
 
 1. Sign in to `https://automation.vergeo.company`.
 2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
-3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.5-flash`.
+3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.0-flash` (repo default; lower `max_tokens` than 2.5-flash to cut cost).
 4. Re-import `infra/n8n/job_scraper.json` or update all four **AI Parse \*** nodes to POST `https://openrouter.ai/api/v1/chat/completions` with Bearer auth (remove **Google AI** credential).
 3. Open the **Send to ZedApply** HTTP Request node.
 4. Set **Method** `POST` and URL:

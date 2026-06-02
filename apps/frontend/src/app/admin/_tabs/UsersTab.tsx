@@ -69,6 +69,28 @@ export function UsersTab({ token }: { token: string }) {
     }
   };
 
+  const onRepairDelivery = async (userId: string, phone: string) => {
+    const ok = window.confirm(
+      `Repair delivery quota for ${phone}?\n\n` +
+        "• Restores free-tier welcome window (7 matches / 1 month) if missing\n" +
+        "• Clears this month's delivered credits and re-credits top matches up to tier limit\n\n" +
+        "Use after a user saw too many matches. They should refresh /matches after.",
+    );
+    if (!ok) return;
+    setBusyId(userId);
+    try {
+      const result = await admin.repairDeliveryQuota(token, userId);
+      notify.custom.success(
+        `Repaired: ${result.credited_before} → ${result.credited_after} delivered (limit ${result.matches_limit}).`,
+      );
+      load();
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Repair failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const onWelcomeUntilChange = async (userId: string, value: string) => {
     if (!value) return;
     setBusyId(userId);
@@ -160,6 +182,7 @@ export function UsersTab({ token }: { token: string }) {
                 <AdminSortableTableHead label="Matches" sortProps={sortProps("matches_used")} />
                 <TableHead>Welcome bonus until</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Actions</TableHead>
                 <AdminSortableTableHead label="Joined" sortProps={sortProps("created_at")} />
               </TableRow>
             </TableHeader>
@@ -167,12 +190,12 @@ export function UsersTab({ token }: { token: string }) {
               {loading && (
                 <SkeletonTableRows
                   rows={5}
-                  widths={["w-32", "w-28", "w-20", "w-12", "w-36", "w-12", "w-20"]}
+                  widths={["w-32", "w-28", "w-20", "w-12", "w-36", "w-12", "w-24", "w-20"]}
                 />
               )}
               {!loading && sorted.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <EmptyState title="No users found" description="Try a different search or tier filter." className="border-0 bg-transparent py-8" />
                   </TableCell>
                 </TableRow>
@@ -216,6 +239,18 @@ export function UsersTab({ token }: { token: string }) {
                       ) : (
                         <span className="text-muted-foreground text-xs">user</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        disabled={busyId === u.id}
+                        onClick={() => void onRepairDelivery(u.id, u.phone)}
+                      >
+                        Repair quota
+                      </Button>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{formatDate(u.created_at)}</TableCell>
                   </TableRow>

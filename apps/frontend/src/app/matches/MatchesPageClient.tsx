@@ -28,6 +28,10 @@ import Link from "next/link";
 import { notify } from "@/lib/toast";
 import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { MatchExplanationModal } from "./_components/MatchExplanationModal";
+import {
+  MatchDismissModal,
+  type MatchDismissReason,
+} from "@/components/matches/MatchDismissModal";
 import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
 import { CoverLetterMatchModal } from "@/components/matches/CoverLetterMatchModal";
 import { resolveMatchQuotaDisplay } from "@/lib/matchQuota";
@@ -86,6 +90,7 @@ export default function MatchesPageClient() {
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(() => new Set());
   const [autoTriggering, setAutoTriggering] = useState(false);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const [dismissFor, setDismissFor] = useState<MatchData | null>(null);
   const autoTriggeredRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
 
@@ -187,12 +192,13 @@ export default function MatchesPageClient() {
     }
   }, [token, refreshing, refreshCooldown, data]);
 
-  const handleDismissMatch = useCallback(
-    async (match: MatchData) => {
-      if (!token || dismissingId) return;
+  const confirmDismissMatch = useCallback(
+    async (reason: MatchDismissReason | undefined) => {
+      const match = dismissFor;
+      if (!token || !match || dismissingId) return;
       setDismissingId(match.id);
       try {
-        await matchesApi.dismiss(token, match.id);
+        await matchesApi.dismiss(token, match.id, reason ? { reason } : undefined);
         setData((prev) =>
           prev
             ? {
@@ -202,6 +208,7 @@ export default function MatchesPageClient() {
             : prev,
         );
         if (detailMatch?.id === match.id) setDetailMatch(null);
+        setDismissFor(null);
         notify.custom.success("Match hidden.");
       } catch (e: unknown) {
         notify.error(
@@ -211,7 +218,7 @@ export default function MatchesPageClient() {
         setDismissingId(null);
       }
     },
-    [token, dismissingId, detailMatch?.id],
+    [token, dismissFor, dismissingId, detailMatch?.id],
   );
 
   const toggleAutoMatch = useCallback(async () => {
@@ -765,7 +772,7 @@ export default function MatchesPageClient() {
               onTailorCvClick={() => setTailorFor(match)}
               onCoverLetterClick={() => setCoverLetterFor(match)}
               onWhyMatchClick={() => setDetailMatch(match)}
-              onDismissClick={() => void handleDismissMatch(match)}
+              onDismissClick={() => setDismissFor(match)}
               dismissing={dismissingId === match.id}
             />
           ))}
@@ -776,6 +783,14 @@ export default function MatchesPageClient() {
         match={detailMatch}
         open={detailMatch !== null}
         onClose={() => setDetailMatch(null)}
+      />
+
+      <MatchDismissModal
+        match={dismissFor}
+        open={dismissFor !== null}
+        saving={dismissingId === dismissFor?.id}
+        onClose={() => setDismissFor(null)}
+        onConfirm={(reason) => void confirmDismissMatch(reason)}
       />
 
       <ApplyModal

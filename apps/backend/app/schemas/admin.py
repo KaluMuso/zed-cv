@@ -92,6 +92,28 @@ class AdminWelcomeBonusUpdate(BaseModel):
     welcome_match_bonus_until: Optional[datetime] = None
 
 
+class AdminRepairDeliveryRequest(BaseModel):
+    reset_month_credits: bool = Field(
+        True,
+        description="Clear credited_at for this billing month, then re-credit up to tier limit.",
+    )
+    apply_welcome: bool = Field(
+        True,
+        description="For free tier: set welcome bonus 7 and extend window if missing/expired.",
+    )
+
+
+class AdminRepairDeliveryResponse(BaseModel):
+    user_id: str
+    tier: str
+    matches_limit: int
+    credited_before: int
+    credited_after: int
+    credits_reset_this_month: int
+    newly_credited_job_ids: list[str] = Field(default_factory=list)
+    welcome_bonus_updated: bool = False
+
+
 class AdminUserList(BaseModel):
     users: list[AdminUserRow]
     total: int
