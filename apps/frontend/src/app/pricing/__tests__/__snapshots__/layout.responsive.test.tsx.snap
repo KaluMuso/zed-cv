@@ -42,7 +42,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         role="status"
         style="background: color-mix(in srgb, var(--copper-500) 12%, transparent); border: 1px solid var(--copper-500); color: var(--ink);"
       >
-        First 2 months: 50% off for paid tiers, 7 free matches/month for Free
+        First month: 50% off for paid tiers, 7 free matches/month for Free
       </div>
     </div>
     <div
@@ -107,7 +107,7 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
                 />
               </svg>
             </span>
-            3 job matches per month (7/mo welcome bonus for your first 2 months)
+            3 job matches per month (7/mo welcome bonus for your first 1 months)
           </li>
           <li
             class="flex items-start gap-2.5 text-sm"
@@ -1975,7 +1975,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         role="status"
         style="background: color-mix(in srgb, var(--copper-500) 12%, transparent); border: 1px solid var(--copper-500); color: var(--ink);"
       >
-        First 2 months: 50% off for paid tiers, 7 free matches/month for Free
+        First month: 50% off for paid tiers, 7 free matches/month for Free
       </div>
     </div>
     <div
@@ -2040,7 +2040,7 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
                 />
               </svg>
             </span>
-            3 job matches per month (7/mo welcome bonus for your first 2 months)
+            3 job matches per month (7/mo welcome bonus for your first 1 months)
           </li>
           <li
             class="flex items-start gap-2.5 text-sm"

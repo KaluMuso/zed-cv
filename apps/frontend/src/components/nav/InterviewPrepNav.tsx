@@ -55,9 +55,7 @@ export function InterviewPrepNav({
       <Icon
         name="sparkle"
         size={14}
-        className="shrink-0"
-        style={premium ? { color: PREMIUM_PURPLE } : undefined}
-        aria-hidden
+        className={cn("shrink-0", premium && "text-[#a855f7]")}
       />
       Interview Prep
     </>
