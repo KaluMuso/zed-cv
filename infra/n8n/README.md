@@ -102,7 +102,20 @@ If **AI Parse \*** nodes return `Your project has been denied access`, the live 
 
 ### Combine All Sources: jobs with `source_url: null`
 
-OpenRouter can return valid `choices[0].message.content` while every job still has `source_url` / `apply_url` null and `posted_at` like `9h ago`. **Prep \*** nodes extract `href` links into `extractedLinks` before HTML strip; **Normalize and Deduplicate** reads those links from each Prep node (by branch index) and fuzzy-matches titles to URLs when the LLM omitted `source_url`. It also converts relative `posted_at` to ISO `YYYY-MM-DD`. Re-import `job_scraper.json` after any change to Prep or Normalize nodes.
+OpenRouter can return valid `choices[0].message.content` while every job still has `source_url` / `apply_url` null and `posted_at` like `9h ago` or `Posted 19 hours ago`. **Prep \*** nodes extract `href` links into `extractedLinks` before HTML strip; **Normalize and Deduplicate** reads those links from each Prep node (by branch index) and fuzzy-matches titles to URLs when the LLM omitted `source_url`. It keeps per-job aggregator URLs (e.g. `gozambiajobs.com/jobs/123-slug`) and drops homepages only. It also converts relative `posted_at` to ISO `YYYY-MM-DD`.
+
+**Source of truth:** `infra/n8n/snippets/normalize_and_deduplicate.js` — paste the full file into the n8n **Normalize and Deduplicate** Code node, or re-import `job_scraper.json` (the export embeds the same code).
+
+### Post-ingest deep-enrich + review queue
+
+After scraper ingest, jobs often land in the admin **review queue** (`is_review_required=true`) when apply path or closing date is missing. Two mechanisms clear that backlog:
+
+1. **Backend (automatic):** `POST /api/v1/jobs/ingest` schedules `schedule_post_ingest_deep_enrich` (fire-and-forget, limit capped 10–80 from ingest count).
+2. **n8n (explicit):** **Deep Enrich After Ingest** node POSTs `/api/v1/jobs/deep-enrich-tick?limit=80&include_review_queue=true` after **Send to Zed CV** (wired in repo `job_scraper.json`).
+
+The 6h cron export `deep_enrich_cron_6h.json` uses the same `include_review_queue=true` query param. Deep-enrich fetches `source_url`, runs LLM extraction, splits multi-role listings, and re-runs review-state so rows can auto-activate when contacts and deadlines are found.
+
+Re-import `job_scraper.json` after any change to Prep, Normalize, or Deep Enrich nodes.
 
 ## Job Scraper — patch live workflow (`rsgZLi6UAcC3lXvu`)
 

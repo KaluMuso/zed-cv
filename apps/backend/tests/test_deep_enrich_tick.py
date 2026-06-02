@@ -46,10 +46,28 @@ class TestDeepEnrichTick:
     def test_deep_enrich_tick_with_ingest_key(self, mock_tick, client, fake_supabase):
         fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[]))
         resp = client.post(
-            f"{MOUNTED_PATH}?limit=10",
+            f"{MOUNTED_PATH}?limit=10&include_review_queue=true",
             headers=INGEST_HEADERS,
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body == {"enriched": 1, "split": 0, "failed": 1, "skipped": 0}
+        mock_tick.assert_awaited_once_with(
+            fake_supabase,
+            limit=10,
+            include_review_queue=True,
+        )
+
+    @patch(
+        "app.api.v1.jobs.run_deep_enrich_tick",
+        new_callable=AsyncMock,
+        return_value={"enriched": 0, "split": 0, "failed": 0, "skipped": 0},
+    )
+    def test_deep_enrich_tick_can_exclude_review_queue(self, mock_tick, client):
+        resp = client.post(
+            f"{MOUNTED_PATH}?include_review_queue=false",
+            headers=INGEST_HEADERS,
+        )
+        assert resp.status_code == 200
         mock_tick.assert_awaited_once()
+        assert mock_tick.await_args.kwargs["include_review_queue"] is False

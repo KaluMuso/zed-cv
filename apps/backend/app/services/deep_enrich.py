@@ -484,30 +484,53 @@ def _needs_deep_enrich(row: dict[str, Any]) -> bool:
         return True
 
 
+_DEEP_ENRICH_SELECT = (
+    "id, title, company, location, description, source_url, apply_url, "
+    "apply_email, contact_phone, source, posted_at, closing_date, "
+    "created_at, deep_enriched_at, salary_min, salary_max, is_active, "
+    "is_review_required"
+)
+
+
+def filter_deep_enrich_candidates(
+    rows: list[dict[str, Any]],
+    *,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Rows with fetchable source_url that still need a deep-enrich pass."""
+    eligible = [
+        r
+        for r in rows
+        if _needs_deep_enrich(r) and (_resolve_fetch_url(r) is not None)
+    ]
+    return eligible[:limit]
+
+
 async def run_deep_enrich_tick(
     supabase: Any,
     *,
     limit: int = 25,
     dry_run: bool = False,
+    include_review_queue: bool = True,
 ) -> dict[str, int]:
-    """Process up to `limit` jobs pending deep enrichment."""
-    result = (
+    """Process up to ``limit`` jobs pending deep enrichment.
+
+    When ``include_review_queue`` is true (default), also selects rows with
+    ``is_review_required=true`` so scraper ingest can clear the admin queue
+    after fetching full listing pages (apply path + deadline).
+    """
+    query = (
         supabase.table("jobs")
-        .select(
-            "id, title, company, location, description, source_url, apply_url, "
-            "apply_email, contact_phone, source, posted_at, closing_date, "
-            "created_at, deep_enriched_at, salary_min, salary_max, is_active"
-        )
-        .eq("is_active", True)
+        .select(_DEEP_ENRICH_SELECT)
         .order("created_at", desc=True)
-        .limit(limit * 3)
-        .execute()
+        .limit(max(limit * 5, limit))
     )
-    rows = [
-        r
-        for r in (result.data or [])
-        if _needs_deep_enrich(r) and (_resolve_fetch_url(r) is not None)
-    ][:limit]
+    if include_review_queue:
+        query = query.or_("is_active.eq.true,is_review_required.eq.true")
+    else:
+        query = query.eq("is_active", True)
+    result = query.execute()
+    rows = filter_deep_enrich_candidates(result.data or [], limit=limit)
 
     stats = {"enriched": 0, "split": 0, "failed": 0, "skipped": 0}
     for row in rows:
@@ -521,3 +544,25 @@ async def run_deep_enrich_tick(
         else:
             stats["failed"] += 1
     return stats
+
+
+async def schedule_post_ingest_deep_enrich(
+    supabase: Any,
+    *,
+    ingested_count: int,
+) -> dict[str, int]:
+    """Fire-and-forget helper after bulk scraper ingest (budget-capped)."""
+    if ingested_count <= 0:
+        return {"enriched": 0, "split": 0, "failed": 0, "skipped": 0}
+    limit = min(max(ingested_count, 10), 80)
+    try:
+        stats = await run_deep_enrich_tick(
+            supabase,
+            limit=limit,
+            include_review_queue=True,
+        )
+        logger.info("post_ingest deep_enrich tick limit=%s stats=%s", limit, stats)
+        return stats
+    except Exception:
+        logger.warning("post_ingest deep_enrich tick failed", exc_info=True)
+        return {"enriched": 0, "split": 0, "failed": 0, "skipped": 0}

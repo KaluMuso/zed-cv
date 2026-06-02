@@ -1,4 +1,5 @@
 """Job listing routes."""
+import asyncio
 import hashlib
 import html as _html
 import logging
@@ -41,6 +42,7 @@ from app.services.job_page_text_extractor import (
     resolve_apply_contacts_from_aggregator_url,
 )
 from app.services.deep_scrape_tick import run_deep_enrich_tick
+from app.services.deep_enrich import schedule_post_ingest_deep_enrich
 from app.services.description_body_extractor import merge_description_extraction
 from app.services.job_quality import (
     apply_ingest_quality_to_job_data,
@@ -556,6 +558,13 @@ async def list_jobs_for_sitemap(supabase=Depends(get_supabase)):
 async def deep_enrich_tick(
     request: Request,
     limit: int = Query(25, ge=1, le=100),
+    include_review_queue: bool = Query(
+        True,
+        description=(
+            "When true, also deep-enrich jobs in the admin review queue "
+            "(is_review_required) so scraper rows can gain apply contacts and deadlines."
+        ),
+    ),
     ingest_api_key: str | None = Header(None, alias="INGEST_API_KEY"),
     x_ingest_api_key: str | None = Header(None, alias="X-INGEST-API-KEY"),
     supabase=Depends(get_supabase),
@@ -571,7 +580,11 @@ async def deep_enrich_tick(
     ``deep-enrich-tick`` as a job UUID (which would yield HTTP 405 on POST).
     """
     _require_ingest_header(settings, ingest_api_key, x_ingest_api_key)
-    stats = await run_deep_enrich_tick(supabase, limit=limit)
+    stats = await run_deep_enrich_tick(
+        supabase,
+        limit=limit,
+        include_review_queue=include_review_queue,
+    )
     return DeepEnrichTickResponse(**stats)
 
 
@@ -1038,6 +1051,23 @@ async def ingest_jobs(
                 title=(getattr(job, "title", None) or "<unknown>")[:80],
                 reason=detail,
             ))
+
+    if ingested > 0:
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(
+                schedule_post_ingest_deep_enrich(
+                    supabase,
+                    ingested_count=ingested,
+                )
+            )
+        except RuntimeError:
+            asyncio.run(
+                schedule_post_ingest_deep_enrich(
+                    supabase,
+                    ingested_count=ingested,
+                )
+            )
 
     return JobIngestResponse(
         ingested=ingested,

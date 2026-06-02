@@ -3605,12 +3605,20 @@ paths:
       operationId: deepEnrichTick
       tags: [Jobs]
       description: |
-        Secondary scrape batch (n8n cron). Fetches HTTP source_url pages for jobs
-        with is_enriched=false, discovers apply_url/apply_email, and sets migration-045
-        contact fields. Auth via INGEST_API_KEY / X-INGEST-API-KEY (same as bulk ingest).
+        Secondary scrape batch (n8n cron and post-ingest hook). Fetches HTTP
+        source_url pages for jobs pending deep enrichment, discovers
+        apply_url/apply_email/closing_date, splits multi-role listings, and
+        clears admin review queue rows when contacts are found. Auth via
+        INGEST_API_KEY / X-INGEST-API-KEY (same as bulk ingest).
       security: []
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - name: include_review_queue
+          in: query
+          schema: { type: boolean, default: true }
+          description: |
+            When true (default), also deep-enrich jobs with is_review_required=true
+            even if is_active=false, so scraper ingest can resolve missing apply paths.
         - { name: X-INGEST-API-KEY, in: header, schema: { type: string } }
         - { name: INGEST_API_KEY, in: header, schema: { type: string } }
       responses:

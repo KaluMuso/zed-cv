@@ -11,7 +11,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/jobs/deep-enrich-tick?limit=50",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/jobs/deep-enrich-tick?limit=50&include_review_queue=true",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
