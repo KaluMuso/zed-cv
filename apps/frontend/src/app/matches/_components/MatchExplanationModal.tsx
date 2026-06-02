@@ -7,6 +7,7 @@ import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 import { ModalPortal } from "@/components/shared/ModalPortal";
 import { splitMatchExplanation } from "@/lib/matchExplanationDisplay";
+import { formatRequiredSkillsDetail, countRequiredJobSkills } from "@/lib/matchBreakdown";
 
 export function MatchExplanationModal({
   match,
@@ -35,6 +36,7 @@ export function MatchExplanationModal({
 
   const { main, preferencesNote } = splitMatchExplanation(match.explanation);
   const missing = match.missing_skills;
+  const requiredSkillsNote = formatRequiredSkillsDetail(countRequiredJobSkills(match));
 
   return (
     <ModalPortal>
@@ -85,6 +87,12 @@ export function MatchExplanationModal({
             <div className="breakdown-grid grid gap-6 sm:grid-cols-2">
               <div>
                 <div className="eyebrow mb-4">Score breakdown</div>
+                <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted)" }}>
+                  Each bar shows points out of a fixed weight (total 100).{" "}
+                  {requiredSkillsNote
+                    ? `Required skills: ${requiredSkillsNote} — a full bar means you match every required skill on the listing.`
+                    : "Required skills compares your CV skills to the job’s required skills."}
+                </p>
                 <MatchScoreBreakdown match={match} />
               </div>
 

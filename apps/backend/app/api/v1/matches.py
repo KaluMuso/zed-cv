@@ -54,6 +54,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/matches", tags=["Matching"])
 
+_MATCH_ACTIVE_STATUSES = ("new", "viewed", "applied", "saved")
+
 # RPC match_jobs_for_user (migration 060) stores rows with score >= 35.
 # List/refresh endpoints default min_score=50 for user-facing feeds.
 _MATCH_RPC_STORE_FLOOR = 35
@@ -292,8 +294,14 @@ async def get_matches(
     # RPC writes at most 20 per run today.
     candidate_limit = max(limit * 3, 30)
     result = (
-        supabase.table("matches").select("*, jobs(*)").eq("user_id", user_id)
-        .gte("score", min_score).order("score", desc=True).limit(candidate_limit).execute()
+        supabase.table("matches")
+        .select("*, jobs(*)")
+        .eq("user_id", user_id)
+        .in_("status", list(_MATCH_ACTIVE_STATUSES))
+        .gte("score", min_score)
+        .order("score", desc=True)
+        .limit(candidate_limit)
+        .execute()
     )
 
     preferences = await _load_user_preferences(user_id, supabase)
@@ -319,6 +327,43 @@ class MatchTailorCvResponse(BaseModel):
     estimated_cost_usd: Optional[float] = None
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
+
+
+class MatchDismissResponse(BaseModel):
+    match_id: str
+    status: str = "dismissed"
+
+
+@router.post("/{match_id}/dismiss", response_model=MatchDismissResponse)
+async def dismiss_match(
+    match_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Soft-hide a match from the user's feed (status dismissed)."""
+    existing = (
+        supabase.table("matches")
+        .select("id, status")
+        .eq("id", match_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Match not found")
+    row = existing.data[0]
+    if row.get("status") == "dismissed":
+        return MatchDismissResponse(match_id=match_id, status="dismissed")
+    updated = (
+        supabase.table("matches")
+        .update({"status": "dismissed"})
+        .eq("id", match_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=500, detail="Could not hide match")
+    return MatchDismissResponse(match_id=match_id, status="dismissed")
 
 
 @router.post("/{match_id}/tailor-cv", response_model=MatchTailorCvResponse)

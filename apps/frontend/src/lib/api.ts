@@ -1603,6 +1603,11 @@ export const matches = {
       method: "POST",
       token,
     }),
+  dismiss: (token: string, matchId: string) =>
+    apiFetch<{ match_id: string; status: string }>(
+      `/matches/${encodeURIComponent(matchId)}/dismiss`,
+      { method: "POST", token },
+    ),
 };
 
 export interface PushSubscribeBody {

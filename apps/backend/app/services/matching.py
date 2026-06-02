@@ -329,6 +329,21 @@ async def store_matches(
     ]
     if not rows:
         return 0
+
+    dismissed_res = (
+        supabase.table("matches")
+        .select("job_id")
+        .eq("user_id", user_id)
+        .eq("status", "dismissed")
+        .execute()
+    )
+    dismissed_job_ids = {
+        str(r["job_id"]) for r in (dismissed_res.data or []) if r.get("job_id")
+    }
+    for row in rows:
+        if str(row["job_id"]) in dismissed_job_ids:
+            row["status"] = "dismissed"
+
     result = supabase.table("matches").upsert(rows, on_conflict="user_id,job_id").execute()
     return len(result.data) if result.data else 0
 

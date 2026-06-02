@@ -3728,6 +3728,27 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MatchList' }
 
+  /matches/{match_id}/dismiss:
+    post:
+      operationId: dismissMatch
+      summary: Hide a match from the user's feed (soft delete)
+      tags: [Matching]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: match_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [match_id, status]
+                properties:
+                  match_id: { type: string, format: uuid }
+                  status: { type: string, enum: [dismissed] }
+        '404':
+          description: Match not found
+
   /matches/{match_id}/tailor-cv:
     post:
       operationId: tailorCvForMatch

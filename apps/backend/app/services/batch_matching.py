@@ -243,6 +243,7 @@ async def fetch_cached_batch_matches(
         .select("*, jobs(*)")
         .eq("user_id", user_id)
         .eq("batch_run_id", batch_run_id)
+        .in_("status", ["new", "viewed", "applied", "saved"])
         .gte("score", min_score)
         .order("score", desc=True)
         .limit(limit)

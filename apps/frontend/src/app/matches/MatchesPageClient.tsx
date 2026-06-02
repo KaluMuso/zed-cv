@@ -85,6 +85,7 @@ export default function MatchesPageClient() {
   const [refreshCooldown, setRefreshCooldown] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState<Set<string>>(() => new Set());
   const [autoTriggering, setAutoTriggering] = useState(false);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
   const autoTriggeredRef = useRef(false);
   const deepLinkHandledRef = useRef(false);
 
@@ -185,6 +186,33 @@ export default function MatchesPageClient() {
       setTimeout(() => setRefreshCooldown(false), 60_000);
     }
   }, [token, refreshing, refreshCooldown, data]);
+
+  const handleDismissMatch = useCallback(
+    async (match: MatchData) => {
+      if (!token || dismissingId) return;
+      setDismissingId(match.id);
+      try {
+        await matchesApi.dismiss(token, match.id);
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                matches: (prev.matches ?? []).filter((m) => m.id !== match.id),
+              }
+            : prev,
+        );
+        if (detailMatch?.id === match.id) setDetailMatch(null);
+        notify.custom.success("Match hidden.");
+      } catch (e: unknown) {
+        notify.error(
+          e instanceof ApiError ? e.detail || "Could not hide match." : "Could not hide match.",
+        );
+      } finally {
+        setDismissingId(null);
+      }
+    },
+    [token, dismissingId, detailMatch?.id],
+  );
 
   const toggleAutoMatch = useCallback(async () => {
     if (!token || !autoPrefs || savingAutoPrefs) return;
@@ -737,6 +765,8 @@ export default function MatchesPageClient() {
               onTailorCvClick={() => setTailorFor(match)}
               onCoverLetterClick={() => setCoverLetterFor(match)}
               onWhyMatchClick={() => setDetailMatch(match)}
+              onDismissClick={() => void handleDismissMatch(match)}
+              dismissing={dismissingId === match.id}
             />
           ))}
         </div>

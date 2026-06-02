@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatBreakdownFraction, matchBreakdownRows } from "../matchBreakdown";
+import {
+  countRequiredJobSkills,
+  formatBreakdownFraction,
+  formatRequiredSkillsDetail,
+  matchBreakdownRows,
+} from "../matchBreakdown";
 
 describe("matchBreakdownRows", () => {
   it("returns five v2 components with correct caps", () => {
@@ -12,7 +17,23 @@ describe("matchBreakdownRows", () => {
     });
     expect(rows).toHaveLength(5);
     expect(rows.map((r) => r.max)).toEqual([50, 20, 15, 10, 5]);
-    expect(formatBreakdownFraction(rows[0].value, rows[0].max)).toBe("40/50");
+    expect(formatBreakdownFraction(rows[0].value, rows[0].max)).toBe("40/50 pts");
+  });
+
+  it("labels skills row with required-skill counts", () => {
+    const rows = matchBreakdownRows({
+      skills_score: 20,
+      matched_skills: ["planning", "project management"],
+      missing_skills: [],
+    });
+    const skills = rows.find((r) => r.key === "skills");
+    expect(skills?.label).toBe("Required skills");
+    expect(skills?.detail).toBe("2/2 required skills");
+    expect(countRequiredJobSkills({ matched_skills: ["a"], missing_skills: ["b"] })).toEqual({
+      matched: 1,
+      total: 2,
+    });
+    expect(formatRequiredSkillsDetail({ matched: 2, total: 2 })).toBe("2/2 required skills");
   });
 
   it("falls back to legacy vector/skill/bonus fields", () => {

@@ -14,8 +14,23 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock("@/components/shared/TierGate", () => ({
-  TierGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/components/matches/MatchPremiumActions", () => ({
+  MatchPremiumActions: ({
+    onTailorCvClick,
+    onCoverLetterClick,
+  }: {
+    onTailorCvClick?: () => void;
+    onCoverLetterClick?: () => void;
+  }) => (
+    <div>
+      <button type="button" data-testid="match-tailor-cv" onClick={onTailorCvClick}>
+        Tailor
+      </button>
+      <button type="button" data-testid="match-cover-letter" onClick={onCoverLetterClick}>
+        Cover
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/components/share/JobShareButtons", () => ({
@@ -96,6 +111,14 @@ describe("MatchCard", () => {
     render(<MatchCard match={baseMatch} onTailorCvClick={onTailor} />);
     await user.click(screen.getByTestId("match-tailor-cv"));
     expect(onTailor).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows hide match when onDismissClick is provided", async () => {
+    const user = userEvent.setup();
+    const onDismiss = vi.fn();
+    render(<MatchCard match={baseMatch} onDismissClick={onDismiss} />);
+    await user.click(screen.getByTestId("match-dismiss"));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it("renders an external apply link when apply_url is set", () => {

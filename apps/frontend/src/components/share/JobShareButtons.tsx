@@ -17,6 +17,8 @@ import { notify } from "@/lib/toast";
 interface JobShareButtonsProps {
   job: JobShareInput;
   className?: string;
+  /** Match cards: Share + WhatsApp only (copy/X live in native Share). */
+  variant?: "full" | "compact";
 }
 
 type ShareChannel =
@@ -27,7 +29,11 @@ type ShareChannel =
   | "twitter"
   | "copy";
 
-export function JobShareButtons({ job, className = "" }: JobShareButtonsProps) {
+export function JobShareButtons({
+  job,
+  className = "",
+  variant = "full",
+}: JobShareButtonsProps) {
   const [copying, setCopying] = useState(false);
   const url = jobPermalink(job.id);
   const text = buildJobShareText(job);
@@ -112,53 +118,57 @@ export function JobShareButtons({ job, className = "" }: JobShareButtonsProps) {
         <Icon name="whatsapp" size={16} aria-hidden />
         WhatsApp
       </a>
-      <a
-        href={buildLinkedInShareUrl(url)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="share-btn"
-        aria-label="Share on LinkedIn"
-        onClick={() => trackJobShare("linkedin")}
-        {...plausibleAttrs("linkedin")}
-      >
-        <Icon name="linkedin" size={16} aria-hidden />
-        LinkedIn
-      </a>
-      <a
-        href={buildFacebookShareUrl(url)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="share-btn"
-        aria-label="Share on Facebook"
-        onClick={() => trackJobShare("facebook")}
-        {...plausibleAttrs("facebook")}
-      >
-        <Icon name="facebook" size={16} aria-hidden />
-        Facebook
-      </a>
-      <a
-        href={buildTwitterShareUrl(text, url)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="share-btn"
-        aria-label="Share on X"
-        onClick={() => trackJobShare("twitter")}
-        {...plausibleAttrs("twitter")}
-      >
-        <Icon name="x" size={16} aria-hidden />
-        X
-      </a>
-      <button
-        type="button"
-        className="share-btn"
-        onClick={() => void share("copy")}
-        disabled={copying}
-        aria-label="Copy job link"
-        {...plausibleAttrs("copy")}
-      >
-        <Icon name="link" size={16} aria-hidden />
-        {copying ? "Copied…" : "Copy link"}
-      </button>
+      {variant === "full" ? (
+        <>
+          <a
+            href={buildLinkedInShareUrl(url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="share-btn"
+            aria-label="Share on LinkedIn"
+            onClick={() => trackJobShare("linkedin")}
+            {...plausibleAttrs("linkedin")}
+          >
+            <Icon name="linkedin" size={16} aria-hidden />
+            LinkedIn
+          </a>
+          <a
+            href={buildFacebookShareUrl(url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="share-btn"
+            aria-label="Share on Facebook"
+            onClick={() => trackJobShare("facebook")}
+            {...plausibleAttrs("facebook")}
+          >
+            <Icon name="facebook" size={16} aria-hidden />
+            Facebook
+          </a>
+          <a
+            href={buildTwitterShareUrl(text, url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="share-btn"
+            aria-label="Share on X"
+            onClick={() => trackJobShare("twitter")}
+            {...plausibleAttrs("twitter")}
+          >
+            <Icon name="x" size={16} aria-hidden />
+            X
+          </a>
+          <button
+            type="button"
+            className="share-btn"
+            onClick={() => void share("copy")}
+            disabled={copying}
+            aria-label="Copy job link"
+            {...plausibleAttrs("copy")}
+          >
+            <Icon name="link" size={16} aria-hidden />
+            {copying ? "Copied…" : "Copy link"}
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }
