@@ -104,24 +104,38 @@ If **AI Parse \*** nodes return `Your project has been denied access`, the live 
 
 **Symptom:** **Send to ZedApply** returns `ingested > 0`, but **Deep Enrich After Ingest** returns 401.
 
-**Cause:** The node was calling the **public** URL (`https://api.zedapply.com`) with `X-INGEST-API-KEY`. Some proxies strip custom headers on external requests. Ingest works because auth is in the **JSON body** (`api_key`).
+**Cause:** The node called the **public** URL with only `X-INGEST-API-KEY`; some proxies strip custom headers. Ingest works because auth is in the **JSON body** (`api_key`).
 
-**Also:** The backend already runs `schedule_post_ingest_deep_enrich` after every successful ingest — the n8n node is an optional extra pass, not required for jobs to land.
+**Fix:** Add `api_key` to the query string (PR #228+) and/or use the same `fastapiUrl` as Send. Re-import `job_scraper.json`.
 
-**Fix (n8n UI):** In **Deep Enrich After Ingest**, set URL to the **internal Docker hostname** (n8n and backend share the compose network):
+### Deep Enrich After Ingest: timeout / connection aborted (600s)
 
-```
-={{ 'http://zedcv-backend:8000/api/v1/jobs/deep-enrich-tick?limit=80&include_review_queue=true&api_key=' + encodeURIComponent($('Normalize and Deduplicate').item.json.ingestKey || '') }}
-```
+**Symptom:** n8n error `timeout of 600000ms exceeded` or `connection was aborted` on `http://zedcv-backend:8000/...`.
 
-Keep `X-INGEST-API-KEY` header as `$('Normalize and Deduplicate').item.json.ingestKey` (belt and suspenders). Re-import repo `job_scraper.json` after backend PR merge for query-param fallback.
+**Causes:**
 
-**Smoke from OCI host:**
+1. **n8n and backend not on the same Docker network** — `zedcv-backend` hostname does not resolve from `n8n-docker-n8n-1`. Use **`fastapiUrl`** (`https://api.zedapply.com`) instead of hardcoded `http://zedcv-backend:8000`.
+2. **`limit=80` is too high** — the endpoint runs synchronously (HTTP fetch + LLM per job). On a small VM it can exceed n8n’s 10-minute HTTP timeout. Repo export uses **`limit=15`**; lower to `5` if it still times out.
+3. **Optional node** — backend already runs `schedule_post_ingest_deep_enrich` after ingest. You can **disable** this n8n node if ingest succeeded.
+
+**Smoke from OCI** (backend is not on host `127.0.0.1:8000` unless published):
 
 ```bash
-KEY=$(grep ^INGEST_API_KEY= ~/zedcv/apps/backend/.env | cut -d= -f2-)
-curl -sS -X POST "http://127.0.0.1:8000/api/v1/jobs/deep-enrich-tick?limit=5&include_review_queue=true&api_key=$KEY" | jq .
+KEY=$(grep '^INGEST_API_KEY=' ~/zedcv/apps/backend/.env | cut -d= -f2- | tr -d '"')
+curl -sS -X POST \
+  "https://api.zedapply.com/api/v1/jobs/deep-enrich-tick?limit=3&include_review_queue=true&api_key=${KEY}" \
+  | jq .
 ```
+
+**Test n8n → backend DNS** (only if you insist on internal URL):
+
+```bash
+docker exec n8n-docker-n8n-1 wget -qO- -T 5 http://zedcv-backend:8000/api/v1/health
+```
+
+If that fails, stay on `https://api.zedapply.com` in the workflow.
+
+**Also:** `docker compose logs` must run from `~/n8n-docker`, not `~/zedcv`.
 
 ### Send to ZedApply: HTTP 422 on short title (e.g. `"Chef"`)
 

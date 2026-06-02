@@ -443,7 +443,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://zedcv-backend:8000/api/v1/jobs/deep-enrich-tick?limit=80&include_review_queue=true&api_key=' + encodeURIComponent($('Normalize and Deduplicate').item.json.ingestKey || '') }}",
+        "url": "={{ ($('Normalize and Deduplicate').item.json.fastapiUrl || 'https://api.zedapply.com') + '/api/v1/jobs/deep-enrich-tick?limit=15&include_review_queue=true&api_key=' + encodeURIComponent($('Normalize and Deduplicate').item.json.ingestKey || '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
