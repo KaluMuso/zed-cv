@@ -92,13 +92,78 @@ Repo export `bwana_chat_pipeline.json` uses these weights in:
 | `OPENROUTER_API_KEY` | n8n env + OpenRouter dashboard | Rotate key; update n8n env; revoke old key |
 | `WAHA_API_KEY` | n8n env + WAHA container | Rotate; update n8n; restart WAHA if needed |
 | `INGEST_API_KEY` | n8n env + `apps/backend/.env` on OCI | Generate new key; update both; `docker compose up -d --force-recreate zedcv-backend` |
-| Job scraper ingest | **Was hardcoded in live** `Send to Zed CV` node | Replace body with `api_key: $env.INGEST_API_KEY` per `job_scraper.json`; rotate ingest key if exposed in logs/git |
+| Job scraper ingest | **Was hardcoded in live** `Send to ZedApply` node | Replace body with `api_key: $env.INGEST_API_KEY` per `job_scraper.json`; rotate ingest key if exposed in logs/git |
 
 Bwana live workflow already uses `$env.OPENROUTER_API_KEY` and `$env.WAHA_API_KEY` (no literals in nodes). Job Scraper **must** be patched on n8n — live still had ingest key in JSON body at export time.
 
 ### Job scraper 403 `PERMISSION_DENIED` (Google AI)
 
 If **AI Parse \*** nodes return `Your project has been denied access`, the live workflow is still calling **Google AI Studio** (`generativelanguage.googleapis.com`) with a blocked project. Re-import repo `job_scraper.json`: all four **AI Parse** nodes now use **OpenRouter** (`OPENROUTER_API_KEY`), same as the backend.
+
+### Send to ZedApply: 422 `api_key` Field required
+
+**Symptom:** Normalize returns 50 jobs with valid `source_url`, but **Send to ZedApply** fails with HTTP 422 and `"loc":["body","api_key"],"msg":"Field required"`.
+
+**Cause:** The Send node still uses `api_key: $json.ingestKey`, but **Normalize and Deduplicate** does not pass `ingestKey` on the item.
+
+**Fix:** Paste latest `infra/n8n/snippets/normalize_and_deduplicate.js` into the **Normalize and Deduplicate** Code node (it reads `$env` in Code and outputs `fastapiUrl` + `ingestKey`). Then set **Send to ZedApply**:
+
+1. **URL:** `={{ ($json.fastapiUrl || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
+2. **Body:** `={{ JSON.stringify({ jobs: $json.jobs, api_key: $json.ingestKey }) }}`
+
+Parentheses around the base URL are **required** — without them, `$json.fastapiUrl || 'http://…' + '/api/v1/…'` short-circuits to bare `https://api.zedapply.com` (no path) and the HTTP node fails with “incorrect host”.
+
+### `$env` red / `[access to env vars denied]` in HTTP Request nodes
+
+**Symptom:** `$env.FASTAPI_URL` or `$env.INGEST_API_KEY` is red in **Send to ZedApply** with `[access to env vars denied]`.
+
+**Cause:** Production n8n sets `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=true` (or equivalent). **HTTP Request** parameter expressions cannot read `$env`; **Code** nodes still can.
+
+**Fix (preferred on blocked instances):** **Normalize and Deduplicate** (Code node) copies env into the item:
+
+```javascript
+fastapiUrl: $env.FASTAPI_URL || 'http://zedcv-backend:8000',
+ingestKey: $env.INGEST_API_KEY,
+```
+
+Downstream HTTP nodes use `$json.fastapiUrl` and `$json.ingestKey` (see repo `job_scraper.json`). **Deep Enrich After Ingest** uses `$('Normalize and Deduplicate').item.json.*` because it runs after Send.
+
+**Alternative:** Set `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=false` in the n8n container env and recreate the container — then `$env.*` works directly in HTTP nodes (trade-off: secrets visible in expression editor).
+
+**Settings → Variables:** `FASTAPI_URL` and `INGEST_API_KEY` must still be set (same values as OCI `apps/backend/.env`). If n8n uses process env instead of Variables, set them in docker-compose for the n8n service.
+
+After patch: **Save** → **Publish** → manual test. Expect HTTP 200 `{ "ingested": N, ... }`.
+
+### Ingest HTTP 200 but every job `embedding_failed`
+
+**Symptom:** **Send to ZedApply** returns 200 with `"ingested": 0` and `"errors": [{ "reason": "embedding_failed: …" }]`.
+
+**Cause:** The backend still calls **direct Google Gemini** `embedContent` for each job. Your Google AI Studio project is **PERMISSION_DENIED** (same ban that broke the old scraper Gemini nodes). n8n OpenRouter works for LLM parsing, but **embeddings run inside `zedcv-backend`**, not in n8n.
+
+**Fix on OCI (`~/n8n-docker`):**
+
+1. Ensure `apps/backend/.env` (the file the backend container reads) includes:
+   ```
+   OPENROUTER_API_KEY=sk-or-...   # same key n8n uses for AI Parse
+   EMBEDDING_VIA_OPENROUTER=true   # skip Gemini entirely (recommended)
+   ```
+2. Deploy backend code with OpenRouter embedding support (PR #224 branch or `master` after merge):
+   ```bash
+   cd ~/zed-cv   # or your repo clone path
+   git pull origin cursor/fix-n8n-ingest-api-key-72f6
+   cd ~/n8n-docker
+   docker compose build --no-cache zedcv-backend
+   docker compose up -d --force-recreate zedcv-backend
+   ```
+3. Smoke from inside the container:
+   ```bash
+   docker exec zedcv-backend printenv OPENROUTER_API_KEY EMBEDDING_VIA_OPENROUTER | head -2
+   curl -s https://api.zedapply.com/api/v1/health | jq '{openrouter_configured, embedding_via_openrouter}'
+   ```
+   Expect `openrouter_configured: true` and `embedding_via_openrouter: true`.
+4. Re-run the scraper. Expect `"ingested": N` with N > 0 (duplicates OK on re-run).
+
+Without `EMBEDDING_VIA_OPENROUTER=true`, the backend auto-falls back to OpenRouter only **after** Gemini returns 403 **and** `OPENROUTER_API_KEY` is set. Setting the flag avoids the failed Gemini call on every job.
 
 ### Combine All Sources: jobs with `source_url: null`
 
@@ -111,7 +176,7 @@ OpenRouter can return valid `choices[0].message.content` while every job still h
 After scraper ingest, jobs often land in the admin **review queue** (`is_review_required=true`) when apply path or closing date is missing. Two mechanisms clear that backlog:
 
 1. **Backend (automatic):** `POST /api/v1/jobs/ingest` schedules `schedule_post_ingest_deep_enrich` (fire-and-forget, limit capped 10–80 from ingest count).
-2. **n8n (explicit):** **Deep Enrich After Ingest** node POSTs `/api/v1/jobs/deep-enrich-tick?limit=80&include_review_queue=true` after **Send to Zed CV** (wired in repo `job_scraper.json`).
+2. **n8n (explicit):** **Deep Enrich After Ingest** node POSTs `/api/v1/jobs/deep-enrich-tick?limit=80&include_review_queue=true` after **Send to ZedApply** (wired in repo `job_scraper.json`).
 
 The 6h cron export `deep_enrich_cron_6h.json` uses the same `include_review_queue=true` query param. Deep-enrich fetches `source_url`, runs LLM extraction, splits multi-role listings, and re-runs review-state so rows can auto-activate when contacts and deadlines are found.
 
@@ -125,15 +190,15 @@ Repo export `job_scraper.json` is the source of truth. Live n8n must match it be
 2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
 3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.5-flash`.
 4. Re-import `infra/n8n/job_scraper.json` or update all four **AI Parse \*** nodes to POST `https://openrouter.ai/api/v1/chat/completions` with Bearer auth (remove **Google AI** credential).
-3. Open the **Send to Zed CV** HTTP Request node.
+3. Open the **Send to ZedApply** HTTP Request node.
 4. Set **Method** `POST` and URL:
-   `={{ ($env.FASTAPI_URL || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
+   `={{ ($json.fastapiUrl || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
 5. **Body** → JSON (expression mode):
-   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $env.INGEST_API_KEY }) }}`
-   There must be **no literal** `api_key` string in the node — only `$env.INGEST_API_KEY`.
+   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $json.ingestKey }) }}`
+   Use `$json.*` not `$env.*` when `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS` is enabled (see troubleshooting above).
 6. **Settings** → **Variables** (instance): confirm `INGEST_API_KEY` and `FASTAPI_URL` are set (same values as OCI `apps/backend/.env` ingest secret and public API base).
 7. **Save** → **Publish** (activate if the toggle was off).
-8. **Execute workflow** (manual test) → open the execution → **Send to Zed CV** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
+8. **Execute workflow** (manual test) → open the execution → **Send to ZedApply** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
 9. If the old ingest key ever appeared in git, n8n execution logs, or Slack: **rotate** `INGEST_API_KEY` on OCI and n8n, then `docker compose up -d --force-recreate zedcv-backend` (not `restart`).
 
 Optional: re-import `job_scraper.json` via **Import from File** on a draft copy, diff nodes, then merge credential mappings — do not overwrite live credentials blindly.

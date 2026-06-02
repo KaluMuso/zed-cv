@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     gemini_api_key: str
     embedding_model: str = "gemini-embedding-001"
     embedding_dimensions: int = 768
+    # When True, embed via OpenRouter (google/gemini-embedding-001). Use when
+    # direct Google AI Studio project is PERMISSION_DENIED but OpenRouter works.
+    embedding_via_openrouter: bool = False
 
     # AI: LLM via OpenRouter
     # Stable OpenRouter slug for Gemini 2.0 Flash. The shorthand

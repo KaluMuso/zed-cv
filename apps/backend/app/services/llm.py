@@ -225,6 +225,33 @@ def record_gemini_embedding(
     )
 
 
+def record_openrouter_embedding(
+    *,
+    model: str,
+    prompt_tokens: int,
+    cost_usd: float | None = None,
+    context: LlmLogContext | None = None,
+    supabase: Client | None = None,
+) -> None:
+    ctx = context or get_llm_context() or LlmLogContext(
+        feature=FEATURE_MATCHING, provider="openrouter"
+    )
+    slug = model.split("/")[-1] if "/" in model else model
+    cost = (
+        cost_usd
+        if cost_usd is not None
+        else estimate_gemini_embed_cost_usd(slug, prompt_tokens)
+    )
+    record_llm_usage(
+        model=model,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=0,
+        cost_usd=cost,
+        context=replace(ctx, provider="openrouter"),
+        supabase=supabase,
+    )
+
+
 def record_openai_completion(
     response: Any,
     *,

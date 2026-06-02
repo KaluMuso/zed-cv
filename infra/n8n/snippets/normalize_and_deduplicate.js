@@ -24,25 +24,31 @@ function decodeUrl(raw) {
     .replace(/&#38;/gi, '&');
 }
 
-function sanitizeListingSourceUrl(raw) {
-  if (raw == null || raw === '') return null;
+// n8n Code sandbox often lacks global URL (see n8n-io/n8n#19434). Regex only.
+function parseHttpUrl(raw) {
   const cleaned = decodeUrl(raw);
   if (!/^https?:\/\//i.test(cleaned)) return null;
-  let u;
-  try {
-    u = new URL(cleaned);
-  } catch {
-    return null;
-  }
-  const host = (u.hostname || '').toLowerCase().replace(/^www\./, '');
+  const m = cleaned.match(/^(https?):\/\/([^/?#]+)(\/[^?#]*)?(?:[?#].*)?$/i);
+  if (!m) return null;
+  let host = (m[2] || '').toLowerCase();
+  if (host.startsWith('www.')) host = host.slice(4);
+  const pathname = m[3] || '/';
+  return { host, pathname, href: cleaned.substring(0, 2000) };
+}
+
+function sanitizeListingSourceUrl(raw) {
+  if (raw == null || raw === '') return null;
+  const parsed = parseHttpUrl(raw);
+  if (!parsed) return null;
+  const { host, pathname, href } = parsed;
   const isAgg =
     AGGREGATOR_HOSTS.has(host) ||
     [...AGGREGATOR_HOSTS].some((d) => host === d || host.endsWith('.' + d));
-  if (!isAgg) return cleaned.substring(0, 2000);
-  const segs = (u.pathname || '').replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+  if (!isAgg) return href;
+  const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
   if (segs.length === 0) return null;
   if (segs.length === 1 && AGG_INDEX_SEGMENTS.has(segs[0].toLowerCase())) return null;
-  return cleaned.substring(0, 2000);
+  return href;
 }
 
 function normPostedAt(raw) {
@@ -221,4 +227,17 @@ for (let branch = 0; branch < inputs.length; branch++) {
   }
 }
 
-return [{ json: { jobs: allJobs, count: allJobs.length } }];
+return [{
+  json: {
+    jobs: allJobs,
+    count: allJobs.length,
+    // Code nodes can read $env even when HTTP Request expressions cannot
+    // (N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS). Downstream HTTP nodes use $json.*.
+    fastapiUrl: (typeof $env !== 'undefined' && $env.FASTAPI_URL)
+      ? String($env.FASTAPI_URL).replace(/\/$/, '')
+      : 'http://zedcv-backend:8000',
+    ingestKey: (typeof $env !== 'undefined' && $env.INGEST_API_KEY)
+      ? String($env.INGEST_API_KEY)
+      : '',
+  },
+}];

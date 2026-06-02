@@ -77,6 +77,8 @@ async def build_health_payload(settings: Settings) -> dict[str, Any]:
         "vapid_configured": vapid_configured(settings),
         "resend_configured": bool(settings.resend_api_key.strip()),
         "sentry_configured": bool(settings.sentry_dsn.strip()),
+        "openrouter_configured": bool(settings.openrouter_api_key.strip()),
+        "embedding_via_openrouter": settings.embedding_via_openrouter,
     }
     if redis_ok is not None:
         payload["redis"] = redis_ok
