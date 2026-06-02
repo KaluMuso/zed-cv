@@ -142,7 +142,9 @@ export function Navbar() {
                 {link.label}
               </Link>
             ))}
-            {showInterviewPrep ? <InterviewPrepNav /> : null}
+            {showInterviewPrep ? (
+              <InterviewPrepNav subscriptionTier={subscriptionTier} />
+            ) : null}
           </div>
 
           <div className="hidden md:flex items-center gap-3">
@@ -219,6 +221,7 @@ export function Navbar() {
               {showInterviewPrep ? (
                 <InterviewPrepNav
                   variant="stacked"
+                  subscriptionTier={subscriptionTier}
                   onNavigate={() => setMenuOpen(false)}
                 />
               ) : null}

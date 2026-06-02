@@ -8,6 +8,7 @@ VisibilityStatus = Literal["open", "recently_closed", "archived"]
 
 GRACE_DAYS = 3
 FEED_STATUSES: frozenset[str] = frozenset({"open", "recently_closed"})
+CLOSED_FEED_STATUSES: frozenset[str] = frozenset({"recently_closed", "archived"})
 
 
 def compute_visibility_status(

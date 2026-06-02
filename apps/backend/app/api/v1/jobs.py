@@ -58,7 +58,11 @@ from app.services.job_publication import (
 )
 from app.services.job_scraping_sources import merge_scraping_sources
 from app.services.job_deadline_extractor import extract_closing_date_llm
-from app.services.job_visibility import FEED_STATUSES, visibility_from_row
+from app.services.job_visibility import (
+    CLOSED_FEED_STATUSES,
+    FEED_STATUSES,
+    visibility_from_row,
+)
 from app.services.skill_resolver import resolve_skill_ids
 from app.services import skills_dictionary
 
@@ -285,7 +289,17 @@ async def list_jobs(
     ),
     include_archived: bool = Query(
         False,
-        description="When true, include archived jobs (hidden after 3-day grace).",
+        description=(
+            "When true, include archived jobs alongside open listings. "
+            "Prefer closed_only for the jobs page “Show closed” filter."
+        ),
+    ),
+    closed_only: bool = Query(
+        False,
+        description=(
+            "When true, only recently closed and archived jobs "
+            "(excludes open listings; distinct from sort=closing)."
+        ),
     ),
     user_id: str | None = Depends(_optional_user_id),
     supabase=Depends(get_supabase),
@@ -366,7 +380,9 @@ async def list_jobs(
         .eq("is_review_required", False)
         .or_(PUBLIC_JOBS_OR_FILTER)
     )
-    if not show_archived:
+    if closed_only:
+        query = query.in_("visibility_status", list(CLOSED_FEED_STATUSES))
+    elif not show_archived:
         query = query.in_("visibility_status", list(FEED_STATUSES))
 
     if sort_mode == "closing":

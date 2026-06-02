@@ -323,7 +323,7 @@ export default function JobsPageClient() {
         work_arrangement: effectiveWorkArrangement ? [effectiveWorkArrangement] : undefined,
         has_salary: listPreset === "with_salary" ? true : undefined,
         saved_only: listPreset === "saved" ? true : undefined,
-        include_archived: showClosed || undefined,
+        closed_only: showClosed || undefined,
       });
       setJobsList(res.jobs);
       setTotalPages(res.pages);
@@ -364,11 +364,13 @@ export default function JobsPageClient() {
     sort !== "recent" ||
     selectedSkills.length > 0 ||
     Boolean(employmentType || workArrangement) ||
+    showClosed ||
     listPreset !== "all";
 
   const hasFilterConstraints =
     Boolean(searchQuery || location || employmentType || workArrangement) ||
     selectedSkills.length > 0 ||
+    showClosed ||
     listPreset !== "all";
 
   const resetFilters = () => {
@@ -379,6 +381,7 @@ export default function JobsPageClient() {
     setSelectedSkills([]);
     setEmploymentType("");
     setWorkArrangement("");
+    setShowClosed(false);
     setListPreset("all");
     setPage(1);
   };
@@ -582,20 +585,6 @@ export default function JobsPageClient() {
           </select>
         )}
 
-        <label className="flex items-center gap-2 text-xs min-h-11" style={{ color: "var(--ink-2)" }}>
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-input"
-            checked={showClosed}
-            onChange={(e) => {
-              setShowClosed(e.target.checked);
-              setPage(1);
-            }}
-            aria-label="Show closed jobs"
-          />
-          Show closed
-        </label>
-
         {FILTERS_AVAILABLE.workArrangement && (
           <select
             value={workArrangement}
@@ -614,6 +603,20 @@ export default function JobsPageClient() {
             ))}
           </select>
         )}
+
+        <label className="flex items-center gap-2 text-xs min-h-11" style={{ color: "var(--ink-2)" }}>
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-input"
+            checked={showClosed}
+            onChange={(e) => {
+              setShowClosed(e.target.checked);
+              setPage(1);
+            }}
+            aria-label="Show closed jobs"
+          />
+          Show closed
+        </label>
 
         <button
           type="button"

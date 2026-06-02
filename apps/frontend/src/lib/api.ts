@@ -1426,6 +1426,7 @@ export const jobs = {
     saved_only?: boolean;
     include_closed?: boolean;
     include_archived?: boolean;
+    closed_only?: boolean;
   }) => {
     const query = new URLSearchParams();
     if (params?.page) query.set("page", String(params.page));
@@ -1442,6 +1443,7 @@ export const jobs = {
     if (params?.saved_only) query.set("saved_only", "true");
     if (params?.include_closed) query.set("include_closed", "true");
     if (params?.include_archived) query.set("include_archived", "true");
+    if (params?.closed_only) query.set("closed_only", "true");
     const token = getToken();
     return apiFetch<JobListResponse>(`/jobs?${query}`, { token });
   },

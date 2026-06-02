@@ -98,7 +98,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 8192, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -175,7 +175,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 8192, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -252,7 +252,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 8192, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {
@@ -329,7 +329,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 32768, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $env.OPENROUTER_MODEL || $env.LLM_MODEL || 'google/gemini-2.5-flash', max_tokens: 8192, temperature: 0.1, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: $json.geminiBody.contents[0].parts[0].text }] }) }}",
         "options": {
           "response": {
             "response": {

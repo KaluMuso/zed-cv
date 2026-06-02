@@ -64,14 +64,21 @@ export function isAggregatorApplyUrl(url: string | null | undefined): boolean {
   );
 }
 
-function mailtoApply(email: string, job: ApplyJobFields): string {
-  const subject = encodeURIComponent(`Application: ${job.title}`);
-  const body = encodeURIComponent(
-    `Dear hiring manager,\n\nI am writing to apply for the ${job.title} role${
-      job.company ? ` at ${job.company}` : ""
-    }.\n\nI found this opportunity on ZedApply and would welcome the chance to discuss my application.\n\nKind regards`,
-  );
-  return `mailto:${email}?subject=${subject}&body=${body}`;
+/** Plain-text intro users can paste into an email client (Apply modal). */
+export function buildEmailIntroduction(job: ApplyJobFields): string {
+  return `Dear hiring manager,
+
+I am writing to apply for the ${job.title} role${
+    job.company ? ` at ${job.company}` : ""
+  }.
+
+I found this opportunity on ZedApply and would welcome the chance to discuss my application.
+
+Kind regards`;
+}
+
+export function buildEmailSubject(job: ApplyJobFields): string {
+  return `Application: ${job.title}`;
 }
 
 function applySourceFromField(
@@ -117,8 +124,8 @@ export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
 
   if (hasEmail) {
     return {
-      href: mailtoApply(job.apply_email as string, job),
-      label: "Email application",
+      href: "#",
+      label: "Apply",
       applySource: applySourceFromField(job, "email"),
       external: false,
     };
@@ -126,16 +133,10 @@ export function resolveApplyAction(job: ApplyJobFields): ApplyAction | null {
 
   if (phone) {
     return {
-      href: `tel:${phone}`,
-      label: "Call/WhatsApp",
+      href: "#",
+      label: "Apply",
       applySource: "direct",
       external: false,
-      secondary: {
-        href: `https://wa.me/${phone.replace(/\D/g, "")}`,
-        label: "WhatsApp",
-        applySource: "direct",
-        external: true,
-      },
     };
   }
 
@@ -173,7 +174,7 @@ export function resolveApplyContactMethods(job: ApplyJobFields): ApplyContactMet
   if (url) {
     push({
       kind: "website",
-      label: "Apply on company site",
+      label: "Web application portal",
       display: url.replace(/^https?:\/\//i, "").replace(/\/$/, ""),
       copyValue: url,
       href: url,
@@ -185,10 +186,9 @@ export function resolveApplyContactMethods(job: ApplyJobFields): ApplyContactMet
   if (email) {
     push({
       kind: "email",
-      label: "Email application",
+      label: "Advertising email",
       display: email,
       copyValue: email,
-      href: mailtoApply(email, job),
       applySource: applySourceFromField(job, "email"),
     });
   }
@@ -198,10 +198,9 @@ export function resolveApplyContactMethods(job: ApplyJobFields): ApplyContactMet
     const waDigits = phone.replace(/\D/g, "");
     push({
       kind: "phone",
-      label: "Call",
+      label: "Phone contact",
       display: phone,
       copyValue: phone,
-      href: `tel:${phone}`,
       applySource: "direct",
     });
     push({

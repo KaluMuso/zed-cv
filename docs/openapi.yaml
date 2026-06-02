@@ -3537,6 +3537,10 @@ paths:
           in: query
           schema: { type: boolean, default: false }
           description: When true, include archived jobs (hidden after 3-day post-close grace).
+        - name: closed_only
+          in: query
+          schema: { type: boolean, default: false }
+          description: When true, only recently closed and archived jobs (jobs page “Show closed” filter).
       responses:
         '200':
           content:

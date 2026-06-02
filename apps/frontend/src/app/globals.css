@@ -941,6 +941,11 @@ a.link-copper:hover,
   line-height: 1.4;
 }
 
+/* Match card: score | body | actions on desktop; stacked on mobile */
+.match-row {
+  grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 16rem);
+}
+
 /* Theme-aware sticky surfaces (filters, bars) */
 .sticky-surface-bar {
   background: color-mix(in srgb, var(--surface) 90%, transparent);
@@ -974,15 +979,11 @@ a.link-copper:hover,
     gap: 16px !important;
   }
   .match-actions {
-    flex-direction: row !important;
+    flex-direction: column !important;
     align-items: stretch !important;
   }
-  .match-actions [data-slot="button"],
-  .match-actions a[class*="inline-flex"],
-  .match-actions button {
-    width: auto !important;
-    flex: 1;
-    min-width: 0;
+  .match-share {
+    max-width: 100%;
   }
   .breakdown-grid {
     grid-template-columns: 1fr !important;

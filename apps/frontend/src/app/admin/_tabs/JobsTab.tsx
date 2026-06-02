@@ -245,6 +245,27 @@ export function JobsTab({ token }: { token: string }) {
     }
   };
 
+  const onDelete = async (job: AdminJobRow) => {
+    const confirmed = window.confirm(
+      `Delete "${job.title}"? This hides the job from public feeds (soft delete).`,
+    );
+    if (!confirmed) return;
+    setBusyId(job.id);
+    try {
+      await admin.deleteJob(token, job.id);
+      notify.custom.success("Job deleted.");
+      if (editingId === job.id) {
+        setEditingId(null);
+        setEditForm(EMPTY_FORM);
+      }
+      load();
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -555,6 +576,15 @@ export function JobsTab({ token }: { token: string }) {
                           onClick={() => onToggle(j)}
                         >
                           {busyId === j.id ? "…" : j.is_active ? "Deactivate" : "Activate"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="min-h-8 h-8 px-2 text-xs"
+                          disabled={busyId === j.id}
+                          onClick={() => void onDelete(j)}
+                        >
+                          Delete
                         </Button>
                       </div>
                     </TableCell>

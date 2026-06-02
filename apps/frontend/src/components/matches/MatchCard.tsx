@@ -69,10 +69,7 @@ export function MatchCard({
           CLOSED
         </span>
       )}
-      <div
-        className="match-row p-5 sm:p-6 grid gap-6 items-center"
-        style={{ gridTemplateColumns: "auto 1fr auto" }}
-      >
+      <div className="match-row p-5 sm:p-6 grid gap-6 items-start">
         <MatchScore
           score={match.score}
           breakdown={{
@@ -83,20 +80,20 @@ export function MatchCard({
           size="lg"
         />
 
-        <div className="min-w-0">
+        <div className="min-w-0 match-body">
           <div className="flex items-center gap-2.5 mb-2">
             <Avatar name={match.job.company || "ZC"} size={28} />
-            <span className="text-sm" style={{ color: "var(--muted)" }}>
+            <span className="text-sm truncate" style={{ color: "var(--muted)" }}>
               {match.job.company || "Company"} &middot; {match.job.location || "Zambia"}
             </span>
           </div>
           <Link
             href={`/jobs/${match.job.id}`}
             className={cn(
-              "font-display text-2xl md:text-3xl block hover:underline",
+              "font-display text-xl sm:text-2xl md:text-3xl block hover:underline break-words",
               recentlyClosed && "line-through opacity-80",
             )}
-            style={{ letterSpacing: "-0.01em", lineHeight: 1.1, color: "inherit" }}
+            style={{ letterSpacing: "-0.01em", lineHeight: 1.15, color: "inherit" }}
           >
             {match.job.title}
           </Link>
@@ -119,12 +116,12 @@ export function MatchCard({
           )}
         </div>
 
-        <div className="match-actions flex flex-col gap-2 items-stretch sm:items-end min-w-[10rem] sm:min-w-[12rem]">
-          <div className="grid grid-cols-3 gap-2 w-full">
+        <div className="match-actions flex flex-col gap-3 w-full min-w-0">
+          <div className="flex flex-wrap gap-2 w-full">
             {closed ? (
               <button
                 type="button"
-                className={cn(btnClass("primary", "sm"), "col-span-3")}
+                className={cn(btnClass("primary", "sm"), "flex-1 min-w-[8rem]")}
                 disabled
                 data-testid="match-apply-closed"
               >
@@ -137,7 +134,7 @@ export function MatchCard({
                 rel="noopener noreferrer"
                 className={cn(
                   btnClass("primary", "sm"),
-                  "text-center gap-1 flex items-center justify-center",
+                  "flex-1 min-w-[8rem] text-center gap-1 inline-flex items-center justify-center",
                 )}
                 data-testid="match-apply-external"
               >
@@ -147,51 +144,39 @@ export function MatchCard({
             ) : apply || onApplyClick ? (
               <button
                 type="button"
-                className={cn(btnClass("primary", "sm"))}
+                className={cn(btnClass("primary", "sm"), "flex-1 min-w-[8rem]")}
                 onClick={onApplyClick}
                 data-testid="match-apply-active"
               >
                 {apply?.label ?? "Apply"}
               </button>
-            ) : (
-              <span />
-            )}
-            {!closed &&
-              (authToken && onSavedChange ? (
-                <SaveJobButton
-                  jobId={match.job.id}
-                  saved={jobSaved}
-                  token={authToken}
-                  onChange={onSavedChange}
-                  className={cn(btnClass("outline", "sm"), "w-full")}
-                />
-              ) : (
-                <span />
-              ))}
-            {!closed && (
-              <div className="flex justify-end">
-                <JobShareButtons
-                  job={{
-                    id: match.job.id,
-                    title: match.job.title,
-                    company: match.job.company,
-                    location: match.job.location,
-                  }}
-                />
-              </div>
-            )}
+            ) : null}
+            {!closed && authToken && onSavedChange ? (
+              <SaveJobButton
+                jobId={match.job.id}
+                saved={jobSaved}
+                token={authToken}
+                onChange={onSavedChange}
+                className={cn(btnClass("outline", "sm"), "shrink-0")}
+              />
+            ) : null}
           </div>
-          {closed && authToken && onSavedChange && (
-            <SaveJobButton
-              jobId={match.job.id}
-              saved={jobSaved}
-              token={authToken}
-              onChange={onSavedChange}
-              className={cn(btnClass("outline", "sm"), "w-full")}
-            />
+
+          {!closed && (
+            <div className="match-share w-full overflow-x-auto">
+              <JobShareButtons
+                job={{
+                  id: match.job.id,
+                  title: match.job.title,
+                  company: match.job.company,
+                  location: match.job.location,
+                }}
+                className="flex-wrap"
+              />
+            </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
             <TierGate feature="tailor_cv">
               <button
                 type="button"
@@ -217,7 +202,7 @@ export function MatchCard({
           <button
             type="button"
             onClick={onWhyMatchClick}
-            className="text-xs text-left sm:text-right underline-offset-2 hover:underline w-full"
+            className="text-xs text-left underline-offset-2 hover:underline w-full"
             style={{ color: "var(--muted)" }}
             data-testid="match-why-link"
           >

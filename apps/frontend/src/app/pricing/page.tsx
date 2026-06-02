@@ -412,7 +412,7 @@ export default function PricingPage() {
           }}
           role="status"
         >
-          First 2 months: 50% off for paid tiers, 7 free matches/month for Free
+          First month: 50% off for paid tiers, 7 free matches/month for Free
         </div>
       </div>
 
@@ -469,7 +469,7 @@ export default function PricingPage() {
                   <span
                     className="tag tag-copper text-xs font-semibold mb-2 inline-block"
                   >
-                    First 2 months: 50% off
+                    First month: 50% off
                   </span>
                 )}
                 <div>

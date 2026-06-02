@@ -403,6 +403,25 @@ class TestJobList:
         assert resp.status_code == 200
         assert not any(col == "visibility_status" for col, _ in captured_in)
 
+    def test_list_jobs_closed_only_filters_archived_and_recently_closed(
+        self, client, fake_supabase
+    ):
+        captured_in: list[tuple[str, list[str]]] = []
+
+        class _CapturingQuery(FakeSupabaseQuery):
+            def in_(self, column, values):  # type: ignore[override]
+                captured_in.append((column, list(values)))
+                return self
+
+        fake_supabase.set_table("jobs_user_facing", _CapturingQuery(data=[], count=0))
+        resp = client.get("/api/v1/jobs?closed_only=true")
+        assert resp.status_code == 200
+        vis_filters = [v for col, v in captured_in if col == "visibility_status"]
+        assert vis_filters and set(vis_filters[0]) == {
+            "recently_closed",
+            "archived",
+        }
+
 
 class TestJobCreate:
     @patch("app.api.v1.jobs.resolve_skill_ids", new_callable=AsyncMock)

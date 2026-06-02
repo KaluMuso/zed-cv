@@ -1,12 +1,12 @@
 /**
  * Canonical tier marketing copy — single source of truth for UI.
- * Aligns with backend `tier_gating.py` (free: 3/mo, welcome: 7/mo first 2 months).
+ * Aligns with backend `tier_gating.py` (free: 3/mo, welcome: 7/mo first month).
  */
 import { formatMatchesLimit, UNLIMITED_MATCHES } from "@/lib/tier-config";
 
 export const FREE_TIER_MATCHES_DEFAULT = 3;
 export const FREE_TIER_WELCOME_MATCHES = 7;
-export const FREE_TIER_WELCOME_MONTHS = 2;
+export const FREE_TIER_WELCOME_MONTHS = 1;
 
 /** Full feature bullet for pricing cards */
 export function freeTierMatchesFeatureLine(): string {

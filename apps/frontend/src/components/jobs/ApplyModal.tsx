@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { notify } from "@/lib/toast";
 import type { ApplyModalJob } from "@/components/jobs/applyContacts";
 import {
+  buildEmailIntroduction,
+  buildEmailSubject,
   resolveApplyAction,
   resolveApplyContactMethods,
   type ApplyContactKind,
@@ -45,6 +47,16 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
     () => (fields ? resolveApplyContactMethods(fields) : []),
     [fields],
   );
+  const emailIntro = useMemo(
+    () => (fields ? buildEmailIntroduction(fields) : ""),
+    [fields],
+  );
+  const emailSubject = useMemo(
+    () => (fields ? buildEmailSubject(fields) : ""),
+    [fields],
+  );
+  const hasEmail = Boolean(fields?.apply_email?.trim());
+  const showWebsitePrimary = Boolean(primary?.external && primary.href.startsWith("http"));
   const [copying, setCopying] = useState<string | null>(null);
 
   const copy = useCallback(async (value: string, key: string) => {
@@ -83,52 +95,39 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
                 ) : null}
               </>
             ) : (
-              "Contact details for this role"
+              "Copy contact details and paste into your email or browser"
             )}
           </DialogDescription>
         </DialogHeader>
 
-        {primary ? (
+        {showWebsitePrimary && primary ? (
           <div className="flex flex-col gap-2">
             <a
               href={primary.href}
               className={cn(btnClass("primary"), "w-full justify-center gap-2")}
-              target={primary.external ? "_blank" : undefined}
-              rel={primary.external ? "noopener noreferrer" : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
               data-testid="apply-modal-primary"
             >
               {primary.label}
-              {primary.external ? <Icon name="external" size={14} /> : null}
+              <Icon name="external" size={14} />
             </a>
-            {primary.secondary ? (
-              <a
-                href={primary.secondary.href}
-                className={cn(btnClass("outline"), "w-full justify-center gap-2")}
-                target={primary.secondary.external ? "_blank" : undefined}
-                rel={
-                  primary.secondary.external ? "noopener noreferrer" : undefined
-                }
-              >
-                {primary.secondary.label}
-                {primary.secondary.external ? (
-                  <Icon name="external" size={14} />
-                ) : null}
-              </a>
-            ) : null}
           </div>
         ) : null}
 
         {methods.length > 0 ? (
           <>
-            {primary && methods.length > 1 ? (
+            {showWebsitePrimary && methods.length > 1 ? (
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                All apply options
+                Or copy details
               </p>
             ) : null}
             <ul className="flex flex-col gap-3">
               {methods.map((method, index) => {
                 const key = `${method.kind}-${method.copyValue}`;
                 const fieldId = `apply-method-${index}`;
+                const openExternal =
+                  method.kind === "website" || method.kind === "whatsapp";
                 return (
                   <li
                     key={key}
@@ -147,20 +146,12 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
                       >
                         {method.label}
                       </label>
-                      {method.href ? (
+                      {method.href && openExternal ? (
                         <a
                           href={method.href}
                           className="block truncate text-sm font-medium text-primary underline-offset-2 hover:underline dark:text-primary"
-                          target={
-                            method.kind === "website" || method.kind === "whatsapp"
-                              ? "_blank"
-                              : undefined
-                          }
-                          rel={
-                            method.kind === "website" || method.kind === "whatsapp"
-                              ? "noopener noreferrer"
-                              : undefined
-                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
                           {method.display}
                         </a>
@@ -195,6 +186,35 @@ export function ApplyModal({ job, open, onOpenChange }: ApplyModalProps) {
             contact support if you need help.
           </p>
         )}
+
+        {hasEmail ? (
+          <div className="rounded-lg border border-border bg-background/60 p-3 dark:border-border dark:bg-background/40">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Email introduction
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Subject: {emailSubject}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                disabled={copying === "email-intro"}
+                onClick={() => void copy(emailIntro, "email-intro")}
+              >
+                <Copy className="size-3.5" aria-hidden />
+                Copy
+              </Button>
+            </div>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground dark:text-foreground">
+              {emailIntro}
+            </p>
+          </div>
+        ) : null}
 
         {job?.application_instructions ? (
           <p className="text-xs leading-relaxed text-muted-foreground dark:text-muted-foreground border-t border-border pt-3 dark:border-border">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildEmailIntroduction,
   isAggregatorApplyUrl,
   resolveApplyAction,
   resolveApplyActionOrSupport,
@@ -8,15 +9,15 @@ import {
 } from "@/lib/applyLink";
 
 describe("resolveApplyAction", () => {
-  it("apply_link_email_mode_opens_mailto", () => {
+  it("apply_link_email_mode_opens_modal_not_mailto", () => {
     const action = resolveApplyAction({
       title: "Supervisor",
       company: "Mika Meats",
       apply_email: "recruitments@mikameats.com",
       apply_source: "description_email",
     });
-    expect(action?.label).toBe("Email application");
-    expect(action?.href).toMatch(/^mailto:recruitments@mikameats\.com/);
+    expect(action?.label).toBe("Apply");
+    expect(action?.href).toBe("#");
     expect(action?.external).toBe(false);
   });
 
@@ -44,8 +45,8 @@ describe("resolveApplyAction", () => {
       apply_url: "https://www.jobwebzambia.com/jobs/123",
       apply_email: "hr@employer.co.zm",
     });
-    expect(action?.label).toBe("Email application");
-    expect(action?.href).toMatch(/^mailto:hr@employer\.co\.zm/);
+    expect(action?.label).toBe("Apply");
+    expect(action?.href).toBe("#");
     expect(isAggregatorApplyUrl("https://jobwebzambia.com/x")).toBe(true);
   });
 
@@ -67,14 +68,26 @@ describe("resolveApplyAction", () => {
     expect(action?.secondary).toBeUndefined();
   });
 
-  it("phone_contact_opens_tel_with_whatsapp_secondary", () => {
+  it("phone_contact_uses_modal_apply_affordance", () => {
     const action = resolveApplyAction({
       title: "Driver",
       contact_phone: "0971234567",
     });
-    expect(action?.label).toBe("Call/WhatsApp");
-    expect(action?.href).toBe("tel:+260971234567");
-    expect(action?.secondary?.href).toBe("https://wa.me/260971234567");
+    expect(action?.label).toBe("Apply");
+    expect(action?.href).toBe("#");
+    expect(action?.secondary).toBeUndefined();
+  });
+});
+
+describe("buildEmailIntroduction", () => {
+  it("includes_role_and_company", () => {
+    const intro = buildEmailIntroduction({
+      title: "Analyst",
+      company: "Acme",
+    });
+    expect(intro).toContain("Analyst");
+    expect(intro).toContain("Acme");
+    expect(intro).toContain("ZedApply");
   });
 });
 
@@ -92,7 +105,8 @@ describe("resolveApplyContactMethods", () => {
       "phone",
       "whatsapp",
     ]);
-    expect(methods.find((m) => m.kind === "email")?.href).toMatch(/^mailto:hr@co\.com/);
+    expect(methods.find((m) => m.kind === "email")?.href).toBeUndefined();
+    expect(methods.find((m) => m.kind === "email")?.copyValue).toBe("hr@co.com");
   });
 });
 

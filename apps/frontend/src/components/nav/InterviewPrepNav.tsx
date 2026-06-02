@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
+import { tierAtLeast } from "@/lib/tier-features";
 
 const SUB_LINKS = [
   { href: "/interview-prep/mock", label: "Mock Interview" },
@@ -17,20 +18,50 @@ const SUB_LINKS = [
   { href: "/interview-prep/history", label: "History" },
 ] as const;
 
+const PREMIUM_PURPLE = "#a855f7";
+
 type InterviewPrepNavProps = {
   className?: string;
+  subscriptionTier?: string | null;
   /** Mobile drawer: render as stacked links instead of dropdown */
   variant?: "dropdown" | "stacked";
   onNavigate?: () => void;
 };
 
+function hasInterviewPrepAccess(tier: string | null | undefined): boolean {
+  return tierAtLeast(tier, "super_standard");
+}
+
 export function InterviewPrepNav({
   className,
+  subscriptionTier,
   variant = "dropdown",
   onNavigate,
 }: InterviewPrepNavProps) {
   const pathname = usePathname();
   const active = pathname.startsWith("/interview-prep");
+  const premium = !hasInterviewPrepAccess(subscriptionTier);
+
+  const labelClass = cn(
+    premium && "font-medium",
+    className,
+  );
+  const labelStyle = premium
+    ? { color: PREMIUM_PURPLE }
+    : undefined;
+
+  const prepLabel = (
+    <>
+      <Icon
+        name="sparkle"
+        size={14}
+        className="shrink-0"
+        style={premium ? { color: PREMIUM_PURPLE } : undefined}
+        aria-hidden
+      />
+      Interview Prep
+    </>
+  );
 
   if (variant === "stacked") {
     return (
@@ -39,11 +70,12 @@ export function InterviewPrepNav({
           href="/interview-prep"
           onClick={onNavigate}
           className={cn(
-            "font-display text-2xl py-2 transition-colors pl-4",
-            active ? "text-primary" : "text-ink-2",
+            "font-display text-2xl py-2 transition-colors pl-4 inline-flex items-center gap-2",
+            active && !premium && "text-primary",
           )}
+          style={labelStyle}
         >
-          Interview Prep
+          {prepLabel}
         </Link>
         {SUB_LINKS.map((link) => (
           <Link
@@ -52,8 +84,9 @@ export function InterviewPrepNav({
             onClick={onNavigate}
             className={cn(
               "font-display text-xl py-2 transition-colors pl-8",
-              pathname === link.href ? "text-primary" : "text-ink-2",
+              pathname === link.href && !premium ? "text-primary" : "text-ink-2",
             )}
+            style={premium ? { color: "var(--ink-2)" } : undefined}
           >
             {link.label}
           </Link>
@@ -66,13 +99,14 @@ export function InterviewPrepNav({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "nav-link inline-flex items-center gap-1 bg-transparent border-0 cursor-pointer font-inherit",
-          active && "active",
-          className,
+          "nav-link inline-flex items-center gap-1.5 bg-transparent border-0 cursor-pointer font-inherit",
+          active && !premium && "active",
+          labelClass,
         )}
+        style={labelStyle}
         aria-label="Interview prep menu"
       >
-        Interview Prep
+        {prepLabel}
         <Icon name="chevronDown" size={14} className="opacity-70" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[200px]">

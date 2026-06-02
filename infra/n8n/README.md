@@ -214,6 +214,18 @@ After patch: **Save** → **Publish** → manual test. Expect HTTP 200 `{ "inges
 
 Without `EMBEDDING_VIA_OPENROUTER=true`, the backend auto-falls back to OpenRouter only **after** Gemini returns 403 **and** `OPENROUTER_API_KEY` is set. Setting the flag avoids the failed Gemini call on every job.
 
+### OpenRouter spend control (~$30/mo budget)
+
+| Lever | Where | Effect |
+| --- | --- | --- |
+| **Gemini free embeds** | OCI `EMBEDDING_VIA_OPENROUTER=false` + valid `GEMINI_API_KEY` | Scraped job embeddings use Google free tier instead of OpenRouter |
+| **Lower scraper output cap** | `job_scraper.json` AI Parse nodes (`max_tokens: 8192`, was 32768) | Cuts worst-case chat cost per 6h run (~4×) |
+| **Smaller deep-enrich batches** | n8n **Deep Enrich After Ingest** `limit=5–15` (not 80) | Avoids 10‑minute timeouts and limits LLM calls per run |
+| **Skip duplicate enrich** | Rely on backend `schedule_post_ingest_deep_enrich` only, or disable the n8n Deep Enrich node | One enrich path per ingest instead of two |
+| **Daily cap** | `LLM_DAILY_SPEND_CAP_USD` in backend `.env` | Hard stop when estimated LLM spend exceeds cap |
+
+Re-import `job_scraper.json` after changing `max_tokens` or Deep Enrich URL/limit.
+
 ### Combine All Sources: jobs with `source_url: null`
 
 OpenRouter can return valid `choices[0].message.content` while every job still has `source_url` / `apply_url` null and `posted_at` like `9h ago` or `Posted 19 hours ago`. **Prep \*** nodes extract `href` links into `extractedLinks` before HTML strip; **Normalize and Deduplicate** reads those links from each Prep node (by branch index) and fuzzy-matches titles to URLs when the LLM omitted `source_url`. It keeps per-job aggregator URLs (e.g. `gozambiajobs.com/jobs/123-slug`) and drops homepages only. It also converts relative `posted_at` to ISO `YYYY-MM-DD`.
