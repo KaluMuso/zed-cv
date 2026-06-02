@@ -337,14 +337,27 @@ curl -s https://api.zedapply.com/api/v1/health | jq .
 #    redis_configured  ← non-empty REDIS_URL in container
 #    vapid_configured  ← VAPID_PRIVATE_KEY + VAPID_PUBLIC_KEY + VAPID_CLAIMS_EMAIL
 #    resend_configured ← non-empty RESEND_API_KEY
+#    openrouter_configured / embedding_via_openrouter ← OpenRouter embedding path
+
+# 6. If job ingest returns embedding_failed — verify OpenRouter code is in the image:
+docker exec zedcv-backend grep -c _embed_via_openrouter /app/app/services/embedding.py
+curl -s https://api.zedapply.com/api/v1/health | jq '{openrouter_configured, embedding_via_openrouter}'
 ```
 
-**If the image still looks stale** (missing scripts, old code paths):
+**If the image still looks stale** (missing scripts, old code paths, or build context ~10 KB):
 
 ```bash
+# Confirm clone path — must be ~/zedcv (no hyphen), not ~/zed-cv
+ls ~/zedcv/apps/backend/app/services/embedding.py
+
+# Confirm compose build.context (should reference ~/zedcv/apps/backend)
+grep -A2 'zedcv-backend' ~/n8n-docker/docker-compose.yml | head -20
+
+cd ~/zedcv && git pull origin master
 cd ~/n8n-docker
 docker compose build --no-cache zedcv-backend
 docker compose up -d --force-recreate zedcv-backend
+docker exec zedcv-backend grep -c _embed_via_openrouter /app/app/services/embedding.py
 ```
 
 #### 2. Expected healthy `/health` JSON
@@ -359,7 +372,9 @@ When Supabase and WAHA are both up:
   "waha": true,
   "redis_configured": true,
   "vapid_configured": true,
-  "resend_configured": true
+  "resend_configured": true,
+  "openrouter_configured": true,
+  "embedding_via_openrouter": true
 }
 ```
 
@@ -371,6 +386,8 @@ When Supabase and WAHA are both up:
 | `redis_configured` | `REDIS_URL` set in container env | Shared rate limits across workers / recreates |
 | `vapid_configured` | All three VAPID vars set | Matches `vapid_configured()` in `web_push.py` |
 | `resend_configured` | `RESEND_API_KEY` non-empty | Email OTP/digests; also verify domain via `/admin/email-health` |
+| `openrouter_configured` | `OPENROUTER_API_KEY` non-empty | Required for LLM + optional OpenRouter embeddings |
+| `embedding_via_openrouter` | `EMBEDDING_VIA_OPENROUTER=true` in `.env` | Skips blocked Gemini embed API; needs OpenRouter code in image |
 
 `version` comes from `APP_VERSION` / settings — value may differ from the example.
 

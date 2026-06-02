@@ -149,18 +149,30 @@ After patch: **Save** → **Publish** → manual test. Expect HTTP 200 `{ "inges
    ```
 2. Deploy backend code with OpenRouter embedding support (PR #224 branch or `master` after merge):
    ```bash
-   cd ~/zed-cv   # or your repo clone path
-   git pull origin cursor/fix-n8n-ingest-api-key-72f6
+   # Repo clone on OCI is ~/zedcv (no hyphen) — NOT ~/zed-cv
+   cd ~/zedcv && git pull origin master
+   # Or, before merge: git pull origin cursor/fix-n8n-ingest-api-key-72f6
+
    cd ~/n8n-docker
    docker compose build --no-cache zedcv-backend
    docker compose up -d --force-recreate zedcv-backend
    ```
-3. Smoke from inside the container:
+   **If `~/zedcv` does not exist:** clone once with
+   `git clone https://github.com/KaluMuso/zed-cv.git ~/zedcv`, then ensure
+   `docker-compose.yml` `build.context` points at `~/zedcv/apps/backend` (not a
+   tiny vendored copy under `~/n8n-docker`). A ~10 KB build context means the
+   image is stale — fix the context path before rebuilding.
+
+3. Smoke — env vars alone are not enough; confirm the **code** is deployed:
    ```bash
+   docker exec zedcv-backend grep -c _embed_via_openrouter /app/app/services/embedding.py
+   # Must print >= 1. If 0, the container is still on pre-OpenRouter code.
+
    docker exec zedcv-backend printenv OPENROUTER_API_KEY EMBEDDING_VIA_OPENROUTER | head -2
    curl -s https://api.zedapply.com/api/v1/health | jq '{openrouter_configured, embedding_via_openrouter}'
    ```
-   Expect `openrouter_configured: true` and `embedding_via_openrouter: true`.
+   Expect `openrouter_configured: true`, `embedding_via_openrouter: true`, and
+   `_embed_via_openrouter` present in the image.
 4. Re-run the scraper. Expect `"ingested": N` with N > 0 (duplicates OK on re-run).
 
 Without `EMBEDDING_VIA_OPENROUTER=true`, the backend auto-falls back to OpenRouter only **after** Gemini returns 403 **and** `OPENROUTER_API_KEY` is set. Setting the flag avoids the failed Gemini call on every job.
