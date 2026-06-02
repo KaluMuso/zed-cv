@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MatchCard } from "../MatchCard";
 
-vi.mock("@/components/shared/TierGate", () => ({
-  TierGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/hooks/useUserTier", () => ({
+  useUserTier: () => ({ tier: "professional", loading: false }),
 }));
 
 vi.mock("@/components/share/JobShareButtons", () => ({
@@ -20,6 +20,8 @@ const baseMatch: MatchData = {
   bonus_score: 12,
   matched_skills: ["excel"],
   missing_skills: [],
+  explanation: null,
+  created_at: "2026-05-18T00:00:00Z",
   job: {
     id: "j1",
     title: "Accountant",

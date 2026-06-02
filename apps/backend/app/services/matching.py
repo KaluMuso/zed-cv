@@ -4,8 +4,11 @@ from typing import Any, Optional
 
 from supabase import Client
 from app.core.config import get_settings
-from app.core.tier_gating import get_effective_match_limit
+from app.core.tier_gating import UNLIMITED_MATCHES, get_effective_match_limit
 from app.services.match_explanation import build_match_explanation
+
+# Rows visible in /matches feeds (excludes user-dismissed).
+_MATCH_ACTIVE_STATUSES = ("new", "viewed", "applied", "saved")
 
 
 # Phase 2 Initiative #4 — preference-aware re-rank weights.
@@ -98,6 +101,70 @@ def _parse_period_start(value: str | None) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed
+
+
+async def match_rpc_limit_for_user(
+    user_id: str, supabase: Client, requested: int
+) -> int:
+    """Cap RPC/store volume to remaining monthly delivery quota."""
+    _, remaining = await check_match_quota(user_id, supabase)
+    _, quota, active = await get_user_tier_limit(user_id, supabase)
+    if not active or remaining <= 0:
+        return 0
+    if quota >= UNLIMITED_MATCHES:
+        return requested
+    return min(requested, remaining)
+
+
+async def backfill_match_credits(user_id: str, supabase: Client) -> list[str]:
+    """Credit top uncredited rows up to remaining quota (repairs legacy rows)."""
+    _, remaining = await check_match_quota(user_id, supabase)
+    if remaining <= 0:
+        return []
+    pending = (
+        supabase.table("matches")
+        .select("job_id")
+        .eq("user_id", user_id)
+        .in_("status", list(_MATCH_ACTIVE_STATUSES))
+        .is_("credited_at", "null")
+        .order("score", desc=True)
+        .limit(remaining)
+        .execute()
+    )
+    job_ids = [
+        str(row["job_id"])
+        for row in (pending.data or [])
+        if isinstance(row, dict) and row.get("job_id")
+    ]
+    if not job_ids:
+        return []
+    return await credit_matches_for_cycle(user_id, job_ids, supabase)
+
+
+async def fetch_delivered_match_rows(
+    user_id: str,
+    supabase: Client,
+    *,
+    min_score: float = 50.0,
+    limit: int = 50,
+    batch_run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Matches delivered this billing period (credited_at set), tier-gated."""
+    period_start = await _billing_period_start(user_id, supabase)
+    query = (
+        supabase.table("matches")
+        .select("*, jobs(*)")
+        .eq("user_id", user_id)
+        .in_("status", list(_MATCH_ACTIVE_STATUSES))
+        .gte("credited_at", period_start.isoformat())
+        .gte("score", min_score)
+        .order("score", desc=True)
+        .limit(limit)
+    )
+    if batch_run_id:
+        query = query.eq("batch_run_id", batch_run_id)
+    result = query.execute()
+    return list(result.data or [])
 
 
 async def get_credited_match_count(
