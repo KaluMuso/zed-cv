@@ -106,6 +106,8 @@ OpenRouter can return valid `choices[0].message.content` while every job still h
 
 **Source of truth:** `infra/n8n/snippets/normalize_and_deduplicate.js` — paste the full file into the n8n **Normalize and Deduplicate** Code node, or re-import `job_scraper.json` (the export embeds the same code).
 
+**n8n Code sandbox:** Do not use `new URL()` in Normalize — the global `URL` constructor is often undefined in n8n's vm2 sandbox, and a `try/catch` around it silently returns `null` for every `source_url`. The repo normalizer uses regex URL parsing instead. Optional alternative: set `NODE_FUNCTION_ALLOW_BUILTIN=url` on the n8n container and `const { URL } = require('url');` — regex is simpler and needs no env change.
+
 ### Post-ingest deep-enrich + review queue
 
 After scraper ingest, jobs often land in the admin **review queue** (`is_review_required=true`) when apply path or closing date is missing. Two mechanisms clear that backlog:

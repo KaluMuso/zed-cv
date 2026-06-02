@@ -923,7 +923,8 @@ async def _ingest_one_job(
                 f"{job.title} {job.company or ''} {job.description}"
             )
         except Exception as exc:
-            return "error", f"embedding_failed: {type(exc).__name__}"
+            detail = str(exc).strip() or type(exc).__name__
+            return "error", f"embedding_failed: {detail[:120]}"
 
         job_data["embedding"] = embedding
         if job.source_url:
