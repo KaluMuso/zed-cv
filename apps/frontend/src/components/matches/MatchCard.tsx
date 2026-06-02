@@ -14,8 +14,8 @@ import { isGreyedClosedListing, isRecentlyClosedJob } from "@/lib/jobVisibility"
 import { SkillBadge } from "@/components/SkillBadge";
 import { Icon } from "@/components/ui/Icon";
 import { SaveJobButton } from "@/components/SaveJobButton";
-import { TierGate } from "@/components/shared/TierGate";
 import { JobShareButtons } from "@/components/share/JobShareButtons";
+import { MatchPremiumActions } from "@/components/matches/MatchPremiumActions";
 import { btnClass } from "@/lib/cn-ui";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +29,8 @@ export interface MatchCardProps {
   onTailorCvClick?: () => void;
   onCoverLetterClick?: () => void;
   onWhyMatchClick?: () => void;
+  onDismissClick?: () => void;
+  dismissing?: boolean;
 }
 
 export function MatchCard({
@@ -41,6 +43,8 @@ export function MatchCard({
   onTailorCvClick,
   onCoverLetterClick,
   onWhyMatchClick,
+  onDismissClick,
+  dismissing = false,
 }: MatchCardProps) {
   const apply = resolveApplyAction(match.job as ApplyJobFields);
   const useExternalLink = Boolean(
@@ -168,6 +172,7 @@ export function MatchCard({
           {!closed && (
             <div className="match-share w-full overflow-x-auto">
               <JobShareButtons
+                variant="compact"
                 job={{
                   id: match.job.id,
                   title: match.job.title,
@@ -179,38 +184,34 @@ export function MatchCard({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-            <TierGate feature="tailor_cv">
-              <button
-                type="button"
-                className={cn(btnClass("accent", "sm"), "w-full text-xs")}
-                onClick={onTailorCvClick}
-                data-testid="match-tailor-cv"
-              >
-                Tailor my CV
-              </button>
-            </TierGate>
-            <TierGate feature="cover_letter">
-              <button
-                type="button"
-                className={cn(btnClass("outline", "sm"), "w-full text-xs")}
-                onClick={onCoverLetterClick}
-                data-testid="match-cover-letter"
-              >
-                Cover letter
-              </button>
-            </TierGate>
-          </div>
+          <MatchPremiumActions
+            onTailorCvClick={onTailorCvClick}
+            onCoverLetterClick={onCoverLetterClick}
+          />
 
-          <button
-            type="button"
-            onClick={onWhyMatchClick}
-            className="text-xs text-left underline-offset-2 hover:underline w-full"
-            style={{ color: "var(--muted)" }}
-            data-testid="match-why-link"
-          >
-            Why this match?
-          </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <button
+              type="button"
+              onClick={onWhyMatchClick}
+              className="text-xs underline-offset-2 hover:underline"
+              style={{ color: "var(--muted)" }}
+              data-testid="match-why-link"
+            >
+              Why this match?
+            </button>
+            {onDismissClick ? (
+              <button
+                type="button"
+                onClick={onDismissClick}
+                disabled={dismissing}
+                className="text-xs underline-offset-2 hover:underline disabled:opacity-50"
+                style={{ color: "var(--muted)" }}
+                data-testid="match-dismiss"
+              >
+                {dismissing ? "Hiding…" : "Hide match"}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </article>

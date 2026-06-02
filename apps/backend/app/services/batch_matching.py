@@ -8,7 +8,12 @@ from typing import Any
 
 from supabase import Client
 
-from app.services.matching import run_matching_for_user, store_matches
+from app.services.matching import (
+    credit_matches_for_cycle,
+    match_rpc_limit_for_user,
+    run_matching_for_user,
+    store_matches,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +65,10 @@ async def run_on_demand_match_for_user(
     """Live RPC match for one user (CV upload / first-time fallback)."""
     batch_id = str(uuid.uuid4())
     batch_at = _utc_now().isoformat()
-    matches = await run_matching_for_user(user_id, supabase, limit=limit)
+    rpc_limit = await match_rpc_limit_for_user(user_id, supabase, limit)
+    if rpc_limit <= 0:
+        return batch_id, 0
+    matches = await run_matching_for_user(user_id, supabase, limit=rpc_limit)
     stored = await store_matches(
         user_id,
         cv_id,
@@ -69,6 +77,9 @@ async def run_on_demand_match_for_user(
         batch_run_id=batch_id,
         batch_run_at=batch_at,
     )
+    job_ids = [str(m["job_id"]) for m in matches if m.get("job_id")]
+    if job_ids:
+        await credit_matches_for_cycle(user_id, job_ids, supabase)
     return batch_id, stored
 
 
@@ -80,10 +91,11 @@ async def run_batch_match_for_user(
     supabase: Client,
 ) -> int:
     """Run RPC + persist top matches for one user in a nightly batch."""
-    matches = await run_matching_for_user(
-        user_id, supabase, limit=BATCH_MATCH_LIMIT
-    )
-    return await store_matches(
+    rpc_limit = await match_rpc_limit_for_user(user_id, supabase, BATCH_MATCH_LIMIT)
+    if rpc_limit <= 0:
+        return 0
+    matches = await run_matching_for_user(user_id, supabase, limit=rpc_limit)
+    stored = await store_matches(
         user_id,
         cv_id,
         matches,
@@ -91,6 +103,10 @@ async def run_batch_match_for_user(
         batch_run_id=batch_run_id,
         batch_run_at=batch_run_at,
     )
+    job_ids = [str(m["job_id"]) for m in matches if m.get("job_id")]
+    if job_ids:
+        await credit_matches_for_cycle(user_id, job_ids, supabase)
+    return stored
 
 
 async def _primary_cv_id(user_id: str, supabase: Client) -> str | None:
@@ -238,14 +254,12 @@ async def fetch_cached_batch_matches(
     min_score: float = 50.0,
     limit: int = 50,
 ) -> list[dict[str, Any]]:
-    result = (
-        supabase.table("matches")
-        .select("*, jobs(*)")
-        .eq("user_id", user_id)
-        .eq("batch_run_id", batch_run_id)
-        .gte("score", min_score)
-        .order("score", desc=True)
-        .limit(limit)
-        .execute()
+    from app.services.matching import fetch_delivered_match_rows
+
+    return await fetch_delivered_match_rows(
+        user_id,
+        supabase,
+        min_score=min_score,
+        limit=limit,
+        batch_run_id=batch_run_id,
     )
-    return list(result.data or [])

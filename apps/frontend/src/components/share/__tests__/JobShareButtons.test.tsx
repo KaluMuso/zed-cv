@@ -15,13 +15,21 @@ describe("JobShareButtons", () => {
     vi.stubGlobal("open", vi.fn());
   });
 
-  it("renders WhatsApp, LinkedIn, Facebook, X, and copy link", () => {
+  it("renders full share set by default", () => {
     render(<JobShareButtons job={job} />);
     expect(screen.getByLabelText("Share on WhatsApp")).toBeTruthy();
     expect(screen.getByLabelText("Share on LinkedIn")).toBeTruthy();
     expect(screen.getByLabelText("Share on Facebook")).toBeTruthy();
     expect(screen.getByLabelText("Share on X")).toBeTruthy();
     expect(screen.getByLabelText("Copy job link")).toBeTruthy();
+  });
+
+  it("compact variant omits X and copy link", () => {
+    render(<JobShareButtons job={job} variant="compact" />);
+    expect(screen.getByLabelText("Share on WhatsApp")).toBeTruthy();
+    expect(screen.queryByLabelText("Share on X")).toBeNull();
+    expect(screen.queryByLabelText("Copy job link")).toBeNull();
+    expect(screen.queryByLabelText("Share on LinkedIn")).toBeNull();
   });
 
   it("WhatsApp link includes job title and permalink", () => {

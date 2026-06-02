@@ -40,6 +40,8 @@ from app.services.matching import (
     get_credited_match_count,
     get_user_tier_limit,
     fetch_jobs_by_ids,
+    backfill_match_credits,
+    fetch_delivered_match_rows,
 )
 from app.services.match_quota import build_match_quota_snapshot
 from app.services.matching import apply_preferences_to_match
@@ -173,6 +175,7 @@ async def _build_match_list_response(
     from_cache: bool = False,
     limit: int = 50,
 ) -> MatchList:
+    await backfill_match_credits(user_id, supabase)
     quota = await build_match_quota_snapshot(user_id, supabase)
     preferences = await _load_user_preferences(user_id, supabase)
     matches = _rows_to_match_results(list(stored_rows), preferences)
@@ -284,20 +287,22 @@ async def get_matches(
     supabase=Depends(get_supabase),
 ):
     show_archived = include_archived or include_closed
+    await backfill_match_credits(user_id, supabase)
     quota = await build_match_quota_snapshot(user_id, supabase)
-    # Pull a wider candidate set than `limit` so the preferences-aware
-    # re-rank below can actually move things around. Without this, a
-    # 10-row LIMIT means re-ranking can only shuffle within 10 rows,
-    # which defeats the purpose. 50 is a reasonable upper bound — the
-    # RPC writes at most 20 per run today.
+    # Wider fetch for preference re-rank, capped by tier delivery quota.
+    _, effective_limit, _ = await get_user_tier_limit(user_id, supabase)
     candidate_limit = max(limit * 3, 30)
-    result = (
-        supabase.table("matches").select("*, jobs(*)").eq("user_id", user_id)
-        .gte("score", min_score).order("score", desc=True).limit(candidate_limit).execute()
+    if effective_limit < 99999:
+        candidate_limit = min(candidate_limit, effective_limit)
+    delivered_rows = await fetch_delivered_match_rows(
+        user_id,
+        supabase,
+        min_score=min_score,
+        limit=candidate_limit,
     )
 
     preferences = await _load_user_preferences(user_id, supabase)
-    matches = _rows_to_match_results(list(result.data or []), preferences)
+    matches = _rows_to_match_results(delivered_rows, preferences)
     if not show_archived:
         filtered: list[MatchResult] = []
         for m in matches:
@@ -319,6 +324,43 @@ class MatchTailorCvResponse(BaseModel):
     estimated_cost_usd: Optional[float] = None
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
+
+
+class MatchDismissResponse(BaseModel):
+    match_id: str
+    status: str = "dismissed"
+
+
+@router.post("/{match_id}/dismiss", response_model=MatchDismissResponse)
+async def dismiss_match(
+    match_id: str,
+    user_id: str = Depends(get_current_user_id),
+    supabase=Depends(get_supabase),
+):
+    """Soft-hide a match from the user's feed (status dismissed)."""
+    existing = (
+        supabase.table("matches")
+        .select("id, status")
+        .eq("id", match_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Match not found")
+    row = existing.data[0]
+    if row.get("status") == "dismissed":
+        return MatchDismissResponse(match_id=match_id, status="dismissed")
+    updated = (
+        supabase.table("matches")
+        .update({"status": "dismissed"})
+        .eq("id", match_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not updated.data:
+        raise HTTPException(status_code=500, detail="Could not hide match")
+    return MatchDismissResponse(match_id=match_id, status="dismissed")
 
 
 @router.post("/{match_id}/tailor-cv", response_model=MatchTailorCvResponse)
