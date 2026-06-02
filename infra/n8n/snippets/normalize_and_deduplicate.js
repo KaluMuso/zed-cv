@@ -180,7 +180,8 @@ for (let branch = 0; branch < inputs.length; branch++) {
   if (!data?.jobs) continue;
 
   for (const j of data.jobs) {
-    if (!j.title) continue;
+    const titleTrim = String(j.title || '').trim();
+    if (titleTrim.length < 3) continue;
 
     const sourceUrl = resolveSourceUrl(j, linkPool);
     const hasContact = !!(j.apply_url || j.apply_email || sourceUrl);

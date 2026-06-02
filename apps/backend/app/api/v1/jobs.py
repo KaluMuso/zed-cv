@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
+from pydantic import ValidationError
 
 from app.core.config import Settings, get_settings
 from app.core.deps import (
@@ -1002,6 +1003,19 @@ async def _ingest_one_job(
         return "error", f"unexpected: {type(exc).__name__}"
 
 
+def _ingest_validation_reason(exc: ValidationError) -> str:
+    errs = exc.errors()
+    if not errs:
+        return "validation failed"
+    first = errs[0]
+    msg = str(first.get("msg", "validation failed"))
+    loc = first.get("loc", ())
+    if loc:
+        path = ".".join(str(part) for part in loc)
+        return f"{path}: {msg}"
+    return msg
+
+
 @router.post("/ingest", response_model=JobIngestResponse)
 @limiter.limit("10/minute")
 async def ingest_jobs(
@@ -1036,7 +1050,20 @@ async def ingest_jobs(
     skipped = 0
     errors: list[JobIngestErrorItem] = []
 
-    for idx, job in enumerate(body.jobs):
+    for idx, raw in enumerate(body.jobs):
+        try:
+            job = JobCreate.model_validate(raw)
+        except ValidationError as exc:
+            title = str(raw.get("title") or "<unknown>")[:80]
+            errors.append(
+                JobIngestErrorItem(
+                    index=idx,
+                    title=title,
+                    reason=f"validation: {_ingest_validation_reason(exc)}",
+                )
+            )
+            continue
+
         status, detail = await _ingest_one_job(supabase, job, aggregator_blacklist)
         if status == "ingested":
             ingested += 1

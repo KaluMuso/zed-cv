@@ -562,6 +562,61 @@ class TestJobIngest:
         assert body["duplicates"] == 0
         assert body["errors"] == []
 
+    @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
+    def test_ingest_accepts_short_title_chef(
+        self, mock_embed, client, fake_supabase
+    ):
+        """Short titles like 'Chef' must not 422 the scraper batch."""
+        mock_embed.return_value = [0.1] * 768
+        fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
+        fake_supabase.set_table(
+            "jobs",
+            FakeSupabaseQuery(data=[{"id": "job-chef-1"}]),
+        )
+        fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
+
+        chef = {
+            **self.SAMPLE_JOB,
+            "title": "Chef",
+            "company": "Hotel A",
+            "description": (
+                "Hotel kitchen chef preparing meals for guests and managing "
+                "stock in Lusaka."
+            ),
+            "source_url": "https://gozambiajobs.com/jobs/chef-hotel-a/",
+        }
+
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "test-ingest-key", "jobs": [chef]},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["ingested"] == 1
+        assert body["errors"] == []
+
+    @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
+    def test_ingest_invalid_row_does_not_fail_batch(
+        self, mock_embed, client, fake_supabase
+    ):
+        mock_embed.return_value = [0.1] * 768
+        fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
+        fake_supabase.set_table(
+            "jobs", FakeSupabaseQuery(data=[{"id": "job-valid-1"}])
+        )
+        fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
+
+        bad = {**self.SAMPLE_JOB, "title": "AB", "description": "too short"}
+        resp = client.post(
+            "/api/v1/jobs/ingest",
+            json={"api_key": "test-ingest-key", "jobs": [self.SAMPLE_JOB, bad]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ingested"] == 1
+        assert len(body["errors"]) == 1
+        assert body["errors"][0]["index"] == 1
+
     @patch(
         "app.api.v1.jobs.resolve_apply_contacts_from_aggregator_url",
         new_callable=AsyncMock,
@@ -862,14 +917,17 @@ class TestJobIngestRicherFields:
         assert resp.json()["ingested"] == 1
 
     def test_ingest_rejects_invalid_employment_type(self, client, fake_supabase):
-        """Unknown enum value must 422 the whole batch — Pydantic's
-        EmploymentType validator catches it before any side effects."""
+        """Unknown enum value is reported per-row — batch still returns 200."""
         bad = {**self.BASE_JOB, "employment_type": "totally-made-up"}
         resp = client.post(
             "/api/v1/jobs/ingest",
             json={"api_key": "test-ingest-key", "jobs": [bad]},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ingested"] == 0
+        assert len(body["errors"]) == 1
+        assert "employment_type" in body["errors"][0]["reason"].lower() or "validation" in body["errors"][0]["reason"]
 
     def test_ingest_rejects_invalid_work_arrangement(self, client, fake_supabase):
         bad = {**self.BASE_JOB, "work_arrangement": "in-the-cloud-somewhere"}
@@ -877,7 +935,9 @@ class TestJobIngestRicherFields:
             "/api/v1/jobs/ingest",
             json={"api_key": "test-ingest-key", "jobs": [bad]},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200
+        assert resp.json()["ingested"] == 0
+        assert len(resp.json()["errors"]) == 1
 
     def test_ingest_rejects_invalid_pay_frequency(self, client, fake_supabase):
         bad = {**self.BASE_JOB, "pay_frequency": "fortnightly"}
@@ -885,7 +945,9 @@ class TestJobIngestRicherFields:
             "/api/v1/jobs/ingest",
             json={"api_key": "test-ingest-key", "jobs": [bad]},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200
+        assert resp.json()["ingested"] == 0
+        assert len(resp.json()["errors"]) == 1
 
     def test_ingest_rejects_hybrid_days_out_of_range(self, client, fake_supabase):
         bad = {**self.BASE_JOB, "hybrid_days_per_week": 7}
@@ -893,7 +955,9 @@ class TestJobIngestRicherFields:
             "/api/v1/jobs/ingest",
             json={"api_key": "test-ingest-key", "jobs": [bad]},
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 200
+        assert resp.json()["ingested"] == 0
+        assert len(resp.json()["errors"]) == 1
 
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
     def test_ingest_uses_salary_text_when_ints_missing(

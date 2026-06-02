@@ -100,6 +100,17 @@ Bwana live workflow already uses `$env.OPENROUTER_API_KEY` and `$env.WAHA_API_KE
 
 If **AI Parse \*** nodes return `Your project has been denied access`, the live workflow is still calling **Google AI Studio** (`generativelanguage.googleapis.com`) with a blocked project. Re-import repo `job_scraper.json`: all four **AI Parse** nodes now use **OpenRouter** (`OPENROUTER_API_KEY`), same as the backend.
 
+### Send to ZedApply: HTTP 422 on short title (e.g. `"Chef"`)
+
+**Symptom:** **Send to ZedApply** fails with HTTP 422 and
+`String should have at least 5 characters` on `jobs[N].title`.
+
+**Cause:** One scraper row had a title shorter than the old ingest minimum (e.g. `"Chef"`). FastAPI validated the whole batch before processing.
+
+**Fix (backend, master after PR #227):** Title minimum is 3 chars (aligned with LLM extractor), and ingest validates **each row** — bad rows land in `errors[]` without failing the batch.
+
+**Fix (n8n, optional):** Re-paste `infra/n8n/snippets/normalize_and_deduplicate.js` into **Normalize and Deduplicate** (drops titles under 3 chars before send).
+
 ### Send to ZedApply: 422 `api_key` Field required
 
 **Symptom:** Normalize returns 50 jobs with valid `source_url`, but **Send to ZedApply** fails with HTTP 422 and `"loc":["body","api_key"],"msg":"Field required"`.

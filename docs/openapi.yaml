@@ -1407,7 +1407,7 @@ components:
       type: object
       required: [title, description, source]
       properties:
-        title: { type: string, minLength: 5 }
+        title: { type: string, minLength: 3, maxLength: 500 }
         company: { type: string }
         location: { type: string }
         description: { type: string, minLength: 20 }

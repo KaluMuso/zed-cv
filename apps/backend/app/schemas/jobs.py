@@ -216,7 +216,7 @@ def _parse_salary_to_ngwee(text: str | None) -> tuple[Optional[int], Optional[in
     return (min(parsed), max(parsed))
 
 class JobCreate(BaseModel):
-    title: str = Field(..., min_length=5)
+    title: str = Field(..., min_length=3, max_length=500)
     company: Optional[str] = None
     location: Optional[str] = None
     description: str = Field(..., min_length=20)
@@ -548,9 +548,12 @@ class JobIngestRequest(BaseModel):
     Auth is by shared secret in the body (settings.ingest_api_key) rather
     than a header so the n8n HTTP Request node can use Predefined
     Credential Type = None and just send JSON.
+
+    ``jobs`` is validated row-by-row in the ingest handler so one bad
+    scraper row never 422s the entire batch.
     """
     api_key: str
-    jobs: list[JobCreate]
+    jobs: list[dict[str, Any]]
 
 
 class JobIngestErrorItem(BaseModel):
