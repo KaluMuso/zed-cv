@@ -227,4 +227,17 @@ for (let branch = 0; branch < inputs.length; branch++) {
   }
 }
 
-return [{ json: { jobs: allJobs, count: allJobs.length } }];
+return [{
+  json: {
+    jobs: allJobs,
+    count: allJobs.length,
+    // Code nodes can read $env even when HTTP Request expressions cannot
+    // (N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS). Downstream HTTP nodes use $json.*.
+    fastapiUrl: (typeof $env !== 'undefined' && $env.FASTAPI_URL)
+      ? String($env.FASTAPI_URL).replace(/\/$/, '')
+      : 'http://zedcv-backend:8000',
+    ingestKey: (typeof $env !== 'undefined' && $env.INGEST_API_KEY)
+      ? String($env.INGEST_API_KEY)
+      : '',
+  },
+}];

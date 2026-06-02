@@ -104,18 +104,35 @@ If **AI Parse \*** nodes return `Your project has been denied access`, the live 
 
 **Symptom:** Normalize returns 50 jobs with valid `source_url`, but **Send to ZedApply** fails with HTTP 422 and `"loc":["body","api_key"],"msg":"Field required"`.
 
-**Cause:** The Send node still uses `api_key: $json.ingestKey`, but **Normalize and Deduplicate** no longer passes `ingestKey` on the item (by design — secrets stay in n8n env, not execution JSON).
+**Cause:** The Send node still uses `api_key: $json.ingestKey`, but **Normalize and Deduplicate** does not pass `ingestKey` on the item.
 
-**Fix (live n8n, ~1 min):**
+**Fix:** Paste latest `infra/n8n/snippets/normalize_and_deduplicate.js` into the **Normalize and Deduplicate** Code node (it reads `$env` in Code and outputs `fastapiUrl` + `ingestKey`). Then set **Send to ZedApply**:
 
-1. Open **Send to ZedApply** → **Body** → JSON (expression mode):
-   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $env.INGEST_API_KEY }) }}`
-2. Set **URL** to:
-   `={{ ($env.FASTAPI_URL || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
-3. Open **Deep Enrich After Ingest** → header **X-INGEST-API-KEY**:
-   `={{ $env.INGEST_API_KEY }}`
-4. **Settings → Variables:** confirm `INGEST_API_KEY` is set (same value as OCI `apps/backend/.env`).
-5. **Save** → **Publish** → re-run manual test. Expect HTTP 200 `{ "ingested": N, ... }`.
+1. **URL:** `={{ ($json.fastapiUrl || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
+2. **Body:** `={{ JSON.stringify({ jobs: $json.jobs, api_key: $json.ingestKey }) }}`
+
+Parentheses around the base URL are **required** — without them, `$json.fastapiUrl || 'http://…' + '/api/v1/…'` short-circuits to bare `https://api.zedapply.com` (no path) and the HTTP node fails with “incorrect host”.
+
+### `$env` red / `[access to env vars denied]` in HTTP Request nodes
+
+**Symptom:** `$env.FASTAPI_URL` or `$env.INGEST_API_KEY` is red in **Send to ZedApply** with `[access to env vars denied]`.
+
+**Cause:** Production n8n sets `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=true` (or equivalent). **HTTP Request** parameter expressions cannot read `$env`; **Code** nodes still can.
+
+**Fix (preferred on blocked instances):** **Normalize and Deduplicate** (Code node) copies env into the item:
+
+```javascript
+fastapiUrl: $env.FASTAPI_URL || 'http://zedcv-backend:8000',
+ingestKey: $env.INGEST_API_KEY,
+```
+
+Downstream HTTP nodes use `$json.fastapiUrl` and `$json.ingestKey` (see repo `job_scraper.json`). **Deep Enrich After Ingest** uses `$('Normalize and Deduplicate').item.json.*` because it runs after Send.
+
+**Alternative:** Set `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=false` in the n8n container env and recreate the container — then `$env.*` works directly in HTTP nodes (trade-off: secrets visible in expression editor).
+
+**Settings → Variables:** `FASTAPI_URL` and `INGEST_API_KEY` must still be set (same values as OCI `apps/backend/.env`). If n8n uses process env instead of Variables, set them in docker-compose for the n8n service.
+
+After patch: **Save** → **Publish** → manual test. Expect HTTP 200 `{ "ingested": N, ... }`.
 
 ### Combine All Sources: jobs with `source_url: null`
 
@@ -144,10 +161,10 @@ Repo export `job_scraper.json` is the source of truth. Live n8n must match it be
 4. Re-import `infra/n8n/job_scraper.json` or update all four **AI Parse \*** nodes to POST `https://openrouter.ai/api/v1/chat/completions` with Bearer auth (remove **Google AI** credential).
 3. Open the **Send to ZedApply** HTTP Request node.
 4. Set **Method** `POST` and URL:
-   `={{ ($env.FASTAPI_URL || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
+   `={{ ($json.fastapiUrl || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
 5. **Body** → JSON (expression mode):
-   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $env.INGEST_API_KEY }) }}`
-   There must be **no literal** `api_key` string in the node — only `$env.INGEST_API_KEY`.
+   `={{ JSON.stringify({ jobs: $json.jobs, api_key: $json.ingestKey }) }}`
+   Use `$json.*` not `$env.*` when `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS` is enabled (see troubleshooting above).
 6. **Settings** → **Variables** (instance): confirm `INGEST_API_KEY` and `FASTAPI_URL` are set (same values as OCI `apps/backend/.env` ingest secret and public API base).
 7. **Save** → **Publish** (activate if the toggle was off).
 8. **Execute workflow** (manual test) → open the execution → **Send to ZedApply** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
