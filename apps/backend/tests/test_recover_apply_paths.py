@@ -13,6 +13,7 @@ class TestLoadCandidates:
         supabase = MagicMock()
         pending = [{"id": "a", "source_url": "https://x.com/1"}]
         after_fail = [{"id": "c", "source_url": "https://x.com/3"}]
+        stale = [{"id": "d", "source_url": "https://x.com/4"}]
         legacy = [{"id": "b", "source_url": "https://x.com/2"}]
 
         with (
@@ -28,14 +29,53 @@ class TestLoadCandidates:
             ),
             patch.object(
                 recover_apply_paths,
+                "_fetch_stale_inactive_with_valid_path",
+                return_value=stale,
+            ),
+            patch.object(
+                recover_apply_paths,
                 "_fetch_legacy_active_recoverable_broad",
                 return_value=legacy,
             ),
         ):
             out = recover_apply_paths.load_candidates(supabase)
 
-        assert len(out) == 3
-        assert {r["id"] for r in out} == {"a", "b", "c"}
+        assert len(out) == 4
+        assert {r["id"] for r in out} == {"a", "b", "c", "d"}
+
+
+class TestStaleReconcile:
+    @pytest.mark.asyncio
+    async def test_reactivates_when_email_already_valid(self):
+        supabase = MagicMock()
+        row = {
+            "id": "8473a9bd-57be-4cd8-90c4-d6b3db27d4cf",
+            "title": "HR Officer",
+            "source_url": "https://www.jobwebzambia.com/jobs/hr-officer/",
+            "apply_url": "https://www.jobwebzambia.com/jobs/hr-officer/",
+            "apply_email": "careers@karibaharvest.com",
+            "contact_phone": None,
+            "is_active": False,
+            "deactivation_reason": "no_valid_apply_path_after_enrich",
+        }
+
+        with (
+            patch.object(
+                recover_apply_paths,
+                "enrich_job_deep",
+                new_callable=AsyncMock,
+            ) as mock_enrich,
+            patch.object(recover_apply_paths, "_log_outcome"),
+        ):
+            bucket = await recover_apply_paths.process_job(
+                supabase, row, dry_run=False
+            )
+
+        assert bucket == "recovered"
+        mock_enrich.assert_not_called()
+        payload = supabase.table.return_value.update.call_args[0][0]
+        assert payload["is_active"] is True
+        assert payload["deactivation_reason"] is None
 
 
 class TestParserRecovery:
@@ -101,6 +141,12 @@ class TestProcessJob:
         with (
             patch.object(
                 recover_apply_paths,
+                "_try_parser_recovery",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch.object(
+                recover_apply_paths,
                 "enrich_job_deep",
                 new_callable=AsyncMock,
                 return_value="enriched",
@@ -135,6 +181,12 @@ class TestProcessJob:
         still_bad = dict(row)
 
         with (
+            patch.object(
+                recover_apply_paths,
+                "_try_parser_recovery",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch.object(
                 recover_apply_paths,
                 "enrich_job_deep",

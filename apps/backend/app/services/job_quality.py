@@ -61,6 +61,15 @@ ZM_VALID_PHONE_PATTERNS = [
 
 THIN_DESCRIPTION_THRESHOLD = 300
 
+# Deactivation reasons set solely by the apply-path gate (cleared when path is valid).
+APPLY_PATH_DEACTIVATION_REASONS = frozenset(
+    {
+        "no_valid_apply_path_pending_enrich",
+        "no_valid_apply_path_no_source",
+        "no_valid_apply_path_after_enrich",
+    }
+)
+
 KNOWN_RECRUITING_PLATFORMS = {
     "oraclecloud.com",
     "myworkdayjobs.com",
@@ -505,3 +514,7 @@ def apply_ingest_quality_to_job_data(
             job_data["deactivation_reason"] = "no_valid_apply_path_pending_enrich"
         else:
             job_data["deactivation_reason"] = "no_valid_apply_path_no_source"
+    else:
+        reason = str(job_data.get("deactivation_reason") or "")
+        if reason in APPLY_PATH_DEACTIVATION_REASONS:
+            job_data["deactivation_reason"] = None
