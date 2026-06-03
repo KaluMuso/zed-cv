@@ -29,9 +29,15 @@ class MatchDismissRequest(BaseModel):
         None,
         description="Optional not-interested reason for product tuning.",
     )
+    note: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Optional detail when reason is other.",
+    )
 
 
 class MatchDismissResponse(BaseModel):
     match_id: str
     status: str = "dismissed"
     reason: Optional[str] = None
+    note: Optional[str] = None

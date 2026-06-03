@@ -1603,10 +1603,16 @@ export interface MatchRefreshResponse extends MatchListResponse {
 export const matches = {
   get: (
     token: string,
-    opts?: { minScore?: number; includeClosed?: boolean; includeArchived?: boolean },
+    opts?: {
+      minScore?: number;
+      limit?: number;
+      includeClosed?: boolean;
+      includeArchived?: boolean;
+    },
   ) => {
     const query = new URLSearchParams();
     if (opts?.minScore != null) query.set("min_score", String(opts.minScore));
+    if (opts?.limit != null) query.set("limit", String(opts.limit));
     if (opts?.includeClosed) query.set("include_closed", "true");
     if (opts?.includeArchived) query.set("include_archived", "true");
     const qs = query.toString();
@@ -1633,9 +1639,10 @@ export const matches = {
         | "experience_mismatch"
         | "already_applied"
         | "other";
+      note?: string;
     },
   ) =>
-    apiFetch<{ match_id: string; status: string; reason?: string | null }>(
+    apiFetch<{ match_id: string; status: string; reason?: string | null; note?: string | null }>(
       `/matches/${encodeURIComponent(matchId)}/dismiss`,
       {
         method: "POST",

@@ -30,12 +30,12 @@ import { InterviewPrepModal } from "./_components/InterviewPrepModal";
 import { MatchExplanationModal } from "./_components/MatchExplanationModal";
 import {
   MatchDismissModal,
-  type MatchDismissReason,
+  type MatchDismissPayload,
 } from "@/components/matches/MatchDismissModal";
 import { TailoredCvModal } from "@/components/matches/TailoredCvModal";
 import { CoverLetterMatchModal } from "@/components/matches/CoverLetterMatchModal";
 import { resolveMatchQuotaDisplay } from "@/lib/matchQuota";
-import { computeJobVisibilityStatus } from "@/lib/jobVisibility";
+import { isClosedForMatchesFeed } from "@/lib/jobVisibility";
 import { trackApplyClick } from "@/lib/trackApplyClick";
 import { ApplyModal } from "@/components/jobs/ApplyModal";
 import { PushPermissionPrompt } from "@/components/notifications/PushPermissionPrompt";
@@ -58,6 +58,9 @@ function formatLastBatchRun(iso: string | null | undefined): string | null {
   const days = Math.floor(hours / 24);
   return days === 1 ? "1 day ago" : `${days} days ago`;
 }
+
+/** API default is 10; load enough rows to sort/filter the full delivered set. */
+const MATCHES_PAGE_FETCH_LIMIT = 50;
 
 const TIER_LABELS: Record<string, string> = {
   free: "Free",
@@ -96,7 +99,10 @@ export default function MatchesPageClient() {
 
   const loadMatches = useCallback(async (authToken: string, includeClosed = false) => {
     const [matchesRes, subRes, prefsRes, autoPrefsRes] = await Promise.allSettled([
-      matchesApi.get(authToken, { includeArchived: includeClosed }),
+      matchesApi.get(authToken, {
+        limit: MATCHES_PAGE_FETCH_LIMIT,
+        includeArchived: includeClosed,
+      }),
       subscriptionApi.get(authToken),
       preferencesApi.get(authToken),
       autoMatchPreferences.get(authToken),
@@ -193,12 +199,19 @@ export default function MatchesPageClient() {
   }, [token, refreshing, refreshCooldown, data]);
 
   const confirmDismissMatch = useCallback(
-    async (reason: MatchDismissReason | undefined) => {
+    async (payload: MatchDismissPayload) => {
       const match = dismissFor;
       if (!token || !match || dismissingId) return;
       setDismissingId(match.id);
       try {
-        await matchesApi.dismiss(token, match.id, reason ? { reason } : undefined);
+        const body =
+          payload.reason || payload.note
+            ? {
+                ...(payload.reason ? { reason: payload.reason } : {}),
+                ...(payload.note ? { note: payload.note } : {}),
+              }
+            : undefined;
+        await matchesApi.dismiss(token, match.id, body);
         setData((prev) =>
           prev
             ? {
@@ -418,7 +431,7 @@ export default function MatchesPageClient() {
   const keyword = keywordFilter.trim().toLowerCase();
   let filtered = data.matches.filter((m) => {
     if (m.score < scoreFilter) return false;
-    if (!showClosed && computeJobVisibilityStatus(m.job) === "archived") return false;
+    if (!showClosed && isClosedForMatchesFeed(m.job)) return false;
     if (
       keyword &&
       !m.job.title.toLowerCase().includes(keyword) &&
@@ -430,11 +443,18 @@ export default function MatchesPageClient() {
     return true;
   });
   if (sort === "score") {
-    filtered = [...filtered].sort((a, b) => b.score - a.score);
+    filtered = [...filtered].sort((a, b) => {
+      const byScore = b.score - a.score;
+      if (byScore !== 0) return byScore;
+      return closingKey(a.job.closing_date) - closingKey(b.job.closing_date);
+    });
   } else {
-    filtered = [...filtered].sort(
-      (a, b) => closingKey(a.job.closing_date) - closingKey(b.job.closing_date)
-    );
+    filtered = [...filtered].sort((a, b) => {
+      const byClose =
+        closingKey(a.job.closing_date) - closingKey(b.job.closing_date);
+      if (byClose !== 0) return byClose;
+      return b.score - a.score;
+    });
   }
 
   const {
@@ -485,7 +505,22 @@ export default function MatchesPageClient() {
             .
           </h1>
           <p className="text-base" style={{ color: "var(--muted)" }}>
-            <Counter to={filtered.length} /> roles scored against your CV.
+            {matchesUsed > 0 ? (
+              <>
+                Showing <Counter to={filtered.length} />
+                {data.matches.length < matchesUsed
+                  ? ` of ${data.matches.length} loaded`
+                  : ""}
+                {matchesUsed > data.matches.length
+                  ? ` (${matchesUsed} delivered this period)`
+                  : ""}
+                .
+              </>
+            ) : (
+              <>
+                <Counter to={filtered.length} /> roles scored against your CV.
+              </>
+            )}{" "}
             Tap any card to expand the breakdown.
           </p>
         </div>
@@ -752,7 +787,7 @@ export default function MatchesPageClient() {
             <MatchCard
               key={match.id}
               match={match}
-              expired={computeJobVisibilityStatus(match.job) === "archived"}
+              expired={isClosedForMatchesFeed(match.job)}
               authToken={token}
               jobSaved={savedJobIds.has(match.job.id)}
               onSavedChange={(jobId, next) => {

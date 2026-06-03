@@ -80,3 +80,57 @@ def test_dismiss_match_not_found(client, auth_headers):
         app.dependency_overrides.pop(get_supabase, None)
 
     assert res.status_code == 404
+
+
+def test_dismiss_match_other_with_note(client, auth_headers):
+    from app.core.deps import get_supabase
+    from main import app
+
+    table = MagicMock()
+    table.select.return_value = _Chain(
+        SimpleNamespace(data=[{"id": MATCH_ID, "status": "new", "job_id": "j1"}])
+    )
+    table.update.return_value = _Chain(
+        SimpleNamespace(data=[{"id": MATCH_ID, "status": "dismissed"}])
+    )
+    supabase = MagicMock()
+    supabase.table.return_value = table
+
+    app.dependency_overrides[get_supabase] = lambda: supabase
+    try:
+        res = client.post(
+            f"/api/v1/matches/{MATCH_ID}/dismiss",
+            headers=auth_headers,
+            json={"reason": "other", "note": "Too senior for my experience"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_supabase, None)
+
+    assert res.status_code == 200
+    payload = table.update.call_args[0][0]
+    assert payload["dismiss_reason"] == "other"
+    assert payload["dismiss_note"] == "Too senior for my experience"
+
+
+def test_dismiss_note_without_other_rejected(client, auth_headers):
+    from app.core.deps import get_supabase
+    from main import app
+
+    table = MagicMock()
+    table.select.return_value = _Chain(
+        SimpleNamespace(data=[{"id": MATCH_ID, "status": "new"}])
+    )
+    supabase = MagicMock()
+    supabase.table.return_value = table
+
+    app.dependency_overrides[get_supabase] = lambda: supabase
+    try:
+        res = client.post(
+            f"/api/v1/matches/{MATCH_ID}/dismiss",
+            headers=auth_headers,
+            json={"reason": "wrong_location", "note": "Lusaka only"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_supabase, None)
+
+    assert res.status_code == 422

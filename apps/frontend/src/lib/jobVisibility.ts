@@ -51,3 +51,11 @@ export function isGreyedClosedListing(
 ): boolean {
   return isJobListingClosed(job) || isRecentlyClosedJob(job);
 }
+
+/** Closed or past grace — hidden from matches feed unless "Show closed" is on. */
+export function isClosedForMatchesFeed(
+  job: Pick<Job, "is_active" | "closing_date" | "visibility_status">,
+): boolean {
+  const status = computeJobVisibilityStatus(job);
+  return status === "recently_closed" || status === "archived";
+}

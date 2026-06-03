@@ -13,6 +13,11 @@ export type MatchDismissReason =
   | "already_applied"
   | "other";
 
+export type MatchDismissPayload = {
+  reason?: MatchDismissReason;
+  note?: string;
+};
+
 const REASON_OPTIONS: { value: MatchDismissReason; label: string }[] = [
   { value: "not_relevant", label: "Not relevant to my profile" },
   { value: "wrong_location", label: "Wrong location" },
@@ -21,6 +26,8 @@ const REASON_OPTIONS: { value: MatchDismissReason; label: string }[] = [
   { value: "already_applied", label: "Already applied" },
   { value: "other", label: "Other" },
 ];
+
+const NOTE_MAX = 500;
 
 export function MatchDismissModal({
   match,
@@ -33,15 +40,22 @@ export function MatchDismissModal({
   open: boolean;
   saving?: boolean;
   onClose: () => void;
-  onConfirm: (reason: MatchDismissReason | undefined) => void;
+  onConfirm: (payload: MatchDismissPayload) => void;
 }) {
   const [reason, setReason] = useState<MatchDismissReason | "">("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
-    if (open) setReason("");
+    if (open) {
+      setReason("");
+      setNote("");
+    }
   }, [open, match?.id]);
 
   if (!open || !match) return null;
+
+  const trimmedNote = note.trim();
+  const noteInvalid = reason === "other" && trimmedNote.length === 0;
 
   return (
     <ModalPortal>
@@ -63,7 +77,7 @@ export function MatchDismissModal({
           <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
             Optional — helps us improve future matches:
           </p>
-          <fieldset className="space-y-2 mb-5">
+          <fieldset className="space-y-2 mb-3">
             {REASON_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
@@ -81,6 +95,34 @@ export function MatchDismissModal({
               </label>
             ))}
           </fieldset>
+          {reason === "other" && (
+            <label className="flex flex-col gap-1.5 mb-4">
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Tell us more <span style={{ color: "var(--danger)" }}>*</span>
+              </span>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={NOTE_MAX}
+                rows={3}
+                placeholder="e.g. role is too senior, industry mismatch…"
+                className="form-input text-sm"
+                style={{
+                  resize: "vertical",
+                  padding: 10,
+                  border: noteInvalid
+                    ? "1px solid var(--danger)"
+                    : "1px solid var(--line-2)",
+                }}
+                aria-invalid={noteInvalid}
+              />
+              {noteInvalid && (
+                <span className="text-xs" style={{ color: "var(--danger)" }}>
+                  Please add a short note when you choose Other.
+                </span>
+              )}
+            </label>
+          )}
           <div className="flex gap-2 justify-end">
             <button type="button" className={btnClass("ghost", "sm")} onClick={onClose} disabled={saving}>
               Cancel
@@ -88,8 +130,13 @@ export function MatchDismissModal({
             <button
               type="button"
               className={btnClass("primary", "sm")}
-              disabled={saving}
-              onClick={() => onConfirm(reason || undefined)}
+              disabled={saving || noteInvalid}
+              onClick={() => {
+                const payload: MatchDismissPayload = {};
+                if (reason) payload.reason = reason;
+                if (reason === "other" && trimmedNote) payload.note = trimmedNote;
+                onConfirm(payload);
+              }}
             >
               {saving ? "Hiding…" : "Hide match"}
             </button>

@@ -340,8 +340,14 @@ async def dismiss_match(
 ):
     """Soft-hide a match from the user's feed (status dismissed)."""
     reason = body.reason if body else None
+    note = (body.note or "").strip() if body and body.note else None
     if reason is not None and reason not in VALID_DISMISS_REASONS:
         raise HTTPException(status_code=422, detail="Invalid dismiss reason")
+    if note and reason != "other":
+        raise HTTPException(
+            status_code=422,
+            detail="Note is only accepted when reason is other",
+        )
 
     existing = (
         supabase.table("matches")
@@ -355,7 +361,9 @@ async def dismiss_match(
         raise HTTPException(status_code=404, detail="Match not found")
     row = existing.data[0]
     if row.get("status") == "dismissed":
-        return MatchDismissResponse(match_id=match_id, status="dismissed", reason=reason)
+        return MatchDismissResponse(
+            match_id=match_id, status="dismissed", reason=reason, note=note
+        )
     now_iso = datetime.now(timezone.utc).isoformat()
     patch: dict[str, str] = {
         "status": "dismissed",
@@ -363,6 +371,8 @@ async def dismiss_match(
     }
     if reason:
         patch["dismiss_reason"] = reason
+    if note:
+        patch["dismiss_note"] = note
     updated = (
         supabase.table("matches")
         .update(patch)
@@ -381,12 +391,15 @@ async def dismiss_match(
                     "match_id": match_id,
                     "job_id": row.get("job_id"),
                     "reason": reason,
+                    "note": note,
                 },
             }
         ).execute()
     except Exception:
         logger.debug("match_dismissed analytics insert failed", exc_info=True)
-    return MatchDismissResponse(match_id=match_id, status="dismissed", reason=reason)
+    return MatchDismissResponse(
+        match_id=match_id, status="dismissed", reason=reason, note=note
+    )
 
 
 @router.post("/{match_id}/tailor-cv", response_model=MatchTailorCvResponse)
