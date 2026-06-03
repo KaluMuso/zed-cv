@@ -816,6 +816,7 @@ export default function MatchesPageClient() {
               }}
               onTailorCvClick={() => setTailorFor(match)}
               onCoverLetterClick={() => setCoverLetterFor(match)}
+              onInterviewPrepClick={() => setPrepFor(match)}
               onWhyMatchClick={() => setDetailMatch(match)}
               onDismissClick={() => setDismissFor(match)}
               dismissing={dismissingId === match.id}

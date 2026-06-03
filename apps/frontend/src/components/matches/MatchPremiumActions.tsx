@@ -9,19 +9,23 @@ import { cn } from "@/lib/utils";
 type MatchPremiumActionsProps = {
   onTailorCvClick?: () => void;
   onCoverLetterClick?: () => void;
+  onInterviewPrepClick?: () => void;
 };
 
 /**
- * Tailor CV + cover letter on match cards. When both are tier-gated, show one
- * upgrade CTA (both require Professional) to avoid duplicate overlapping links.
+ * Tailor CV + cover letter on match cards (Professional+). Interview prep is
+ * Super Standard — show an upgrade CTA on Professional, full button on Super Standard.
  */
 export function MatchPremiumActions({
   onTailorCvClick,
   onCoverLetterClick,
+  onInterviewPrepClick,
 }: MatchPremiumActionsProps) {
   const { tier, loading } = useUserTier();
   const requiredTier = FEATURE_TIER_MAP.tailor_cv;
+  const prepTier = FEATURE_TIER_MAP.unlock_prep;
   const unlocked = tierAtLeast(tier, requiredTier);
+  const prepUnlocked = tierAtLeast(tier, prepTier);
 
   if (loading) {
     return (
@@ -42,8 +46,15 @@ export function MatchPremiumActions({
     );
   }
 
+  const showPrep = Boolean(onInterviewPrepClick);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+    <div
+      className={cn(
+        "grid gap-2 w-full",
+        showPrep ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2",
+      )}
+    >
       <button
         type="button"
         className={cn(btnClass("accent", "sm"), "w-full text-xs")}
@@ -60,6 +71,23 @@ export function MatchPremiumActions({
       >
         Cover letter
       </button>
+      {showPrep &&
+        (prepUnlocked ? (
+          <button
+            type="button"
+            className={cn(btnClass("outline", "sm"), "w-full text-xs")}
+            onClick={onInterviewPrepClick}
+            data-testid="match-interview-prep"
+          >
+            Interview prep
+          </button>
+        ) : (
+          <UpgradeButton
+            feature="unlock_prep"
+            requiredTier={prepTier}
+            className="w-full text-xs"
+          />
+        ))}
     </div>
   );
 }

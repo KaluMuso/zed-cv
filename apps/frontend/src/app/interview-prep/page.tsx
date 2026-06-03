@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
+import { InterviewPrepGate } from "@/app/interview-prep/_components/InterviewPrepGate";
 import { useAuth } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
@@ -23,47 +24,37 @@ interface InterviewPrepOverview {
 }
 
 export default function InterviewPrepPage() {
-  const router = useRouter();
-  const { token, isAuthenticated, isLoading } = useAuth();
+  return (
+    <InterviewPrepGate nextPath="/interview-prep">
+      <InterviewPrepHub />
+    </InterviewPrepGate>
+  );
+}
+
+function InterviewPrepHub() {
+  const { token } = useAuth();
   const [overview, setOverview] = useState<InterviewPrepOverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [placeholder, setPlaceholder] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated || !token) {
-      router.replace("/auth?next=/interview-prep");
-      return;
-    }
+  const loadOverview = useCallback(() => {
+    if (!token) return;
+    setLoading(true);
+    setLoadError(null);
     apiFetch<InterviewPrepOverview>("/interview-prep", { token })
       .then(setOverview)
       .catch((err: Error) => {
-        if (err.message.includes("403")) {
-          notify.error("Bwana Interview requires the Super Standard plan.");
-          router.replace("/pricing");
-          return;
-        }
-        notify.error(err.message || "Could not load interview prep.");
+        setOverview(null);
+        const message = err.message || "Could not load interview prep.";
+        setLoadError(message);
+        notify.error(message);
       })
       .finally(() => setLoading(false));
-  }, [isAuthenticated, isLoading, token, router]);
+  }, [token]);
 
-  const loadPlaceholder = async (sectionId: string) => {
-    if (!token) return;
-    setActiveSection(sectionId);
-    setPlaceholder(null);
-    try {
-      const res = await apiFetch<{ content: string }>("/interview-prep", {
-        method: "POST",
-        token,
-        body: JSON.stringify({ section_id: sectionId }),
-      });
-      setPlaceholder(res.content);
-    } catch (err) {
-      notify.error(err instanceof Error ? err.message : "Preview unavailable.");
-    }
-  };
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
 
   if (loading) {
     return (
@@ -73,8 +64,25 @@ export default function InterviewPrepPage() {
     );
   }
 
-  if (!overview) {
-    return null;
+  if (loadError || !overview) {
+    return (
+      <div className="max-w-lg mx-auto px-6 py-16 text-center">
+        <h1 className="font-display text-3xl mb-3">Could not load Bwana Interview</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>
+          {loadError ?? "Something went wrong. Check your connection and try again."}
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button type="button" variant="primary" onClick={() => loadOverview()}>
+            Try again
+          </Button>
+          <Link href="/matches">
+            <Button type="button" variant="outline">
+              Back to matches
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -124,22 +132,11 @@ export default function InterviewPrepPage() {
         ))}
       </div>
 
-      {placeholder && activeSection && (
-        <div className="card p-6 mt-8">
-          <pre
-            className="text-sm whitespace-pre-wrap font-sans"
-            style={{ color: "var(--ink-2)" }}
-          >
-            {placeholder}
-          </pre>
-        </div>
-      )}
-
       <div className="mt-10 flex flex-wrap gap-3">
         <Link href="/matches" className="btn btn-ghost btn-sm">
           <Icon name="arrowLeft" size={14} /> Back to matches
         </Link>
-        <Link href="/pricing" className="btn btn-accent btn-sm">
+        <Link href="/pricing#super_standard" className="btn btn-accent btn-sm">
           View plans
         </Link>
       </div>
