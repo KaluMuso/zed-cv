@@ -24,6 +24,7 @@ from app.schemas.employer import (
     ContactRequestRow,
     EmployerCheckoutBody,
     EmployerCheckoutResponse,
+    ContactStatusSummary,
     EmployerContactsResponse,
     EmployerInviteBody,
     EmployerInviteResponse,
@@ -56,6 +57,29 @@ def _first_rows(data: Any) -> list[dict[str, Any]]:
     if isinstance(data, list):
         return [r for r in data if isinstance(r, dict)]
     return []
+
+
+def _summarize_contact_statuses(contacts: list[ContactRequestRow]) -> ContactStatusSummary:
+    counts = {
+        "pending": 0,
+        "consented": 0,
+        "declined": 0,
+        "expired": 0,
+        "draft": 0,
+        "unavailable": 0,
+    }
+    for row in contacts:
+        key = row.status if row.status in counts else "unavailable"
+        counts[key] += 1
+    return ContactStatusSummary(
+        pending=counts["pending"],
+        consented=counts["consented"],
+        declined=counts["declined"],
+        expired=counts["expired"],
+        draft=counts["draft"],
+        unavailable=counts["unavailable"],
+        total=len(contacts),
+    )
 
 
 async def _employer_context(user_id: str, supabase) -> tuple[str, dict, dict]:
@@ -219,7 +243,11 @@ async def list_contacts(
             )
             cand = _first_row(cres.data)
         contacts.append(ContactRequestRow(**enrich_contact_row(row, cand)))
-    return EmployerContactsResponse(contacts=contacts, total=len(contacts))
+    return EmployerContactsResponse(
+        contacts=contacts,
+        total=len(contacts),
+        summary=_summarize_contact_statuses(contacts),
+    )
 
 
 @router.get("/me/subscription", response_model=EmployerSubscriptionResponse)

@@ -357,6 +357,8 @@ class TestEmployerConsent:
         assert contacts.status_code == 200
         body = contacts.json()
         assert body["total"] == 1
+        assert body["summary"]["consented"] == 1
+        assert body["summary"]["pending"] == 0
         row = body["contacts"][0]
         assert row["status"] == "consented"
         assert row["candidate_phone"] == "+260973333333"
@@ -418,4 +420,6 @@ class TestEmployerIsolation:
             headers=_headers("owner-b"),
         )
         assert resp.status_code == 200
-        assert resp.json()["total"] == 0
+        body = resp.json()
+        assert body["total"] == 0
+        assert body["summary"]["total"] == 0
