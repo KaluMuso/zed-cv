@@ -13,7 +13,6 @@ import {
   type UserProfile,
 } from "@/lib/api";
 import { computeProfileCompleteness } from "@/lib/profileCompleteness";
-import type { ProfileCompletenessTabHint } from "@/lib/profileCompleteness";
 import { ProfileCompletenessChecklist } from "./ProfileCompletenessChecklist";
 import { useAuth } from "@/lib/auth";
 import { Icon } from "@/components/ui/Icon";
@@ -151,12 +150,9 @@ export default function ProfilePageClient() {
     setJobPreferences(next);
   };
 
-  const goToCompletenessTab = (tab: ProfileCompletenessTabHint) => {
-    if (tab === "preferences") {
-      onTabChange("preferences");
-      return;
-    }
-    onTabChange("cv");
+  const onProfileSaved = (next: UserProfile) => {
+    setProfileData(next);
+    refresh();
   };
 
   if (loading || authLoading) {
@@ -340,7 +336,11 @@ export default function ProfilePageClient() {
           </div>
           <ProfileCompletenessChecklist
             items={completenessResult.items}
-            onGoToTab={goToCompletenessTab}
+            token={token}
+            profile={profileData}
+            preferences={jobPreferences}
+            onProfileSaved={onProfileSaved}
+            onPreferencesSaved={onPreferencesSaved}
           />
         </div>
       </div>

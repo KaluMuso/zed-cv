@@ -22,16 +22,23 @@ import {
   type JobPreferencesUpdate,
   type PreferredLanguage,
   type IndustryExperience,
-  type PreferredWorkArrangement,
-  type JobSalaryFrequency,
   type UserProfile,
 } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { TargetRolesInput } from "@/components/TargetRolesInput";
-import { RegionsInput } from "@/components/RegionsInput";
-import { LanguagesInput } from "@/components/LanguagesInput";
-import { IndustriesInput } from "@/components/IndustriesInput";
 import { usePreferencesAutoSave, type SaveStatus } from "@/hooks/usePreferencesAutoSave";
+import {
+  EducationLevelField,
+  IndustriesField,
+  LanguagesField,
+  NoticePeriodField,
+  RegionsField,
+  RelocateField,
+  SalaryExpectationsFields,
+  validateSalaryRange,
+  WorkArrangementField,
+  YearsExperienceField,
+} from "@/components/profile/preferences/PreferenceFields";
 
 type SectionKey =
   | "career"
@@ -49,26 +56,6 @@ const SECTION_LABELS: Record<SectionKey, string> = {
   languages: "Languages & industries",
   extras: "Additional information",
 };
-
-const EDUCATION_LEVEL_OPTIONS = [
-  "Primary / Grade 12",
-  "Certificate / Diploma",
-  "Bachelor's degree",
-  "Honours / Postgraduate diploma",
-  "Master's degree",
-  "Doctorate (PhD)",
-  "Professional qualification",
-  "Other",
-] as const;
-
-const NOTICE_PERIOD_OPTIONS = [
-  "Immediate",
-  "1 week",
-  "2 weeks",
-  "1 month",
-  "1 month",
-  "3+ months",
-] as const;
 
 const STORAGE_KEY = "zedapply:preferences:expanded";
 
@@ -174,13 +161,9 @@ export function PreferencesTab({
       // feedback instead of waiting for a 422.
       const draft: JobPreferences | null = data ? mergeInto(data, patch) : null;
       const errs: Record<string, string> = {};
-      if (
-        draft &&
-        draft.salary_min !== null &&
-        draft.salary_max !== null &&
-        draft.salary_min > draft.salary_max
-      ) {
-        errs.salary = "Minimum can't be more than maximum.";
+      if (draft) {
+        const salaryErr = validateSalaryRange(draft.salary_min, draft.salary_max);
+        if (salaryErr) errs.salary = salaryErr;
       }
       setValidationErrors(errs);
       if (Object.keys(errs).length === 0) {
@@ -303,88 +286,32 @@ export function PreferencesTab({
         onToggle={() => toggle("career")}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Years of experience
-            <input
-              type="number"
-              min={0}
-              max={60}
-              value={yearsExperience}
-              onChange={(e) => {
-                const parsed = parseInt(e.target.value, 10);
-                setYearsExperience(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
-              }}
-              onBlur={() => void saveYearsExperience()}
-              className="block mt-1 w-full text-sm rounded-md px-3"
-              style={{
-                background: "var(--bg-2)",
-                border: "1px solid var(--line)",
-                color: "var(--ink)",
-                minHeight: 44,
-              }}
-            />
-          </label>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Highest qualification
-            <select
-              value={educationLevel}
-              onChange={(e) => {
-                const value = e.target.value;
-                const extras = { ...(data.extras || {}) };
-                if (value) {
-                  extras.education_level = value;
-                } else {
-                  delete extras.education_level;
-                }
-                update({ extras });
-              }}
-              className="block mt-1 w-full text-sm rounded-md px-3"
-              style={{
-                background: "var(--bg-2)",
-                border: "1px solid var(--line)",
-                color: "var(--ink)",
-                minHeight: 44,
-              }}
-            >
-              <option value="">Not specified</option>
-              {EDUCATION_LEVEL_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="text-xs mt-3 block" style={{ color: "var(--muted)" }}>
-          Notice period
-          <select
-            value={noticePeriod}
-            onChange={(e) => {
-              const value = e.target.value;
+          <YearsExperienceField
+            value={yearsExperience}
+            onChange={setYearsExperience}
+            onBlur={() => void saveYearsExperience()}
+          />
+          <EducationLevelField
+            value={educationLevel}
+            onChange={(value) => {
               const extras = { ...(data.extras || {}) };
-              if (value) {
-                extras.notice_period = value;
-              } else {
-                delete extras.notice_period;
-              }
+              if (value) extras.education_level = value;
+              else delete extras.education_level;
               update({ extras });
             }}
-            className="block mt-1 w-full text-sm rounded-md px-3"
-            style={{
-              background: "var(--bg-2)",
-              border: "1px solid var(--line)",
-              color: "var(--ink)",
-              minHeight: 44,
+          />
+        </div>
+        <div className="mt-3">
+          <NoticePeriodField
+            value={noticePeriod}
+            onChange={(value) => {
+              const extras = { ...(data.extras || {}) };
+              if (value) extras.notice_period = value;
+              else delete extras.notice_period;
+              update({ extras });
             }}
-          >
-            <option value="">Not specified</option>
-            {NOTICE_PERIOD_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </div>
         {savingYears && (
           <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
             Saving experience…
@@ -422,71 +349,11 @@ export function PreferencesTab({
         expanded={expanded.salary}
         onToggle={() => toggle("salary")}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SalaryField
-            id="salary-min"
-            label="Minimum"
-            valueNgwee={data.salary_min}
-            onChange={(v) => update({ salary_min: v })}
-          />
-          <SalaryField
-            id="salary-max"
-            label="Maximum"
-            valueNgwee={data.salary_max}
-            onChange={(v) => update({ salary_max: v })}
-          />
-        </div>
-        {validationErrors.salary && (
-          <p className="text-xs mt-2" style={{ color: "var(--danger)" }} aria-live="polite">
-            {validationErrors.salary}
-          </p>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Frequency
-            <select
-              value={data.salary_frequency ?? ""}
-              onChange={(e) =>
-                update({
-                  salary_frequency: (e.target.value || null) as JobSalaryFrequency | null,
-                })
-              }
-              className="block mt-1 w-full text-sm rounded-md px-3"
-              style={{
-                background: "var(--bg-2)",
-                border: "1px solid var(--line)",
-                color: "var(--ink)",
-                minHeight: 44,
-              }}
-            >
-              <option value="">Not specified</option>
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-            </select>
-          </label>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Currency
-            <input
-              type="text"
-              value={data.salary_currency}
-              onChange={(e) => update({ salary_currency: e.target.value.toUpperCase().slice(0, 3) })}
-              maxLength={3}
-              minLength={3}
-              className="block mt-1 w-full text-sm rounded-md px-3 font-mono"
-              style={{
-                background: "var(--bg-2)",
-                border: "1px solid var(--line)",
-                color: "var(--ink)",
-                minHeight: 44,
-              }}
-            />
-          </label>
-        </div>
-        <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
-          Amounts in kwacha (K). Leave blank if you&apos;d rather not say.
-        </p>
+        <SalaryExpectationsFields
+          preferences={data}
+          salaryError={validationErrors.salary}
+          onChange={(patch) => update(patch)}
+        />
       </Section>
 
       <Section
@@ -497,55 +364,17 @@ export function PreferencesTab({
         autoBadge={autoFields.has("acceptable_regions")}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Preferred arrangement
-            <select
-              value={data.preferred_work_arrangement ?? ""}
-              onChange={(e) =>
-                update({
-                  preferred_work_arrangement: (e.target.value || null) as PreferredWorkArrangement | null,
-                })
-              }
-              className="block mt-1 w-full text-sm rounded-md px-3"
-              style={{
-                background: "var(--bg-2)",
-                border: "1px solid var(--line)",
-                color: "var(--ink)",
-                minHeight: 44,
-              }}
-            >
-              <option value="">Not specified</option>
-              <option value="remote">Remote</option>
-              <option value="hybrid">Hybrid</option>
-              <option value="onsite">On-site</option>
-              <option value="any">Any</option>
-            </select>
-          </label>
-          <label className="text-xs flex flex-col gap-1" style={{ color: "var(--muted)" }}>
-            <span>Willing to relocate</span>
-            <span className="inline-flex items-center gap-2 mt-1">
-              <input
-                type="checkbox"
-                checked={data.willing_to_relocate}
-                onChange={(e) => update({ willing_to_relocate: e.target.checked })}
-                aria-label="Willing to relocate"
-                style={{ width: 20, height: 20 }}
-              />
-              <span className="text-sm" style={{ color: "var(--ink)" }}>
-                {data.willing_to_relocate ? "Yes" : "No"}
-              </span>
-            </span>
-          </label>
+          <WorkArrangementField
+            value={data.preferred_work_arrangement}
+            onChange={(v) => update({ preferred_work_arrangement: v })}
+          />
+          <RelocateField
+            checked={data.willing_to_relocate}
+            onChange={(checked) => update({ willing_to_relocate: checked })}
+          />
         </div>
         <div className="mt-3">
-          <label
-            htmlFor="acceptable-regions-input"
-            className="block text-xs mb-2"
-            style={{ color: "var(--muted)" }}
-          >
-            Regions you&apos;d work in. Up to 6.
-          </label>
-          <RegionsInput
+          <RegionsField
             value={data.acceptable_regions}
             onChange={(regions) => update({ acceptable_regions: regions })}
           />
@@ -559,20 +388,16 @@ export function PreferencesTab({
         onToggle={() => toggle("languages")}
         autoBadge={autoFields.has("languages") || autoFields.has("industries")}
       >
-        <div className="text-xs mb-2" style={{ color: "var(--muted)" }}>
-          Languages you speak (up to 8)
-        </div>
-        <LanguagesInput
+        <LanguagesField
           value={data.languages}
           onChange={(langs: PreferredLanguage[]) => update({ languages: langs })}
         />
-        <div className="text-xs mb-2 mt-4" style={{ color: "var(--muted)" }}>
-          Industries you&apos;ve worked in (up to 8)
+        <div className="mt-4">
+          <IndustriesField
+            value={data.industries}
+            onChange={(inds: IndustryExperience[]) => update({ industries: inds })}
+          />
         </div>
-        <IndustriesInput
-          value={data.industries}
-          onChange={(inds: IndustryExperience[]) => update({ industries: inds })}
-        />
       </Section>
 
       <Section
@@ -660,54 +485,6 @@ function Section({
         </div>
       )}
     </div>
-  );
-}
-
-function SalaryField({
-  id,
-  label,
-  valueNgwee,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  valueNgwee: number | null;
-  onChange: (v: number | null) => void;
-}) {
-  // We store in ngwee, show in kwacha. The conversion is plain math —
-  // 100 ngwee per kwacha. Empty input → null (clear the field).
-  const valueKwacha = valueNgwee === null ? "" : (valueNgwee / 100).toString();
-  return (
-    <label htmlFor={id} className="text-xs" style={{ color: "var(--muted)" }}>
-      {label} (K)
-      <input
-        id={id}
-        type="number"
-        min={0}
-        step={50}
-        value={valueKwacha}
-        onChange={(e) => {
-          const raw = e.target.value;
-          if (raw === "") {
-            onChange(null);
-            return;
-          }
-          const parsed = parseFloat(raw);
-          if (!Number.isFinite(parsed) || parsed < 0) {
-            onChange(null);
-            return;
-          }
-          onChange(Math.round(parsed * 100));
-        }}
-        className="block mt-1 w-full text-sm rounded-md px-3"
-        style={{
-          background: "var(--bg-2)",
-          border: "1px solid var(--line)",
-          color: "var(--ink)",
-          minHeight: 44,
-        }}
-      />
-    </label>
   );
 }
 
