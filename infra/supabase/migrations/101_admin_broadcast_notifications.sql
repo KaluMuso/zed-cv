@@ -1,4 +1,5 @@
--- 100: Admin broadcast Web Push campaigns (Track 4C schema for 4D compose UI).
+-- 101: Admin broadcast Web Push campaigns (Track 4C schema for 4D compose UI).
+-- Depends on 100_in_app_notifications (admin_broadcast rows in notifications inbox).
 
 BEGIN;
 

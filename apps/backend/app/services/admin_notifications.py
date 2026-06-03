@@ -14,6 +14,7 @@ from app.schemas.admin_notifications import (
     AdminNotificationDispatchResponse,
     NotificationTargetAudience,
 )
+from app.services.in_app_notifications import record_in_app_notification
 from app.services.web_push import send_payload_to_user, vapid_configured
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,17 @@ async def deliver_campaign(
                         "sent_at": _iso(_utc_now()),
                     }
                 ).eq("id", recipient_id).execute()
+                await record_in_app_notification(
+                    user_id,
+                    "admin_broadcast",
+                    {
+                        "title": payload["title"],
+                        "body": payload["body"],
+                        "url": payload["url"],
+                        "campaign_id": campaign_id,
+                    },
+                    supabase,
+                )
             else:
                 failed_count += 1
                 supabase.table("admin_notification_recipients").update(
