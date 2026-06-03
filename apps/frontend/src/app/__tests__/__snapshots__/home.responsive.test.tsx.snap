@@ -126,7 +126,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             class="relative mx-auto flex min-h-[420px] w-full max-w-[440px] items-center justify-center sm:min-h-[460px] lg:mx-0 lg:max-w-none"
           >
             <div
-              class="transform-gpu will-change-transform animate-float absolute left-0 top-6 z-0 sm:left-2 sm:top-4"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float absolute left-0 top-6 z-0 sm:left-2 sm:top-4"
               style="rotate: -6deg;"
             >
               <div
@@ -209,7 +209,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
               </div>
             </div>
             <div
-              class="transform-gpu will-change-transform animate-float-delayed relative z-10 ml-auto mt-2 sm:mr-0 sm:mt-0"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float-delayed relative z-10 ml-auto mt-2 sm:mr-0 sm:mt-0"
               style="rotate: 3deg;"
             >
               <div
@@ -402,7 +402,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
               </div>
             </div>
             <div
-              class="transform-gpu will-change-transform animate-float-delay-2 absolute bottom-0 right-0 z-20 sm:-bottom-2 sm:right-4"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float-delay-2 absolute bottom-0 right-0 z-20 sm:-bottom-2 sm:right-4"
               style="rotate: 2deg;"
             >
               <div
@@ -3902,7 +3902,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             class="relative mx-auto flex min-h-[420px] w-full max-w-[440px] items-center justify-center sm:min-h-[460px] lg:mx-0 lg:max-w-none"
           >
             <div
-              class="transform-gpu will-change-transform animate-float absolute left-0 top-6 z-0 sm:left-2 sm:top-4"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float absolute left-0 top-6 z-0 sm:left-2 sm:top-4"
               style="rotate: -6deg;"
             >
               <div
@@ -3985,7 +3985,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
               </div>
             </div>
             <div
-              class="transform-gpu will-change-transform animate-float-delayed relative z-10 ml-auto mt-2 sm:mr-0 sm:mt-0"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float-delayed relative z-10 ml-auto mt-2 sm:mr-0 sm:mt-0"
               style="rotate: 3deg;"
             >
               <div
@@ -4178,7 +4178,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
               </div>
             </div>
             <div
-              class="transform-gpu will-change-transform animate-float-delay-2 absolute bottom-0 right-0 z-20 sm:-bottom-2 sm:right-4"
+              class="transform-gpu will-change-transform motion-reduce:animate-none animate-float-delay-2 absolute bottom-0 right-0 z-20 sm:-bottom-2 sm:right-4"
               style="rotate: 2deg;"
             >
               <div
