@@ -1,0 +1,40 @@
+{
+  "name": "Zed CV - Admin Notification Dispatch (Every 15m)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 15 }] }
+      },
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/notifications/dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+          ]
+        }
+      },
+      "name": "Dispatch Due Admin Notifications",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [[{ "node": "Dispatch Due Admin Notifications", "type": "main", "index": 0 }]]
+    }
+  },
+  "meta": {
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
+    "exportNote": "Delivers admin_notification_campaigns whose scheduled_at is due. Import into n8n; set FASTAPI_URL and INGEST_API_KEY (same as other admin cron workflows)."
+  }
+}

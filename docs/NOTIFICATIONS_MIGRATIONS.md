@@ -71,6 +71,44 @@ On successful push delivery, the backend inserts an `admin_broadcast` row into
    - `POST /api/v1/admin/notifications` (admin + ingest key)
    - Admin overview stats include `jobs_need_review` and `jobs_active_public`
 
+## Scheduled dispatch cron (n8n)
+
+Admin compose with **Schedule for later** stores campaigns with `status = scheduled`
+and a future `scheduled_at`. Immediate sends run `deliver_campaign` inside
+`POST /api/v1/admin/notifications`; due scheduled campaigns are delivered by cron.
+
+| Item | Value |
+| --- | --- |
+| Endpoint | `POST /api/v1/admin/notifications/dispatch` |
+| Auth | `INGEST_API_KEY` or `X-INGEST-API-KEY` (same as nightly match / review queue crons) |
+| Handler | `dispatch_due_campaigns` in `admin_notifications.py` |
+| n8n export | `infra/n8n/admin_notification_dispatch_every_15m.json` |
+| Suggested schedule | Every **15 minutes** (adjust in n8n if operators need tighter windows) |
+
+### Import / activate
+
+1. n8n → **Workflows** → **Import from File** → `admin_notification_dispatch_every_15m.json`
+2. Confirm instance env: `FASTAPI_URL` (e.g. `https://api.zedapply.com`), `INGEST_API_KEY` (matches OCI `apps/backend/.env`)
+3. **Activate** the workflow
+4. Smoke (replace URL and key):
+
+```bash
+curl -sS -X POST "$FASTAPI_URL/api/v1/admin/notifications/dispatch" \
+  -H "INGEST_API_KEY: $INGEST_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+Expect `200` with JSON like `{"campaigns_processed":0,"recipients_sent":0,"recipients_failed":0}` when nothing is due.
+
+### End-to-end smoke (scheduled campaign → inbox)
+
+1. Apply migrations `100` and `101` on staging/prod.
+2. `POST /api/v1/admin/notifications` with `scheduled_at` ~2 minutes ahead, `target_audience: all` (ingest or superadmin auth).
+3. Wait until `scheduled_at` passes; confirm n8n execution succeeds or call `/dispatch` manually.
+4. As a targeted user, `GET /api/v1/notifications` should include `type: admin_broadcast` with the campaign title/body/url.
+
+See also `infra/n8n/README.md` (inventory) and `docs/openapi.yaml` (`/admin/notifications/dispatch`).
+
 ## Backend references
 
 - `apps/backend/app/services/in_app_notifications.py`

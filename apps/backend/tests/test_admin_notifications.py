@@ -354,3 +354,32 @@ class TestDeliverCampaignInbox:
         assert row["type"] == "admin_broadcast"
         assert row["payload"]["title"] == "Hello"
         assert row["payload"]["campaign_id"] == campaign_id
+
+
+class TestAdminNotificationsDispatch:
+    def test_dispatch_rejects_missing_key(self, client):
+        resp = client.post("/api/v1/admin/notifications/dispatch")
+        assert resp.status_code == 401
+
+    @patch(
+        "app.api.v1.admin_notifications.dispatch_due_campaigns",
+        new_callable=AsyncMock,
+    )
+    def test_dispatch_returns_counts(self, mock_dispatch, client):
+        from app.schemas.admin_notifications import AdminNotificationDispatchResponse
+
+        mock_dispatch.return_value = AdminNotificationDispatchResponse(
+            campaigns_processed=2,
+            recipients_sent=5,
+            recipients_failed=1,
+        )
+        resp = client.post(
+            "/api/v1/admin/notifications/dispatch",
+            headers=INGEST_HEADERS,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["campaigns_processed"] == 2
+        assert body["recipients_sent"] == 5
+        assert body["recipients_failed"] == 1
+        mock_dispatch.assert_awaited_once()

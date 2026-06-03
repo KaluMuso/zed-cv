@@ -11,6 +11,7 @@ Sanitized JSON snapshots of production workflows on `https://automation.vergeo.c
 | Notification Digest (Every 24h) | `MW5KETbBdrAOk04y` | **No** | `notification_digest_every_24h.json` |
 | Bwana Chat Pipeline | `TPDJ5S1HaRKZTdb1` | Yes | `bwana_chat_pipeline.json` |
 | Job Scraper | `rsgZLi6UAcC3lXvu` | Yes | `job_scraper.json` |
+| Admin notification dispatch | _(import from repo)_ | **No** | `admin_notification_dispatch_every_15m.json` |
 | Sentry → WhatsApp Alert | _(import from repo)_ | **No** | `sentry_whatsapp_alert.json` |
 
 ## Sentry → WhatsApp alerts (Wave A.1)
@@ -62,6 +63,16 @@ Required so Supabase free tier does not pause after 7 days idle (`AGENTS.md` inv
 Prod instance already has workflow `qA4Zi46MAWx3gTTL` active as of 2026-05-30.
 
 **Duplicate:** `Zed CV - Supabase Heartbeat` (`Gun5al1RkCKPSlfW`) is also active and runs the same 6h schedule. Keep one (prefer `qA4Zi46MAWx3gTTL` + service role key) and **deactivate** the other to avoid redundant RPC calls.
+
+## Admin broadcast: scheduled dispatch
+
+Delivers `admin_notification_campaigns` whose `scheduled_at` is due (see `docs/NOTIFICATIONS_MIGRATIONS.md`).
+
+**Import / activate**
+
+1. n8n → **Import from File** → `admin_notification_dispatch_every_15m.json`
+2. Env: `FASTAPI_URL`, `INGEST_API_KEY` (same as `review_queue_alert_hourly.json`)
+3. **Activate**; smoke `POST …/api/v1/admin/notifications/dispatch` with ingest header
 
 ## Bwana chat: backend vs n8n
 
