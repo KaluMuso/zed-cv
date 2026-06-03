@@ -8,9 +8,8 @@ from app.services.bwana_faq import (
     match_faq_from_db,
 )
 from app.services.matching_weights_copy import MATCH_WEIGHTS
-from app.services.tier_config import TierPricingSnapshot
-from tests.conftest import FakeSupabaseQuery
-from tests.test_tier_config_admin import _tier_config_rows
+from app.services.tier_config import TierPricingSnapshot, clear_tier_config_cache
+from tests.test_tier_config_admin import _TierConfigQuery, _tier_config_rows
 
 
 def test_algorithm_faq_uses_50_20_15_10_5():
@@ -53,12 +52,16 @@ def test_pricing_faq_uses_tier_config_snapshot():
 
 @pytest.mark.asyncio
 async def test_match_faq_from_db_reads_tier_config(fake_supabase):
-    fake_supabase.set_table("tier_config", FakeSupabaseQuery(data=_tier_config_rows()))
+    clear_tier_config_cache()
+    rows = _tier_config_rows()
+    fake_supabase.set_table("tier_config", _TierConfigQuery(data=rows))
     match = await match_faq_from_db("what's the price?", fake_supabase)
     assert match is not None
     assert match.intent_id == "pricing"
-    assert "K125" in match.response
-    assert "10 matches/mo" in match.response
+    free = next(r for r in rows if r["tier"] == "free")
+    starter = next(r for r in rows if r["tier"] == "starter")
+    assert f"K{starter['price_ngwee'] // 100}" in match.response
+    assert f"{free['matches_limit']} matches/mo" in match.response
 
 
 def test_matching_weights_constants():
