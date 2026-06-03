@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import type { Subscription } from "@/lib/api";
-import { TIER_NAV_LABELS } from "@/lib/tier-display";
-import { formatMatchesLimit } from "@/lib/tier-config";
-import { TIER_MARKETING_FEATURES } from "@/lib/tier-marketing";
+import { formatTierLabel } from "@/lib/tier-display";
+import { TIER_MARKETING_FEATURES, formatQuotaSummary } from "@/lib/tier-marketing";
+import type { DashboardQuotaDisplay } from "@/lib/dashboard-stats";
 
 type PlanUsageCardProps = {
   tier: string;
   sub: Subscription | null;
+  quota?: DashboardQuotaDisplay;
 };
 
 function formatPeriodEnd(iso: string | null | undefined): string {
@@ -24,15 +25,14 @@ function formatPeriodEnd(iso: string | null | undefined): string {
   }
 }
 
-export function PlanUsageCard({ tier, sub }: PlanUsageCardProps) {
-  const label = TIER_NAV_LABELS[tier] ?? tier;
+export function PlanUsageCard({ tier, sub, quota }: PlanUsageCardProps) {
+  const label = formatTierLabel(tier);
   const features = TIER_MARKETING_FEATURES[tier] ?? [];
-  const limitLabel = sub ? formatMatchesLimit(sub.matches_limit) : "—";
   const usage =
-    sub && sub.matches_limit < 99999
-      ? `${sub.matches_used} / ${limitLabel} matches this period`
+    quota != null
+      ? formatQuotaSummary(quota.matchesUsed, quota.matchesLimit)
       : sub
-        ? `${sub.matches_used} matches (unlimited plan)`
+        ? formatQuotaSummary(sub.matches_used, sub.matches_limit)
         : null;
 
   return (

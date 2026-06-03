@@ -8,6 +8,24 @@ export const TIER_NAV_LABELS: Record<string, string> = {
   super_standard: "Super Standard",
 };
 
+const TIER_UPGRADE_ORDER = [
+  "free",
+  "starter",
+  "professional",
+  "super_standard",
+] as const;
+
+/** Next paid tier for upgrade CTAs; null when already on top tier. */
+export function getNextUpgradeTier(tier: string): string | null {
+  const idx = TIER_UPGRADE_ORDER.indexOf(tier as (typeof TIER_UPGRADE_ORDER)[number]);
+  if (idx < 0 || idx >= TIER_UPGRADE_ORDER.length - 1) return null;
+  return TIER_UPGRADE_ORDER[idx + 1];
+}
+
+export function formatTierLabel(tier: string): string {
+  return TIER_NAV_LABELS[tier] ?? tier.replace(/_/g, " ");
+}
+
 export function formatTierNavSubtitle(
   tier: string,
   matchesUsed?: number,
