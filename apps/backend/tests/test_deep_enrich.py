@@ -98,6 +98,7 @@ async def test_enrich_split_deactivates_parent(parent_row):
         ),
         patch(
             "app.services.deep_enrich._call_deep_enrich_llm",
+            new_callable=AsyncMock,
             return_value=roles,
         ),
         patch(

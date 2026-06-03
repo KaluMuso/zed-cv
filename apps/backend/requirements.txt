@@ -19,6 +19,9 @@ httpx==0.27.0
 # Everything else (.table(), .rpc(), create_client) is on the stable surface.
 supabase>=2.9.0,<2.10.0
 openai==1.35.3
+# Batch LLM (deep_enrich, ingest enrichment) via Google AI Studio free tier.
+# Pin <1.20 — 1.20+ pulls httpx>=0.28.1 which breaks openai==1.35.3 + supabase.
+google-genai>=1.0.0,<1.20.0
 python-docx==1.1.2
 PyPDF2==3.0.1
 Pillow==10.3.0

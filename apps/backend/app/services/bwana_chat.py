@@ -30,6 +30,11 @@ from app.services.bwana_faq import (
 )
 from app.services.bwana_faq_custom import match_custom_faq
 from app.services.email import _send
+from app.services.gemini_direct import (
+    QuotaExhaustedError,
+    generate_text,
+    should_fallback_to_openrouter,
+)
 from app.services.llm import FEATURE_BWANA, LlmLogContext
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
@@ -307,6 +312,14 @@ def _log_chat_event(
         logger.warning("bwana_event_log insert failed: %s", exc)
 
 
+def _bwana_messages_to_prompt(messages: list[dict[str, str]]) -> str:
+    parts: list[str] = []
+    for turn in messages:
+        role = turn.get("role", "user")
+        parts.append(f"{role}:\n{turn.get('content', '')}")
+    return "\n\n".join(parts)
+
+
 async def _call_openrouter_llm(
     message: str,
     history: list[dict[str, str]],
@@ -371,6 +384,63 @@ async def _call_openrouter_llm(
             raise ValueError("Bwana AI is temporarily unavailable.")
 
     return await asyncio.to_thread(_sync_call)
+
+
+async def _call_llm(
+    message: str,
+    history: list[dict[str, str]],
+    *,
+    user_id: str | None = None,
+    supabase: Client | None = None,
+    config: BwanaConfig | None = None,
+) -> str:
+    """Try Gemini direct first (free, low latency); fall back to OpenRouter."""
+    import sentry_sdk
+
+    settings = get_settings()
+    if supabase is None or config is None:
+        raise ValueError("Bwana config required for LLM")
+
+    system_prompt = await build_bwana_system_prompt(config, supabase)
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    for turn in history:
+        messages.append(
+            {
+                "role": turn["role"],
+                "content": wrap_user_content(turn["content"]),
+            }
+        )
+    messages.append({"role": "user", "content": wrap_user_content(message)})
+
+    if settings.gemini_api_key.strip():
+        try:
+            return await generate_text(
+                _bwana_messages_to_prompt(messages),
+                max_tokens=400,
+                feature="bwana_chat",
+            )
+        except QuotaExhaustedError:
+            sentry_sdk.add_breadcrumb(
+                category="llm",
+                message="bwana_chat.openrouter_fallback",
+                level="warning",
+                data={"provider": "openrouter", "reason": "quota"},
+            )
+        except Exception as exc:
+            if should_fallback_to_openrouter(exc) and settings.openrouter_api_key.strip():
+                logger.warning(
+                    "bwana_chat gemini_direct failed, OpenRouter fallback: %s", exc
+                )
+            else:
+                raise
+
+    return await _call_openrouter_llm(
+        message,
+        history,
+        user_id=user_id,
+        supabase=supabase,
+        config=config,
+    )
 
 
 async def process_bwana_message(
@@ -448,7 +518,7 @@ async def process_bwana_message(
     hist = history if history is not None else load_conversation_history(
         supabase, user_id, session_id
     )
-    reply = await _call_openrouter_llm(
+    reply = await _call_llm(
         text, hist, user_id=user_id, supabase=supabase, config=config
     )
     return BwanaTurnResult(reply, "llm")

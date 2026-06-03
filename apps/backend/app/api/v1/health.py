@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends
 from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase
 from app.core.rate_limit import normalize_redis_url
+from app.services.llm_provider_health import get_llm_provider_status
 from app.services.web_push import vapid_configured
 from app.services.whatsapp import check_waha_health
 
@@ -67,6 +68,7 @@ async def build_health_payload(settings: Settings) -> dict[str, Any]:
         _check_redis(),
     )
     status = _derive_status(supabase_ok=supabase_ok, waha_ok=waha_ok)
+    provider_status = get_llm_provider_status()
 
     payload: dict[str, Any] = {
         "status": status,
@@ -77,7 +79,11 @@ async def build_health_payload(settings: Settings) -> dict[str, Any]:
         "vapid_configured": vapid_configured(settings),
         "resend_configured": bool(settings.resend_api_key.strip()),
         "sentry_configured": bool(settings.sentry_dsn.strip()),
+        "gemini_direct_configured": bool(settings.gemini_api_key.strip()),
         "openrouter_configured": bool(settings.openrouter_api_key.strip()),
+        "llm_provider_batch": settings.llm_provider_batch,
+        "last_gemini_call_status": provider_status.get("gemini_direct", "unknown"),
+        "last_openrouter_call_status": provider_status.get("openrouter", "unknown"),
         "embedding_via_openrouter": settings.embedding_via_openrouter,
     }
     if redis_ok is not None:
