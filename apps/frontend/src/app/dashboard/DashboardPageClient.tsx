@@ -20,6 +20,11 @@ import type { SavedJobApplication } from "@/lib/api";
 import { TIER_NAV_LABELS } from "@/lib/tier-display";
 import { computeProfileCompleteness } from "@/lib/profileCompleteness";
 import { DashboardSkeleton } from "@/components/shared/skeletons/PageSkeletons";
+import {
+  buildDashboardMatchStats,
+  DASHBOARD_MATCHES_FETCH_LIMIT,
+  type DashboardQuotaDisplay,
+} from "@/lib/dashboard-stats";
 
 function buildApplicationFunnel(
   applications: SavedJobApplication[] | undefined,
@@ -56,6 +61,8 @@ function buildApplicationFunnel(
   return funnel;
 }
 
+const EMPTY_MATCH_LIST = { matches: [] as MatchData[] };
+
 export function DashboardPageClient() {
   const router = useRouter();
   const { token, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -64,6 +71,7 @@ export function DashboardPageClient() {
   const [savedCount, setSavedCount] = useState(0);
   const [avgScore, setAvgScore] = useState<number | null>(null);
   const [totalMatchCount, setTotalMatchCount] = useState(0);
+  const [matchQuota, setMatchQuota] = useState<DashboardQuotaDisplay | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState("free");
   const [profileCompleteness, setProfileCompleteness] = useState<{
@@ -83,7 +91,9 @@ export function DashboardPageClient() {
     let cancelled = false;
     Promise.all([
       profileApi.get(token),
-      matchesApi.get(token).catch(() => ({ matches: [] as MatchData[] })),
+      matchesApi
+        .get(token, { limit: DASHBOARD_MATCHES_FETCH_LIMIT })
+        .catch(() => EMPTY_MATCH_LIST),
       savedJobs.list(token).catch(() => ({ jobs: [], applications: [] })),
       subscriptionApi.get(token).catch(() => null),
       preferencesApi.get(token).catch(() => null),
@@ -101,21 +111,15 @@ export function DashboardPageClient() {
           percent: completeness.percent,
           hints: completeness.items.filter((i) => !i.complete).map((i) => i.hint).slice(0, 4),
         });
-        const sorted = [...matchRes.matches].sort((a, b) => b.score - a.score);
-        setTopMatches(sorted.slice(0, 3));
+        const stats = buildDashboardMatchStats(matchRes.matches, matchRes, sub);
+        setTopMatches(stats.topMatches);
+        setTotalMatchCount(stats.poolCount);
+        setAvgScore(stats.avgScore);
+        setMatchQuota(stats.quota);
         setSavedCount(savedRes.jobs.length);
         const apps = savedRes.applications ?? [];
         setApplicationsCount(apps.length > 0 ? apps.length : savedRes.jobs.length);
         setApplicationFunnel(buildApplicationFunnel(savedRes.applications));
-        setTotalMatchCount(sorted.length);
-        if (sorted.length > 0) {
-          const avg = Math.round(
-            sorted.reduce((sum, m) => sum + m.score, 0) / sorted.length,
-          );
-          setAvgScore(avg);
-        } else {
-          setAvgScore(null);
-        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -138,6 +142,7 @@ export function DashboardPageClient() {
       profileCompleteness={profileCompleteness ?? undefined}
       applicationsCount={applicationsCount}
       applicationFunnel={applicationFunnel}
+      matchQuota={matchQuota ?? undefined}
       liveData={{
         totalMatches: totalMatchCount,
         savedJobs: savedCount,

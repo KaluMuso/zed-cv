@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Subscription } from "@/lib/api";
-import { formatMatchesLimit } from "@/lib/tier-config";
+import type { DashboardQuotaDisplay } from "@/lib/dashboard-stats";
 import { Icon } from "@/components/ui/Icon";
 import { surfaceCardClass } from "@/lib/cn-ui";
 import { cn } from "@/lib/utils";
@@ -19,7 +18,7 @@ type DashboardInsightsProps = {
   totalMatches: number;
   avgScore: number | null;
   topScore: number | null;
-  subscription: Subscription | null;
+  quota: DashboardQuotaDisplay;
   funnel: ApplicationFunnel;
 };
 
@@ -64,15 +63,12 @@ export function DashboardInsights({
   totalMatches,
   avgScore,
   topScore,
-  subscription,
+  quota,
   funnel,
 }: DashboardInsightsProps) {
-  const quotaUsed = subscription?.matches_used ?? 0;
-  const quotaLimit = subscription?.matches_limit ?? 0;
-  const quotaPct =
-    quotaLimit > 0 && quotaLimit < 99999
-      ? Math.min(100, Math.round((quotaUsed / quotaLimit) * 100))
-      : null;
+  const quotaUsed = quota.matchesUsed;
+  const quotaLimit = quota.matchesLimit;
+  const quotaPct = quota.unlimited ? null : Math.round(quota.usagePct);
 
   const pipelineTotal =
     funnel.saved + funnel.applied + funnel.interviewing + funnel.offered + funnel.closed;
@@ -120,14 +116,14 @@ export function DashboardInsights({
         <TrendPill
           label="Quota used"
           value={
-            quotaLimit >= 99999
+            quota.unlimited
               ? `${quotaUsed}`
               : quotaLimit > 0
-                ? `${quotaUsed}/${formatMatchesLimit(quotaLimit)}`
+                ? `${quotaUsed}/${quota.limitLabel}`
                 : "—"
           }
-          hint={quotaPct != null ? `${quotaPct}% of monthly allowance` : "Unlimited plan"}
-          trend={quotaPct != null && quotaPct > 80 ? "down" : "neutral"}
+          hint={quota.unlimited ? "Unlimited plan" : `${quotaPct}% of monthly allowance`}
+          trend={!quota.unlimited && quotaPct > 80 ? "down" : "neutral"}
         />
       </div>
 

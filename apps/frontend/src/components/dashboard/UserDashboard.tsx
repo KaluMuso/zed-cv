@@ -6,6 +6,8 @@ import type { MatchData, Subscription } from "@/lib/api";
 import { MOCK_DASHBOARD } from "./dashboard-mock-data";
 import { formatDashboardHeaderDate } from "./format-dashboard-date";
 import { formatSalary } from "@/components/jobs/jobDetailFormatters";
+import type { DashboardQuotaDisplay } from "@/lib/dashboard-stats";
+import { formatTierLabel, getNextUpgradeTier } from "@/lib/tier-display";
 import { PlanUsageCard } from "./PlanUsageCard";
 import {
   CondensedJobCard,
@@ -37,6 +39,7 @@ export type UserDashboardProps = {
   subscription?: Subscription | null;
   subscriptionTier?: string;
   subscriptionTierLabel?: string;
+  matchQuota?: DashboardQuotaDisplay;
   profileCompleteness?: { percent: number; hints: readonly string[] };
   applicationsCount?: number;
   applicationFunnel?: ApplicationFunnel;
@@ -60,6 +63,8 @@ export function UserDashboard({
   liveData,
   subscription,
   subscriptionTier = "free",
+  subscriptionTierLabel,
+  matchQuota,
   profileCompleteness,
   applicationsCount = 0,
   applicationFunnel,
@@ -70,9 +75,12 @@ export function UserDashboard({
   const useLive = Boolean(liveData);
 
   const quotaPct =
-    subscription && subscription.matches_limit < 99999
-      ? Math.min(100, Math.round((subscription.matches_used / subscription.matches_limit) * 100))
+    matchQuota && !matchQuota.unlimited
+      ? Math.round(matchQuota.usagePct)
       : null;
+  const nextUpgradeTier = getNextUpgradeTier(subscriptionTier);
+  const currentTierLabel = subscriptionTierLabel ?? formatTierLabel(subscriptionTier);
+  const upgradeTierLabel = nextUpgradeTier ? formatTierLabel(nextUpgradeTier) : null;
 
   const stats = useLive
     ? [
@@ -133,15 +141,19 @@ export function UserDashboard({
       </header>
 
       {useLive ? (
-        <PlanUsageCard tier={subscriptionTier} sub={subscription ?? null} />
+        <PlanUsageCard
+          tier={subscriptionTier}
+          sub={subscription ?? null}
+          quota={matchQuota}
+        />
       ) : null}
 
-      {useLive && liveData ? (
+      {useLive && liveData && matchQuota ? (
         <DashboardInsights
           totalMatches={liveData.totalMatches}
           avgScore={liveData.avgScore}
           topScore={liveData.topMatches[0]?.score ?? null}
-          subscription={subscription ?? null}
+          quota={matchQuota}
           funnel={applicationFunnel ?? EMPTY_FUNNEL}
         />
       ) : null}
@@ -284,10 +296,10 @@ export function UserDashboard({
         </div>
       </section>
 
-      {subscriptionTier !== "super_standard" ? (
+      {subscriptionTier !== "super_standard" && (useLive ? upgradeTierLabel : data.upgradeTier) ? (
         <UpgradeBanner
-          currentTier={useLive ? subscriptionTier : data.currentTier}
-          upgradeTier={useLive ? "starter" : data.upgradeTier}
+          currentTier={useLive ? currentTierLabel : data.currentTier}
+          upgradeTier={useLive ? upgradeTierLabel! : data.upgradeTier}
         />
       ) : null}
     </div>
