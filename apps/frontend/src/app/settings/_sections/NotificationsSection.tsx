@@ -81,6 +81,22 @@ export function NotificationsSection() {
 
   const channel = dashPrefs?.preferred_notification_channel ?? "email";
   const paidWhatsApp = dashPrefs?.whatsapp_digest_available ?? false;
+  const alertFrequency = dashPrefs?.alert_frequency ?? "daily";
+  const alertsMuted = alertFrequency === "muted";
+  const alertsWeekly = alertFrequency === "weekly";
+
+  const patchDashPrefs = async (data: Parameters<typeof userPreferences.patch>[1]) => {
+    if (!token) return;
+    setSavingChannel(true);
+    try {
+      const next = await userPreferences.patch(token, data);
+      setDashPrefs(next);
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingChannel(false);
+    }
+  };
 
   return (
     <div>
@@ -148,16 +164,16 @@ export function NotificationsSection() {
           <input
             type="checkbox"
             className="h-5 w-5"
-            checked={(dashPrefs?.alert_frequency ?? "daily") !== "muted"}
+            checked={!alertsMuted}
             disabled={loading || savingChannel}
             onChange={(e) => {
-              if (!token) return;
-              setSavingChannel(true);
-              userPreferences
-                .patch(token, { alert_frequency: e.target.checked ? "daily" : "muted" })
-                .then(setDashPrefs)
-                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
-                .finally(() => setSavingChannel(false));
+              void patchDashPrefs({
+                alert_frequency: e.target.checked
+                  ? alertsWeekly
+                    ? "weekly"
+                    : "daily"
+                  : "muted",
+              });
             }}
           />
         </label>
@@ -171,16 +187,12 @@ export function NotificationsSection() {
           <input
             type="checkbox"
             className="h-5 w-5"
-            checked={dashPrefs?.alert_frequency === "weekly"}
-            disabled={loading || savingChannel}
+            checked={alertsWeekly}
+            disabled={loading || savingChannel || alertsMuted}
             onChange={(e) => {
-              if (!token) return;
-              setSavingChannel(true);
-              userPreferences
-                .patch(token, { alert_frequency: e.target.checked ? "weekly" : "daily" })
-                .then(setDashPrefs)
-                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
-                .finally(() => setSavingChannel(false));
+              void patchDashPrefs({
+                alert_frequency: e.target.checked ? "weekly" : "daily",
+              });
             }}
           />
         </label>
@@ -194,13 +206,7 @@ export function NotificationsSection() {
             checked={dashPrefs?.notify_product_updates ?? false}
             disabled={loading || savingChannel}
             onChange={(e) => {
-              if (!token) return;
-              setSavingChannel(true);
-              userPreferences
-                .patch(token, { notify_product_updates: e.target.checked })
-                .then(setDashPrefs)
-                .catch((err) => notify.error(err instanceof Error ? err.message : "Could not save"))
-                .finally(() => setSavingChannel(false));
+              void patchDashPrefs({ notify_product_updates: e.target.checked });
             }}
           />
         </label>
@@ -222,12 +228,7 @@ export function NotificationsSection() {
               value={dashPrefs?.quiet_hours_start?.slice(0, 5) ?? "20:00"}
               disabled={loading || savingChannel}
               onChange={(e) => {
-                if (!token) return;
-                setSavingChannel(true);
-                userPreferences
-                  .patch(token, { quiet_hours_start: e.target.value })
-                  .then(setDashPrefs)
-                  .finally(() => setSavingChannel(false));
+                void patchDashPrefs({ quiet_hours_start: e.target.value });
               }}
             />
           </label>
@@ -241,12 +242,7 @@ export function NotificationsSection() {
               value={dashPrefs?.quiet_hours_end?.slice(0, 5) ?? "07:00"}
               disabled={loading || savingChannel}
               onChange={(e) => {
-                if (!token) return;
-                setSavingChannel(true);
-                userPreferences
-                  .patch(token, { quiet_hours_end: e.target.value })
-                  .then(setDashPrefs)
-                  .finally(() => setSavingChannel(false));
+                void patchDashPrefs({ quiet_hours_end: e.target.value });
               }}
             />
           </label>

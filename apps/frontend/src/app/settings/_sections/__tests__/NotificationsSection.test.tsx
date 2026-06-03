@@ -154,4 +154,51 @@ describe("NotificationsSection", () => {
       });
     });
   });
+
+  it("mutes alerts and disables weekly on the same view", async () => {
+    mockUserPrefsGet.mockResolvedValueOnce({
+      ...dashPrefs,
+      alert_frequency: "weekly",
+    });
+    mockUserPrefsPatch.mockImplementation(async (_token, data) => ({
+      ...dashPrefs,
+      alert_frequency: "weekly",
+      ...data,
+    }));
+
+    const user = userEvent.setup();
+    render(<NotificationsSection />);
+    await waitFor(() => expect(screen.getByText("Weekly job alerts")).toBeInTheDocument());
+
+    expect(screen.getByRole("checkbox", { name: /weekly job alerts/i })).toBeChecked();
+
+    await user.click(screen.getByRole("checkbox", { name: /new match notifications/i }));
+    await waitFor(() => {
+      expect(mockUserPrefsPatch).toHaveBeenCalledWith("test-token", {
+        alert_frequency: "muted",
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /weekly job alerts/i })).toBeDisabled();
+    });
+    expect(screen.getByRole("checkbox", { name: /weekly job alerts/i })).not.toBeChecked();
+  });
+
+  it("restores daily alerts when re-enabling after mute", async () => {
+    mockUserPrefsGet.mockResolvedValueOnce({
+      ...dashPrefs,
+      alert_frequency: "muted",
+    });
+
+    const user = userEvent.setup();
+    render(<NotificationsSection />);
+    await waitFor(() => expect(screen.getByText("New match notifications")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("checkbox", { name: /new match notifications/i }));
+    await waitFor(() => {
+      expect(mockUserPrefsPatch).toHaveBeenCalledWith("test-token", {
+        alert_frequency: "daily",
+      });
+    });
+  });
 });
