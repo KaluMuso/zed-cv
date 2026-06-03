@@ -377,7 +377,7 @@ async def dismiss_match(
             {
                 "event": "match_dismissed",
                 "user_id": user_id,
-                "metadata": {
+                "properties": {
                     "match_id": match_id,
                     "job_id": row.get("job_id"),
                     "reason": reason,
