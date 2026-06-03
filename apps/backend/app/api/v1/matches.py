@@ -18,6 +18,7 @@ from app.core.tier_gating import (
     verify_tier_access,
 )
 from app.services.cv_generator import generate_tailored_cv_for_match
+from app.services.job_hydration import skills_from_job_embed
 from app.core.rate_limit import limiter
 from app.schemas.match_feedback import (
     VALID_DISMISS_REASONS,
@@ -433,7 +434,10 @@ async def tailor_cv_for_match(
 
     match_res = (
         supabase.table("matches")
-        .select("id, user_id, job_id, matched_skills, missing_skills, jobs(title, company, description, skills)")
+        .select(
+            "id, user_id, job_id, matched_skills, missing_skills, "
+            "jobs(title, company, description, job_skills(skills(name)))"
+        )
         .eq("id", match_id)
         .eq("user_id", user_id)
         .limit(1)
@@ -483,9 +487,7 @@ async def tailor_cv_for_match(
 
     job_title = job.get("title") or "Role"
     company = job.get("company")
-    job_skills = job.get("skills") or []
-    if not isinstance(job_skills, list):
-        job_skills = []
+    job_skills = skills_from_job_embed(job)
 
     try:
         result = await generate_tailored_cv_for_match(

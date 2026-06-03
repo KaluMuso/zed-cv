@@ -24,6 +24,13 @@ from app.services.tier_config import get_tier_prices
 logger = logging.getLogger(__name__)
 
 
+def _payment_webhook_data(collection: dict[str, Any], *, tier: str) -> dict[str, Any]:
+    """Persist Lenco payload plus checkout tier for webhook tier resolution."""
+    data = dict(collection) if isinstance(collection, dict) else {}
+    data["intended_tier"] = tier
+    return data
+
+
 def _find_payment_by_reference(
     supabase: Client, user_id: str, reference: str
 ) -> dict[str, Any] | None:
@@ -120,11 +127,14 @@ async def verify_lenco_widget_payment(
                 "provider": "lenco",
                 "provider_ref": reference,
                 "status": "pending",
-                "webhook_data": collection,
+                "webhook_data": _payment_webhook_data(collection, tier=tier),
             }).execute()
             payment_id = insert.data[0]["id"] if insert.data else None
         else:
             payment_id = payment["id"]
+            supabase.table("payments").update({
+                "webhook_data": _payment_webhook_data(collection, tier=tier),
+            }).eq("id", payment_id).execute()
         return 202, {
             "status": "processing",
             "tier": tier,
@@ -145,12 +155,16 @@ async def verify_lenco_widget_payment(
             "provider": "lenco",
             "provider_ref": reference,
             "status": "pending",
-            "webhook_data": collection,
+            "webhook_data": _payment_webhook_data(collection, tier=tier),
         }).execute()
         if not insert.data:
             return 500, {"detail": "Failed to create payment record"}
         payment = insert.data[0]
         payment["subscriptions"] = subscription_row
+    else:
+        supabase.table("payments").update({
+            "webhook_data": _payment_webhook_data(collection, tier=tier),
+        }).eq("id", payment["id"]).execute()
 
     payment_id = payment["id"]
     if payment.get("status") == "completed":
@@ -169,7 +183,7 @@ async def verify_lenco_widget_payment(
             "amount": amount_ngwee,
             "payment_method": method_label,
             "provider_ref": reference,
-            "webhook_data": collection,
+            "webhook_data": _payment_webhook_data(collection, tier=tier),
             "completed_at": now.isoformat(),
         })
         .eq("id", payment_id)

@@ -327,24 +327,34 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
         # so the audit-trail flags land in the same write.
         amount_ngwee = payment["amount"]
         tier_prices = await get_tier_prices(supabase)
-        paid_tiers = {
-            price: tier
-            for tier, price in tier_prices.items()
-            if tier != "free"
-        }
-        new_tier = paid_tiers.get(amount_ngwee)
-        if new_tier is None:
-            logging.warning(
-                f"DPO webhook: unknown amount {amount_ngwee} ngwee for payment {payment_id}, "
-                f"falling back to highest tier <= amount"
+        from app.services.pricing import (
+            load_user_promotion_until,
+            resolve_paid_tier_from_amount_ngwee,
+        )
+
+        stored = payment.get("webhook_data") or {}
+        intended = (
+            stored.get("intended_tier")
+            if isinstance(stored, dict)
+            else None
+        )
+        if isinstance(intended, str) and intended in tier_prices and intended != "free":
+            new_tier = intended
+        else:
+            promo_until = await load_user_promotion_until(supabase, user_id)
+            new_tier, inexact = resolve_paid_tier_from_amount_ngwee(
+                int(amount_ngwee),
+                tier_prices,
+                promotion_applied_until=promo_until,
             )
-            sorted_paid = sorted(paid_tiers.items())  # ascending by price
-            new_tier = next(
-                (tier for price, tier in reversed(sorted_paid) if price <= amount_ngwee),
-                "starter",
-            )
-            # Cheap audit trail — preserved by the webhook_data update below.
-            parsed["_inexact_amount_match"] = True
+            if inexact:
+                logging.warning(
+                    "DPO webhook: inexact amount %s ngwee for payment %s → tier %s",
+                    amount_ngwee,
+                    payment_id,
+                    new_tier,
+                )
+                parsed["_inexact_amount_match"] = True
             parsed["_resolved_tier"] = new_tier
         now = datetime.now(timezone.utc)
 
@@ -575,27 +585,34 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
         amount_ngwee = fields["amount_ngwee"] or payment["amount"]
         now = datetime.now(timezone.utc)
 
-        # Resolve tier from amount — same logic as DPO. Exact match wins;
-        # otherwise the highest paid tier whose price <= amount, flagged
-        # for audit. Resolved here so the audit fields land in the same
-        # write as the claim.
         tier_prices = await get_tier_prices(supabase)
-        paid_tiers = {
-            price: tier
-            for tier, price in tier_prices.items()
-            if tier != "free"
-        }
-        new_tier = paid_tiers.get(amount_ngwee)
-        if new_tier is None:
-            logging.warning(
-                "Lenco webhook: unknown amount %s ngwee for payment %s",
-                amount_ngwee, payment_id,
+        from app.services.pricing import (
+            load_user_promotion_until,
+            resolve_paid_tier_from_amount_ngwee,
+        )
+
+        stored = payment.get("webhook_data") or {}
+        intended = (
+            stored.get("intended_tier")
+            if isinstance(stored, dict)
+            else None
+        )
+        if isinstance(intended, str) and intended in tier_prices and intended != "free":
+            new_tier = intended
+        else:
+            promo_until = await load_user_promotion_until(supabase, user_id)
+            new_tier, inexact = resolve_paid_tier_from_amount_ngwee(
+                int(amount_ngwee),
+                tier_prices,
+                promotion_applied_until=promo_until,
             )
-            sorted_paid = sorted(paid_tiers.items())
-            new_tier = next(
-                (tier for price, tier in reversed(sorted_paid) if price <= amount_ngwee),
-                "starter",
-            )
+            if inexact:
+                logging.warning(
+                    "Lenco webhook: inexact amount %s ngwee for payment %s → tier %s",
+                    amount_ngwee,
+                    payment_id,
+                    new_tier,
+                )
         # Atomic idempotency — see DPO handler for the full reasoning. The
         # SELECT-time check above catches the easy replay case; this
         # conditional UPDATE handles concurrent deliveries that both saw

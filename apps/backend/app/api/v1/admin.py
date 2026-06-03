@@ -723,9 +723,15 @@ async def get_capacity(supabase=Depends(get_supabase)):
     if not isinstance(rpc_data, dict):
         rpc_data = {}
 
-    total_jobs = int(rpc_data.get("total_jobs") or 0)
-    total_users = int(rpc_data.get("total_users") or 0)
+    total_jobs = int(rpc_data.get("jobs_total") or rpc_data.get("total_jobs") or 0)
+    total_users = int(rpc_data.get("users_total") or rpc_data.get("total_users") or 0)
     total_cvs = int(rpc_data.get("total_cvs") or 0)
+    if total_cvs == 0:
+        try:
+            cv_res = supabase.table("cvs").select("id", count="exact").execute()
+            total_cvs = int(cv_res.count or 0)
+        except Exception:
+            logger.warning("capacity: cvs count failed", exc_info=True)
 
     # Ceilings — chosen from the realistic-bottleneck table in our
     # capacity audit. Bump these as paid-tier upgrades happen.

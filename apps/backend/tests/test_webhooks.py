@@ -289,7 +289,7 @@ def test_dpo_webhook_tier_mapping_unknown_amount_logs_warning(
         resp = _post_dpo(client)
 
     assert resp.status_code == 200
-    assert "unknown amount 20000" in caplog.text
+    assert "inexact amount 20000" in caplog.text
     assert activate.call_args.kwargs["new_tier"] == "starter"
 
 
