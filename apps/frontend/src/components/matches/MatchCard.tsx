@@ -34,6 +34,7 @@ export interface MatchCardProps {
   onApplyClick?: () => void;
   onTailorCvClick?: () => void;
   onCoverLetterClick?: () => void;
+  onInterviewPrepClick?: () => void;
   onWhyMatchClick?: () => void;
   onDismissClick?: () => void;
   dismissing?: boolean;
@@ -48,6 +49,7 @@ export function MatchCard({
   onApplyClick,
   onTailorCvClick,
   onCoverLetterClick,
+  onInterviewPrepClick,
   onWhyMatchClick,
   onDismissClick,
   dismissing = false,
@@ -213,6 +215,7 @@ export function MatchCard({
           <MatchPremiumActions
             onTailorCvClick={onTailorCvClick}
             onCoverLetterClick={onCoverLetterClick}
+            onInterviewPrepClick={onInterviewPrepClick}
           />
 
           <div className="flex flex-wrap items-center justify-between gap-2 w-full">

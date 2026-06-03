@@ -2376,6 +2376,16 @@ export interface ContactRequestRow {
   candidate_name?: string | null;
 }
 
+export interface ContactStatusSummary {
+  pending: number;
+  consented: number;
+  declined: number;
+  expired: number;
+  draft: number;
+  unavailable: number;
+  total: number;
+}
+
 // @openapi EmployerSubscriptionResponse
 export interface EmployerSubscription {
   tier: EmployerTier | null;
@@ -2445,7 +2455,11 @@ export const employer = {
     }),
 
   contacts: (token: string) =>
-    apiFetch<{ contacts: ContactRequestRow[]; total: number }>("/employers/me/contacts", {
+    apiFetch<{
+      contacts: ContactRequestRow[];
+      total: number;
+      summary: ContactStatusSummary;
+    }>("/employers/me/contacts", {
       token,
     }),
 

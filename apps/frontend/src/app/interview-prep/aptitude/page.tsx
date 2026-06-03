@@ -322,7 +322,7 @@ function AptitudeContent() {
 
       <div className="flex flex-wrap gap-3 mt-8">
         <Button type="button" variant="ghost" onClick={pauseSession}>
-          Submit and exit
+          Save &amp; pause
         </Button>
         <Button
           type="button"

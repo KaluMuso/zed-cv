@@ -123,9 +123,20 @@ class ContactRequestRow(BaseModel):
     candidate_name: Optional[str] = None
 
 
+class ContactStatusSummary(BaseModel):
+    pending: int = 0
+    consented: int = 0
+    declined: int = 0
+    expired: int = 0
+    draft: int = 0
+    unavailable: int = 0
+    total: int = 0
+
+
 class EmployerContactsResponse(BaseModel):
     contacts: list[ContactRequestRow]
     total: int
+    summary: ContactStatusSummary
 
 
 class EmployerSubscriptionResponse(BaseModel):
