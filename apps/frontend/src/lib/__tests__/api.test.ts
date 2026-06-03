@@ -559,6 +559,7 @@ describe("additional API modules", () => {
           pending_review_count: 0,
           jobs_deactivated: 0,
           jobs_need_review: 0,
+          jobs_active_public: 120,
         }),
       )
       .mockResolvedValueOnce(jsonResponse({ skills: [{ name: "Python", proficiency: "advanced", source: "manual" }] }));

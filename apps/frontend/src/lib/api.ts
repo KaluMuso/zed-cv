@@ -605,6 +605,16 @@ export interface AdminStats {
   pending_review_count: number;
   jobs_deactivated: number;
   jobs_need_review: number;
+  jobs_active_public: number;
+}
+
+export interface AdminReviewQueueOverview {
+  need_review: number;
+  deactivated: number;
+  active_public: number;
+  auto_dismiss_hidden_eligible: number;
+  dismiss_expired_eligible: number;
+  dismiss_junk_eligible: number;
 }
 
 export interface AdminLlmCostByModel {
@@ -994,6 +1004,8 @@ export const admin = {
       token,
       body: JSON.stringify({ job_ids: jobIds }),
     }),
+  reviewQueueOverview: (token: string) =>
+    apiFetch<AdminReviewQueueOverview>("/admin/review-jobs/overview", { token }),
   bulkAutoDismissHiddenReview: (
     token: string,
     body?: { dry_run?: boolean; limit?: number }
@@ -1006,6 +1018,39 @@ export const admin = {
         body: JSON.stringify(body ?? {}),
       }
     ),
+  bulkDismissExpiredReview: (
+    token: string,
+    body?: { dry_run?: boolean; limit?: number }
+  ) =>
+    apiFetch<{ dry_run: boolean; eligible: number; dismissed: number; category: string }>(
+      "/admin/review-jobs/bulk-dismiss-expired",
+      { method: "POST", token, body: JSON.stringify(body ?? {}) }
+    ),
+  bulkDismissJunkReview: (
+    token: string,
+    body?: { dry_run?: boolean; limit?: number }
+  ) =>
+    apiFetch<{ dry_run: boolean; eligible: number; dismissed: number; category: string }>(
+      "/admin/review-jobs/bulk-dismiss-junk",
+      { method: "POST", token, body: JSON.stringify(body ?? {}) }
+    ),
+  bulkDismissSafeReview: (
+    token: string,
+    body?: { dry_run?: boolean; limit?: number }
+  ) =>
+    apiFetch<{
+      dry_run: boolean;
+      hidden_eligible: number;
+      hidden_dismissed: number;
+      expired_eligible: number;
+      expired_dismissed: number;
+      junk_eligible: number;
+      junk_dismissed: number;
+    }>("/admin/review-jobs/bulk-dismiss-safe", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body ?? {}),
+    }),
   approveReviewJob: (token: string, jobId: string, data: AdminJobReviewUpdate) =>
     apiFetch<{ id: string; is_active: boolean; admin_reviewed_at: string }>(
       `/admin/jobs/${encodeURIComponent(jobId)}/approve`,

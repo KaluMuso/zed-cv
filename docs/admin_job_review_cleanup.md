@@ -44,18 +44,20 @@ Legacy `admin_review_reason` mirrors these for older admin UI paths.
 - Suspected **duplicates** — `POST /admin/review-jobs/bulk-mark-duplicate`.
 - Junk listings — `POST /admin/review-jobs/bulk-permanently-inactive` or dismiss on legacy queue.
 
-### Safe to auto-dismiss (hidden backlog)
+### Bulk dismiss criteria (human-only `quality_score`)
 
-Jobs that are **already not customer-visible** and cannot be published without new data:
+These tools **only** clear `is_review_required` / set `admin_reviewed_at`. They never change
+`quality_score` and never hard-delete rows.
 
-```
-is_review_required = true
-AND admin_reviewed_at IS NULL
-AND is_active = false
-AND review_reason IN ('both', 'no_apply_path')
-```
+| Criterion | When safe | Endpoint | `review_reason` after |
+|-----------|-----------|----------|-------------------------|
+| **No contact** (hidden) | `is_active=false`, `review_reason` in `both`, `no_apply_path` | `POST …/bulk-auto-dismiss-hidden` | `auto_dismissed_hidden` |
+| **Expired** | `closing_date` &lt; today, still in queue | `POST …/bulk-dismiss-expired` | `auto_dismissed_expired` |
+| **Junk description / bad URL** | `is_active=false`, `deactivation_reason` contains `thin_description`, `missing_source_url`, or `aggregator_root_url` | `POST …/bulk-dismiss-junk` | `auto_dismissed_junk` |
+| **Duplicate** (manual selection) | Admin confirms duplicate listing | `POST …/bulk-mark-duplicate` | `duplicate` |
+| **All safe (preview/apply)** | Runs hidden + expired + junk | `POST …/bulk-dismiss-safe` | (per row) |
 
-Action: `POST /admin/review-jobs/bulk-auto-dismiss-hidden` or:
+CLI for hidden backlog only:
 
 ```bash
 cd apps/backend
@@ -63,13 +65,11 @@ python3 scripts/batch_dismiss_hidden_review_queue.py --dry-run
 python3 scripts/batch_dismiss_hidden_review_queue.py --apply
 ```
 
-Sets `is_review_required = false`, `review_reason = auto_dismissed_hidden`, `admin_reviewed_at = now()`. **Idempotent** — re-run updates 0 rows.
-
-Does **not** dismiss `no_deadline` rows (may only need a date) or `is_active = true` rows.
+Does **not** auto-dismiss `no_deadline` rows that are still `is_active=true` (may only need a date).
 
 ## Expired jobs
 
-`deactivate_expired_jobs()` (cron + `POST /admin/jobs/bulk-deactivate` with `expired_only=true`) sets `is_active = false` when `closing_date < today`. Review flags are unchanged; run auto-dismiss after expiry sweeps if the queue grows.
+`deactivate_expired_jobs()` (cron + `POST /admin/jobs/bulk-deactivate` with `expired_only=true`) sets `is_active = false` when `closing_date < today`. Then run `bulk-dismiss-expired` to clear review flags on the backlog.
 
 ## Ops snapshot (2026-06-03 prod)
 
@@ -90,4 +90,8 @@ Sample ingest issues: scraper batches (e.g. Mulungushi University) with `review_
 | `GET /admin/jobs/review-queue` | Legacy queue (`admin_review_reason`) |
 | `POST /admin/review-jobs/bulk-auto-dismiss-hidden` | Clear hidden backlog |
 | `POST /admin/jobs/bulk-deactivate?expired_only=true` | Expire by `closing_date` |
-| `GET /admin/stats` | `jobs_need_review`, `jobs_deactivated` |
+| `GET /admin/stats` | `jobs_need_review`, `jobs_deactivated`, `jobs_active_public` |
+| `GET /admin/review-jobs/overview` | Review backlog + safe-dismiss eligibility counts |
+| `POST /admin/review-jobs/bulk-dismiss-expired` | Clear review on past-deadline rows |
+| `POST /admin/review-jobs/bulk-dismiss-junk` | Clear review on ingest-hidden junk |
+| `POST /admin/review-jobs/bulk-dismiss-safe` | Hidden + expired + junk in one call |

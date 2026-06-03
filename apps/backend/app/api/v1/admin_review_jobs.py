@@ -1,22 +1,23 @@
 """Admin review queue for jobs missing apply path or deadline (Track 4e)."""
 from __future__ import annotations
 
-import logging
 import math
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
 
 from app.core.deps import get_supabase, require_admin
-from app.schemas.admin import AdminJobReviewQueue, AdminJobReviewRow, AdminJobReviewUpdate
+from app.schemas.admin import (
+    AdminJobReviewQueue,
+    AdminJobReviewRow,
+    AdminJobReviewUpdate,
+    AdminReviewQueueOverview,
+)
 from app.services.job_activation import can_publish_after_admin_edit
 from app.services.review_queue_cleanup import (
     AUTO_DISMISS_REVIEW_REASONS,
-    build_hidden_inactive_dismiss_patch,
+    JUNK_DEACTIVATION_MARKERS,
 )
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/admin",
@@ -25,25 +26,82 @@ router = APIRouter(
 )
 
 
-class ReviewJobsBulkRequest(BaseModel):
-    job_ids: list[str] = Field(..., min_length=1, max_length=100)
-
-
-class ReviewQueueAutoDismissRequest(BaseModel):
-    dry_run: bool = False
-    limit: int = Field(2000, ge=1, le=5000)
-
-
-class ReviewQueueAutoDismissResponse(BaseModel):
-    dry_run: bool
-    eligible: int
-    dismissed: int
-
-
 def _split_reasons(value: str | None) -> list[str]:
     if not value:
         return []
     return [p.strip() for p in value.replace(",", " ").split() if p.strip()]
+
+
+@router.get("/review-jobs/overview", response_model=AdminReviewQueueOverview)
+async def review_jobs_overview(supabase=Depends(get_supabase)):
+    """Need-review vs deactivated vs customer-visible job counts."""
+    from datetime import date
+
+    need = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_review_required", True)
+        .is_("admin_reviewed_at", "null")
+        .execute()
+    )
+    deactivated = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_active", False)
+        .execute()
+    )
+    active_public = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_active", True)
+        .eq("is_review_required", False)
+        .or_(
+            "apply_url.not.is.null,"
+            "apply_email.not.is.null,"
+            "contact_phone.not.is.null,"
+            "admin_published.eq.true"
+        )
+        .execute()
+    )
+    hidden_eligible = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_review_required", True)
+        .is_("admin_reviewed_at", "null")
+        .eq("is_active", False)
+        .in_("review_reason", list(AUTO_DISMISS_REVIEW_REASONS))
+        .execute()
+    )
+    today = date.today().isoformat()
+    expired_eligible = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_review_required", True)
+        .is_("admin_reviewed_at", "null")
+        .not_.is_("closing_date", "null")
+        .lt("closing_date", today)
+        .execute()
+    )
+    junk_filters = ",".join(
+        f"deactivation_reason.ilike.%{marker}%" for marker in JUNK_DEACTIVATION_MARKERS
+    )
+    junk_eligible = (
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_review_required", True)
+        .is_("admin_reviewed_at", "null")
+        .eq("is_active", False)
+        .or_(junk_filters)
+        .execute()
+    )
+    return AdminReviewQueueOverview(
+        need_review=need.count or 0,
+        deactivated=deactivated.count or 0,
+        active_public=active_public.count or 0,
+        auto_dismiss_hidden_eligible=hidden_eligible.count or 0,
+        dismiss_expired_eligible=expired_eligible.count or 0,
+        dismiss_junk_eligible=junk_eligible.count or 0,
+    )
 
 
 @router.get("/review-jobs", response_model=AdminJobReviewQueue)
@@ -130,102 +188,3 @@ async def update_review_job(
     if not result.data:
         raise HTTPException(status_code=404, detail="Job not found")
     return {"id": job_id, "is_active": can_publish, "is_review_required": not can_publish}
-
-
-@router.post(
-    "/review-jobs/bulk-auto-dismiss-hidden",
-    response_model=ReviewQueueAutoDismissResponse,
-)
-async def bulk_auto_dismiss_hidden(
-    body: ReviewQueueAutoDismissRequest,
-    current_user: dict = Depends(require_admin),
-    supabase=Depends(get_supabase),
-):
-    """Clear review flags for jobs already inactive with no apply path (idempotent).
-
-    See docs/admin_job_review_cleanup.md — does not touch ``no_deadline`` rows or
-    jobs that are still ``is_active``.
-    """
-    count_query = (
-        supabase.table("jobs")
-        .select("id", count="exact")
-        .eq("is_review_required", True)
-        .is_("admin_reviewed_at", "null")
-        .eq("is_active", False)
-        .in_("review_reason", list(AUTO_DISMISS_REVIEW_REASONS))
-    )
-    eligible = count_query.execute().count or 0
-
-    if body.dry_run or eligible == 0:
-        return ReviewQueueAutoDismissResponse(
-            dry_run=body.dry_run,
-            eligible=eligible,
-            dismissed=0,
-        )
-
-    patch = build_hidden_inactive_dismiss_patch()
-    patch["admin_reviewed_by_user_id"] = current_user["id"]
-
-    result = (
-        supabase.table("jobs")
-        .update(patch)
-        .eq("is_review_required", True)
-        .is_("admin_reviewed_at", "null")
-        .eq("is_active", False)
-        .in_("review_reason", list(AUTO_DISMISS_REVIEW_REASONS))
-        .execute()
-    )
-    dismissed = len(result.data or []) if result.data else eligible
-    logger.info(
-        "review_queue_auto_dismiss_hidden admin=%s eligible=%s dismissed=%s",
-        current_user["id"],
-        eligible,
-        dismissed,
-    )
-    return ReviewQueueAutoDismissResponse(
-        dry_run=False,
-        eligible=eligible,
-        dismissed=dismissed,
-    )
-
-
-@router.post("/review-jobs/bulk-mark-duplicate")
-async def bulk_mark_duplicate(
-    body: ReviewJobsBulkRequest,
-    current_user: dict = Depends(require_admin),
-    supabase=Depends(get_supabase),
-):
-    now = datetime.now(timezone.utc).isoformat()
-    for job_id in body.job_ids:
-        supabase.table("jobs").update(
-            {
-                "is_active": False,
-                "is_review_required": False,
-                "review_reason": "duplicate",
-                "admin_reviewed_at": now,
-                "admin_reviewed_by_user_id": current_user["id"],
-                "updated_at": now,
-            }
-        ).eq("id", job_id).execute()
-    return {"updated": len(body.job_ids)}
-
-
-@router.post("/review-jobs/bulk-permanently-inactive")
-async def bulk_permanently_inactive(
-    body: ReviewJobsBulkRequest,
-    current_user: dict = Depends(require_admin),
-    supabase=Depends(get_supabase),
-):
-    now = datetime.now(timezone.utc).isoformat()
-    for job_id in body.job_ids:
-        supabase.table("jobs").update(
-            {
-                "is_active": False,
-                "is_review_required": False,
-                "review_reason": "permanently_inactive",
-                "admin_reviewed_at": now,
-                "admin_reviewed_by_user_id": current_user["id"],
-                "updated_at": now,
-            }
-        ).eq("id", job_id).execute()
-    return {"updated": len(body.job_ids)}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/toast";
+import { ReviewQueueOverviewStrip } from "../../_components/ReviewQueueOverviewStrip";
 
 type Draft = {
   apply_url: string;
@@ -116,6 +117,7 @@ export default function AdminJobReviewPage() {
 
   return (
     <div className="space-y-4">
+      <ReviewQueueOverviewStrip token={token} onChanged={() => void loadQueue()} />
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"

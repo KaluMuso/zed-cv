@@ -66,9 +66,17 @@ export function OverviewTab({
           loading={statsLoading}
         />
         <StatCard
-          label="Jobs live"
-          value={stats ? stats.jobs_active.toLocaleString() : ""}
-          hint={stats ? `${stats.jobs_total.toLocaleString()} total in DB` : undefined}
+          label="Jobs active public"
+          value={
+            stats
+              ? (stats.jobs_active_public ?? stats.jobs_active).toLocaleString()
+              : ""
+          }
+          hint={
+            stats
+              ? `${stats.jobs_active.toLocaleString()} is_active · ${stats.jobs_total.toLocaleString()} total`
+              : undefined
+          }
           loading={statsLoading}
         />
         <StatCard

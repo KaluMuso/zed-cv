@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { notify } from "@/lib/toast";
+import { ReviewQueueOverviewStrip } from "../_components/ReviewQueueOverviewStrip";
 
 type Draft = {
   apply_url: string;
@@ -25,6 +26,7 @@ export function ReviewJobsTab({ token }: { token: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [bulkClearing, setBulkClearing] = useState(false);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -74,6 +76,23 @@ export function ReviewJobsTab({ token }: { token: string }) {
     }
   };
 
+  const autoDismissHidden = async (dryRun: boolean) => {
+    setBulkClearing(true);
+    try {
+      const res = await admin.bulkAutoDismissHiddenReview(token, { dry_run: dryRun });
+      if (dryRun) {
+        notify.custom.info(`${res.eligible} hidden job(s) can leave the review queue.`);
+      } else {
+        notify.custom.success(`Cleared ${res.dismissed} hidden job(s).`);
+        await loadQueue();
+      }
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Bulk clear failed");
+    } finally {
+      setBulkClearing(false);
+    }
+  };
+
   const bulkAction = async (action: "duplicate" | "inactive") => {
     const ids = [...selected];
     if (!ids.length) {
@@ -105,7 +124,26 @@ export function ReviewJobsTab({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
+      <ReviewQueueOverviewStrip token={token} onChanged={() => void loadQueue()} />
       <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={bulkClearing}
+          onClick={() => void autoDismissHidden(true)}
+        >
+          Preview hidden clear
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={bulkClearing}
+          onClick={() => void autoDismissHidden(false)}
+        >
+          Clear hidden backlog
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -113,7 +151,7 @@ export function ReviewJobsTab({ token }: { token: string }) {
           onClick={() => bulkAction("duplicate")}
           disabled={!selected.size}
         >
-          Mark as duplicate
+          Mark selected duplicate
         </Button>
         <Button
           type="button"

@@ -247,6 +247,29 @@ def test_admin_review_endpoint_lists_only_pending(client: TestClient, admin_head
     assert "no_apply_path" in body["jobs"][0]["reasons"]
 
 
+def test_admin_review_overview_returns_counts(client: TestClient, admin_headers: dict, fake_supabase):
+    from tests.conftest import FakeSupabaseQuery
+    from app.core.deps import require_admin
+    from main import app
+
+    fake_supabase.set_table(
+        "jobs",
+        FakeSupabaseQuery(data=[], count=42),
+    )
+    app.dependency_overrides[require_admin] = lambda: {
+        "id": "admin-user-id",
+        "role": "admin",
+    }
+    with patch("app.api.v1.admin_review_jobs.get_supabase", return_value=fake_supabase):
+        res = client.get("/api/v1/admin/review-jobs/overview", headers=admin_headers)
+    app.dependency_overrides.pop(require_admin, None)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["need_review"] == 42
+    assert "active_public" in body
+    assert "dismiss_expired_eligible" in body
+
+
 @pytest.mark.asyncio
 async def test_admin_review_edit_promotes_to_active():
     from app.api.v1.admin_review_jobs import update_review_job

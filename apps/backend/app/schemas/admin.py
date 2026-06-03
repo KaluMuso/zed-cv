@@ -68,6 +68,7 @@ class AdminStats(BaseModel):
     jobs_expired: int = 0
     jobs_deactivated: int = 0
     jobs_need_review: int = 0
+    jobs_active_public: int = 0
     matches_24h: int = 0
     matches_total: int = 0
     revenue_ngwee_30d: int = 0
@@ -169,6 +170,17 @@ class AdminJobReviewQueue(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+class AdminReviewQueueOverview(BaseModel):
+    """Counters for admin review backlog vs customer-visible jobs."""
+
+    need_review: int = 0
+    deactivated: int = 0
+    active_public: int = 0
+    auto_dismiss_hidden_eligible: int = 0
+    dismiss_expired_eligible: int = 0
+    dismiss_junk_eligible: int = 0
 
 
 class AdminJobReviewUpdate(BaseModel):

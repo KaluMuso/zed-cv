@@ -1,5 +1,5 @@
--- 098: Zambia job-market skill aliases (CV parser + matching normalization).
--- Alias rows are inserted via JOIN so missing parent skills never produce NULL skill_id.
+-- 102: Repair 098 when it failed on NULL skill_id (parent skills missing).
+-- Idempotent — safe if 098 already succeeded after the 098 file fix.
 
 BEGIN;
 

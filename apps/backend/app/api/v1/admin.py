@@ -130,6 +130,25 @@ async def get_stats(supabase=Depends(get_supabase)):
             logger.warning("admin jobs_need_review count failed", exc_info=True)
     if "jobs_deactivated" not in data or data.get("jobs_deactivated") is None:
         data["jobs_deactivated"] = data.get("jobs_expired") or 0
+    if "jobs_active_public" not in data or data.get("jobs_active_public") is None:
+        try:
+            public = (
+                supabase.table("jobs")
+                .select("id", count="exact")
+                .eq("is_active", True)
+                .eq("is_review_required", False)
+                .or_(
+                    "apply_url.not.is.null,"
+                    "apply_email.not.is.null,"
+                    "contact_phone.not.is.null,"
+                    "admin_published.eq.true"
+                )
+                .execute()
+            )
+            data["jobs_active_public"] = public.count or 0
+        except Exception:
+            logger.warning("admin jobs_active_public count failed", exc_info=True)
+            data["jobs_active_public"] = data.get("jobs_active") or 0
     need_review = int(data.get("jobs_need_review") or 0)
     data["pending_review_count"] = need_review
     return AdminStats(**data)
@@ -1136,6 +1155,9 @@ async def approve_review_job(
     patch.update(
         {
             "is_active": True,
+            "is_review_required": False,
+            "review_reason": None,
+            "admin_review_reason": None,
             "admin_reviewed_at": now,
             "admin_reviewed_by_user_id": current_user["id"],
             "updated_by_user_id": current_user["id"],
@@ -1166,6 +1188,8 @@ async def dismiss_review_job(
         .update(
             {
                 "is_active": False,
+                "is_review_required": False,
+                "review_reason": "admin_dismissed",
                 "admin_reviewed_at": now,
                 "admin_reviewed_by_user_id": current_user["id"],
                 "updated_by_user_id": current_user["id"],

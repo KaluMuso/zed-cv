@@ -114,6 +114,7 @@ def create_app() -> FastAPI:
         admin_ingest,
         admin_notifications,
         admin_review_jobs,
+        admin_review_jobs_bulk,
         admin_skills,
     )
 
@@ -123,6 +124,7 @@ def create_app() -> FastAPI:
     application.include_router(admin_ingest.router, prefix="/api/v1")
     application.include_router(admin_notifications.router, prefix="/api/v1")
     application.include_router(admin_review_jobs.router, prefix="/api/v1")
+    application.include_router(admin_review_jobs_bulk.router, prefix="/api/v1")
     application.include_router(interview_prep.router, prefix="/api/v1")
     application.include_router(bwana_interview_routes.router, prefix="/api/v1")
     application.include_router(bwana.router, prefix="/api/v1")

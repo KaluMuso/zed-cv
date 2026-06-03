@@ -650,6 +650,17 @@ components:
         pending_review_count: { type: integer }
         jobs_deactivated: { type: integer }
         jobs_need_review: { type: integer }
+        jobs_active_public: { type: integer }
+
+    AdminReviewQueueOverview:
+      type: object
+      properties:
+        need_review: { type: integer }
+        deactivated: { type: integer }
+        active_public: { type: integer }
+        auto_dismiss_hidden_eligible: { type: integer }
+        dismiss_expired_eligible: { type: integer }
+        dismiss_junk_eligible: { type: integer }
 
     ReviewQueueAutoDismissRequest:
       type: object
@@ -663,6 +674,25 @@ components:
         dry_run: { type: boolean }
         eligible: { type: integer }
         dismissed: { type: integer }
+
+    ReviewQueueBulkDismissResponse:
+      type: object
+      properties:
+        dry_run: { type: boolean }
+        eligible: { type: integer }
+        dismissed: { type: integer }
+        category: { type: string }
+
+    ReviewQueueBulkDismissAllResponse:
+      type: object
+      properties:
+        dry_run: { type: boolean }
+        hidden_eligible: { type: integer }
+        hidden_dismissed: { type: integer }
+        expired_eligible: { type: integer }
+        expired_dismissed: { type: integer }
+        junk_eligible: { type: integer }
+        junk_dismissed: { type: integer }
 
     AdminUserRow:
       type: object
@@ -3087,6 +3117,21 @@ paths:
         '409': { description: Duplicate fingerprint (job already exists) }
         '503': { description: Embedding service unavailable }
 
+  /admin/review-jobs/overview:
+    get:
+      operationId: adminReviewQueueOverview
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Counts for admin review backlog vs customer-visible jobs (need review,
+        deactivated, active public, and safe bulk-dismiss eligibility).
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminReviewQueueOverview' }
+        '403': { description: Not an admin }
+
   /admin/review-jobs:
     get:
       operationId: adminTrack4eReviewQueue
@@ -3137,6 +3182,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ReviewQueueAutoDismissResponse' }
         '403': { description: Not an admin }
+
+  /admin/review-jobs/bulk-dismiss-expired:
+    post:
+      operationId: adminTrack4eBulkDismissExpired
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: Clear review flags on jobs past closing_date (see docs/admin_job_review_cleanup.md).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewQueueAutoDismissRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueueBulkDismissResponse' }
+
+  /admin/review-jobs/bulk-dismiss-junk:
+    post:
+      operationId: adminTrack4eBulkDismissJunk
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: Clear review on ingest-hidden junk listings (thin description, bad URL).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewQueueAutoDismissRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueueBulkDismissResponse' }
+
+  /admin/review-jobs/bulk-dismiss-safe:
+    post:
+      operationId: adminTrack4eBulkDismissSafe
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: Run hidden, expired, and junk bulk dismisses in one call (dry_run supported).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReviewQueueAutoDismissRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewQueueBulkDismissAllResponse' }
 
   /admin/review-jobs/bulk-mark-duplicate:
     post:
