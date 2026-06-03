@@ -30,11 +30,19 @@ from app.services.job_quality import (
     parent_listing_signature,
 )
 from app.services.embedding import generate_embedding
+from app.services.gemini_direct import QuotaExhaustedError, generate_json
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
 )
+
 logger = logging.getLogger(__name__)
+
+DEEP_ENRICH_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {"jobs": {"type": "array"}},
+    "required": ["jobs"],
+}
 
 
 def _fingerprint(title: str, company: str | None, description: str) -> str:
@@ -174,8 +182,25 @@ async def fetch_source_page(url: str) -> tuple[int, str]:
         return resp.status_code, resp.text
 
 
-def _call_deep_enrich_llm(page_text: str, llm_client: Any) -> list[DeepEnrichRole]:
-    settings = get_settings()
+def _deep_enrich_prompt(page_text: str) -> str:
+    return (
+        f"{DEEP_ENRICH_LLM_PROMPT}\n\n"
+        "Extract job posting(s) from this page text:\n\n"
+        f"{page_text[:12000]}"
+    )
+
+
+def _roles_from_enrich_payload(parsed: dict[str, Any] | list[Any]) -> list[DeepEnrichRole]:
+    if isinstance(parsed, list):
+        jobs_raw = parsed
+    else:
+        jobs_raw = parsed.get("jobs") if isinstance(parsed, dict) else []
+    if not isinstance(jobs_raw, list):
+        raise ValueError("expected jobs array")
+    return [DeepEnrichRole.model_validate(item) for item in jobs_raw]
+
+
+def _call_deep_enrich_llm_openrouter(page_text: str, llm_client: Any) -> list[DeepEnrichRole]:
     response = create_chat_completion_with_retries(
         llm_client,
         log_prefix="deep_enrich",
@@ -197,13 +222,55 @@ def _call_deep_enrich_llm(page_text: str, llm_client: Any) -> list[DeepEnrichRol
     if raw is None:
         raise ValueError("empty LLM response")
     parsed = json.loads(_strip_json_fences(raw))
-    if isinstance(parsed, list):
-        jobs_raw = parsed
-    else:
-        jobs_raw = parsed.get("jobs") if isinstance(parsed, dict) else []
-    if not isinstance(jobs_raw, list):
-        raise ValueError("expected jobs array")
-    return [DeepEnrichRole.model_validate(item) for item in jobs_raw]
+    return _roles_from_enrich_payload(parsed)
+
+
+async def _call_deep_enrich_llm(
+    page_text: str,
+    llm_client: Any | None = None,
+) -> list[DeepEnrichRole]:
+    """Gemini direct for batch enrich; OpenRouter when quota hit or configured."""
+    import sentry_sdk
+
+    settings = get_settings()
+    prompt = _deep_enrich_prompt(page_text)
+    use_gemini = (
+        settings.llm_provider_batch == "gemini_direct"
+        and bool(settings.gemini_api_key.strip())
+    )
+
+    if use_gemini:
+        try:
+            parsed = await generate_json(
+                prompt,
+                schema=DEEP_ENRICH_JSON_SCHEMA,
+                max_tokens=8192,
+                feature="deep_enrich",
+            )
+            return _roles_from_enrich_payload(parsed)
+        except QuotaExhaustedError:
+            sentry_sdk.add_breadcrumb(
+                category="llm",
+                message="deep_enrich.openrouter_fallback",
+                level="warning",
+                data={"provider": "openrouter", "reason": "quota"},
+            )
+        except Exception as exc:
+            logger.warning(
+                "deep_enrich gemini_direct failed, trying OpenRouter: %s", exc
+            )
+
+    if not settings.openrouter_api_key.strip():
+        raise ValueError("No LLM provider available for deep_enrich")
+
+    if llm_client is None:
+        llm_client = OpenAI(
+            api_key=settings.openrouter_api_key,
+            base_url=settings.openrouter_base_url,
+        )
+    return await asyncio.to_thread(
+        _call_deep_enrich_llm_openrouter, page_text, llm_client
+    )
 
 
 def _role_to_job_patch(
@@ -391,23 +458,21 @@ async def enrich_job_deep(
         )
         return "failed"
 
-    if llm_client is None:
-        settings = get_settings()
-        if not settings.openrouter_api_key:
-            _log_enrich(
-                supabase,
-                job_id=job_id,
-                outcome="failed",
-                detail="OPENROUTER_API_KEY not set",
-            )
-            return "failed"
-        llm_client = OpenAI(
-            api_key=settings.openrouter_api_key,
-            base_url=settings.openrouter_base_url,
+    settings = get_settings()
+    has_llm = bool(settings.gemini_api_key.strip()) or bool(
+        settings.openrouter_api_key.strip()
+    )
+    if not has_llm:
+        _log_enrich(
+            supabase,
+            job_id=job_id,
+            outcome="failed",
+            detail="GEMINI_API_KEY and OPENROUTER_API_KEY not set",
         )
+        return "failed"
 
     try:
-        roles = await asyncio.to_thread(_call_deep_enrich_llm, page_text, llm_client)
+        roles = await _call_deep_enrich_llm(page_text, llm_client)
     except (json.JSONDecodeError, ValidationError, ValueError) as exc:
         _log_enrich(
             supabase,

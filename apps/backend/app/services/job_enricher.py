@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.core.config import get_settings
 from app.lib.retry import circuit_is_open
+from app.services.gemini_direct import QuotaExhaustedError, generate_json
 from app.services.openrouter_helpers import (
     create_chat_completion_with_retries,
     get_completion_content,
@@ -191,72 +192,135 @@ def parse_llm_enrichment_payload(data: object) -> JobEnrichment:
         return JobEnrichment()
 
 
+def _enrichment_user_prompt(
+    *,
+    title: str,
+    company: str | None,
+    description: str,
+) -> str:
+    company_line = f"Company: {company}\n" if company else ""
+    return (
+        f"Title: {title}\n"
+        f"{company_line}"
+        f"Description:\n{description[:12000]}"
+    )
+
+
+def _enrichment_gemini_prompt(user_prompt: str) -> str:
+    return f"{JOB_ENRICH_SYSTEM_PROMPT}\n\n{user_prompt}"
+
+
+def _parse_enrichment_from_openrouter(
+    client: OpenAI,
+    *,
+    user_prompt: str,
+    log_prefix: str,
+) -> JobEnrichment:
+    settings = get_settings()
+    response = create_chat_completion_with_retries(
+        client,
+        log_prefix=log_prefix,
+        model=settings.llm_model,
+        max_tokens=768,
+        messages=[
+            {"role": "system", "content": JOB_ENRICH_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        response_format={"type": "json_object"},
+    )
+    raw = get_completion_content(response, default="")
+    if raw is None:
+        logger.warning("job_enricher_skip: bad response: empty choices")
+        return JobEnrichment()
+    raw = raw.strip()
+    if not raw:
+        return JobEnrichment()
+    data = json.loads(_strip_fences(raw).strip())
+    return parse_llm_enrichment_payload(data)
+
+
+async def _enrich_via_batch_llm(user_prompt: str, *, log_prefix: str) -> JobEnrichment:
+    """Gemini direct when configured; OpenRouter fallback on quota or forced OR."""
+    import sentry_sdk
+
+    settings = get_settings()
+    use_gemini = (
+        settings.llm_provider_batch == "gemini_direct"
+        and bool(settings.gemini_api_key.strip())
+    )
+
+    if use_gemini:
+        try:
+            data = await generate_json(
+                _enrichment_gemini_prompt(user_prompt),
+                max_tokens=768,
+                feature=log_prefix,
+            )
+            return parse_llm_enrichment_payload(data)
+        except QuotaExhaustedError:
+            sentry_sdk.add_breadcrumb(
+                category="llm",
+                message=f"{log_prefix}.openrouter_fallback",
+                level="warning",
+                data={"provider": "openrouter", "reason": "quota"},
+            )
+        except Exception as exc:
+            logger.warning(
+                "%s gemini_direct failed, trying OpenRouter: %s", log_prefix, exc
+            )
+
+    if not settings.openrouter_api_key.strip():
+        logger.error("job enrichment: no OpenRouter key for fallback")
+        return JobEnrichment()
+
+    client = _client() if log_prefix == "job_enricher" else _client_no_retry()
+
+    def _openrouter() -> JobEnrichment:
+        return _parse_enrichment_from_openrouter(
+            client, user_prompt=user_prompt, log_prefix=log_prefix
+        )
+
+    return await asyncio.to_thread(_openrouter)
+
+
 async def enrich_job(
     *,
     title: str,
     company: str | None,
     description: str,
 ) -> JobEnrichment:
-    """Call Gemini Flash via OpenRouter; return empty skills on any failure."""
-    settings = get_settings()
-    client = _client()
-
-    company_line = f"Company: {company}\n" if company else ""
-    user_prompt = (
-        f"Title: {title}\n"
-        f"{company_line}"
-        f"Description:\n{description[:12000]}"
-    )
-
+    """Batch enrichment via Gemini direct with OpenRouter fallback."""
     if circuit_is_open():
         return JobEnrichment()
 
-    def _call() -> JobEnrichment:
-        try:
-            response = create_chat_completion_with_retries(
-                client,
-                log_prefix="job_enricher",
-                model=settings.llm_model,
-                max_tokens=768,
-                messages=[
-                    {"role": "system", "content": JOB_ENRICH_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"},
-            )
-            raw = get_completion_content(response, default="")
-            if raw is None:
-                logger.warning("job_enricher_skip: bad response: empty choices")
-                return JobEnrichment()
-            raw = raw.strip()
-            if not raw:
-                return JobEnrichment()
-            data = json.loads(_strip_fences(raw).strip())
-            return parse_llm_enrichment_payload(data)
-        except ValidationError as exc:
-            logger.warning("job enrich validation failed: %s", exc.errors()[:3])
-            return JobEnrichment()
-        except (json.JSONDecodeError, TypeError, ValueError):
-            logger.warning("job enrich returned non-JSON")
-            return JobEnrichment()
-        except AuthenticationError:
-            logger.error("OpenRouter API key invalid for job enrichment")
-            return JobEnrichment()
-        except RateLimitError:
-            logger.warning("OpenRouter rate limit during job enrichment")
-            return JobEnrichment()
-        except APIError as exc:
-            logger.error("OpenRouter API error during job enrichment: %s", exc)
-            return JobEnrichment()
-        except Exception as exc:
-            logger.error(
-                "Unexpected error during job enrichment: %s",
-                exc,
-                exc_info=True,
-            )
-            return JobEnrichment()
+    user_prompt = _enrichment_user_prompt(
+        title=title, company=company, description=description
+    )
 
-    return await asyncio.to_thread(_call)
+    try:
+        return await _enrich_via_batch_llm(user_prompt, log_prefix="job_enricher")
+    except ValidationError as exc:
+        logger.warning("job enrich validation failed: %s", exc.errors()[:3])
+        return JobEnrichment()
+    except (json.JSONDecodeError, TypeError, ValueError):
+        logger.warning("job enrich returned non-JSON")
+        return JobEnrichment()
+    except AuthenticationError:
+        logger.error("OpenRouter API key invalid for job enrichment")
+        return JobEnrichment()
+    except RateLimitError:
+        logger.warning("OpenRouter rate limit during job enrichment")
+        return JobEnrichment()
+    except APIError as exc:
+        logger.error("OpenRouter API error during job enrichment: %s", exc)
+        return JobEnrichment()
+    except Exception as exc:
+        logger.error(
+            "Unexpected error during job enrichment: %s",
+            exc,
+            exc_info=True,
+        )
+        return JobEnrichment()
 
 
 class EnrichJobOutcome(BaseModel):
@@ -273,66 +337,38 @@ async def enrich_job_for_backfill(
     company: str | None,
     description: str,
 ) -> EnrichJobOutcome:
-    """Like enrich_job but no SDK retries and surfaces rate-limit for resume logic."""
-    settings = get_settings()
-    client = _client_no_retry()
-
-    company_line = f"Company: {company}\n" if company else ""
-    user_prompt = (
-        f"Title: {title}\n"
-        f"{company_line}"
-        f"Description:\n{description[:12000]}"
-    )
-
+    """Like enrich_job but surfaces rate-limit for resume logic."""
     if circuit_is_open():
         return EnrichJobOutcome(enrichment=JobEnrichment(), completed=False)
 
-    def _call() -> EnrichJobOutcome:
-        try:
-            response = create_chat_completion_with_retries(
-                client,
-                log_prefix="job_enricher_backfill",
-                model=settings.llm_model,
-                max_tokens=768,
-                messages=[
-                    {"role": "system", "content": JOB_ENRICH_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                response_format={"type": "json_object"},
-            )
-            raw = get_completion_content(response, default="")
-            if raw is None:
-                logger.warning("job_enricher_skip: bad response: empty choices")
-                return EnrichJobOutcome()
-            raw = raw.strip()
-            if not raw:
-                return EnrichJobOutcome()
-            data = json.loads(_strip_fences(raw).strip())
-            return EnrichJobOutcome(
-                enrichment=parse_llm_enrichment_payload(data),
-                completed=True,
-            )
-        except RateLimitError:
-            logger.warning("OpenRouter rate limit during job enrichment (backfill)")
-            return EnrichJobOutcome(completed=False)
-        except ValidationError as exc:
-            logger.warning("job enrich validation failed: %s", exc.errors()[:3])
-            return EnrichJobOutcome()
-        except (json.JSONDecodeError, TypeError, ValueError):
-            logger.warning("job enrich returned non-JSON")
-            return EnrichJobOutcome()
-        except AuthenticationError:
-            logger.error("OpenRouter API key invalid for job enrichment")
-            return EnrichJobOutcome()
-        except APIError as exc:
-            logger.error("OpenRouter API error during job enrichment: %s", exc)
-            return EnrichJobOutcome()
-        except Exception as exc:
-            logger.error(
-                "Unexpected error during job enrichment: %s",
-                exc,
-                exc_info=True,
-            )
-            return EnrichJobOutcome()
+    user_prompt = _enrichment_user_prompt(
+        title=title, company=company, description=description
+    )
 
-    return await asyncio.to_thread(_call)
+    try:
+        enrichment = await _enrich_via_batch_llm(
+            user_prompt, log_prefix="job_enricher_backfill"
+        )
+        return EnrichJobOutcome(enrichment=enrichment, completed=True)
+    except RateLimitError:
+        logger.warning("OpenRouter rate limit during job enrichment (backfill)")
+        return EnrichJobOutcome(completed=False)
+    except ValidationError as exc:
+        logger.warning("job enrich validation failed: %s", exc.errors()[:3])
+        return EnrichJobOutcome()
+    except (json.JSONDecodeError, TypeError, ValueError):
+        logger.warning("job enrich returned non-JSON")
+        return EnrichJobOutcome()
+    except AuthenticationError:
+        logger.error("OpenRouter API key invalid for job enrichment")
+        return EnrichJobOutcome()
+    except APIError as exc:
+        logger.error("OpenRouter API error during job enrichment: %s", exc)
+        return EnrichJobOutcome()
+    except Exception as exc:
+        logger.error(
+            "Unexpected error during job enrichment: %s",
+            exc,
+            exc_info=True,
+        )
+        return EnrichJobOutcome()

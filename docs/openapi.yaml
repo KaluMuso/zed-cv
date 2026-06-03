@@ -2550,6 +2550,22 @@ components:
         sentry_configured:
           type: boolean
           description: True when SENTRY_DSN is set (error tracking active).
+        gemini_direct_configured:
+          type: boolean
+          description: True when GEMINI_API_KEY is set (batch LLM + embeddings).
+        openrouter_configured:
+          type: boolean
+          description: True when OPENROUTER_API_KEY is set (user-facing LLM + fallback).
+        llm_provider_batch:
+          type: string
+          enum: [gemini_direct, openrouter]
+          description: Primary provider for batch/cron LLM (deep_enrich, ingest enrichment).
+        last_gemini_call_status:
+          type: string
+          description: Last known outcome for gemini_direct calls (ok, error, quota_exhausted, unknown).
+        last_openrouter_call_status:
+          type: string
+          description: Last known outcome for OpenRouter calls (ok, error, unknown).
 
 paths:
   /health:

@@ -204,7 +204,7 @@ async def test_system_prompt_says_chatbot_not_llm(fake_supabase, bwana_cache_tab
 async def test_bwana_falls_back_to_llm_on_unknown(fake_supabase, bwana_cache_table):
     question = "Should I list employment dates as month-year or year-only?"
     with patch(
-        "app.services.bwana_chat._call_openrouter_llm",
+        "app.services.bwana_chat._call_llm",
         new_callable=AsyncMock,
     ) as mock_llm:
         mock_llm.return_value = "Use month-year for recent roles; year-only if 10+ years ago."
@@ -281,7 +281,7 @@ async def test_bwana_chat_endpoint_escalated(client, auth_headers, fake_supabase
 @pytest.mark.asyncio
 async def test_handle_bwana_persists_after_llm(fake_supabase, bwana_cache_table):
     with patch(
-        "app.services.bwana_chat._call_openrouter_llm",
+        "app.services.bwana_chat._call_llm",
         new_callable=AsyncMock,
     ) as mock_llm:
         mock_llm.return_value = "Prefer month-year on CV dates."

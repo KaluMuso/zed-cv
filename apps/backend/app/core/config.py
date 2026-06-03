@@ -1,6 +1,6 @@
 """Application configuration from environment variables."""
 from functools import lru_cache
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "google/gemini-2.5-flash"
+    # Batch/cron LLM (deep_enrich, ingest enrichment): gemini_direct uses
+    # GEMINI_API_KEY (AI Studio free tier); openrouter forces OpenRouter only.
+    llm_provider_batch: Literal["gemini_direct", "openrouter"] = "gemini_direct"
     # Image-scanned PDF fallback: render pages → Gemini vision (OpenRouter).
     cv_vision_ocr_enabled: bool = True
     # Global daily AI budget guards (0 = disabled). Checked against

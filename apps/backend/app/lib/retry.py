@@ -221,8 +221,12 @@ def create_chat_completion_with_retries(
     **kwargs: Any,
 ) -> Any:
     """OpenRouter/OpenAI chat.completions.create with retry + circuit breaker."""
-    from app.services.llm import get_llm_context, record_openrouter_completion
+    import sentry_sdk
 
+    from app.services.llm import get_llm_context, record_openrouter_completion
+    from app.services.llm_provider_health import record_llm_provider_status
+
+    sentry_sdk.set_tag("provider", "openrouter")
     model = str(kwargs.get("model") or "")
     response = call_with_llm_retry(
         lambda: client.chat.completions.create(**kwargs),
@@ -237,6 +241,7 @@ def create_chat_completion_with_retries(
             context=ctx,
             supabase=supabase,
         )
+    record_llm_provider_status("openrouter", "ok")
     return response
 
 

@@ -17,6 +17,10 @@ class TestHealth:
         assert "vapid_configured" in body
         assert "resend_configured" in body
         assert "sentry_configured" in body
+        assert "gemini_direct_configured" in body
+        assert "openrouter_configured" in body
+        assert "last_gemini_call_status" in body
+        assert "last_openrouter_call_status" in body
 
     def test_health_no_auth_required(self, client):
         """Health endpoint should be accessible without auth."""
