@@ -99,7 +99,7 @@
   --secondary: 60 14% 92%;
   --secondary-foreground: 222 47% 11%;
   --muted: 215 16% 47%;
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 215 16% 40%;
   --accent: 32 95% 44%;
   --accent-foreground: 60 33% 98%;
   --destructive: 0 72% 51%;
@@ -154,8 +154,8 @@
   --primary-foreground: 154 73% 12%;
   --secondary: 215 28% 17%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 215 16% 47%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 215 28% 17%;
+  --muted-foreground: 215 20% 72%;
   --accent: 38 92% 50%;
   --accent-foreground: 222 47% 11%;
   --border: 215 28% 17%;
@@ -181,7 +181,7 @@ html {
 }
 
 body {
-  @apply bg-surface text-ink antialiased;
+  @apply bg-background text-foreground antialiased;
   overflow-x: clip;
   max-width: 100%;
   font-family: var(--font-body);
@@ -190,10 +190,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv11";
-}
-
-.dark body {
-  @apply bg-surface-dark text-ink-dark;
 }
 
 @media (min-width: 768px) {
@@ -218,7 +214,7 @@ body {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: hsl(var(--muted-foreground));
   font-weight: 500;
 }
 
@@ -919,7 +915,7 @@ a.link-copper:hover,
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: hsl(var(--muted-foreground));
 }
 .type-card-title {
   font-size: 1rem;
@@ -933,7 +929,7 @@ a.link-copper:hover,
 .type-caption {
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--muted);
+  color: hsl(var(--muted-foreground));
 }
 .type-label {
   font-size: 0.875rem;

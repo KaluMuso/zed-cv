@@ -131,14 +131,14 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             >
               <div
                 aria-label="CV preview: Chanda Mwape, Senior Accountant"
-                class="w-full max-w-[300px] rounded-md border border-line bg-surface p-4 shadow-lg sm:p-5"
+                class="w-full max-w-[300px] rounded-md border border-border bg-card p-4 shadow-lg sm:p-5"
                 role="img"
               >
                 <div
-                  class="flex items-center justify-between gap-2 border-b border-line pb-3"
+                  class="flex items-center justify-between gap-2 border-b border-border pb-3"
                 >
                   <span
-                    class="font-mono text-[10px] uppercase tracking-wide text-muted"
+                    class="font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
                   >
                     chanda_mwape_cv.pdf
                   </span>
@@ -149,12 +149,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                   </span>
                 </div>
                 <p
-                  class="font-display mt-3 text-xl text-ink m-0"
+                  class="font-display mt-3 text-xl text-foreground m-0"
                 >
                   Chanda Mwape
                 </p>
                 <p
-                  class="mt-0.5 text-sm text-ink-2"
+                  class="mt-0.5 text-sm text-muted-foreground"
                 >
                   Senior Accountant · Lusaka
                 </p>
@@ -162,22 +162,22 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                   class="mt-3 flex flex-wrap gap-1.5"
                 >
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     Excel
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     IFRS
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     SAP
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     Audit
                   </span>
@@ -186,13 +186,13 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                   class="mt-4"
                 >
                   <div
-                    class="mb-1 flex justify-between text-[11px] text-muted"
+                    class="mb-1 flex justify-between text-[11px] text-muted-foreground"
                   >
                     <span>
                       Profile complete
                     </span>
                     <span
-                      class="font-mono text-ink-2"
+                      class="font-mono"
                     >
                       94%
                     </span>
@@ -407,14 +407,14 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             >
               <div
                 aria-label="Apply channels detected for ZANACO Senior Accountant"
-                class="w-full max-w-[300px] rounded-md border border-line bg-surface p-4 shadow-xl sm:max-w-[320px]"
+                class="w-full max-w-[300px] rounded-md border border-border bg-card p-4 shadow-xl sm:max-w-[320px]"
                 role="img"
               >
                 <div
-                  class="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5"
+                  class="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5"
                 >
                   <span
-                    class="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted"
+                    class="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
                   >
                     Apply channels detected
                   </span>
@@ -442,7 +442,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                   </span>
                 </div>
                 <p
-                  class="mt-2 font-display text-sm text-ink"
+                  class="mt-2 font-display text-sm text-foreground"
                 >
                   ZANACO · Senior Accountant
                 </p>
@@ -460,7 +460,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-mail h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-mail h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -483,20 +483,20 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           EMAIL
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         careers@zanaco.co.zm
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -526,7 +526,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-message-circle h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-message-circle h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -542,20 +542,20 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           WHATSAPP
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         +260 211 221 222
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -585,7 +585,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-globe h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-globe h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -609,20 +609,20 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           WEBSITE
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         zanaco.co.zm/careers
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -1137,8 +1137,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
       </div>
     </section>
     <section
-      class="border-y border-line bg-bg-2"
-      style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--bg-2);"
+      class="border-y border-border bg-bg-2"
     >
       <div
         class="mx-auto max-w-[1280px] px-5 py-16 sm:px-6 sm:py-20 md:py-24"
@@ -1150,17 +1149,17 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             style="opacity: 0; transform: translateY(12px);"
           >
             <p
-              class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
+              class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
             >
               § 02 / Transparent scoring
             </p>
             <h2
-              class="font-display mt-2 text-display-md text-ink md:text-display-lg"
+              class="font-display mt-2 text-display-md text-foreground md:text-display-lg"
             >
               Every match shows its math.
             </h2>
             <p
-              class="mt-5 max-w-[520px] text-base leading-relaxed text-ink-2"
+              class="mt-5 max-w-[520px] text-base leading-relaxed text-muted-foreground"
             >
               No black box. Every score breaks down into 
               5
@@ -1197,12 +1196,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Semantic similarity (50%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Vector match between your CV and the job description
                   </div>
@@ -1235,12 +1234,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Skills overlap (20%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     How many required skills you have, canonicalised
                   </div>
@@ -1273,12 +1272,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Experience fit (15%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Seniority and years aligned with what the role asks for
                   </div>
@@ -1311,12 +1310,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Location (10%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Province, remote/hybrid preference, and commute signals
                   </div>
@@ -1349,12 +1348,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Recency (5%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Fresh listings score slightly higher so you see active roles first
                   </div>
@@ -1366,7 +1365,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             style="opacity: 0; transform: translateY(16px);"
           >
             <div
-              class="rounded-md border border-line bg-surface p-6 shadow-md dark:border-border dark:bg-card sm:p-8"
+              class="rounded-md border border-border bg-card p-6 shadow-md sm:p-8"
               style="box-shadow: var(--shadow-md);"
             >
               <div
@@ -1376,7 +1375,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                   class="min-w-0"
                 >
                   <div
-                    class="font-display text-[22px] leading-tight text-ink dark:text-foreground"
+                    class="font-display text-[22px] leading-tight text-foreground"
                   >
                     Senior Accountant
                   </div>
@@ -1431,12 +1430,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Semantic similarity
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       95
                       /100
@@ -1456,12 +1455,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Skills overlap
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       88
                       /100
@@ -1481,12 +1480,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Experience fit
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       82
                       /100
@@ -1506,12 +1505,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Location
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       90
                       /100
@@ -1531,12 +1530,12 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Recency
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       78
                       /100
@@ -1553,10 +1552,10 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
                 </div>
               </div>
               <div
-                class="mt-5 rounded-md border border-line bg-surface-elevated p-4 text-ink dark:border-border dark:bg-surface-dark-elevated dark:text-ink-dark"
+                class="mt-5 rounded-md border border-border bg-muted/40 p-4 text-foreground"
               >
                 <p
-                  class="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted"
+                  class="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
                 >
                   Explanation
                 </p>
@@ -1584,7 +1583,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             § 03 / Pricing
           </div>
           <h2
-            class="font-display mt-2"
+            class="font-display mt-2 text-foreground"
             style="font-size: clamp(32px, 5vw, 60px); line-height: 1.05; letter-spacing: -0.02em;"
           >
             Free forever.
@@ -1609,7 +1608,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1664,7 +1663,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
         >
@@ -1725,7 +1724,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1780,7 +1779,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -1852,15 +1851,13 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             Trust
           </p>
           <h2
-            class="type-h2"
+            class="type-h2 text-foreground"
             id="trust-heading"
-            style="color: var(--ink);"
           >
             Built for Zambian professionals
           </h2>
           <p
-            class="type-body mt-3"
-            style="color: var(--muted);"
+            class="type-body mt-3 text-muted-foreground"
           >
             Security, transparency, and local delivery — see our
              
@@ -1878,7 +1875,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           class="grid gap-4 sm:grid-cols-3 mb-12"
         >
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -1896,7 +1893,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               Encrypted & private
             </h3>
@@ -1907,7 +1904,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             </p>
           </li>
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -1925,7 +1922,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               WhatsApp-native
             </h3>
@@ -1936,7 +1933,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             </p>
           </li>
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -1954,7 +1951,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               Transparent scoring
             </h3>
@@ -1967,7 +1964,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
         </ul>
         <div
           aria-label="Organizations using ZedApply"
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6 sm:p-8 mb-10"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft p-6 sm:p-8 mb-10"
         >
           <p
             class="type-section-title text-center mb-4"
@@ -2025,7 +2022,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           class="grid gap-4 md:grid-cols-2"
         >
           <blockquote
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
             style="border-left: 3px solid var(--copper-500);"
           >
             <p
@@ -2051,7 +2048,7 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
             </footer>
           </blockquote>
           <blockquote
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
             style="border-left: 3px solid var(--copper-500);"
           >
             <p
@@ -2103,13 +2100,13 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           § 04 / FAQ
         </div>
         <h2
-          class="font-display mt-2 mb-8 sm:mb-10"
+          class="font-display mt-2 mb-8 sm:mb-10 text-foreground"
           style="font-size: clamp(32px, 5vw, 60px); line-height: 1.05; letter-spacing: -0.02em;"
         >
           Questions, answered.
         </h2>
         <div
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark divide-y"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y"
           style="border-color: var(--line);"
         >
           <div
@@ -3907,14 +3904,14 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             >
               <div
                 aria-label="CV preview: Chanda Mwape, Senior Accountant"
-                class="w-full max-w-[300px] rounded-md border border-line bg-surface p-4 shadow-lg sm:p-5"
+                class="w-full max-w-[300px] rounded-md border border-border bg-card p-4 shadow-lg sm:p-5"
                 role="img"
               >
                 <div
-                  class="flex items-center justify-between gap-2 border-b border-line pb-3"
+                  class="flex items-center justify-between gap-2 border-b border-border pb-3"
                 >
                   <span
-                    class="font-mono text-[10px] uppercase tracking-wide text-muted"
+                    class="font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
                   >
                     chanda_mwape_cv.pdf
                   </span>
@@ -3925,12 +3922,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                   </span>
                 </div>
                 <p
-                  class="font-display mt-3 text-xl text-ink m-0"
+                  class="font-display mt-3 text-xl text-foreground m-0"
                 >
                   Chanda Mwape
                 </p>
                 <p
-                  class="mt-0.5 text-sm text-ink-2"
+                  class="mt-0.5 text-sm text-muted-foreground"
                 >
                   Senior Accountant · Lusaka
                 </p>
@@ -3938,22 +3935,22 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                   class="mt-3 flex flex-wrap gap-1.5"
                 >
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     Excel
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     IFRS
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     SAP
                   </span>
                   <span
-                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-ink-2"
+                    class="rounded-full bg-bg-2 px-2 py-0.5 text-[11px] text-muted-foreground"
                   >
                     Audit
                   </span>
@@ -3962,13 +3959,13 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                   class="mt-4"
                 >
                   <div
-                    class="mb-1 flex justify-between text-[11px] text-muted"
+                    class="mb-1 flex justify-between text-[11px] text-muted-foreground"
                   >
                     <span>
                       Profile complete
                     </span>
                     <span
-                      class="font-mono text-ink-2"
+                      class="font-mono"
                     >
                       94%
                     </span>
@@ -4183,14 +4180,14 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             >
               <div
                 aria-label="Apply channels detected for ZANACO Senior Accountant"
-                class="w-full max-w-[300px] rounded-md border border-line bg-surface p-4 shadow-xl sm:max-w-[320px]"
+                class="w-full max-w-[300px] rounded-md border border-border bg-card p-4 shadow-xl sm:max-w-[320px]"
                 role="img"
               >
                 <div
-                  class="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5"
+                  class="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5"
                 >
                   <span
-                    class="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted"
+                    class="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
                   >
                     Apply channels detected
                   </span>
@@ -4218,7 +4215,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                   </span>
                 </div>
                 <p
-                  class="mt-2 font-display text-sm text-ink"
+                  class="mt-2 font-display text-sm text-foreground"
                 >
                   ZANACO · Senior Accountant
                 </p>
@@ -4236,7 +4233,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-mail h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-mail h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -4259,20 +4256,20 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           EMAIL
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         careers@zanaco.co.zm
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -4302,7 +4299,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-message-circle h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-message-circle h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -4318,20 +4315,20 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           WHATSAPP
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         +260 211 221 222
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -4361,7 +4358,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                       >
                         <svg
                           aria-hidden="true"
-                          class="lucide lucide-globe h-3.5 w-3.5 shrink-0 text-muted"
+                          class="lucide lucide-globe h-3.5 w-3.5 shrink-0 text-muted-foreground"
                           fill="none"
                           height="24"
                           stroke="currentColor"
@@ -4385,20 +4382,20 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                           />
                         </svg>
                         <span
-                          class="font-mono text-[9px] font-medium tracking-wider text-muted"
+                          class="font-mono text-[9px] font-medium tracking-wider text-muted-foreground"
                         >
                           WEBSITE
                         </span>
                       </div>
                       <p
-                        class="mt-1 truncate pl-5 text-[12px] text-ink-2"
+                        class="mt-1 truncate pl-5 text-[12px] text-muted-foreground"
                       >
                         zanaco.co.zm/careers
                       </p>
                     </div>
                     <svg
                       aria-hidden="true"
-                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+                      class="lucide lucide-arrow-up-right mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                       fill="none"
                       height="24"
                       stroke="currentColor"
@@ -4913,8 +4910,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
       </div>
     </section>
     <section
-      class="border-y border-line bg-bg-2"
-      style="border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--bg-2);"
+      class="border-y border-border bg-bg-2"
     >
       <div
         class="mx-auto max-w-[1280px] px-5 py-16 sm:px-6 sm:py-20 md:py-24"
@@ -4926,17 +4922,17 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             style="opacity: 0; transform: translateY(12px);"
           >
             <p
-              class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
+              class="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
             >
               § 02 / Transparent scoring
             </p>
             <h2
-              class="font-display mt-2 text-display-md text-ink md:text-display-lg"
+              class="font-display mt-2 text-display-md text-foreground md:text-display-lg"
             >
               Every match shows its math.
             </h2>
             <p
-              class="mt-5 max-w-[520px] text-base leading-relaxed text-ink-2"
+              class="mt-5 max-w-[520px] text-base leading-relaxed text-muted-foreground"
             >
               No black box. Every score breaks down into 
               5
@@ -4973,12 +4969,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Semantic similarity (50%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Vector match between your CV and the job description
                   </div>
@@ -5011,12 +5007,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Skills overlap (20%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     How many required skills you have, canonicalised
                   </div>
@@ -5049,12 +5045,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Experience fit (15%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Seniority and years aligned with what the role asks for
                   </div>
@@ -5087,12 +5083,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Location (10%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Province, remote/hybrid preference, and commute signals
                   </div>
@@ -5125,12 +5121,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
                 <div>
                   <div
-                    class="font-semibold text-ink"
+                    class="font-semibold text-foreground"
                   >
                     Recency (5%)
                   </div>
                   <div
-                    class="text-sm text-muted"
+                    class="text-sm text-muted-foreground"
                   >
                     Fresh listings score slightly higher so you see active roles first
                   </div>
@@ -5142,7 +5138,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             style="opacity: 0; transform: translateY(16px);"
           >
             <div
-              class="rounded-md border border-line bg-surface p-6 shadow-md dark:border-border dark:bg-card sm:p-8"
+              class="rounded-md border border-border bg-card p-6 shadow-md sm:p-8"
               style="box-shadow: var(--shadow-md);"
             >
               <div
@@ -5152,7 +5148,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                   class="min-w-0"
                 >
                   <div
-                    class="font-display text-[22px] leading-tight text-ink dark:text-foreground"
+                    class="font-display text-[22px] leading-tight text-foreground"
                   >
                     Senior Accountant
                   </div>
@@ -5207,12 +5203,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Semantic similarity
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       95
                       /100
@@ -5232,12 +5228,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Skills overlap
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       88
                       /100
@@ -5257,12 +5253,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Experience fit
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       82
                       /100
@@ -5282,12 +5278,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Location
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       90
                       /100
@@ -5307,12 +5303,12 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                     class="mb-1.5 flex items-baseline justify-between gap-2"
                   >
                     <span
-                      class="text-[13px] text-ink-2 dark:text-muted-foreground"
+                      class="text-[13px] text-muted-foreground"
                     >
                       Recency
                     </span>
                     <span
-                      class="font-mono text-xs text-muted"
+                      class="font-mono text-xs text-muted-foreground"
                     >
                       78
                       /100
@@ -5329,10 +5325,10 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
                 </div>
               </div>
               <div
-                class="mt-5 rounded-md border border-line bg-surface-elevated p-4 text-ink dark:border-border dark:bg-surface-dark-elevated dark:text-ink-dark"
+                class="mt-5 rounded-md border border-border bg-muted/40 p-4 text-foreground"
               >
                 <p
-                  class="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted"
+                  class="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
                 >
                   Explanation
                 </p>
@@ -5360,7 +5356,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             § 03 / Pricing
           </div>
           <h2
-            class="font-display mt-2"
+            class="font-display mt-2 text-foreground"
             style="font-size: clamp(32px, 5vw, 60px); line-height: 1.05; letter-spacing: -0.02em;"
           >
             Free forever.
@@ -5385,7 +5381,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -5440,7 +5436,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
         >
@@ -5501,7 +5497,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -5556,7 +5552,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           </div>
         </a>
         <a
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark card-hover job-card p-5 sm:p-6 reveal block"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
           href="/pricing"
           style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
         >
@@ -5628,15 +5624,13 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             Trust
           </p>
           <h2
-            class="type-h2"
+            class="type-h2 text-foreground"
             id="trust-heading"
-            style="color: var(--ink);"
           >
             Built for Zambian professionals
           </h2>
           <p
-            class="type-body mt-3"
-            style="color: var(--muted);"
+            class="type-body mt-3 text-muted-foreground"
           >
             Security, transparency, and local delivery — see our
              
@@ -5654,7 +5648,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           class="grid gap-4 sm:grid-cols-3 mb-12"
         >
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -5672,7 +5666,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               Encrypted & private
             </h3>
@@ -5683,7 +5677,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             </p>
           </li>
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -5701,7 +5695,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               WhatsApp-native
             </h3>
@@ -5712,7 +5706,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             </p>
           </li>
           <li
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
           >
             <svg
               class="text-primary mb-3"
@@ -5730,7 +5724,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
               />
             </svg>
             <h3
-              class="type-card-title mb-1"
+              class="type-card-title mb-1 text-foreground"
             >
               Transparent scoring
             </h3>
@@ -5743,7 +5737,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
         </ul>
         <div
           aria-label="Organizations using ZedApply"
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6 sm:p-8 mb-10"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft p-6 sm:p-8 mb-10"
         >
           <p
             class="type-section-title text-center mb-4"
@@ -5801,7 +5795,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           class="grid gap-4 md:grid-cols-2"
         >
           <blockquote
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
             style="border-left: 3px solid var(--copper-500);"
           >
             <p
@@ -5827,7 +5821,7 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
             </footer>
           </blockquote>
           <blockquote
-            class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-5 sm:p-6"
+            class="rounded-md border border-border bg-card text-foreground shadow-soft p-5 sm:p-6"
             style="border-left: 3px solid var(--copper-500);"
           >
             <p
@@ -5879,13 +5873,13 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           § 04 / FAQ
         </div>
         <h2
-          class="font-display mt-2 mb-8 sm:mb-10"
+          class="font-display mt-2 mb-8 sm:mb-10 text-foreground"
           style="font-size: clamp(32px, 5vw, 60px); line-height: 1.05; letter-spacing: -0.02em;"
         >
           Questions, answered.
         </h2>
         <div
-          class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark divide-y"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y"
           style="border-color: var(--line);"
         >
           <div

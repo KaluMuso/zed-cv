@@ -78,10 +78,10 @@ function ScoreBar({
   return (
     <div>
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-[13px] text-ink-2 dark:text-muted-foreground">
+        <span className="text-[13px] text-muted-foreground">
           {label}
         </span>
-        <span className="font-mono text-xs text-muted">
+        <span className="font-mono text-xs text-muted-foreground">
           {value}/100
         </span>
       </div>
@@ -101,12 +101,12 @@ function ScoreBar({
 export function ScoreBreakdownMockup() {
   return (
     <div
-      className="rounded-md border border-line bg-surface p-6 shadow-md dark:border-border dark:bg-card sm:p-8"
+      className="rounded-md border border-border bg-card p-6 shadow-md sm:p-8"
       style={{ boxShadow: "var(--shadow-md)" }}
     >
       <div className="mb-5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-display text-[22px] leading-tight text-ink dark:text-foreground">
+          <div className="font-display text-[22px] leading-tight text-foreground">
             Senior Accountant
           </div>
           <div className="mt-0.5 text-[13px] text-muted-foreground">
@@ -122,8 +122,8 @@ export function ScoreBreakdownMockup() {
         ))}
       </div>
 
-      <div className="mt-5 rounded-md border border-line bg-surface-elevated p-4 text-ink dark:border-border dark:bg-surface-dark-elevated dark:text-ink-dark">
-        <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted">
+      <div className="mt-5 rounded-md border border-border bg-muted/40 p-4 text-foreground">
+        <p className="mb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Explanation
         </p>
         <p className="m-0 text-[13px] leading-relaxed">

@@ -278,7 +278,7 @@ export default function HomePageClient() {
           <div>
             <div className="eyebrow">§ 03 / Pricing</div>
             <h2
-              className="font-display mt-2"
+              className="font-display mt-2 text-foreground"
               style={{
                 fontSize: "clamp(32px, 5vw, 60px)",
                 lineHeight: 1.05,
@@ -388,7 +388,7 @@ export default function HomePageClient() {
         <div className="max-w-[920px] mx-auto px-5 sm:px-6 py-16 sm:py-20 md:py-24">
           <div className="eyebrow">§ 04 / FAQ</div>
           <h2
-            className="font-display mt-2 mb-8 sm:mb-10"
+            className="font-display mt-2 mb-8 sm:mb-10 text-foreground"
             style={{
               fontSize: "clamp(32px, 5vw, 60px)",
               lineHeight: 1.05,
