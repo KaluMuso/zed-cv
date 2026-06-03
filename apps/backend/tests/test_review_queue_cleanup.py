@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import date
 
 from app.services.review_queue_cleanup import (
+    ACTIVE_NO_DEADLINE_PRESET,
     AUTO_DISMISS_REVIEW_REASONS,
     JUNK_DEACTIVATION_MARKERS,
     build_hidden_inactive_dismiss_patch,
@@ -12,6 +13,11 @@ from app.services.review_queue_cleanup import (
     matches_hidden_inactive_dismiss,
     matches_junk_review_dismiss,
 )
+
+
+class TestActiveNoDeadlinePreset:
+    def test_preset_constant(self):
+        assert ACTIVE_NO_DEADLINE_PRESET == "active_no_deadline"
 
 
 class TestMatchesHiddenInactiveDismiss:

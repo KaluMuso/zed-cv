@@ -661,6 +661,9 @@ components:
         auto_dismiss_hidden_eligible: { type: integer }
         dismiss_expired_eligible: { type: integer }
         dismiss_junk_eligible: { type: integer }
+        active_no_deadline_pending:
+          type: integer
+          description: Active jobs in review with apply path but no closing_date (human judgment bucket).
 
     ReviewQueueAutoDismissRequest:
       type: object
@@ -804,6 +807,7 @@ components:
         source: { type: string, enum: [manual, scraper, ocr, partner] }
         source_url: { type: string, nullable: true }
         reasons: { type: array, items: { type: string } }
+        is_active: { type: boolean }
         created_at: { type: string, format: date-time, nullable: true }
 
     AdminJobReviewQueue:
@@ -3141,6 +3145,14 @@ paths:
       parameters:
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: per_page, in: query, schema: { type: integer, default: 25 } }
+        - name: preset
+          in: query
+          schema:
+            type: string
+            enum: [active_no_deadline]
+          description: |
+            `active_no_deadline` — is_active=true, review_reason=no_deadline, apply path present.
+            Not eligible for safe bulk dismiss; see docs/admin_job_review_cleanup.md.
       responses:
         '200':
           content:

@@ -268,6 +268,58 @@ def test_admin_review_overview_returns_counts(client: TestClient, admin_headers:
     assert body["need_review"] == 42
     assert "active_public" in body
     assert "dismiss_expired_eligible" in body
+    assert "active_no_deadline_pending" in body
+
+
+def test_admin_review_queue_preset_unknown(client: TestClient, admin_headers: dict, fake_supabase):
+    from app.core.deps import require_admin
+    from main import app
+
+    app.dependency_overrides[require_admin] = lambda: {
+        "id": "admin-user-id",
+        "role": "admin",
+    }
+    with patch("app.api.v1.admin_review_jobs.get_supabase", return_value=fake_supabase):
+        res = client.get(
+            "/api/v1/admin/review-jobs?preset=not_a_preset",
+            headers=admin_headers,
+        )
+    app.dependency_overrides.pop(require_admin, None)
+    assert res.status_code == 400
+
+
+def test_admin_bulk_mark_duplicate_updates_jobs(
+    client: TestClient, admin_headers: dict, fake_supabase
+):
+    from tests.conftest import FakeSupabaseQuery
+    from app.core.deps import require_admin
+    from main import app
+
+    updates: list[dict] = []
+
+    class TrackingQuery(FakeSupabaseQuery):
+        def update(self, data):
+            updates.append(data)
+            return self
+
+    fake_supabase.set_table("jobs", TrackingQuery(data=[{"id": "dup-1"}]))
+    app.dependency_overrides[require_admin] = lambda: {
+        "id": "admin-user-id",
+        "role": "admin",
+    }
+    with patch("app.api.v1.admin_review_jobs_bulk.get_supabase", return_value=fake_supabase):
+        res = client.post(
+            "/api/v1/admin/review-jobs/bulk-mark-duplicate",
+            headers=admin_headers,
+            json={"job_ids": ["dup-1", "dup-2"]},
+        )
+    app.dependency_overrides.pop(require_admin, None)
+    assert res.status_code == 200
+    assert res.json()["updated"] == 2
+    assert len(updates) == 2
+    assert updates[0]["review_reason"] == "duplicate"
+    assert updates[0]["is_review_required"] is False
+    assert updates[0]["is_active"] is False
 
 
 @pytest.mark.asyncio

@@ -161,6 +161,7 @@ class AdminJobReviewRow(BaseModel):
     source: str
     source_url: Optional[str] = None
     reasons: list[str] = []
+    is_active: bool = False
     created_at: Optional[datetime] = None
 
 
@@ -181,6 +182,7 @@ class AdminReviewQueueOverview(BaseModel):
     auto_dismiss_hidden_eligible: int = 0
     dismiss_expired_eligible: int = 0
     dismiss_junk_eligible: int = 0
+    active_no_deadline_pending: int = 0
 
 
 class AdminJobReviewUpdate(BaseModel):

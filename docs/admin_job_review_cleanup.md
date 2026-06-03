@@ -67,6 +67,53 @@ python3 scripts/batch_dismiss_hidden_review_queue.py --apply
 
 Does **not** auto-dismiss `no_deadline` rows that are still `is_active=true` (may only need a date).
 
+## Active · no deadline · has apply path (~47 rows, human-only)
+
+These jobs are **`is_active=true`**, **`review_reason=no_deadline`**, and already have
+`apply_url`, `apply_email`, or `contact_phone`. They appear on `/jobs` but stay out of
+matches until `is_review_required` is cleared (usually by setting `closing_date`).
+
+**Do not** include this bucket in safe bulk dismiss, hidden auto-dismiss, or any mass
+auto-dismiss script. Each row needs a human decision.
+
+### Admin UI
+
+| Control | Location |
+|---------|----------|
+| Filter preset **Active · no deadline · has apply path** | `/admin/jobs/review` queue dropdown |
+| Overview pill **Active, no deadline** | Review queue overview strip |
+| **Mark selected duplicate** | Select checkboxes → bulk action (clears review, sets `review_reason=duplicate`) |
+| **Save & publish** | Per-row: set `closing_date` (and apply fields if needed) → clears review |
+
+API: `GET /admin/review-jobs?preset=active_no_deadline`
+
+### Example: Chengelo PE teacher duplicate
+
+Two scraper ingestions for the same role can land in this bucket:
+
+| Row | Title (example) | Source | Action |
+|-----|-----------------|--------|--------|
+| A | Physical Education Teacher | `scraper` / school site | Keep — open source posting, add `closing_date` from the ad (e.g. `2026-07-15`), **Save & publish** |
+| B | PE Teacher – Chengelo School | `scraper` / jobs board | **Mark selected duplicate** if it is the same vacancy as A (weaker copy, same employer + duties) |
+
+Workflow:
+
+1. Filter **Active · no deadline · has apply path**.
+2. Open **View original posting** on both rows; confirm same employer and role.
+3. If duplicate: select the weaker row → **Mark selected duplicate** (do not dismiss via safe bulk clear).
+4. If not duplicate: add `closing_date` from the listing (or run `scripts/backfill_deadline_extraction.py` for a batch) → **Save & publish**.
+
+### When to backfill `closing_date` vs dismiss vs approve
+
+| Situation | Action |
+|-----------|--------|
+| Source page states a closing date (or “apply by …”) | Set `closing_date` on the keeper row → **Save & publish** (or deadline backfill script for many rows) |
+| Same vacancy already published under another `job_id` | **Mark selected duplicate** on the extra row(s) |
+| Listing is expired, closed, or spam (not a duplicate of a keeper) | **Permanently inactive** (not safe bulk dismiss) |
+| No date on source and role is ongoing | Set a conservative `closing_date` (e.g. 30–90 days out) after ops policy, then **Save & publish** |
+
+**Approve** in the legacy queue sense = Track 4e **Save & publish** once apply path + `closing_date` satisfy `can_publish_after_admin_edit`.
+
 ## Expired jobs
 
 `deactivate_expired_jobs()` (cron + `POST /admin/jobs/bulk-deactivate` with `expired_only=true`) sets `is_active = false` when `closing_date < today`. Then run `bulk-dismiss-expired` to clear review flags on the backlog.
