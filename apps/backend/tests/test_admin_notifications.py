@@ -286,3 +286,71 @@ class TestAdminNotificationsSchedule:
         assert resp.status_code == 201
         assert resp.json()["status"] == "scheduled"
         mock_deliver.assert_not_called()
+
+
+class _InboxInsertQuery(FakeSupabaseQuery):
+    def __init__(self):
+        super().__init__()
+        self.inserted: list[dict] = []
+
+    def insert(self, data):
+        if isinstance(data, dict):
+            self.inserted.append(data)
+        return self
+
+
+class TestDeliverCampaignInbox:
+    @pytest.mark.asyncio
+    @patch("app.services.admin_notifications.vapid_configured", return_value=True)
+    @patch(
+        "app.services.admin_notifications.send_payload_to_user",
+        new_callable=AsyncMock,
+        return_value=1,
+    )
+    async def test_successful_push_writes_admin_broadcast_inbox_row(
+        self, _send, _vapid, fake_supabase
+    ):
+        from app.core.config import get_settings
+        from app.services.admin_notifications import deliver_campaign
+
+        campaign_id = "camp-inbox-1"
+        fake_supabase.set_table(
+            "admin_notification_campaigns",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": campaign_id,
+                        "title": "Hello",
+                        "body": "World",
+                        "url": "/jobs",
+                        "status": "pending",
+                    }
+                ]
+            ),
+        )
+        fake_supabase.set_table(
+            "admin_notification_recipients",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "rec-1",
+                        "user_id": "user-free-1",
+                        "campaign_id": campaign_id,
+                        "status": "pending",
+                    }
+                ]
+            ),
+        )
+        inbox = _InboxInsertQuery()
+        fake_supabase.set_table("notifications", inbox)
+
+        counts = await deliver_campaign(
+            campaign_id, fake_supabase, settings=get_settings()
+        )
+        assert counts["sent"] == 1
+        assert len(inbox.inserted) == 1
+        row = inbox.inserted[0]
+        assert row["user_id"] == "user-free-1"
+        assert row["type"] == "admin_broadcast"
+        assert row["payload"]["title"] == "Hello"
+        assert row["payload"]["campaign_id"] == campaign_id
