@@ -159,7 +159,8 @@ Document rollback in your ops log with date, operator, and reason.
 |-----|---------|
 | [infra/n8n/README.md](../infra/n8n/README.md) | Workflow inventory (`live` vs `recommendedActive`), env vars |
 | [RUNBOOK_INDEX.md](RUNBOOK_INDEX.md) | Ops index |
-| [ADMIN_API_KEYS.md](ADMIN_API_KEYS.md) | `INGEST_API_KEY` for admin trigger routes |
+| [ADMIN_API_KEYS.md](ADMIN_API_KEYS.md) | `INGEST_API_KEY` / `ADMIN_API_KEY` headers |
+| [RUNBOOK_N8N_ADMIN_AUTH.md](RUNBOOK_N8N_ADMIN_AUTH.md) | 401 when `ADMIN_API_KEY` ≠ `INGEST_API_KEY` on admin cron |
 | [AGENTS.md](../AGENTS.md) | Supabase heartbeat invariant (unrelated — do not disable `qA4Zi46MAWx3gTTL`) |
 
 Repo exports: `daily_digest_dual_channel.json`, `notification_digest_every_24h.json`, `match_cron_every_12h.json`, `daily_digest_workflow.json`.

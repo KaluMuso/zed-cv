@@ -1,5 +1,9 @@
 {
   "name": "Zed CV - Review Queue Alert Hourly",
+  "meta": {
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
+    "optionalEnv": ["ADMIN_API_KEY"]
+  },
   "nodes": [
     {
       "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] } },
@@ -10,11 +14,24 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"],\n    adminKey: $env[\"ADMIN_API_KEY\"] || $env[\"INGEST_API_KEY\"]\n  }\n}];"
+      },
+      "name": "Load cron env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/check-review-queue",
+        "url": "={{ $json.fastapiUrl }}/api/v1/admin/check-review-queue",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }]
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-ADMIN-API-KEY", "value": "={{ $json.adminKey }}" }
+          ]
         }
       },
       "name": "Check Review Queue",
@@ -24,6 +41,11 @@
     }
   ],
   "connections": {
-    "Every Hour": { "main": [[{ "node": "Check Review Queue", "type": "main", "index": 0 }]] }
+    "Every Hour": {
+      "main": [[{ "node": "Load cron env", "type": "main", "index": 0 }]]
+    },
+    "Load cron env": {
+      "main": [[{ "node": "Check Review Queue", "type": "main", "index": 0 }]]
+    }
   }
 }

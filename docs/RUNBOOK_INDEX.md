@@ -138,6 +138,7 @@ Replaces manual Supabase SQL on `users` + `matches`. Apply migrations **097** (d
 |-----|-------------|
 | [infra/n8n/README.md](../infra/n8n/README.md) | Workflow inventory, digest vs notification, **secret rotation** |
 | [RUNBOOK_N8N_DIGEST_DEDUP.md](RUNBOOK_N8N_DIGEST_DEDUP.md) | **Prod:** deactivate duplicate digest workflows (`MW5KETbBdrAOk04y`, `XAmpEqMqahFa6uOI`); human n8n UI only |
+| [RUNBOOK_N8N_ADMIN_AUTH.md](RUNBOOK_N8N_ADMIN_AUTH.md) | **Prod:** admin cron 401 when `ADMIN_API_KEY` ≠ `INGEST_API_KEY`; Option A unify keys or Option B `X-ADMIN-API-KEY` |
 | [ADMIN_API_KEYS.md](ADMIN_API_KEYS.md) | `INGEST_API_KEY` / `ADMIN_API_KEY` headers |
 | [admin_alerts.md](admin_alerts.md) | Review queue → WhatsApp cron |
 | [SENTRY_ALERTS.md](SENTRY_ALERTS.md) | Sentry webhook → n8n → WAHA |
