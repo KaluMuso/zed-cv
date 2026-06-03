@@ -124,15 +124,25 @@
     visibility: visible !important;
   }
   .cv-print-root {
-    position: absolute;
-    top: 0;
-    left: 0;
-    margin: 0;
+    position: static;
+    margin: 0 auto;
+    min-height: 0;
     box-shadow: none;
     /* Designer template's copper sidebar must print — without this most
      * browsers strip background colors to save ink. */
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  .cv-print-root section,
+  .cv-print-root .cv-preview-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  .cv-print-root .cv-role-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .cv-preview-shell {
     background: #ffffff !important;

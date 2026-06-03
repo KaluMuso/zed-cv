@@ -1,36 +1,74 @@
-/* Print export for tailored CV builder — mirrors profile generator print.css */
+/* Print export for tailored CV builder — clone host via printTailoredCv(). */
+
+.tailored-cv-print-host {
+  display: none;
+}
 
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 14mm 16mm;
   }
+
   html,
   body {
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
   }
-  body * {
-    visibility: hidden !important;
+
+  /* Only the cloned preview prints — avoids blank pages from hidden app chrome. */
+  body.cv-print-active > *:not(.tailored-cv-print-host) {
+    display: none !important;
   }
-  .tailored-cv-print-root,
-  .tailored-cv-print-root * {
-    visibility: visible !important;
+
+  body.cv-print-active .tailored-cv-print-host {
+    display: block !important;
   }
-  .tailored-cv-print-root {
-    position: absolute;
-    top: 0;
-    left: 0;
-    margin: 0;
+
+  body.cv-print-active .tailored-cv-print-root {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
-    width: 210mm;
-    min-height: 297mm;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #15140f !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .tailored-cv-print-root .cv-preview-section {
+
+  body.cv-print-active .cv-print-header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  body.cv-print-active .cv-preview-section-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  body.cv-print-active details.cv-preview-section {
+    display: block !important;
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  body.cv-print-active details.cv-preview-section > summary {
+    display: block;
+    list-style: none;
+  }
+
+  body.cv-print-active details.cv-preview-section > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  body.cv-print-active .cv-role-block {
     break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

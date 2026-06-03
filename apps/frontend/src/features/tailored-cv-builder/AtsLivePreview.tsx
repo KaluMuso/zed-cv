@@ -30,11 +30,13 @@ export function AtsLivePreview({ draft }: { draft: TailoredCvDraft }) {
       className={cn("tailored-cv-paper tailored-cv-print-root", densityClass)}
       aria-label="CV preview"
     >
-      <h1>{basics.fullName.trim() || "Your Name"}</h1>
-      {basics.headline.trim() ? <p className="cv-headline">{basics.headline}</p> : null}
-      {contactBits.length > 0 && (
-        <div className="cv-contact">{contactBits.join("  ·  ")}</div>
-      )}
+      <header className="cv-print-header">
+        <h1>{basics.fullName.trim() || "Your Name"}</h1>
+        {basics.headline.trim() ? <p className="cv-headline">{basics.headline}</p> : null}
+        {contactBits.length > 0 && (
+          <div className="cv-contact">{contactBits.join("  ·  ")}</div>
+        )}
+      </header>
 
       {style.showSummary && basics.summary.trim() ? (
         <PreviewSection title="Summary">
