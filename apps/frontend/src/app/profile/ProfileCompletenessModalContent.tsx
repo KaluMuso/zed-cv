@@ -71,7 +71,12 @@ export function ProfileCompletenessModalContent({
       <CvUploadField
         token={token}
         cvUploaded={profile.cv_uploaded}
-        onUploaded={() => {
+        onUploaded={(result) => {
+          if (result.queued) {
+            notify.success("CV queued — we'll process it when AI capacity is back.");
+            onClose();
+            return;
+          }
           notify.success("CV uploaded");
           onProfileSaved({ ...profile, cv_uploaded: true });
           onClose();
@@ -90,7 +95,11 @@ export function ProfileCompletenessModalContent({
         <CvUploadField
           token={token}
           cvUploaded={profile.cv_uploaded}
-          onUploaded={() => {
+          onUploaded={(result) => {
+            if (result.queued) {
+              notify.success("CV queued — we'll process it when AI capacity is back.");
+              return;
+            }
             notify.success("CV updated");
             onProfileSaved({ ...profile, cv_uploaded: true });
           }}

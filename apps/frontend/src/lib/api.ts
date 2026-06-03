@@ -861,19 +861,24 @@ export interface ScrapingSourceEntry {
   scraped_at: string;
 }
 
+/** POST /admin/jobs body — admin_published is PATCH-only (AdminJobUpdate). */
 export interface AdminJobCreate {
   title: string;
   company?: string;
   location?: string;
   description: string;
   source: "manual" | "scraper" | "ocr" | "partner";
+  employment_type?: EmploymentType;
+  work_arrangement?: WorkArrangement;
   apply_url?: string;
   apply_email?: string;
   contact_phone?: string;
   closing_date?: string;
   salary_min?: number;
   salary_max?: number;
-  admin_published?: boolean;
+  source_url?: string;
+  requirements?: string[];
+  skills_required?: string[];
 }
 
 export interface AdminEmailHealth {

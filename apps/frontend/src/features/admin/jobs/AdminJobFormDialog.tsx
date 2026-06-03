@@ -19,13 +19,22 @@ import {
   cv as cvApi,
   jobs as jobsApi,
   type AdminJobCreate,
+  type EmploymentType,
   type ScrapingSourceEntry,
+  type WorkArrangement,
 } from "@/lib/api";
 import { notify } from "@/lib/toast";
 import { MarkdownDescriptionField } from "./MarkdownDescriptionField";
 import { EMPLOYMENT_TYPES, WORK_ARRANGEMENTS } from "./job-enums";
+import {
+  finalizeAdminJobPayload,
+  validateAdminJobApplyContact,
+} from "./adminJobValidation";
 
-const EMPTY_FORM: AdminJobCreate = {
+/** Local form state; admin_published is edit-only and must not be sent on POST. */
+type AdminJobFormState = AdminJobCreate & { admin_published?: boolean };
+
+const EMPTY_FORM: AdminJobFormState = {
   title: "",
   company: "",
   location: "",
@@ -75,9 +84,9 @@ export function AdminJobFormDialog({
   jobId,
   onSaved,
 }: AdminJobFormDialogProps) {
-  const [form, setForm] = useState<AdminJobCreate>(EMPTY_FORM);
-  const [employmentType, setEmploymentType] = useState("full_time");
-  const [workArrangement, setWorkArrangement] = useState("on_site");
+  const [form, setForm] = useState<AdminJobFormState>(EMPTY_FORM);
+  const [employmentType, setEmploymentType] = useState<EmploymentType>("full_time");
+  const [workArrangement, setWorkArrangement] = useState<WorkArrangement>("on_site");
   const [sourceUrl, setSourceUrl] = useState("");
   const [requirements, setRequirements] = useState<string[]>([]);
   const [skillsRequired, setSkillsRequired] = useState<string[]>([]);
@@ -124,8 +133,8 @@ export function AdminJobFormDialog({
           closing_date: full.closing_date ? full.closing_date.slice(0, 10) : "",
           admin_published: full.admin_published ?? false,
         });
-        setEmploymentType(full.employment_type ?? "full_time");
-        setWorkArrangement(full.work_arrangement ?? "on_site");
+        setEmploymentType((full.employment_type as EmploymentType | undefined) ?? "full_time");
+        setWorkArrangement((full.work_arrangement as WorkArrangement | undefined) ?? "on_site");
         setSourceUrl(full.source_url ?? "");
         setRequirements(full.requirements ?? []);
         setSkillsRequired(full.skills_required ?? []);
@@ -155,27 +164,20 @@ export function AdminJobFormDialog({
     }
   };
 
-  const buildPayload = (): Partial<AdminJobCreate> & {
-    admin_published?: boolean;
-    employment_type?: string;
-    work_arrangement?: string;
-    source_url?: string;
-    requirements?: string[];
-    skills_required?: string[];
-  } => {
-    const payload = {
-      ...form,
+  const buildPayload = (): Partial<AdminJobCreate> & { admin_published?: boolean } => {
+    const { admin_published: _omit, ...formFields } = form;
+    const payload: Partial<AdminJobCreate> = {
+      ...formFields,
       employment_type: employmentType,
       work_arrangement: workArrangement,
       source_url: sourceUrl.trim() || undefined,
       requirements: requirements.length ? requirements : undefined,
       skills_required: skillsRequired.length ? skillsRequired : undefined,
-      admin_published: mode === "edit" ? forcePublish : form.admin_published,
     };
     (Object.keys(payload) as (keyof typeof payload)[]).forEach((k) => {
       if (payload[k] === "") delete payload[k];
     });
-    return payload;
+    return finalizeAdminJobPayload(mode, payload, forcePublish);
   };
 
   const validate = (): boolean => {
@@ -185,6 +187,15 @@ export function AdminJobFormDialog({
     }
     if (!form.description || form.description.length < 20) {
       notify.error("Description must be at least 20 characters");
+      return false;
+    }
+    const contactError = validateAdminJobApplyContact(
+      form.apply_url,
+      form.apply_email,
+      form.contact_phone,
+    );
+    if (contactError) {
+      notify.error(contactError);
       return false;
     }
     return true;
@@ -261,7 +272,7 @@ export function AdminJobFormDialog({
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={employmentType}
-              onChange={(e) => setEmploymentType(e.target.value)}
+              onChange={(e) => setEmploymentType(e.target.value as EmploymentType)}
             >
               {EMPLOYMENT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -272,7 +283,7 @@ export function AdminJobFormDialog({
             <select
               className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={workArrangement}
-              onChange={(e) => setWorkArrangement(e.target.value)}
+              onChange={(e) => setWorkArrangement(e.target.value as WorkArrangement)}
             >
               {WORK_ARRANGEMENTS.map((w) => (
                 <option key={w.value} value={w.value}>

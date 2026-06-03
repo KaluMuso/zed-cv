@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { cv as cvApi, ApiError } from "@/lib/api";
+import { cv as cvApi, ApiError, type CVUploadResult } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 
 const VALID_TYPES = [
@@ -19,7 +19,8 @@ export function CvUploadField({
 }: {
   token: string;
   cvUploaded: boolean;
-  onUploaded: () => void;
+  /** Called after a successful upload. Queued (202) responses omit cv_id until drain. */
+  onUploaded: (result: CVUploadResult) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -45,7 +46,7 @@ export function CvUploadField({
         } else {
           setMessage(`CV uploaded! ${skillsCount} skills extracted.`);
         }
-        onUploaded();
+        onUploaded(result);
       } catch (err) {
         if (err instanceof ApiError) {
           setMessage(err.detail || "Upload failed");

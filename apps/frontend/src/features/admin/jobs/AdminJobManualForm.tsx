@@ -73,6 +73,13 @@ const formSchema = z
         path: ["apply_url"],
       });
     }
+    if (url && email) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Provide apply URL or apply email, not both",
+        path: ["apply_email"],
+      });
+    }
     if (phone && !ZAMBIAN_PHONE_RE.test(phone)) {
       ctx.addIssue({
         code: "custom",
