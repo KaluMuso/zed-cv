@@ -2,7 +2,11 @@
 import pytest
 
 from app.schemas.bwana_config import BwanaConfig, BwanaConfigPatch
-from app.services.bwana_config import get_bwana_config, render_template
+from app.services.bwana_config import (
+    clear_bwana_config_cache,
+    get_bwana_config,
+    render_template,
+)
 from tests.conftest import FakeSupabaseQuery
 
 DEFAULT_ROW = {
@@ -27,6 +31,7 @@ DEFAULT_ROW = {
 
 @pytest.fixture
 def bwana_tables(fake_supabase):
+    clear_bwana_config_cache()
     fake_supabase.set_table(
         "bwana_platform_config", FakeSupabaseQuery(data=[DEFAULT_ROW.copy()])
     )

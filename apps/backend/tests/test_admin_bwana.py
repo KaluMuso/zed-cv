@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.services.bwana_config import clear_bwana_config_cache
 from tests.conftest import FakeSupabaseQuery
 
 BWANA_ROW = {
@@ -36,6 +37,7 @@ def _seed_admin_user(fake_supabase):
 
 @pytest.fixture
 def bwana_admin_tables(fake_supabase):
+    clear_bwana_config_cache()
     _seed_admin_user(fake_supabase)
     fake_supabase.set_table("bwana_platform_config", FakeSupabaseQuery(data=[BWANA_ROW]))
     fake_supabase.set_table("bwana_escalation_log", FakeSupabaseQuery(data=[]))

@@ -11,7 +11,7 @@ from app.services.bwana_chat import (
     session_cache_key,
 )
 from app.services.bwana_faq import is_escalation_request, match_faq
-from app.services.bwana_config import build_bwana_system_prompt
+from app.services.bwana_config import build_bwana_system_prompt, clear_bwana_config_cache
 from app.schemas.bwana_config import BwanaConfig
 from tests.conftest import FakeSupabaseQuery
 
@@ -57,6 +57,7 @@ def _seed_user(fake_supabase):
 
 @pytest.fixture
 def bwana_cache_table(fake_supabase):
+    clear_bwana_config_cache()
     q = FakeSupabaseQuery(data=[])
     fake_supabase.set_table("ai_cache", q)
     fake_supabase.set_table(
