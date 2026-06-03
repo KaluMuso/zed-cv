@@ -24,6 +24,14 @@
 
   body.cv-print-active .tailored-cv-print-host {
     display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
   }
 
   body.cv-print-active .tailored-cv-print-root {
@@ -43,19 +51,39 @@
   }
 
   body.cv-print-active .cv-print-header {
+    margin: 0 !important;
+    padding: 0 !important;
     break-after: avoid;
     page-break-after: avoid;
   }
 
-  body.cv-print-active .cv-preview-section-title {
-    break-after: avoid;
-    page-break-after: avoid;
+  /* Keep Summary (first section) on the same page as the name block when it fits. */
+  body.cv-print-active .cv-print-header + .cv-preview-section--print,
+  body.cv-print-active .cv-print-header + details.cv-preview-section {
+    break-before: avoid;
+    page-break-before: avoid;
+    margin-top: 0 !important;
   }
 
+  body.cv-print-active .cv-print-header + .cv-preview-section--print h2,
+  body.cv-print-active .cv-print-header + details.cv-preview-section .cv-preview-section-title {
+    margin-top: 6pt !important;
+  }
+
+  body.cv-print-active .cv-preview-section--print,
   body.cv-print-active details.cv-preview-section {
     display: block !important;
+    margin: 0 0 6pt !important;
+    padding: 0 !important;
     break-inside: auto;
     page-break-inside: auto;
+  }
+
+  body.cv-print-active .cv-preview-section-title,
+  body.cv-print-active .cv-preview-section--print h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+    margin: 8pt 0 4pt !important;
   }
 
   body.cv-print-active details.cv-preview-section > summary {
@@ -67,14 +95,21 @@
     display: none;
   }
 
+  body.cv-print-active .cv-preview-section-body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body.cv-print-active .cv-role-block {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  .tailored-cv-print-root .cv-skills-tags {
+
+  body.cv-print-active .tailored-cv-print-root .cv-skills-tags {
     display: none !important;
   }
-  .tailored-cv-print-root .cv-skills-line {
+
+  body.cv-print-active .tailored-cv-print-root .cv-skills-line {
     display: block !important;
   }
 }

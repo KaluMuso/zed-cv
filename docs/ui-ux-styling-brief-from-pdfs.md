@@ -33,7 +33,7 @@
 
 ### Third round (2026-05-26) — completed
 
-- **PDF export:** `print.css` + `printTailoredCv()` on live preview and Review step (browser Save as PDF)
+- **PDF export (tailored builder + profile generator preview):** browser `print.css` + `printTailoredCv()` / `window.print()` (Save as PDF). **Scratch/manual CV wizard:** server WeasyPrint via `POST /cv/build-from-scratch` (not browser print).
 - **Profile hydration:** `mapProfileToDraft()` + `useHydrateBuilderFromProfile()` from `GET /profile` → `cv_sections`
 - **Referral card:** `ProfileReferralCard` on profile sidebar (invite link with `ref` query param)
 
