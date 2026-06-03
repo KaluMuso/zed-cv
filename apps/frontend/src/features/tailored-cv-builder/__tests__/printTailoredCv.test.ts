@@ -1,4 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { PDF_SKILLS_SEPARATOR } from "../skillsDisplay";
 import {
   CV_PRINT_ACTIVE_BODY_CLASS,
   flattenDetailsForPrint,
@@ -65,5 +66,44 @@ describe("printTailoredCv helpers", () => {
     unmountTailoredCvPrintHost(host);
     expect(document.querySelector(`.${TAILORED_CV_PRINT_HOST_CLASS}`)).toBeNull();
     expect(document.body.classList.contains(CV_PRINT_ACTIVE_BODY_CLASS)).toBe(false);
+  });
+
+  it("print clone keeps uncapped dot-separated skills line for PDF export", () => {
+    const skills = Array.from({ length: 20 }, (_, i) => `Skill ${i + 1}`);
+    const fullLine = skills.join(PDF_SKILLS_SEPARATOR);
+
+    document.body.innerHTML = `
+      <article class="tailored-cv-print-root">
+        <details class="cv-preview-section" open>
+          <summary class="cv-preview-section-title">Skills</summary>
+          <div class="cv-preview-section-body">
+            <div class="cv-skills-block">
+              <p class="cv-skills-line">${fullLine}</p>
+              <div class="cv-skills-tags">
+                ${skills
+                  .slice(0, 18)
+                  .map((s) => `<span class="cv-skill-tag">${s}</span>`)
+                  .join("")}
+                <span class="cv-skill-tag cv-skill-tag--more">+2 more</span>
+              </div>
+            </div>
+          </div>
+        </details>
+      </article>
+    `;
+
+    const root = document.querySelector<HTMLElement>(".tailored-cv-print-root")!;
+    const host = mountTailoredCvPrintHost(root);
+
+    const printLine = host.querySelector(".cv-skills-line");
+    expect(printLine?.textContent).toBe(fullLine);
+    expect(printLine?.textContent).toContain("Skill 19");
+    expect(printLine?.textContent).toContain("Skill 20");
+    expect(printLine?.textContent).not.toContain("and 2 more");
+
+    const skillsHeading = host.querySelector("section.cv-preview-section--print h2");
+    expect(skillsHeading?.textContent).toBe("Skills");
+
+    unmountTailoredCvPrintHost(host);
   });
 });
