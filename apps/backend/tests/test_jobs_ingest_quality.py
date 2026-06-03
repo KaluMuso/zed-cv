@@ -61,7 +61,8 @@ class TestJobIngestQualityGates:
         assert resp.json()["ingested"] == 1
         inserted = jobs_q._data[0]
         assert inserted.get("is_active") is False
-        assert "missing_source_url" in (inserted.get("deactivation_reason") or "")
+        # Apply-path gate sets terminal reason when no source_url to deep-enrich.
+        assert inserted.get("deactivation_reason") == "no_valid_apply_path_no_source"
 
     @patch("app.api.v1.jobs.generate_embedding", new_callable=AsyncMock)
     def test_ingest_normalizes_sections(

@@ -9,6 +9,108 @@ import pytest
 from app.services import job_quality
 
 
+class TestHasValidApplyPath:
+    def test_linkedin_url_alone_valid(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {"apply_url": "https://www.linkedin.com/jobs/view/123"}
+        )
+        assert ok is True
+        assert reason is None
+
+    def test_jobwebzambia_url_alone_invalid(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {"apply_url": "https://www.jobwebzambia.com/job/123"}
+        )
+        assert ok is False
+        assert reason == "aggregator_only_no_contact"
+
+    def test_jobwebzambia_url_plus_valid_email(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {
+                "apply_url": "https://www.jobwebzambia.com/job/123",
+                "apply_email": "hr@employer.co.zm",
+            }
+        )
+        assert ok is True
+
+    def test_jobwebzambia_url_plus_valid_zm_phone(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {
+                "apply_url": "https://gozambiajobs.com/job/1",
+                "contact_phone": "+260971715270",
+            }
+        )
+        assert ok is True
+
+    def test_zimbabwe_number_invalid(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {"contact_phone": "+263771234567"}
+        )
+        assert ok is False
+
+    def test_non_standard_zm_prefix_invalid(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {"contact_phone": "+260813252760"}
+        )
+        assert ok is False
+
+    def test_standard_mtn_prefix_valid(self):
+        ok, reason = job_quality.has_valid_apply_path(
+            {"contact_phone": "+260971715270"}
+        )
+        assert ok is True
+
+
+class TestApplyPathIngestGate:
+    def _run_ingest_quality(self, job_data: dict) -> dict:
+        job_quality.apply_ingest_quality_to_job_data(
+            job_data,
+            original_contact_phone=job_data.get("contact_phone"),
+        )
+        return job_data
+
+    def test_aggregator_with_source_url_pending_enrich(self):
+        data = {
+            "title": "Clerk",
+            "description": "x" * 350,
+            "source_url": "https://www.jobwebzambia.com/job/clerk-1",
+            "apply_url": "https://www.jobwebzambia.com/job/clerk-1",
+        }
+        out = self._run_ingest_quality(data)
+        assert out["is_active"] is False
+        assert out["deactivation_reason"] == "no_valid_apply_path_pending_enrich"
+
+    def test_aggregator_without_source_url_terminal(self):
+        """No listing URL to deep-enrich — terminal deactivation."""
+        data = {
+            "title": "Clerk",
+            "description": "x" * 350,
+            "apply_url": None,
+            "source_url": None,
+        }
+        out = self._run_ingest_quality(data)
+        assert out["is_active"] is False
+        assert out["deactivation_reason"] == "no_valid_apply_path_no_source"
+
+    def test_valid_email_not_blocked_by_apply_path_gate(self):
+        from app.services.job_publication import apply_contact_activation
+
+        data = {
+            "title": "Clerk",
+            "description": "x" * 350,
+            "source_url": "https://www.jobwebzambia.com/job/clerk-1",
+            "apply_url": "https://www.jobwebzambia.com/job/clerk-1",
+            "apply_email": "careers@company.co.zm",
+        }
+        out = self._run_ingest_quality(data)
+        assert out.get("deactivation_reason") != "no_valid_apply_path_pending_enrich"
+        assert out.get("deactivation_reason") != "no_valid_apply_path_no_source"
+        apply_contact_activation(out)
+        if out.get("deactivation_reason"):
+            out["is_active"] = False
+        assert out.get("is_active") is True
+
+
 class TestValidateSourceUrl:
     def test_missing_source_url(self):
         ok, reason = job_quality.validate_source_url(None, "https://employer.com/apply")

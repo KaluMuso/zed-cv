@@ -35,6 +35,23 @@ AGGREGATOR_DOMAINS = {
     "glassdoor.com",
 }
 
+# LinkedIn is intentionally EXCLUDED — LinkedIn job postings are acceptable apply URLs.
+INVALID_AGGREGATOR_DOMAINS = {
+    "jobwebzambia.com",
+    "gozambiajobs.com",
+    "jobsearchzambia.com",
+    "jobsearchzm.com",
+    "careersinafrica.com",
+    "everjobs.com.zm",
+    "indeed.com",
+    "glassdoor.com",
+}
+
+ZM_PHONE_RE = re.compile(
+    r"^\+260(9[567]|7[567]|211|212|214|215|216|217|218)\d{6,7}$"
+)
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
 ZM_VALID_PHONE_PATTERNS = [
     re.compile(r"^\+260(95|96|97)\d{7}$"),
     re.compile(r"^\+260(76|77)\d{7}$"),
@@ -155,6 +172,32 @@ Return JSON only — an array of objects, each with:
 - requirements (array of strings)
 
 If the listing is a single role, return a one-element array."""
+
+
+def _apply_url_is_real(apply_url: str | None) -> bool:
+    """A URL counts only if it exists AND isn't a non-LinkedIn aggregator."""
+    if not apply_url or not apply_url.strip():
+        return False
+    url_lower = apply_url.lower()
+    return not any(domain in url_lower for domain in INVALID_AGGREGATOR_DOMAINS)
+
+
+def has_valid_apply_path(job: dict[str, Any]) -> tuple[bool, str | None]:
+    """
+    Returns (is_valid, reason_if_not).
+    A job has a valid path if ANY of: real apply_url, valid email, valid Zm phone.
+    """
+    if _apply_url_is_real(job.get("apply_url")):
+        return True, None
+    apply_email = job.get("apply_email")
+    if apply_email and EMAIL_RE.match(str(apply_email).strip()):
+        return True, None
+    contact_phone = job.get("contact_phone")
+    if contact_phone and ZM_PHONE_RE.match(str(contact_phone).strip()):
+        return True, None
+    if job.get("apply_url") and not _apply_url_is_real(job.get("apply_url")):
+        return False, "aggregator_only_no_contact"
+    return False, "no_apply_path"
 
 
 def validate_source_url(
@@ -454,3 +497,11 @@ def apply_ingest_quality_to_job_data(
     if deactivation_reasons:
         job_data["is_active"] = False
         job_data["deactivation_reason"] = ",".join(deactivation_reasons)
+
+    ok, _apply_reason = has_valid_apply_path(job_data)
+    if not ok:
+        job_data["is_active"] = False
+        if job_data.get("source_url"):
+            job_data["deactivation_reason"] = "no_valid_apply_path_pending_enrich"
+        else:
+            job_data["deactivation_reason"] = "no_valid_apply_path_no_source"
