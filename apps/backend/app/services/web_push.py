@@ -170,7 +170,23 @@ async def send_high_match_push(
         score=score,
         app_url=cfg.app_url,
     )
-    return await send_payload_to_user(user_id, payload, supabase, settings=cfg)
+    sent = await send_payload_to_user(user_id, payload, supabase, settings=cfg)
+    if sent > 0:
+        from app.services.in_app_notifications import record_in_app_notification
+
+        await record_in_app_notification(
+            user_id,
+            "web_push",
+            {
+                "title": payload["title"],
+                "body": payload["body"],
+                "url": payload["url"],
+                "match_id": match_id,
+                "score": payload.get("score"),
+            },
+            supabase,
+        )
+    return sent
 
 
 async def send_test_push(user_id: str, supabase: Client, *, settings: Settings | None = None) -> int:
@@ -183,4 +199,18 @@ async def send_test_push(user_id: str, supabase: Client, *, settings: Settings |
         "icon": "/icons/icon-192.svg",
         "data": {"url": "/matches"},
     }
-    return await send_payload_to_user(user_id, payload, supabase, settings=cfg)
+    sent = await send_payload_to_user(user_id, payload, supabase, settings=cfg)
+    if sent > 0:
+        from app.services.in_app_notifications import record_in_app_notification
+
+        await record_in_app_notification(
+            user_id,
+            "web_push",
+            {
+                "title": payload["title"],
+                "body": payload["body"],
+                "url": payload["url"],
+            },
+            supabase,
+        )
+    return sent

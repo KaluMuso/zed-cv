@@ -355,11 +355,28 @@ async def send_invoice_email(invoice: dict, supabase) -> bool:
     inv_no = invoice.get("invoice_number", "receipt")
     tier = invoice.get("tier_label", "plan")
     kwacha = int(invoice.get("amount_kwacha") or 0)
-    return _send(
+    ok = _send(
         email,
         f"Zed Apply invoice {inv_no} — {tier} (K{kwacha})",
         html,
     )
+    if ok:
+        from app.services.in_app_notifications import record_in_app_notification
+
+        payment_id = str(invoice.get("payment_id") or "")
+        await record_in_app_notification(
+            str(user_id),
+            "invoice",
+            {
+                "title": f"Invoice {inv_no}",
+                "body": f"{tier} — K{kwacha}",
+                "url": "/settings/billing",
+                "payment_id": payment_id,
+                "invoice_number": inv_no,
+            },
+            supabase,
+        )
+    return ok
 
 
 async def send_payment_confirmation_email(

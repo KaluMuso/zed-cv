@@ -79,6 +79,21 @@ async def run_renewal_reminder_emails(supabase: Client) -> dict[str, int]:
                 renew_at=renew_at,
             )
             if ok:
+                from app.services.in_app_notifications import record_in_app_notification
+
+                renew_date = renew_at.date().isoformat()
+                await record_in_app_notification(
+                    str(row["id"]),
+                    "tier_expiry",
+                    {
+                        "title": f"Plan renews {renew_date}",
+                        "body": f"Your {tier_label} subscription renews soon.",
+                        "url": "/settings/billing",
+                        "tier": tier,
+                        "renew_at": renew_date,
+                    },
+                    supabase,
+                )
                 sent += 1
             else:
                 skipped += 1

@@ -34,6 +34,7 @@ from app.api.v1 import (
     whatsapp_scraper_webhook,
     analytics,
     employers,
+    notifications,
 )
 
 TRUSTED_HOSTS = [
@@ -129,6 +130,7 @@ def create_app() -> FastAPI:
     application.include_router(stats.router, prefix="/api/v1")
     application.include_router(preferences.router, prefix="/api/v1")
     application.include_router(users.router, prefix="/api/v1")
+    application.include_router(notifications.router, prefix="/api/v1")
     application.include_router(employers.router, prefix="/api/v1")
     application.include_router(webhooks.router, prefix="/api/v1")
     application.include_router(

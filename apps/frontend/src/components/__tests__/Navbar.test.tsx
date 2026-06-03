@@ -47,6 +47,12 @@ vi.mock("@/lib/api", () => ({
       matches_limit: 125,
     }),
   },
+  inAppNotifications: {
+    list: vi.fn().mockResolvedValue({
+      items: [],
+      unread_count: 0,
+    }),
+  },
 }));
 
 import { useAuth } from "@/lib/auth";

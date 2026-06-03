@@ -1780,6 +1780,44 @@ export const subscription = {
     }),
 };
 
+// @openapi InAppNotificationType
+export type InAppNotificationType =
+  | "web_push"
+  | "tier_expiry"
+  | "invoice"
+  | "admin_broadcast";
+
+// @openapi InAppNotification
+export interface InAppNotification {
+  id: string;
+  type: InAppNotificationType;
+  payload: {
+    title?: string;
+    body?: string;
+    url?: string;
+    [key: string]: unknown;
+  };
+  read_at: string | null;
+  created_at: string;
+}
+
+// @openapi InAppNotificationList
+export interface InAppNotificationList {
+  items: InAppNotification[];
+  unread_count: number;
+}
+
+export const inAppNotifications = {
+  list: (token: string, limit = 50) =>
+    apiFetch<InAppNotificationList>(`/notifications?limit=${limit}`, { token }),
+
+  markRead: (token: string, notificationId: string) =>
+    apiFetch<{ notification: InAppNotification }>(
+      `/notifications/${notificationId}/read`,
+      { method: "PATCH", token },
+    ),
+};
+
 // ── Health ──
 export const health = {
   check: () => apiFetch<{ status: string }>("/health"),

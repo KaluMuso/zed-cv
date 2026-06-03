@@ -1643,6 +1643,38 @@ components:
         application_notes: { type: string, nullable: true }
         interview_date: { type: string, format: date, nullable: true }
 
+    InAppNotificationType:
+      type: string
+      enum: [web_push, tier_expiry, invoice, admin_broadcast]
+
+    InAppNotification:
+      type: object
+      required: [id, type, payload, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/InAppNotificationType' }
+        payload:
+          type: object
+          additionalProperties: true
+          description: Display fields (title, body, url) plus type-specific ids
+        read_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    InAppNotificationList:
+      type: object
+      required: [items, unread_count]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InAppNotification' }
+        unread_count: { type: integer, minimum: 0 }
+
+    InAppNotificationReadResponse:
+      type: object
+      required: [notification]
+      properties:
+        notification: { $ref: '#/components/schemas/InAppNotification' }
+
     MatchResult:
       type: object
       properties:
@@ -4034,6 +4066,42 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NotificationDigestResponse' }
         '401': { description: Invalid ingest API key }
+
+  /notifications:
+    get:
+      operationId: listInAppNotifications
+      summary: In-app notification inbox for navbar dropdown
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InAppNotificationList' }
+        '401': { description: Unauthorized }
+
+  /notifications/{notification_id}/read:
+    patch:
+      operationId: markInAppNotificationRead
+      summary: Mark a single in-app notification as read
+      tags: [Notifications]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InAppNotificationReadResponse' }
+        '404': { description: Notification not found }
+        '401': { description: Unauthorized }
 
   /push/subscribe:
     post:

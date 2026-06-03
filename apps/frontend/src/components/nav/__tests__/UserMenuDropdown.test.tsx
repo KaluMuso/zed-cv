@@ -19,6 +19,32 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ token: "test-token" }),
+}));
+
+vi.mock("@/lib/api", () => ({
+  inAppNotifications: {
+    list: vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: "n1",
+          type: "web_push",
+          payload: { title: "Strong match", body: "90%", url: "/matches/x" },
+          read_at: null,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      unread_count: 1,
+    }),
+    markRead: vi.fn(),
+  },
+}));
+
 describe("UserMenuDropdown", () => {
   const baseProps = {
     displayName: "Jane Banda",
@@ -44,10 +70,7 @@ describe("UserMenuDropdown", () => {
       "href",
       "/dashboard",
     );
-    expect(screen.getByRole("link", { name: /notifications/i })).toHaveAttribute(
-      "href",
-      "/settings/notifications",
-    );
+    expect(screen.getByRole("menuitem", { name: /notifications/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /profile \(cv & skills\)/i })).toHaveAttribute(
       "href",
       "/profile",
@@ -59,6 +82,30 @@ describe("UserMenuDropdown", () => {
     expect(screen.getByRole("link", { name: /^settings$/i })).toHaveAttribute(
       "href",
       "/settings/account",
+    );
+  });
+
+  it("shows unread badge on notifications menu item", () => {
+    render(
+      <UserMenuDropdown
+        {...baseProps}
+        subscriptionTier="professional"
+        unreadCount={3}
+      />,
+    );
+    expect(screen.getByLabelText("3 unread")).toBeInTheDocument();
+  });
+
+  it("opens notifications panel when Notifications is clicked", async () => {
+    const user = userEvent.setup();
+    render(
+      <UserMenuDropdown {...baseProps} subscriptionTier="professional" />,
+    );
+    await user.click(screen.getByRole("menuitem", { name: /notifications/i }));
+    expect(await screen.findByText("Strong match")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /notification preferences/i })).toHaveAttribute(
+      "href",
+      "/settings/notifications",
     );
   });
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { profile as profileApi, subscription as subscriptionApi } from "@/lib/api";
+import { profile as profileApi, subscription as subscriptionApi, inAppNotifications } from "@/lib/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Icon } from "@/components/ui/Icon";
@@ -52,6 +52,7 @@ export function Navbar() {
   const { isAuthenticated, logout, token } = useAuth();
   const [navProfile, setNavProfile] = useState<NavProfile | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
 
@@ -72,13 +73,15 @@ export function Navbar() {
     if (!token) {
       setNavProfile(null);
       setSubscriptionTier(null);
+      setUnreadNotifications(0);
       return;
     }
     Promise.all([
       profileApi.get(token),
       subscriptionApi.get(token).catch(() => null),
+      inAppNotifications.list(token, 1).catch(() => null),
     ])
-      .then(([profile, sub]) => {
+      .then(([profile, sub, notifications]) => {
         const fullName =
           profile.full_name?.trim() ||
           profile.email?.split("@")[0] ||
@@ -95,12 +98,24 @@ export function Navbar() {
           subscriptionTier: profile.subscription_tier,
           showAdmin: profile.role === "admin" || profile.role === "superadmin",
         });
+        if (notifications) {
+          setUnreadNotifications(notifications.unread_count);
+        }
       })
       .catch(() => {
         setNavProfile(null);
         setSubscriptionTier(null);
+        setUnreadNotifications(0);
       });
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !dropdownOpen) return;
+    inAppNotifications
+      .list(token, 1)
+      .then((data) => setUnreadNotifications(data.unread_count))
+      .catch(() => {});
+  }, [token, dropdownOpen]);
 
   const navLinks = isAuthenticated ? SIGNED_IN_LINKS : SIGNED_OUT_LINKS;
   const visibleNavLinks = navLinks.filter((link) => {
@@ -166,6 +181,7 @@ export function Navbar() {
                   displayName={displayName}
                   open={dropdownOpen}
                   onToggle={() => setDropdownOpen(!dropdownOpen)}
+                  unreadCount={unreadNotifications}
                 />
                 {dropdownOpen ? (
                   <>
@@ -181,6 +197,8 @@ export function Navbar() {
                       showAdmin={navProfile?.showAdmin}
                       onClose={() => setDropdownOpen(false)}
                       onSignOut={logout}
+                      unreadCount={unreadNotifications}
+                      onUnreadCountChange={setUnreadNotifications}
                     />
                   </>
                 ) : null}
@@ -261,7 +279,16 @@ export function Navbar() {
                       onClick={() => setMenuOpen(false)}
                       className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
                     >
-                      <Icon name="bell" size={16} /> Notifications
+                      <Icon name="bell" size={16} />
+                      Notifications
+                      {unreadNotifications > 0 ? (
+                        <span
+                          className="ml-auto min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                          style={{ background: "var(--green-600)", color: "white" }}
+                        >
+                          {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                        </span>
+                      ) : null}
                     </Link>
                     <Link
                       href={settingsPath("account")}
