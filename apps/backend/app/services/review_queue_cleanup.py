@@ -16,6 +16,24 @@ JUNK_DEACTIVATION_MARKERS: frozenset[str] = frozenset({
 
 DismissMode = Literal["hidden_inactive", "expired", "junk"]
 
+# Admin UI preset: live on /jobs but blocked until closing_date is set.
+ACTIVE_NO_DEADLINE_PRESET = "active_no_deadline"
+APPLY_PATH_OR_FILTER = (
+    "apply_url.not.is.null,"
+    "apply_email.not.is.null,"
+    "contact_phone.not.is.null"
+)
+
+
+def apply_active_no_deadline_preset(query: Any) -> Any:
+    """Filter review queue to active rows missing only a closing date."""
+    return (
+        query.eq("is_active", True)
+        .eq("review_reason", "no_deadline")
+        .is_("closing_date", "null")
+        .or_(APPLY_PATH_OR_FILTER)
+    )
+
 
 def build_hidden_inactive_dismiss_patch(
     *,

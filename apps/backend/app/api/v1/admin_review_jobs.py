@@ -15,8 +15,10 @@ from app.schemas.admin import (
 )
 from app.services.job_activation import can_publish_after_admin_edit
 from app.services.review_queue_cleanup import (
+    ACTIVE_NO_DEADLINE_PRESET,
     AUTO_DISMISS_REVIEW_REASONS,
     JUNK_DEACTIVATION_MARKERS,
+    apply_active_no_deadline_preset,
 )
 
 router = APIRouter(
@@ -94,6 +96,12 @@ async def review_jobs_overview(supabase=Depends(get_supabase)):
         .or_(junk_filters)
         .execute()
     )
+    active_no_deadline = apply_active_no_deadline_preset(
+        supabase.table("jobs")
+        .select("id", count="exact")
+        .eq("is_review_required", True)
+        .is_("admin_reviewed_at", "null")
+    ).execute()
     return AdminReviewQueueOverview(
         need_review=need.count or 0,
         deactivated=deactivated.count or 0,
@@ -101,6 +109,7 @@ async def review_jobs_overview(supabase=Depends(get_supabase)):
         auto_dismiss_hidden_eligible=hidden_eligible.count or 0,
         dismiss_expired_eligible=expired_eligible.count or 0,
         dismiss_junk_eligible=junk_eligible.count or 0,
+        active_no_deadline_pending=active_no_deadline.count or 0,
     )
 
 
@@ -108,6 +117,13 @@ async def review_jobs_overview(supabase=Depends(get_supabase)):
 async def list_review_jobs(
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=1, le=100),
+    preset: str | None = Query(
+        None,
+        description=(
+            "Queue filter preset. "
+            f"`{ACTIVE_NO_DEADLINE_PRESET}` = active, review_reason=no_deadline, apply path present."
+        ),
+    ),
     supabase=Depends(get_supabase),
 ):
     """Jobs pending review (is_review_required), newest first."""
@@ -115,13 +131,17 @@ async def list_review_jobs(
         supabase.table("jobs")
         .select(
             "id, title, company, source, source_url, review_reason, "
-            "admin_review_reason, created_at",
+            "admin_review_reason, is_active, created_at",
             count="exact",
         )
         .eq("is_review_required", True)
         .is_("admin_reviewed_at", "null")
         .order("created_at", desc=True)
     )
+    if preset == ACTIVE_NO_DEADLINE_PRESET:
+        query = apply_active_no_deadline_preset(query)
+    elif preset is not None:
+        raise HTTPException(status_code=400, detail=f"Unknown preset: {preset}")
     offset = (page - 1) * per_page
     result = query.range(offset, offset + per_page - 1).execute()
     total = result.count or 0
@@ -134,6 +154,7 @@ async def list_review_jobs(
             source=j["source"],
             source_url=j.get("source_url"),
             reasons=_split_reasons(j.get("review_reason") or j.get("admin_review_reason")),
+            is_active=bool(j.get("is_active")),
             created_at=j.get("created_at"),
         )
         for j in (result.data or [])

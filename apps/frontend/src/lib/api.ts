@@ -615,6 +615,7 @@ export interface AdminReviewQueueOverview {
   auto_dismiss_hidden_eligible: number;
   dismiss_expired_eligible: number;
   dismiss_junk_eligible: number;
+  active_no_deadline_pending: number;
 }
 
 export interface AdminLlmCostByModel {
@@ -694,6 +695,7 @@ export interface AdminJobReviewRow {
   source: string;
   source_url: string | null;
   reasons: string[];
+  is_active: boolean;
   created_at: string | null;
 }
 
@@ -976,11 +978,12 @@ export const admin = {
   /** Track 4e queue: is_review_required jobs, newest first */
   track4eReviewQueue: (
     token: string,
-    params?: { page?: number; per_page?: number }
+    params?: { page?: number; per_page?: number; preset?: "active_no_deadline" }
   ) => {
     const q = new URLSearchParams();
     if (params?.page) q.set("page", String(params.page));
     if (params?.per_page) q.set("per_page", String(params.per_page));
+    if (params?.preset) q.set("preset", params.preset);
     return apiFetch<AdminJobReviewQueue>(`/admin/review-jobs?${q}`, { token });
   },
   updateTrack4eReviewJob: (

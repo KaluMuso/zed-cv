@@ -65,6 +65,10 @@ export function ReviewQueueOverviewStrip({
     <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
       <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
         <StatPill label="Need review" value={overview.need_review} />
+        <StatPill
+          label="Active, no deadline"
+          value={overview.active_no_deadline_pending ?? 0}
+        />
         <StatPill label="Deactivated" value={overview.deactivated} />
         <StatPill label="Active public" value={overview.active_public} />
       </div>
