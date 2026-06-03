@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   autoMatchPreferences,
+  me as meApi,
   profile as profileApi,
+  ApiError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useAppStore } from "@/lib/zustand-store";
@@ -26,19 +28,21 @@ export function DangerSection() {
   const router = useRouter();
   const { token, logout } = useAuth();
   const { setProfile: setZust } = useAppStore();
+  const [phone, setPhone] = useState<string | null>(null);
   const [autoEnabled, setAutoEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [pausing, setPausing] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
   const [delConfirm, setDelConfirm] = useState("");
   const [delLoading, setDelLoading] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    autoMatchPreferences
-      .get(token)
-      .then((r) => setAutoEnabled(r.auto_match_enabled))
-      .finally(() => setLoading(false));
+    Promise.all([
+      profileApi.get(token).then((p) => setPhone(p.phone)),
+      autoMatchPreferences.get(token).then((r) => setAutoEnabled(r.auto_match_enabled)),
+    ]).finally(() => setLoading(false));
   }, [token]);
 
   const pauseMatching = async () => {
@@ -54,6 +58,8 @@ export function DangerSection() {
       setPausing(false);
     }
   };
+
+  const phoneMatches = phone !== null && delConfirm === phone;
 
   return (
     <div>
@@ -83,7 +89,8 @@ export function DangerSection() {
           Delete account
         </div>
         <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-          Permanently delete your account and all data. This cannot be undone.
+          Permanently delete your account and all data. This cannot be undone. Payment records are
+          retained, anonymised, for 7 years (Zambian tax law).
         </p>
         <Button type="button" variant="destructive" onClick={() => setOpenDelete(true)}>
           Delete account
@@ -94,24 +101,38 @@ export function DangerSection() {
         open={openDelete}
         onOpenChange={(o) => {
           setOpenDelete(o);
-          if (!o) setDelConfirm("");
+          if (!o) {
+            setDelConfirm("");
+            setDelError(null);
+          }
         }}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete your account?</DialogTitle>
             <DialogDescription>
-              Type <span className="font-mono font-semibold">DELETE</span> to confirm. We will erase
-              your profile, CVs, and matches immediately.
+              Type your WhatsApp number exactly as on your account, including the{" "}
+              <span className="font-mono font-semibold">+260</span> prefix. We will erase your
+              profile, CVs, and matches immediately.
             </DialogDescription>
           </DialogHeader>
           <Input
             autoFocus
+            type="tel"
+            autoComplete="off"
             value={delConfirm}
-            onChange={(e) => setDelConfirm(e.target.value)}
-            placeholder="DELETE"
-            className="h-10"
+            onChange={(e) => {
+              setDelConfirm(e.target.value);
+              if (delError) setDelError(null);
+            }}
+            placeholder={phone ?? "+260971234567"}
+            className="h-10 font-mono"
           />
+          {delError ? (
+            <p className="text-xs" style={{ color: "var(--danger)" }}>
+              {delError}
+            </p>
+          ) : null}
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setOpenDelete(false)} disabled={delLoading}>
               Cancel
@@ -119,19 +140,30 @@ export function DangerSection() {
             <Button
               variant="destructive"
               type="button"
-              disabled={delConfirm !== "DELETE" || delLoading}
+              disabled={!phoneMatches || delLoading}
               onClick={async () => {
-                if (!token) return;
+                if (!token || !phoneMatches) return;
                 setDelLoading(true);
+                setDelError(null);
                 try {
-                  await profileApi.remove(token);
+                  const result = await meApi.deleteAccount(token, delConfirm);
+                  if (!result.deleted && !result.already_deleted) {
+                    setDelError("The server reported the deletion did not run.");
+                    return;
+                  }
                   notify.custom.success("Account deleted.");
                   setOpenDelete(false);
                   logout();
                   setZust(null);
                   router.push("/");
                 } catch (e) {
-                  notify.error(e instanceof Error ? e.message : "Could not delete");
+                  if (e instanceof ApiError && e.status === 400) {
+                    setDelError(
+                      "That doesn't match the phone number on your account. Type it exactly, including +260.",
+                    );
+                  } else {
+                    setDelError(e instanceof Error ? e.message : "Could not delete");
+                  }
                 } finally {
                   setDelLoading(false);
                 }

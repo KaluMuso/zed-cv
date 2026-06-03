@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { profile as profileApi, type UserProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { PreferencesTab } from "@/app/profile/_tabs/PreferencesTab";
@@ -29,7 +30,17 @@ export function JobPreferencesSection() {
 
   return (
     <div>
-      <SettingsSectionHeader title="Job preferences" />
+      <SettingsSectionHeader
+        title="Job preferences"
+        action={
+          <span className="text-xs" style={{ color: "var(--muted)" }}>
+            CV &amp; skills tools on{" "}
+            <Link href="/profile" className="underline" style={{ color: "var(--green-700)" }}>
+              Profile
+            </Link>
+          </span>
+        }
+      />
       <PreferencesTab profileData={profile} />
     </div>
   );
