@@ -24,7 +24,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
           Admin
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">{sectionMeta.label}</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{sectionMeta.label}</h1>
         <p className="text-sm text-muted-foreground mt-1">{sectionMeta.description}</p>
       </div>
 
@@ -44,7 +44,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 className="shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors border"
                 style={{
                   background: active ? "var(--bg-2, hsl(var(--muted) / 0.15))" : "transparent",
-                  color: active ? "var(--ink, inherit)" : "var(--muted-foreground)",
+                  color: active ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
                   borderColor: active ? "hsl(var(--border))" : "transparent",
                 }}
               >

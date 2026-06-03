@@ -27,7 +27,7 @@ exports[`MatchesPage responsive layout > matches 380px mobile snapshot 1`] = `
         />
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft p-6"
       >
         <div
           class="flex justify-between items-start"
@@ -99,7 +99,7 @@ exports[`MatchesPage responsive layout > matches 380px mobile snapshot 1`] = `
       class="flex flex-col gap-3.5"
     >
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"
@@ -159,7 +159,7 @@ exports[`MatchesPage responsive layout > matches 380px mobile snapshot 1`] = `
         </div>
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"
@@ -219,7 +219,7 @@ exports[`MatchesPage responsive layout > matches 380px mobile snapshot 1`] = `
         </div>
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"
@@ -310,7 +310,7 @@ exports[`MatchesPage responsive layout > matches 1024px desktop snapshot 1`] = `
         />
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark p-6"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft p-6"
       >
         <div
           class="flex justify-between items-start"
@@ -382,7 +382,7 @@ exports[`MatchesPage responsive layout > matches 1024px desktop snapshot 1`] = `
       class="flex flex-col gap-3.5"
     >
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"
@@ -442,7 +442,7 @@ exports[`MatchesPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </div>
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"
@@ -502,7 +502,7 @@ exports[`MatchesPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </div>
       </div>
       <div
-        class="rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark overflow-hidden"
+        class="rounded-md border border-border bg-card text-foreground shadow-soft overflow-hidden"
       >
         <div
           class="match-row p-5 sm:p-6 grid gap-6 items-center"

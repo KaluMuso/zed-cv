@@ -26,14 +26,14 @@ export function ApplyChannelsDetectedCard({ className }: { className?: string })
   return (
     <div
       className={cn(
-        "w-full max-w-[300px] rounded-md border border-line bg-surface p-4 shadow-xl sm:max-w-[320px]",
+        "w-full max-w-[300px] rounded-md border border-border bg-card p-4 shadow-xl sm:max-w-[320px]",
         className
       )}
       role="img"
       aria-label="Apply channels detected for ZANACO Senior Accountant"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
-        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2.5">
+        <span className="font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Apply channels detected
         </span>
         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-brand">
@@ -41,7 +41,7 @@ export function ApplyChannelsDetectedCard({ className }: { className?: string })
           verified
         </span>
       </div>
-      <p className="mt-2 font-display text-sm text-ink">
+      <p className="mt-2 font-display text-sm text-foreground">
         ZANACO · Senior Accountant
       </p>
       <ul className="mt-3 flex flex-col gap-2.5">
@@ -52,15 +52,15 @@ export function ApplyChannelsDetectedCard({ className }: { className?: string })
           >
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <Icon className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
-                <span className="font-mono text-[9px] font-medium tracking-wider text-muted">
+                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="font-mono text-[9px] font-medium tracking-wider text-muted-foreground">
                   {label}
                 </span>
               </div>
-              <p className="mt-1 truncate pl-5 text-[12px] text-ink-2">{value}</p>
+              <p className="mt-1 truncate pl-5 text-[12px] text-muted-foreground">{value}</p>
             </div>
             <ArrowUpRight
-              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
               aria-hidden
             />
           </li>

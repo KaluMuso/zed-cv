@@ -44,4 +44,4 @@ export function tagClass(
 
 /** Surface card (replaces bare `.card`) */
 export const surfaceCardClass =
-  "rounded-md border border-border bg-surface-elevated text-ink shadow-soft dark:border-border-dark dark:bg-surface-dark-elevated dark:text-ink-dark";
+  "rounded-md border border-border bg-card text-foreground shadow-soft";

@@ -603,7 +603,7 @@ export default function PricingPage() {
               <AccordionTrigger className="px-5 py-4 text-left text-sm font-medium hover:no-underline">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="px-5 pb-5 text-sm leading-relaxed text-ink-2">
+              <AccordionContent className="px-5 pb-5 text-sm leading-relaxed text-muted-foreground">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

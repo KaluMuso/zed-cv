@@ -471,7 +471,7 @@ export default function MatchesPageClient() {
             })}
           </div>
           <h1
-            className="font-display mb-4"
+            className="font-display mb-4 text-foreground"
             style={{
               fontSize: "clamp(40px, 5.5vw, 72px)",
               letterSpacing: "-0.025em",

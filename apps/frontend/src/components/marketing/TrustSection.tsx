@@ -69,10 +69,10 @@ export function TrustSection({
       <div className="max-w-[1280px] mx-auto px-5 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <p className="eyebrow mb-2">Trust</p>
-          <h2 id="trust-heading" className="type-h2" style={{ color: "var(--ink)" }}>
+          <h2 id="trust-heading" className="type-h2 text-foreground">
             Built for Zambian professionals
           </h2>
-          <p className="type-body mt-3" style={{ color: "var(--muted)" }}>
+          <p className="type-body mt-3 text-muted-foreground">
             Security, transparency, and local delivery — see our{" "}
             <Link href="/security" className="underline" style={{ color: "var(--green-700)" }}>
               security overview
@@ -85,7 +85,7 @@ export function TrustSection({
           {TRUST_ITEMS.map((item) => (
             <li key={item.title} className={cn(surfaceCardClass, "p-5 sm:p-6")}>
               <Icon name={item.icon} size={22} className="text-primary mb-3" />
-              <h3 className="type-card-title mb-1">{item.title}</h3>
+              <h3 className="type-card-title mb-1 text-foreground">{item.title}</h3>
               <p className="type-caption m-0">{item.body}</p>
             </li>
           ))}

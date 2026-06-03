@@ -44,7 +44,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
       <div className="mb-8">
         <div className="eyebrow mb-2">Settings</div>
         <h1
-          className="font-display"
+          className="font-display text-foreground"
           style={{
             fontSize: "clamp(2rem, 4vw, 2.75rem)",
             letterSpacing: "-0.02em",
@@ -107,7 +107,7 @@ export function SettingsSectionHeader({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <h2 className="font-display text-xl" style={{ letterSpacing: "-0.01em" }}>
+      <h2 className="font-display text-xl text-foreground" style={{ letterSpacing: "-0.01em" }}>
         {title}
       </h2>
       {action}

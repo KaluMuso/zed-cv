@@ -12,18 +12,20 @@ const bullets = MATCH_WEIGHT_BULLETS;
 
 const viewport = { once: true, margin: "-80px" } as const;
 
+/** Semantic text classes for WCAG AA contrast on bg-background / bg-bg-2 in both themes. */
+export const SCORE_MATH_SECTION_TEXT = {
+  eyebrow: "font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground",
+  heading: "font-display mt-2 text-display-md text-foreground md:text-display-lg",
+  lead: "mt-5 max-w-[520px] text-base leading-relaxed text-muted-foreground",
+  bulletTitle: "font-semibold text-foreground",
+  bulletBody: "text-sm text-muted-foreground",
+} as const;
+
 export function ScoreMathSection() {
   const reduce = useReducedMotion() ?? false;
 
   return (
-    <section
-      className="border-y border-line bg-bg-2"
-      style={{
-        borderTop: "1px solid var(--line)",
-        borderBottom: "1px solid var(--line)",
-        background: "var(--bg-2)",
-      }}
-    >
+    <section className="border-y border-border bg-bg-2">
       <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-6 sm:py-20 md:py-24">
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <motion.div
@@ -32,13 +34,13 @@ export function ScoreMathSection() {
             viewport={viewport}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+            <p className={SCORE_MATH_SECTION_TEXT.eyebrow}>
               § 02 / Transparent scoring
             </p>
-            <h2 className="font-display mt-2 text-display-md text-ink md:text-display-lg">
+            <h2 className={SCORE_MATH_SECTION_TEXT.heading}>
               Every match shows its math.
             </h2>
-            <p className="mt-5 max-w-[520px] text-base leading-relaxed text-ink-2">
+            <p className={SCORE_MATH_SECTION_TEXT.lead}>
               No black box. Every score breaks down into {MATCH_WEIGHT_COMPONENT_COUNT}{" "}
               components, and the AI writes a one-paragraph explanation in plain English —
               like a recruiter would.
@@ -53,8 +55,8 @@ export function ScoreMathSection() {
                     <Check className="h-3.5 w-3.5" />
                   </div>
                   <div>
-                    <div className="font-semibold text-ink">{title}</div>
-                    <div className="text-sm text-muted">{body}</div>
+                    <div className={SCORE_MATH_SECTION_TEXT.bulletTitle}>{title}</div>
+                    <div className={SCORE_MATH_SECTION_TEXT.bulletBody}>{body}</div>
                   </div>
                 </li>
               ))}

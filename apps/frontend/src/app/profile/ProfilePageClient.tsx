@@ -393,7 +393,7 @@ export default function ProfilePageClient() {
         <div className="space-y-6">
           <div className="card p-6">
             <div className="eyebrow mb-3">Plan &amp; settings</div>
-            <div className="font-display text-xl mb-2">
+            <div className="font-display text-xl mb-2 text-foreground">
               {TIER_LABELS[profileData.subscription_tier] || profileData.subscription_tier}
             </div>
             {subscriptionData && profileData.subscription_tier === "free" && (
