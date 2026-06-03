@@ -2,17 +2,21 @@
 
 Sanitized JSON snapshots of production workflows on `https://automation.vergeo.company`. **Never commit API keys** — use n8n instance env vars and credentials.
 
-## Live inventory (2026-05-30)
+## Live inventory (2026-06-03 audit)
 
-| Workflow | n8n ID | Active | Repo file |
-| --- | --- | --- | --- |
-| Supabase Heartbeat | `qA4Zi46MAWx3gTTL` | Yes | `heartbeat_workflow.json` |
-| Daily Digest (Email + WhatsApp) | `j6U2CDRZi0FI5G32` | Yes | `daily_digest_dual_channel.json` |
-| Notification Digest (Every 24h) | `MW5KETbBdrAOk04y` | **No** | `notification_digest_every_24h.json` |
-| Bwana Chat Pipeline | `TPDJ5S1HaRKZTdb1` | Yes | `bwana_chat_pipeline.json` |
-| Job Scraper | `rsgZLi6UAcC3lXvu` | Yes | `job_scraper.json` |
-| Admin notification dispatch | _(import from repo)_ | **No** | `admin_notification_dispatch_every_15m.json` |
-| Sentry → WhatsApp Alert | _(import from repo)_ | **No** | `sentry_whatsapp_alert.json` |
+| Workflow | n8n ID | Live active | Repo `recommendedActive` | Repo file |
+| --- | --- | --- | --- | --- |
+| Supabase Heartbeat | `qA4Zi46MAWx3gTTL` | Yes | Yes | `heartbeat_workflow.json` |
+| Daily Digest (Email + WhatsApp) | `j6U2CDRZi0FI5G32` | Yes | Yes | `daily_digest_dual_channel.json` |
+| Match Cron Every 12h | `bqBV6XNPu3z3Ikx5` | Yes | Yes | `match_cron_every_12h.json` |
+| Notification Digest (Every 24h) | `MW5KETbBdrAOk04y` | **Yes (dup)** | **No** | `notification_digest_every_24h.json` |
+| Daily Match Digest (orphan) | `XAmpEqMqahFa6uOI` | Varies | **No** | `daily_digest_workflow.json` |
+| Bwana Chat Pipeline | `TPDJ5S1HaRKZTdb1` | Yes | Yes | `bwana_chat_pipeline.json` |
+| Job Scraper | `rsgZLi6UAcC3lXvu` | Yes | Yes | `job_scraper.json` |
+| Admin notification dispatch | _(import from repo)_ | No | Yes | `admin_notification_dispatch_every_15m.json` |
+| Sentry → WhatsApp Alert | _(import from repo)_ | No | Yes | `sentry_whatsapp_alert.json` |
+
+**Digest dedup (human checklist):** [docs/RUNBOOK_N8N_DIGEST_DEDUP.md](../../docs/RUNBOOK_N8N_DIGEST_DEDUP.md) — deactivate `MW5KETbBdrAOk04y` + `XAmpEqMqahFa6uOI`; keep `j6U2CDRZi0FI5G32` + `bqBV6XNPu3z3Ikx5`. Agents: **do not** n8n-publish without maintainer approval.
 
 ## Sentry → WhatsApp alerts (Wave A.1)
 
@@ -34,20 +38,39 @@ Expected JSON includes `"status": "healthy"`, `"supabase": true`, `"waha": true`
 
 ## Digest cron: which to keep?
 
-**Keep active:** `ZedApply - Daily Digest (Email + WhatsApp)` (`j6U2CDRZi0FI5G32`)
+Full step-by-step (deactivate legacy IDs, smoke, rollback): **[docs/RUNBOOK_N8N_DIGEST_DEDUP.md](../../docs/RUNBOOK_N8N_DIGEST_DEDUP.md)**.
+
+| Workflow | ID | Repo `recommendedActive` | Role |
+| --- | --- | --- | --- |
+| ZedApply - Daily Digest (Email + WhatsApp) | `j6U2CDRZi0FI5G32` | Yes | **Canonical** 07:00 batch → `daily_digest.py` |
+| Zed CV - Match Cron Every 12h | `bqBV6XNPu3z3Ikx5` | Yes | Auto-match; may call `_send_due_digest` when new jobs credited |
+| ZedApply — Notification Digest (Every 24h) | `MW5KETbBdrAOk04y` | **No** | Legacy duplicate of `_send_due_digest` on a fixed 24h timer |
+| Zed CV - Daily Match Digest | `XAmpEqMqahFa6uOI` | **No** | Orphan (`deactivate_expired_jobs` only); wrong env pattern — do not extend |
+
+**Keep active:** `j6U2CDRZi0FI5G32` + `bqBV6XNPu3z3Ikx5`.
+
+**Deactivate in n8n UI:** `MW5KETbBdrAOk04y`, `XAmpEqMqahFa6uOI`.
+
+### Canonical 07:00 digest (`j6U2CDRZi0FI5G32`)
 
 - Schedule: `0 7 * * *` (07:00 server time — align TZ with CAT in n8n settings).
-- Calls the canonical backend paths in `app/services/daily_digest.py`:
+- Calls `app/services/daily_digest.py`:
   - `POST /api/v1/admin/trigger-daily-digest-email` → `run_email_daily_digest`
   - `POST /api/v1/admin/trigger-daily-digest-whatsapp` → `run_whatsapp_daily_digest`
+- Dedup: `user_notifications` rows per channel (`whatsapp_daily_digest`, `email_digest`).
 - Auth: `INGEST_API_KEY` header (see `admin_ingest.py`).
 
-**Keep disabled:** `ZedApply — Notification Digest (Every 24h)` (`MW5KETbBdrAOk04y`)
+### Legacy notification digest (`MW5KETbBdrAOk04y`) — disable
 
-- Calls `POST /api/v1/matches/send-notifications`, which uses `_send_due_digest` in `matches.py` (tier `last_notification_at` cadence, different message shape than the 07:00 daily digest).
-- Running both risks duplicate WhatsApp/email for users with new credited matches.
+- Calls `POST /api/v1/matches/send-notifications` → `_send_due_digest` in `matches.py`.
+- Dedup: `users.last_notification_at` (24h). Message: `send_match_digest` (not the 07:00 “Good morning …” template).
+- Running **both** this and `j6U2CDRZi0FI5G32` risks **two WhatsApp messages the same day** for users with credited matches.
 
-Match cron (`bqBV6XNPu3z3Ikx5`) may still call `_send_due_digest` after auto-match; that is intentional and separate from the 07:00 batch.
+### Match cron `_send_due_digest` vs `daily_digest.py` (intentional)
+
+- **`daily_digest.py`:** scheduled morning batch for `alert_frequency = daily`; re-matches and sends jobs not yet in `user_notifications` for the digest channel.
+- **`_send_due_digest`:** fires from `POST /matches/cron-tick` only when **new matches were credited** in that 12h tick (plus the legacy `send-notifications` workflow if left active). Updates `last_notification_at`.
+- Mid-day post-match WhatsApp + next-morning 07:00 batch is expected; duplicate **schedulers** (`MW5KETbBdrAOk04y` + `j6U2CDRZi0FI5G32`) is not.
 
 ## Supabase heartbeat
 
