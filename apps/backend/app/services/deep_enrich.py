@@ -281,9 +281,8 @@ async def _call_deep_enrich_llm(
                 data={"provider": "openrouter", "reason": "quota"},
             )
         except Exception as exc:
-            logger.warning(
-                "deep_enrich gemini_direct failed, trying OpenRouter: %s", exc
-            )
+            logger.warning("deep_enrich gemini_direct failed: %s", exc)
+            raise ValueError(f"gemini_direct failed: {exc}") from exc
 
     if not settings.openrouter_api_key.strip():
         raise ValueError("No LLM provider available for deep_enrich")

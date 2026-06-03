@@ -9,9 +9,10 @@ from scripts import recover_apply_paths
 
 
 class TestLoadCandidates:
-    def test_dedupes_pending_and_legacy(self):
+    def test_dedupes_pending_legacy_and_after_enrich(self):
         supabase = MagicMock()
         pending = [{"id": "a", "source_url": "https://x.com/1"}]
+        after_fail = [{"id": "c", "source_url": "https://x.com/3"}]
         legacy = [{"id": "b", "source_url": "https://x.com/2"}]
 
         with (
@@ -22,14 +23,61 @@ class TestLoadCandidates:
             ),
             patch.object(
                 recover_apply_paths,
+                "_fetch_after_enrich_failures",
+                return_value=after_fail,
+            ),
+            patch.object(
+                recover_apply_paths,
                 "_fetch_legacy_active_recoverable_broad",
                 return_value=legacy,
             ),
         ):
             out = recover_apply_paths.load_candidates(supabase)
 
-        assert len(out) == 2
-        assert {r["id"] for r in out} == {"a", "b"}
+        assert len(out) == 3
+        assert {r["id"] for r in out} == {"a", "b", "c"}
+
+
+class TestParserRecovery:
+    @pytest.mark.asyncio
+    async def test_parser_recovery_skips_llm(self):
+        supabase = MagicMock()
+        row = {
+            "id": "job-p",
+            "title": "Clerk",
+            "source_url": "https://www.jobwebzambia.com/jobs/clerk-1",
+            "apply_url": "https://www.jobwebzambia.com/jobs/clerk-1",
+        }
+        recovery_patch = {
+            **row,
+            "apply_email": "hr@company.co.zm",
+            "contact_phone": "+260971234567",
+        }
+
+        with (
+            patch.object(
+                recover_apply_paths,
+                "_try_parser_recovery",
+                new_callable=AsyncMock,
+                return_value=recovery_patch,
+            ),
+            patch.object(
+                recover_apply_paths,
+                "enrich_job_deep",
+                new_callable=AsyncMock,
+            ) as mock_enrich,
+            patch.object(
+                recover_apply_paths,
+                "_apply_recovery_patch",
+                return_value="recovered",
+            ),
+        ):
+            bucket = await recover_apply_paths.process_job(
+                supabase, row, dry_run=False
+            )
+
+        assert bucket == "recovered"
+        mock_enrich.assert_not_called()
 
 
 class TestProcessJob:
@@ -114,6 +162,12 @@ class TestProcessJob:
         row = {"id": "job-3", "title": "T", "source_url": "https://x.com"}
 
         with (
+            patch.object(
+                recover_apply_paths,
+                "_try_parser_recovery",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
             patch.object(
                 recover_apply_paths,
                 "enrich_job_deep",

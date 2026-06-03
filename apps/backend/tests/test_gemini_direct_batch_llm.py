@@ -57,6 +57,27 @@ async def test_deep_enrich_gemini_quota_exhausted_fallback():
 
 
 @pytest.mark.asyncio
+async def test_deep_enrich_gemini_schema_error_does_not_fallback_to_openrouter():
+    mock_settings = MagicMock()
+    mock_settings.llm_provider_batch = "gemini_direct"
+    mock_settings.gemini_api_key = "gk-test"
+    mock_settings.openrouter_api_key = "or-test"
+
+    with patch("app.services.deep_enrich.get_settings", return_value=mock_settings):
+        with patch(
+            "app.services.deep_enrich.generate_json",
+            new_callable=AsyncMock,
+            side_effect=ValueError("schema"),
+        ):
+            with patch(
+                "app.services.deep_enrich._call_deep_enrich_llm_openrouter",
+            ) as mock_openrouter:
+                with pytest.raises(ValueError, match="gemini_direct failed"):
+                    await _call_deep_enrich_llm("page text " * 20)
+                mock_openrouter.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_generate_json_quota_raises():
     from app.services import gemini_direct
 
