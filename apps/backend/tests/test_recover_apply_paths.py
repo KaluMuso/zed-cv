@@ -122,6 +122,49 @@ class TestParserRecovery:
 
 class TestProcessJob:
     @pytest.mark.asyncio
+    async def test_split_parent_not_overwritten_with_after_enrich(self):
+        supabase = MagicMock()
+        parent = {
+            "id": "parent-1",
+            "title": "Head Chef & Sous Chef",
+            "source_url": "https://www.jobwebzambia.com/jobs/combo/",
+            "apply_url": "https://www.jobwebzambia.com/jobs/combo/",
+            "is_active": False,
+            "deactivation_reason": "no_valid_apply_path_after_enrich",
+        }
+        after_split = {
+            **parent,
+            "deactivation_reason": "split_into_children",
+        }
+
+        with (
+            patch.object(
+                recover_apply_paths,
+                "_try_parser_recovery",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            patch.object(
+                recover_apply_paths,
+                "enrich_job_deep",
+                new_callable=AsyncMock,
+                return_value="split",
+            ),
+            patch.object(
+                recover_apply_paths,
+                "_refetch_job",
+                return_value=after_split,
+            ),
+            patch.object(recover_apply_paths, "_log_outcome"),
+        ):
+            bucket = await recover_apply_paths.process_job(
+                supabase, parent, dry_run=False
+            )
+
+        assert bucket == "recovered"
+        supabase.table.return_value.update.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_apply_recovers_when_enrich_succeeds(self):
         supabase = MagicMock()
         before = {

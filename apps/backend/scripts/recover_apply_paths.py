@@ -50,6 +50,9 @@ _LEGACY_AGGREGATOR_FRAGMENT = (
     "careersinafrica,everjobs,indeed.com,glassdoor"
 )
 
+# Parents replaced by child rows — never re-enrich (wastes LLM, duplicates children).
+_SKIP_RECOVERY_REASONS = frozenset({"split_into_children"})
+
 
 def _needs_enrich_retry(row: dict[str, Any]) -> bool:
     enriched_at = row.get("deep_enriched_at")
@@ -206,6 +209,11 @@ def _fetch_legacy_active_recoverable_broad(supabase: Any) -> list[dict[str, Any]
     return out
 
 
+def _eligible_recovery_candidate(row: dict[str, Any]) -> bool:
+    reason = str(row.get("deactivation_reason") or "")
+    return reason not in _SKIP_RECOVERY_REASONS
+
+
 def load_candidates(supabase: Any) -> list[dict[str, Any]]:
     pending = _fetch_pending_enrich(supabase)
     after_fail = _fetch_after_enrich_failures(supabase)
@@ -213,6 +221,8 @@ def load_candidates(supabase: Any) -> list[dict[str, Any]]:
     legacy = _fetch_legacy_active_recoverable_broad(supabase)
     by_id: dict[str, dict[str, Any]] = {}
     for row in pending + after_fail + stale + legacy:
+        if not _eligible_recovery_candidate(row):
+            continue
         by_id[str(row["id"])] = row
     return list(by_id.values())
 
@@ -363,6 +373,24 @@ async def process_job(
             }
         ).eq("id", job_id).execute()
         return "fetch_failed"
+
+    if enrich_outcome == "split":
+        _log_outcome(
+            supabase,
+            job_id=job_id,
+            outcome="split_into_children",
+            detail="parent kept inactive; roles created as children",
+        )
+        return "recovered"
+
+    if enrich_outcome == "skipped":
+        _log_outcome(
+            supabase,
+            job_id=job_id,
+            outcome="enrich_skipped",
+            detail="deep_enrich returned no roles",
+        )
+        return "deactivated"
 
     if has_valid_apply_path(after)[0]:
         return _apply_recovery_patch(
