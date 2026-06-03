@@ -201,7 +201,24 @@ async def process_job(
         )
         return "dry_run"
 
-    enrich_outcome = await enrich_job_deep(supabase, row, dry_run=False)
+    try:
+        enrich_outcome = await enrich_job_deep(supabase, row, dry_run=False)
+    except Exception as exc:
+        log.exception("deep_enrich crashed for %s: %s", job_id, exc)
+        _log_outcome(
+            supabase,
+            job_id=job_id,
+            outcome="deactivated_fetch_failed",
+            detail=str(exc)[:500],
+        )
+        supabase.table("jobs").update(
+            {
+                "is_active": False,
+                "deactivation_reason": "no_valid_apply_path_after_enrich",
+            }
+        ).eq("id", job_id).execute()
+        return "fetch_failed"
+
     after = _refetch_job(supabase, job_id) or before
 
     if enrich_outcome == "failed":
@@ -267,7 +284,14 @@ async def main() -> int:
     stats = {"checked": 0, "recovered": 0, "deactivated": 0, "fetch_failed": 0}
     for row in to_process:
         stats["checked"] += 1
-        bucket = await process_job(supabase, row, dry_run=dry_run)
+        try:
+            bucket = await process_job(supabase, row, dry_run=dry_run)
+        except Exception as exc:
+            log.exception(
+                "recover_apply_paths unhandled for %s: %s", row.get("id"), exc
+            )
+            stats["fetch_failed"] += 1
+            continue
         if bucket == "dry_run":
             continue
         if bucket == "recovered":

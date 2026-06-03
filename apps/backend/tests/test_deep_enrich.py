@@ -5,6 +5,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from openai import APIStatusError
 
 from app.services.deep_enrich import (
     DeepEnrichRole,
@@ -125,6 +126,39 @@ async def test_enrich_split_deactivates_parent(parent_row):
         "split_into_children" in str(c)
         for c in update_calls
     )
+
+
+@pytest.mark.asyncio
+async def test_enrich_openrouter_payment_error_returns_failed(parent_row):
+    supabase = MagicMock()
+    supabase.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    err = APIStatusError(
+        "payment required",
+        response=MagicMock(status_code=402),
+        body={"error": {"message": "402"}},
+    )
+
+    with (
+        patch(
+            "app.services.deep_enrich.fetch_source_page",
+            new_callable=AsyncMock,
+            return_value=(200, "<html><body>job</body></html>"),
+        ),
+        patch(
+            "app.services.deep_enrich.extract_page_text_for_description",
+            return_value="Engineer role in Lusaka " * 12,
+        ),
+        patch(
+            "app.services.deep_enrich._call_deep_enrich_llm",
+            new_callable=AsyncMock,
+            side_effect=err,
+        ),
+    ):
+        outcome = await enrich_job_deep(supabase, parent_row, llm_client=MagicMock())
+
+    assert outcome == "failed"
 
 
 @pytest.mark.asyncio

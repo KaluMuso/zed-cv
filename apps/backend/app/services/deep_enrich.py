@@ -11,7 +11,7 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 
 import httpx
-from openai import OpenAI
+from openai import APIStatusError, OpenAI
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.services.deep_link_parsers.base import sanitize_listing_source_url
@@ -38,9 +38,34 @@ from app.services.openrouter_helpers import (
 
 logger = logging.getLogger(__name__)
 
+# Gemini response_schema requires `items` on every array (see INVALID_ARGUMENT).
+DEEP_ENRICH_JOB_ITEM_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "company": {"type": "string"},
+        "location": {"type": "string"},
+        "description_md": {"type": "string"},
+        "requirements": {"type": "array", "items": {"type": "string"}},
+        "skills_required": {"type": "array", "items": {"type": "string"}},
+        "apply_url": {"type": "string"},
+        "apply_email": {"type": "string"},
+        "contact_phone": {"type": "string"},
+        "closing_date": {"type": "string"},
+        "salary_min": {"type": "integer"},
+        "salary_max": {"type": "integer"},
+    },
+    "required": ["title", "description_md"],
+}
+
 DEEP_ENRICH_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "properties": {"jobs": {"type": "array"}},
+    "properties": {
+        "jobs": {
+            "type": "array",
+            "items": DEEP_ENRICH_JOB_ITEM_SCHEMA,
+        },
+    },
     "required": ["jobs"],
 }
 
@@ -473,12 +498,21 @@ async def enrich_job_deep(
 
     try:
         roles = await _call_deep_enrich_llm(page_text, llm_client)
-    except (json.JSONDecodeError, ValidationError, ValueError) as exc:
+    except (json.JSONDecodeError, ValidationError, ValueError, APIStatusError) as exc:
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed",
             detail=f"llm: {exc}",
+        )
+        return "failed"
+    except Exception as exc:
+        logger.exception("deep_enrich unexpected failure for %s", job_id)
+        _log_enrich(
+            supabase,
+            job_id=job_id,
+            outcome="failed",
+            detail=f"llm: {type(exc).__name__}: {exc}"[:500],
         )
         return "failed"
 

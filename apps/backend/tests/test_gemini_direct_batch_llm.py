@@ -5,8 +5,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.deep_enrich import DeepEnrichRole, _call_deep_enrich_llm
+from app.services.deep_enrich import (
+    DEEP_ENRICH_JSON_SCHEMA,
+    DeepEnrichRole,
+    _call_deep_enrich_llm,
+)
 from app.services.gemini_direct import QuotaExhaustedError
+
+
+def test_deep_enrich_json_schema_has_array_items():
+    jobs_prop = DEEP_ENRICH_JSON_SCHEMA["properties"]["jobs"]
+    assert jobs_prop["type"] == "array"
+    assert "items" in jobs_prop
+    assert jobs_prop["items"]["type"] == "object"
 
 
 @pytest.mark.asyncio
