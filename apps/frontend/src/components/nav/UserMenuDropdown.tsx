@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/ui/Avatar";
 import { settingsPath } from "@/app/settings/settings-nav";
-import { NotificationsPanel } from "@/components/nav/NotificationsPanel";
 
 type MenuItem = {
   href: string;
@@ -17,10 +15,12 @@ function MenuSection({
   title,
   items,
   onClose,
+  footnote,
 }: {
   title: string;
   items: MenuItem[];
   onClose: () => void;
+  footnote?: string;
 }) {
   if (items.length === 0) return null;
 
@@ -45,6 +45,14 @@ function MenuSection({
           {item.label}
         </Link>
       ))}
+      {footnote ? (
+        <p
+          className="px-4 pb-2 pt-0.5 text-[10px] leading-snug"
+          style={{ color: "var(--muted)" }}
+        >
+          {footnote}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -64,8 +72,6 @@ export function UserMenuDropdown({
   onClose,
   onSignOut,
   showAdmin,
-  unreadCount = 0,
-  onUnreadCountChange,
 }: {
   displayName: string;
   tierSubtitle: string;
@@ -73,13 +79,19 @@ export function UserMenuDropdown({
   onClose: () => void;
   onSignOut: () => void;
   showAdmin?: boolean;
-  unreadCount?: number;
-  onUnreadCountChange?: (count: number) => void;
 }) {
-  const [panel, setPanel] = useState<"menu" | "notifications">("menu");
-
   const engagementLinks: MenuItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: "home" },
+  ];
+
+  const notifications: MenuItem[] = [
+    { href: "/matches", label: "Match digests", icon: "sparkle" },
+    {
+      href: settingsPath("notifications"),
+      label: "Channel preferences",
+      icon: "bell",
+    },
+    { href: settingsPath("billing"), label: "Invoices & billing", icon: "file" },
   ];
 
   const careerData: MenuItem[] = [
@@ -103,29 +115,9 @@ export function UserMenuDropdown({
       : []),
   ];
 
-  if (panel === "notifications") {
-    return (
-      <div
-        className="absolute right-0 top-full mt-2 w-80 rounded-xl z-50 overflow-hidden"
-        style={{
-          background: "var(--surface)",
-          border: "1px solid var(--line)",
-          boxShadow: "var(--shadow-lg)",
-        }}
-        role="menu"
-      >
-        <NotificationsPanel
-          onBack={() => setPanel("menu")}
-          onClose={onClose}
-          onUnreadCountChange={onUnreadCountChange}
-        />
-      </div>
-    );
-  }
-
   return (
     <div
-      className="absolute right-0 top-full mt-2 w-56 py-2 rounded-xl z-50"
+      className="absolute right-0 top-full mt-2 w-64 py-2 rounded-xl z-50"
       style={{
         background: "var(--surface)",
         border: "1px solid var(--line)",
@@ -144,50 +136,13 @@ export function UserMenuDropdown({
         ) : null}
       </div>
 
-      <div className="py-1">
-        <div
-          className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider"
-          style={{ color: "var(--muted)" }}
-        >
-          Engagement
-        </div>
-        {engagementLinks.map((item) => (
-          <Link
-            key={item.href + item.label}
-            href={item.href}
-            onClick={onClose}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-2)] transition-colors"
-            style={{ color: "var(--ink-2)" }}
-            role="menuitem"
-          >
-            <Icon name={item.icon} size={16} className="shrink-0 opacity-80" />
-            {item.label}
-          </Link>
-        ))}
-        <button
-          type="button"
-          onClick={() => setPanel("notifications")}
-          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-[var(--bg-2)] transition-colors text-left"
-          style={{ color: "var(--ink-2)" }}
-          role="menuitem"
-        >
-          <Icon name="bell" size={16} className="shrink-0 opacity-80" />
-          <span className="flex-1">Notifications</span>
-          {unreadCount > 0 ? (
-            <span
-              className="min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
-              style={{
-                background: "var(--green-600)",
-                color: "white",
-              }}
-              aria-label={`${unreadCount} unread`}
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          ) : null}
-        </button>
-      </div>
-
+      <MenuSection title="Engagement" items={engagementLinks} onClose={onClose} />
+      <MenuSection
+        title="Notifications"
+        items={notifications}
+        onClose={onClose}
+        footnote="Web push is a browser permission, not an in-app notification feed."
+      />
       <MenuSection title="Career data" items={careerData} onClose={onClose} />
       <MenuSection title="Account" items={account} onClose={onClose} />
 
@@ -213,12 +168,10 @@ export function UserMenuTrigger({
   displayName,
   open,
   onToggle,
-  unreadCount = 0,
 }: {
   displayName: string;
   open: boolean;
   onToggle: () => void;
-  unreadCount?: number;
 }) {
   return (
     <button
@@ -227,22 +180,9 @@ export function UserMenuTrigger({
       className="relative flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 hover:bg-[var(--bg-2)] transition-colors"
       aria-expanded={open}
       aria-haspopup="menu"
-      aria-label={
-        unreadCount > 0
-          ? `${displayName} account menu, ${unreadCount} unread notifications`
-          : `${displayName} account menu`
-      }
+      aria-label={`${displayName} account menu`}
     >
       <Avatar name={displayName} size={36} />
-      {unreadCount > 0 ? (
-        <span
-          className="absolute top-0 left-7 min-w-[1.125rem] h-[1.125rem] px-0.5 rounded-full text-[9px] font-bold flex items-center justify-center leading-none"
-          style={{ background: "var(--green-600)", color: "white" }}
-          aria-hidden
-        >
-          {unreadCount > 99 ? "99+" : unreadCount}
-        </span>
-      ) : null}
       <Icon name="chevronDown" size={14} />
     </button>
   );

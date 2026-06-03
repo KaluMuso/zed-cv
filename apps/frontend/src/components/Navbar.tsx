@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { profile as profileApi, subscription as subscriptionApi, inAppNotifications } from "@/lib/api";
+import { profile as profileApi, subscription as subscriptionApi } from "@/lib/api";
 import { useTheme } from "@/components/ThemeProvider";
 import { Logo } from "@/components/ui/Logo";
 import { Icon } from "@/components/ui/Icon";
@@ -52,7 +52,6 @@ export function Navbar() {
   const { isAuthenticated, logout, token } = useAuth();
   const [navProfile, setNavProfile] = useState<NavProfile | null>(null);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
 
@@ -73,15 +72,13 @@ export function Navbar() {
     if (!token) {
       setNavProfile(null);
       setSubscriptionTier(null);
-      setUnreadNotifications(0);
       return;
     }
     Promise.all([
       profileApi.get(token),
       subscriptionApi.get(token).catch(() => null),
-      inAppNotifications.list(token, 1).catch(() => null),
     ])
-      .then(([profile, sub, notifications]) => {
+      .then(([profile, sub]) => {
         const fullName =
           profile.full_name?.trim() ||
           profile.email?.split("@")[0] ||
@@ -98,24 +95,12 @@ export function Navbar() {
           subscriptionTier: profile.subscription_tier,
           showAdmin: profile.role === "admin" || profile.role === "superadmin",
         });
-        if (notifications) {
-          setUnreadNotifications(notifications.unread_count);
-        }
       })
       .catch(() => {
         setNavProfile(null);
         setSubscriptionTier(null);
-        setUnreadNotifications(0);
       });
   }, [token]);
-
-  useEffect(() => {
-    if (!token || !dropdownOpen) return;
-    inAppNotifications
-      .list(token, 1)
-      .then((data) => setUnreadNotifications(data.unread_count))
-      .catch(() => {});
-  }, [token, dropdownOpen]);
 
   const navLinks = isAuthenticated ? SIGNED_IN_LINKS : SIGNED_OUT_LINKS;
   const visibleNavLinks = navLinks.filter((link) => {
@@ -181,7 +166,6 @@ export function Navbar() {
                   displayName={displayName}
                   open={dropdownOpen}
                   onToggle={() => setDropdownOpen(!dropdownOpen)}
-                  unreadCount={unreadNotifications}
                 />
                 {dropdownOpen ? (
                   <>
@@ -197,8 +181,6 @@ export function Navbar() {
                       showAdmin={navProfile?.showAdmin}
                       onClose={() => setDropdownOpen(false)}
                       onSignOut={logout}
-                      unreadCount={unreadNotifications}
-                      onUnreadCountChange={setUnreadNotifications}
                     />
                   </>
                 ) : null}
@@ -274,22 +256,52 @@ export function Navbar() {
                     >
                       <Icon name="home" size={16} /> Dashboard
                     </Link>
-                    <Link
-                      href="/settings/notifications"
-                      onClick={() => setMenuOpen(false)}
-                      className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-start gap-2")}
+                    <div
+                      className="px-3 py-2 rounded-xl"
+                      style={{ background: "var(--bg-2)", border: "1px solid var(--line)" }}
                     >
-                      <Icon name="bell" size={16} />
-                      Notifications
-                      {unreadNotifications > 0 ? (
-                        <span
-                          className="ml-auto min-w-[1.25rem] h-5 px-1.5 rounded-full text-[10px] font-semibold flex items-center justify-center"
-                          style={{ background: "var(--green-600)", color: "white" }}
+                      <div
+                        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                        style={{ color: "var(--muted)" }}
+                      >
+                        Notifications
+                      </div>
+                      <p className="text-[11px] mb-2" style={{ color: "var(--muted)" }}>
+                        Web push is a browser permission, not an in-app notification feed.
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        <Link
+                          href="/matches"
+                          onClick={() => setMenuOpen(false)}
+                          className={cn(
+                            buttonVariants({ variant: "ghost" }),
+                            "w-full justify-start gap-2 h-9",
+                          )}
                         >
-                          {unreadNotifications > 99 ? "99+" : unreadNotifications}
-                        </span>
-                      ) : null}
-                    </Link>
+                          <Icon name="sparkle" size={16} /> Match digests
+                        </Link>
+                        <Link
+                          href="/settings/notifications"
+                          onClick={() => setMenuOpen(false)}
+                          className={cn(
+                            buttonVariants({ variant: "ghost" }),
+                            "w-full justify-start gap-2 h-9",
+                          )}
+                        >
+                          <Icon name="bell" size={16} /> Channel preferences
+                        </Link>
+                        <Link
+                          href="/settings/billing"
+                          onClick={() => setMenuOpen(false)}
+                          className={cn(
+                            buttonVariants({ variant: "ghost" }),
+                            "w-full justify-start gap-2 h-9",
+                          )}
+                        >
+                          <Icon name="file" size={16} /> Invoices & billing
+                        </Link>
+                      </div>
+                    </div>
                     <Link
                       href={settingsPath("account")}
                       onClick={() => setMenuOpen(false)}
