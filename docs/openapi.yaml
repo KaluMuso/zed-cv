@@ -1967,11 +1967,23 @@ components:
         candidate_email: { type: string, nullable: true }
         candidate_name: { type: string, nullable: true }
 
+    ContactStatusSummary:
+      type: object
+      properties:
+        pending: { type: integer }
+        consented: { type: integer }
+        declined: { type: integer }
+        expired: { type: integer }
+        draft: { type: integer }
+        unavailable: { type: integer }
+        total: { type: integer }
+
     EmployerContactsResponse:
       type: object
       properties:
         contacts: { type: array, items: { $ref: '#/components/schemas/ContactRequestRow' } }
         total: { type: integer }
+        summary: { $ref: '#/components/schemas/ContactStatusSummary' }
 
     EmployerSubscriptionResponse:
       type: object
