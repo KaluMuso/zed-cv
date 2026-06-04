@@ -25,7 +25,8 @@ document alone** — run each file in order via your normal migration process
 | 104 | `104_user_notifications_retention.sql` | 90-day prune for `user_notifications` dedup ledger + weekly pg_cron |
 | 105 | `105_referral_paid_status.sql` | Referral funnel `paid` status + `paid_at` (renumbered from duplicate `104_referral_*`) |
 | 106 | `106_notifications_train_schema_guard.sql` | Idempotent guard when prod schema ahead of ledger |
-| 107 | `107_notifications_train_ledger_backfill.sql` | Registry backfill for 099–106 (prod drift repair) |
+
+**Registry backfill (manual):** `scripts/notifications_train_ledger_backfill.sql` — SQL Editor only after `106` on drifted prod. Do **not** add as `107_*` under `migrations/` (Supabase `42601` on `107_notifications_…`).
 
 See [MIGRATION_RENUMBER_2026_06.md](./MIGRATION_RENUMBER_2026_06.md) for prod audit and OCI apply steps.
 
