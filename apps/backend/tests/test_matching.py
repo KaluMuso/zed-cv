@@ -4,6 +4,7 @@ import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 
 from tests.conftest import FakeSupabase, FakeSupabaseQuery
 
@@ -191,6 +192,8 @@ class TestGetMatchesForUser:
             headers=auth_headers,
         )
         assert resp.status_code == 200
+        assert resp.headers.get("Deprecation") == "true"
+        assert 'rel="successor-version"' in (resp.headers.get("Link") or "")
         body = resp.json()
         assert len(body["matches"]) == 1
         match = body["matches"][0]
@@ -200,6 +203,45 @@ class TestGetMatchesForUser:
         assert match["experience_score"] == 12.0
         assert match["location_score"] == 10.0
         assert match["recency_score"] == 4.0
+
+    @patch(
+        "app.api.v1.matches.assert_match_delivery_quota",
+        new_callable=AsyncMock,
+        side_effect=HTTPException(
+            status_code=403,
+            detail="Monthly match limit reached (50 on Starter). Upgrade for more matches.",
+        ),
+    )
+    def test_get_matches_for_user_blocks_on_credited_quota_not_view_counter(
+        self,
+        mock_assert,
+        client,
+        auth_headers,
+        fake_supabase,
+    ):
+        """Live route uses assert_match_delivery_quota (credited_at), not view counter."""
+        fake_supabase.set_table(
+            "users",
+            FakeSupabaseQuery(
+                data=[
+                    {
+                        "id": "test-user-id",
+                        "phone": "+260971234567",
+                        "role": "user",
+                        "subscription_tier": "starter",
+                        "matches_viewed_this_month": 0,
+                        "billing_cycle_reset": "2099-06-01",
+                    }
+                ]
+            ),
+        )
+        resp = client.get(
+            "/api/v1/matches/test-user-id",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 403
+        assert "Monthly match limit" in resp.json()["detail"]
+        mock_assert.assert_awaited_once()
 
     def test_get_matches_for_user_forbidden_other_user(
         self, client, auth_headers, fake_supabase

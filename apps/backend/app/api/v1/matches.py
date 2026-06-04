@@ -3,7 +3,16 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, BackgroundTasks, Header
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Header,
+    Query,
+    Request,
+    Response,
+)
 from pydantic import BaseModel
 from app.core.config import Settings, get_settings
 from app.core.deps import (
@@ -13,7 +22,6 @@ from app.core.deps import (
     is_superadmin,
 )
 from app.core.tier_gating import (
-    FEATURE_JOB_MATCHES,
     FEATURE_MATCH_TAILORED_CV,
     verify_tier_access,
 )
@@ -49,7 +57,10 @@ from app.services.matching import (
     backfill_match_credits,
     fetch_delivered_match_rows,
 )
-from app.services.match_quota import build_match_quota_snapshot
+from app.services.match_quota import (
+    assert_match_delivery_quota,
+    build_match_quota_snapshot,
+)
 from app.services.matching import apply_preferences_to_match
 from app.services.email import send_match_digest_email
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
@@ -534,41 +545,26 @@ async def tailor_cv_for_match(
     )
 
 
-async def _increment_match_views_after_response(
-    user_id: str, count: int, supabase
-) -> None:
-    """Background quota decrement — runs after the HTTP response is sent."""
-    if count <= 0:
-        return
-    try:
-        from app.core.tier_gating import increment_matches_viewed
-
-        await increment_matches_viewed(user_id, supabase, count=count)
-    except Exception:
-        logger.warning(
-            "deferred match view increment failed user=%s count=%s",
-            user_id,
-            count,
-            exc_info=True,
-        )
-
-
-@router.get("/{user_id}", response_model=MatchList)
+@router.get("/{user_id}", response_model=MatchList, deprecated=True)
 async def get_matches_for_user(
-    background_tasks: BackgroundTasks,
     user_id: str,
+    response: Response,
     min_score: float = Query(50, ge=0, le=100),
     limit: int = Query(10, ge=1, le=50),
     current_user_id: str = Depends(get_current_user_id),
     current_user: dict = Depends(get_current_user),
     supabase=Depends(get_supabase),
 ):
-    """Live hybrid scores from match_jobs_for_user RPC (50/20/15/10/5 breakdown)."""
+    """Live hybrid scores from match_jobs_for_user RPC (deprecated — prefer GET /matches).
+
+    Quota enforcement uses credited_at + Lusaka month (see docs/MATCH_QUOTA.md).
+    """
+    response.headers["Deprecation"] = "true"
+    response.headers["Link"] = '</api/v1/matches>; rel="successor-version"'
     if user_id != current_user_id:
         raise HTTPException(status_code=403, detail="Cannot view another user's matches")
 
-    await verify_tier_access(
-        FEATURE_JOB_MATCHES,
+    await assert_match_delivery_quota(
         user_id,
         supabase,
         is_superadmin=is_superadmin(current_user),
@@ -657,22 +653,6 @@ async def get_matches_for_user(
 
     matches.sort(key=lambda mr: mr.score, reverse=True)
     delivered = matches[:limit]
-    view_count = len(delivered)
-    await verify_tier_access(
-        FEATURE_JOB_MATCHES,
-        user_id,
-        supabase,
-        increment_match_views=view_count,
-        defer_match_view_increment=True,
-        is_superadmin=is_superadmin(current_user),
-    )
-    if view_count > 0 and not is_superadmin(current_user):
-        background_tasks.add_task(
-            _increment_match_views_after_response,
-            user_id,
-            view_count,
-            supabase,
-        )
     return MatchList(matches=delivered, **quota)
 
 

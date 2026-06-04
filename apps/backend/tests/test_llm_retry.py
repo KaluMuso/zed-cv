@@ -108,15 +108,3 @@ def test_circuit_opens_after_ten_consecutive_failures():
             log_prefix="blocked",
         )
 
-
-@pytest.mark.asyncio
-async def test_deferred_match_view_increment_runs_in_background():
-    from app.api.v1.matches import _increment_match_views_after_response
-
-    supabase = MagicMock()
-    with patch(
-        "app.core.tier_gating.increment_matches_viewed",
-        new_callable=AsyncMock,
-    ) as mock_inc:
-        await _increment_match_views_after_response("user-1", 3, supabase)
-        mock_inc.assert_awaited_once_with("user-1", supabase, count=3)

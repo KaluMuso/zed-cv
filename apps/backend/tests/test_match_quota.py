@@ -1,9 +1,15 @@
 """Match list / refresh quota fields and refresh_computing flag."""
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
 
 from app.schemas.tier_config import UNLIMITED_MATCHES
-from app.services.match_quota import build_match_quota_snapshot
+from app.services.match_quota import (
+    assert_match_delivery_quota,
+    build_match_quota_snapshot,
+)
 
 
 class TestBuildMatchQuotaSnapshot:
@@ -49,6 +55,37 @@ class TestBuildMatchQuotaSnapshot:
         snap = asyncio.run(build_match_quota_snapshot("user-1", object()))
         assert snap["matches_limit"] == UNLIMITED_MATCHES
         assert snap["matches_unlimited"] is True
+
+
+class TestAssertMatchDeliveryQuota:
+    @pytest.mark.asyncio
+    @patch(
+        "app.services.match_quota.check_match_quota",
+        new_callable=AsyncMock,
+        return_value=(False, 0),
+    )
+    @patch(
+        "app.services.match_quota.get_user_tier_limit",
+        new_callable=AsyncMock,
+        return_value=("starter", 50, True),
+    )
+    async def test_raises_when_delivery_quota_exhausted(self, *_mocks):
+        with pytest.raises(HTTPException) as exc:
+            await assert_match_delivery_quota("user-1", MagicMock())
+        assert exc.value.status_code == 403
+        assert "50" in exc.value.detail
+
+    @pytest.mark.asyncio
+    @patch(
+        "app.services.match_quota.check_match_quota",
+        new_callable=AsyncMock,
+        return_value=(True, 5),
+    )
+    async def test_superadmin_skips_check(self, mock_quota):
+        await assert_match_delivery_quota(
+            "user-1", MagicMock(), is_superadmin=True
+        )
+        mock_quota.assert_not_awaited()
 
 
 class TestRefreshEndpointQuota:
