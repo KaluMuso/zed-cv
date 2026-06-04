@@ -10,7 +10,7 @@ full-database write access to ingest and admin surfaces.
 | Env var | Headers accepted | Purpose |
 | --- | --- | --- |
 | `INGEST_API_KEY` | `INGEST_API_KEY`, `X-INGEST-API-KEY` | `POST /api/v1/jobs/ingest`, deep-enrich ticks, some scraper callbacks |
-| `ADMIN_API_KEY` | `ADMIN_API_KEY`, `X-ADMIN-API-KEY` | Admin cron, email-health, WAHA bootstrap, LLM cost panels. Falls back to `INGEST_API_KEY` when unset |
+| `ADMIN_API_KEY` | `ADMIN_API_KEY`, `X-ADMIN-API-KEY` | Admin cron, email-health, WAHA bootstrap, LLM cost panels. Falls back to `INGEST_API_KEY` when unset. If set **and different** from ingest, n8n must send the admin header — see [RUNBOOK_N8N_ADMIN_AUTH.md](RUNBOOK_N8N_ADMIN_AUTH.md) |
 
 ### Admin console (browser) vs automation
 

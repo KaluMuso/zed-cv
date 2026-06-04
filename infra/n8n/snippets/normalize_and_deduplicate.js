@@ -1,5 +1,9 @@
 // Paste entire file into n8n "Normalize and Deduplicate" Code node.
 // Keeps per-job aggregator URLs (e.g. gozambiajobs.com/jobs/123-slug); drops homepages only.
+// Ingest guards (match apps/backend JobCreateIngest): title >= 3, description >= 20.
+
+const MIN_TITLE_LEN = 3;
+const MIN_DESCRIPTION_LEN = 20;
 
 const AGGREGATOR_HOSTS = new Set([
   'jobwebzambia.com',
@@ -181,7 +185,7 @@ for (let branch = 0; branch < inputs.length; branch++) {
 
   for (const j of data.jobs) {
     const titleTrim = String(j.title || '').trim();
-    if (titleTrim.length < 3) continue;
+    if (titleTrim.length < MIN_TITLE_LEN) continue;
 
     const sourceUrl = resolveSourceUrl(j, linkPool);
     const hasContact = !!(j.apply_url || j.apply_email || sourceUrl);
@@ -190,10 +194,10 @@ for (let branch = 0; branch < inputs.length; branch++) {
       .replace(/\s+/g, ' ')
       .trim();
 
-    if (descRaw.length < 10 && !hasContact) continue;
+    if (descRaw.length < MIN_DESCRIPTION_LEN && !hasContact) continue;
 
     const description =
-      descRaw.length >= 10
+      descRaw.length >= MIN_DESCRIPTION_LEN
         ? descRaw.substring(0, 5000)
         : [
             (j.title || '').trim(),
@@ -204,6 +208,8 @@ for (let branch = 0; branch < inputs.length; branch++) {
             .filter(Boolean)
             .join(' ')
             .substring(0, 5000);
+
+    if (description.length < MIN_DESCRIPTION_LEN) continue;
 
     const k = (j.title + '|' + (j.company || '')).toLowerCase().trim();
     if (seen.has(k)) continue;
