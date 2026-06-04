@@ -1,11 +1,11 @@
 {
-  "name": "Zed CV - Admin Notification Dispatch (Every 15m)",
+  "name": "Zed CV - Admin Notifications Dispatch (Hourly)",
   "nodes": [
     {
       "parameters": {
-        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 15 }] }
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 1 }] }
       },
-      "name": "Every 15 Minutes",
+      "name": "Every Hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [250, 300]
@@ -17,8 +17,7 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" },
-            { "name": "X-INGEST-API-KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
           ]
         }
       },
@@ -29,12 +28,13 @@
     }
   ],
   "connections": {
-    "Every 15 Minutes": {
+    "Every Hour": {
       "main": [[{ "node": "Dispatch Due Admin Notifications", "type": "main", "index": 0 }]]
     }
   },
   "meta": {
     "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
-    "exportNote": "Delivers admin_notification_campaigns whose scheduled_at is due. Import into n8n; set FASTAPI_URL and INGEST_API_KEY (same as other admin cron workflows)."
+    "dependsOnMigrations": ["100_in_app_notifications", "101_admin_broadcast_notifications"],
+    "exportNote": "Hourly cron for admin_notification_campaigns whose scheduled_at is due. Auth: INGEST_API_KEY header (same as daily_digest_dual_channel). Apply Supabase migrations 100+101 before activating."
   }
 }

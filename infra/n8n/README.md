@@ -13,7 +13,7 @@ Sanitized JSON snapshots of production workflows on `https://automation.vergeo.c
 | Daily Match Digest (orphan) | `XAmpEqMqahFa6uOI` | Varies | **No** | `daily_digest_workflow.json` |
 | Bwana Chat Pipeline | `TPDJ5S1HaRKZTdb1` | Yes | Yes | `bwana_chat_pipeline.json` |
 | Job Scraper | `rsgZLi6UAcC3lXvu` | Yes | Yes | `job_scraper.json` |
-| Admin notification dispatch | _(import from repo)_ | No | Yes | `admin_notification_dispatch_every_15m.json` |
+| Admin notifications dispatch (hourly) | _(import from repo)_ | No | Yes | `admin_notifications_dispatch.json` |
 | Sentry → WhatsApp Alert | _(import from repo)_ | No | Yes | `sentry_whatsapp_alert.json` |
 
 **Digest dedup (human checklist):** [docs/RUNBOOK_N8N_DIGEST_DEDUP.md](../../docs/RUNBOOK_N8N_DIGEST_DEDUP.md) — deactivate `MW5KETbBdrAOk04y` + `XAmpEqMqahFa6uOI`; keep `j6U2CDRZi0FI5G32` + `bqBV6XNPu3z3Ikx5`. Agents: **do not** n8n-publish without maintainer approval.
@@ -118,11 +118,14 @@ HTTP nodes in repo exports resolve: `SUPABASE_SERVICE_ROLE_KEY` → `SUPABASE_SE
 
 Delivers `admin_notification_campaigns` whose `scheduled_at` is due (see `docs/NOTIFICATIONS_MIGRATIONS.md`).
 
+**Prerequisite:** Supabase migrations **100** (`100_in_app_notifications.sql`) and **101** (`101_admin_broadcast_notifications.sql`) must be applied on the target project before this workflow is useful. Until then, the dispatch endpoint may return empty results or schema errors.
+
 **Import / activate**
 
-1. n8n → **Import from File** → `admin_notification_dispatch_every_15m.json`
-2. Env: `FASTAPI_URL`, `INGEST_API_KEY` (same as `review_queue_alert_hourly.json`)
-3. **Activate**; smoke `POST …/api/v1/admin/notifications/dispatch` with ingest header
+1. n8n → **Import from File** → `admin_notifications_dispatch.json`
+2. Env: `FASTAPI_URL`, `INGEST_API_KEY` (same `INGEST_API_KEY` header pattern as `daily_digest_dual_channel.json`)
+3. **Activate**; smoke `POST …/api/v1/admin/notifications/dispatch` with `INGEST_API_KEY` header
+4. Optional: schedule a test campaign with `scheduled_at` in the past and confirm the next hourly run sets status to `completed`
 
 ## Bwana chat: backend vs n8n
 
