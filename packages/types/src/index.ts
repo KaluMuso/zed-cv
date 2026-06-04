@@ -2,7 +2,11 @@
  * Shared types for Zed CV — matches OpenAPI spec.
  */
 
-export type SubscriptionTier = "free" | "starter" | "professional";
+export type SubscriptionTier =
+  | "free"
+  | "starter"
+  | "professional"
+  | "super_standard";
 export type JobSource = "manual" | "scraper" | "ocr" | "partner";
 export type SubscriptionStatus = "active" | "expired" | "cancelled" | "past_due";
 export type PaymentMethodType = "mtn_money" | "airtel_money";
@@ -80,7 +84,11 @@ export interface ProblemDetail {
   request_id?: string;
 }
 
-/** Canonical tiers — mirrors app/schemas/subscription.py (ngwee + match quota). */
+/**
+ * @deprecated Unused in-repo. Prefer `GET /tier-config` (frontend) or
+ * `app.schemas.subscription.TIER_LIMITS` / `TIER_PRICES` (backend).
+ * Values below mirror prod tier_config as of 2026-06 (ngwee + match quota).
+ */
 export const PRICING = {
   free: { price_zmw: 0, matches_limit: 3, label: "Free" },
   starter: { price_zmw: 12500, matches_limit: 50, label: "Starter" },

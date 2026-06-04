@@ -534,6 +534,10 @@ export const profile = {
       token,
       body: JSON.stringify(data),
     }),
+  /**
+   * @deprecated Use `me.deleteAccount` (DELETE /me with `confirm_phone`).
+   * Legacy DELETE /profile skips phone confirmation and storage purge.
+   */
   remove: (token: string) =>
     apiFetch<{ deleted: boolean; user_id: string }>("/profile", {
       method: "DELETE",
@@ -1692,6 +1696,10 @@ export const matches = {
       `/matches/refresh${minScore ? `?min_score=${minScore}` : ""}`,
       { method: "POST", token }
     ),
+  /**
+   * @deprecated Prefer `matches.refresh` (POST /matches/refresh).
+   * Legacy on-demand match queue; OpenAPI marks /matches/trigger as legacy.
+   */
   trigger: (token: string) =>
     apiFetch<{ message: string; estimated_seconds?: number }>("/matches/trigger", {
       method: "POST",
@@ -1831,44 +1839,6 @@ export const subscription = {
       method: "POST",
       token,
     }),
-};
-
-// @openapi InAppNotificationType
-export type InAppNotificationType =
-  | "web_push"
-  | "tier_expiry"
-  | "invoice"
-  | "admin_broadcast";
-
-// @openapi InAppNotification
-export interface InAppNotification {
-  id: string;
-  type: InAppNotificationType;
-  payload: {
-    title?: string;
-    body?: string;
-    url?: string;
-    [key: string]: unknown;
-  };
-  read_at: string | null;
-  created_at: string;
-}
-
-// @openapi InAppNotificationList
-export interface InAppNotificationList {
-  items: InAppNotification[];
-  unread_count: number;
-}
-
-export const inAppNotifications = {
-  list: (token: string, limit = 50) =>
-    apiFetch<InAppNotificationList>(`/notifications?limit=${limit}`, { token }),
-
-  markRead: (token: string, notificationId: string) =>
-    apiFetch<{ notification: InAppNotification }>(
-      `/notifications/${notificationId}/read`,
-      { method: "PATCH", token },
-    ),
 };
 
 // ── Health ──
