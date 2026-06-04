@@ -34,10 +34,29 @@ function walk(obj: unknown): void {
   }
 }
 
+function isBrowserExtensionNoise(event: ErrorEvent, hint?: EventHint): boolean {
+  const fromHint = hint?.originalException;
+  const hintMessage =
+    fromHint instanceof Error
+      ? fromHint.message
+      : typeof fromHint === "string"
+        ? fromHint
+        : "";
+  const msg = String(hintMessage || event.message || "");
+  return (
+    msg.includes("privUrl") ||
+    msg.includes("asynchronous response by returning true") ||
+    msg.includes("chrome-extension://")
+  );
+}
+
 export function sentryBeforeSend(
   event: ErrorEvent,
-  _hint?: EventHint
-): ErrorEvent {
+  hint?: EventHint
+): ErrorEvent | null {
+  if (isBrowserExtensionNoise(event, hint)) {
+    return null;
+  }
   walk(event);
   return event;
 }

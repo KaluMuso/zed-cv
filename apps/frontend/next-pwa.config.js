@@ -18,23 +18,40 @@ const pwaOptions = {
     navigateFallbackDenylist: [/^\/api\//, /^\/_next\/data\//],
     runtimeCaching: [
       {
-        urlPattern: /^https:\/\/api\.zedapply\.com\/api\/v1\/.*/i,
+        urlPattern:
+          /^https:\/\/www\.zedapply\.com\/(jobs|matches|auth|profile|dashboard|settings|applications)/i,
         handler: "NetworkFirst",
         options: {
-          cacheName: "zedapply-api",
-          networkTimeoutSeconds: 10,
-          expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 },
-          cacheableResponse: { statuses: [0, 200] },
+          cacheName: "zedapply-page-cache",
+          networkTimeoutSeconds: 5,
+          expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
+          cacheableResponse: { statuses: [0, 200, 302] },
+        },
+      },
+      {
+        urlPattern: /^https:\/\/api\.zedapply\.com\/api\/v1\/.*/i,
+        handler: "NetworkOnly",
+        options: {
+          plugins: [
+            {
+              fetchDidFail: async () => {
+                /* Swallow — ApiFetch + Sentry capture real API failures in-app. */
+              },
+            },
+          ],
         },
       },
       {
         urlPattern: /^http:\/\/localhost:8000\/api\/v1\/.*/i,
-        handler: "NetworkFirst",
+        handler: "NetworkOnly",
         options: {
-          cacheName: "zedapply-api-local",
-          networkTimeoutSeconds: 10,
-          expiration: { maxEntries: 32, maxAgeSeconds: 60 * 60 },
-          cacheableResponse: { statuses: [0, 200] },
+          plugins: [
+            {
+              fetchDidFail: async () => {
+                /* Local dev: no SW console noise on offline API probes. */
+              },
+            },
+          ],
         },
       },
       {

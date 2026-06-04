@@ -20,6 +20,8 @@ import {
   JobsSidebarMobile,
   type JobsListPreset,
 } from "@/components/jobs/JobsSidebar";
+import { MobileFilterShell } from "@/components/jobs/MobileFilterShell";
+import { countActiveJobFilters } from "@/lib/jobsFilterCount";
 import { authPath } from "@/lib/auth-paths";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useRecentSearches } from "@/hooks/useRecentSearches";
@@ -359,13 +361,19 @@ export default function JobsPageClient() {
     router.replace(`/jobs/${legacyDrawerJobId}`);
   }, [legacyDrawerJobId, router]);
 
-  const hasActiveFilters =
-    Boolean(searchQuery || searchInput || location) ||
-    sort !== "recent" ||
-    selectedSkills.length > 0 ||
-    Boolean(employmentType || workArrangement) ||
-    showClosed ||
-    listPreset !== "all";
+  const activeFilterCount = countActiveJobFilters({
+    searchQuery,
+    searchInput,
+    location,
+    sort,
+    selectedSkills,
+    employmentType,
+    workArrangement,
+    showClosed,
+    listPreset,
+  });
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const hasFilterConstraints =
     Boolean(searchQuery || location || employmentType || workArrangement) ||
@@ -604,7 +612,10 @@ export default function JobsPageClient() {
           </select>
         )}
 
-        <label className="flex items-center gap-2 text-xs min-h-11" style={{ color: "var(--ink-2)" }}>
+        <label
+          className="hidden lg:flex items-center gap-2 text-xs min-h-11"
+          style={{ color: "var(--ink-2)" }}
+        >
           <input
             type="checkbox"
             className="h-4 w-4 rounded border-input"
@@ -687,31 +698,43 @@ export default function JobsPageClient() {
             Sign in
           </a>
         </div>
-      ) : jobsList.length === 0 ? (
-        <EmptyState
-          title={
-            hasFilterConstraints
-              ? "No jobs match your filters"
-              : "No jobs are open right now"
-          }
-          description={
-            hasFilterConstraints
-              ? "Try a broader search or remove a filter. New listings arrive throughout the week."
-              : "Check back soon — new roles are scraped daily across Zambia."
-          }
-          ctaText="Get matches on WhatsApp"
-          ctaHref={authPath("/matches")}
-          secondaryCtaText={hasFilterConstraints ? "Reset filters" : undefined}
-          onSecondaryCtaClick={hasFilterConstraints ? resetFilters : undefined}
-          className="my-8"
-        />
       ) : (
         <>
-          <JobsSidebarMobile
-            active={listPreset}
-            onChange={onListPresetChange}
-            savedCount={savedJobIds.size}
-          />
+          <MobileFilterShell
+            activeFilterCount={activeFilterCount}
+            onClearAll={resetFilters}
+            showClosed={showClosed}
+            onShowClosedChange={(next) => {
+              setShowClosed(next);
+              setPage(1);
+            }}
+          >
+            <JobsSidebarMobile
+              active={listPreset}
+              onChange={onListPresetChange}
+              savedCount={savedJobIds.size}
+              layout="stack"
+            />
+          </MobileFilterShell>
+          {jobsList.length === 0 ? (
+            <EmptyState
+              title={
+                hasFilterConstraints
+                  ? "No jobs match your filters"
+                  : "No jobs are open right now"
+              }
+              description={
+                hasFilterConstraints
+                  ? "Try a broader search or remove a filter. New listings arrive throughout the week."
+                  : "Check back soon — new roles are scraped daily across Zambia."
+              }
+              ctaText="Get matches on WhatsApp"
+              ctaHref={authPath("/matches")}
+              secondaryCtaText={hasFilterConstraints ? "Reset filters" : undefined}
+              onSecondaryCtaClick={hasFilterConstraints ? resetFilters : undefined}
+              className="my-8"
+            />
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[220px_minmax(0,1fr)] gap-6 lg:gap-8">
             <JobsSidebar
               active={listPreset}
@@ -750,15 +773,16 @@ export default function JobsPageClient() {
             ))}
             </div>
           </div>
+          )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {jobsList.length > 0 && totalPages > 1 ? (
             <Pagination
               page={page}
               totalPages={totalPages}
               onChange={setPage}
             />
-          )}
+          ) : null}
         </>
       )}
 

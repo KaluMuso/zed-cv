@@ -100,23 +100,30 @@ export function JobsSidebar({
   );
 }
 
-/** Horizontal preset chips for mobile and tablet (< lg). */
+/** Preset chips — horizontal row or stacked grid inside MobileFilterShell. */
 export function JobsSidebarMobile({
   active,
   onChange,
   savedCount,
+  layout = "chips",
 }: {
   active: JobsListPreset;
   onChange: (preset: JobsListPreset) => void;
   savedCount?: number;
+  layout?: "chips" | "stack";
 }) {
+  const stacked = layout === "stack";
+
   return (
-    <nav
-      className="lg:hidden mb-4 -mx-1 px-1 overflow-x-auto scroll-thin pb-1"
-      style={{ scrollbarWidth: "thin" }}
-      aria-label="Job list filters"
-    >
-      <div className="flex gap-2 min-w-max">
+    <nav aria-label="Job list filters" className={stacked ? undefined : "-mx-1 px-1"}>
+      <div
+        className={
+          stacked
+            ? "grid grid-cols-2 gap-2 sm:grid-cols-3"
+            : "flex gap-2 min-w-max overflow-x-auto scroll-thin pb-1"
+        }
+        style={stacked ? undefined : { scrollbarWidth: "thin" }}
+      >
         {PRESETS.map((item) => (
           <PresetButton
             key={item.id}
@@ -124,7 +131,7 @@ export function JobsSidebarMobile({
             isActive={active === item.id}
             onChange={onChange}
             savedCount={savedCount}
-            compact
+            compact={!stacked}
           />
         ))}
       </div>
