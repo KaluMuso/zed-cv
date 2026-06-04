@@ -10,16 +10,7 @@
 # anonymous shapes). Listing here turns off the warn-only message;
 # adding `// @openapi SchemaName` to the interface is preferred.
 
-ignore:
-  - interface: CVUploadResult
-    field: queued
-    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
-  - interface: CVUploadResult
-    field: queue_id
-    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
-  - interface: CVUploadResult
-    field: message
-    reason: 202-branch field; OpenAPI documents only the 200 sync schema.
+ignore: []
 
 unmapped_ok:
   # The endpoints below currently return an ad-hoc shape that isn't
@@ -28,7 +19,5 @@ unmapped_ok:
   # so master HEAD stays green.
   - OTPResponse           # /auth/otp/request — {message: string}
   - ContactResult         # /contact          — task #65, not yet in spec
-  - PublicStats           # /stats/public     — not yet in spec
-  - AccountDeletionResult # DELETE /me        — task #63, not yet in spec
   - AdminLegalDoc         # /admin/legal/*    — task #62, not yet in spec
 

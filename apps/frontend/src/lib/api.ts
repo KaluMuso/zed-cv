@@ -1236,8 +1236,7 @@ export const adminTiers = {
 };
 
 // ── CV ──
-// Matches docs/openapi.yaml:265 (CVUploadResponse).
-// 200 path returns the parsed-sync fields; 202 path returns the queue fields.
+// @openapi CVUploadResult
 export interface CVUploadResult {
   // Sync path (200 OK) — present when LLM parse succeeds inline:
   cv_id?: string;
@@ -2098,6 +2097,7 @@ export const bwanaInterview = {
 };
 
 // ── Data-subject rights (task #63) ──
+// @openapi AccountDeletionResult
 export interface AccountDeletionResult {
   deleted: boolean;
   already_deleted: boolean;
@@ -2345,6 +2345,7 @@ export const contact = {
 };
 
 // ── Public stats (home-page social proof) ──
+// @openapi PublicStats
 export interface PublicStats {
   jobs_active: number;
   avg_skills_matched: number;

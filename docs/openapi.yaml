@@ -922,11 +922,31 @@ components:
 
     CVUploadResponse:
       type: object
+      required: [cv_id]
       properties:
         cv_id: { type: string, format: uuid }
         parsed_skills: { type: array, items: { type: string } }
         experience_summary: { type: string }
         parsing_confidence: { type: number, minimum: 0, maximum: 1 }
+
+    CVUploadQueuedResponse:
+      type: object
+      description: |
+        Returned when Gemini rate limits defer parse/embed to cv_upload_queue
+        (HTTP 202). The file is stored; drain runs via POST /admin/cv-queue/drain.
+      required: [queued, queue_id, message]
+      properties:
+        queued: { type: boolean, enum: [true] }
+        queue_id: { type: string, format: uuid }
+        message: { type: string }
+
+    CVUploadResult:
+      description: |
+        POST /cv/upload response union — 200 (CVUploadResponse) or 202
+        (CVUploadQueuedResponse). Frontend client types use this merged shape.
+      oneOf:
+        - $ref: '#/components/schemas/CVUploadResponse'
+        - $ref: '#/components/schemas/CVUploadQueuedResponse'
 
     CVUploadProblem:
       type: object
@@ -1573,14 +1593,24 @@ components:
     AdminJobCreate:
       type: object
       description: |
-        POST /admin/jobs payload. extra='forbid' on the Python side: unknown
-        fields 422 instead of being silently dropped. Exactly one of apply_url
-        OR apply_email is required (XOR enforced server-side).
+        POST /admin/jobs payload. `additionalProperties: false` mirrors Python
+        `extra='forbid'`: any key not listed under `properties` below returns 422.
+
+        Apply contact (server-side): at least one of `apply_url`, `apply_email`,
+        or `contact_phone` is required. `apply_url` and `apply_email` are mutually
+        exclusive when both are non-empty.
+
+        PATCH-only fields (422 on POST): `admin_published`, `is_active`.
+
+        Read-only / response-only fields (422 on POST): `id`, `embedding`,
+        `quality_score`, `created_at`, `updated_at`, `scraping_sources`, and any
+        other Job response field not listed below.
 
         `requirements` carries free-text qualification bullets (stored as-is on
         the jobs.requirements text[] column). `skills_required` carries skill
         names that flow through the Wave-2 resolver and populate job_skills —
-        the two fields are NOT interchangeable.
+        the two fields are NOT interchangeable. `skills_required` is input-only
+        (not stored on the jobs row).
       required: [title, description]
       additionalProperties: false
       properties:
@@ -1594,6 +1624,15 @@ components:
         salary_max: { type: integer }
         apply_url: { type: string, format: uri }
         apply_email: { type: string, format: email }
+        contact_phone:
+          type: string
+          maxLength: 20
+          description: E.164 +260XXXXXXXXX. Satisfies apply-contact rule without apply_url/email.
+        contact_email: { type: string, format: email }
+        contact_whatsapp: { type: string, maxLength: 64 }
+        source_platform: { type: string, maxLength: 64 }
+        original_source_url: { type: string, format: uri }
+        is_enriched: { type: boolean }
         source: { type: string, enum: [manual, scraper, ocr, partner], default: manual }
         source_url: { type: string, format: uri }
         closing_date: { type: string, format: date }
@@ -1674,6 +1713,125 @@ components:
         page: { type: integer }
         per_page: { type: integer }
         pages: { type: integer }
+
+    JobSitemapEntry:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+        lastmod:
+          type: string
+          format: date-time
+          nullable: true
+          description: jobs.updated_at, falling back to posted_at when null.
+
+    JobSitemapResponse:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          maxItems: 50000
+          items: { $ref: '#/components/schemas/JobSitemapEntry' }
+
+    PublicStats:
+      type: object
+      required: [jobs_active, avg_skills_matched, hours_saved_total]
+      properties:
+        jobs_active:
+          type: integer
+          minimum: 0
+          description: Count of active jobs in the public feed.
+        avg_skills_matched:
+          type: integer
+          minimum: 1
+          maximum: 15
+          description: Heuristic average matched-skill count per user (sampled).
+        hours_saved_total:
+          type: integer
+          minimum: 0
+          description: Estimated applicant hours saved (0.5 h per sampled match).
+
+    AccountDeletionRequest:
+      type: object
+      required: [confirm_phone]
+      additionalProperties: false
+      properties:
+        confirm_phone:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: |
+            Full account phone including +260 country code. Compared byte-for-byte
+            against the stored phone (constant-time); not normalised or parsed.
+
+    AccountDeletionResult:
+      type: object
+      required: [deleted, already_deleted]
+      properties:
+        deleted: { type: boolean }
+        already_deleted: { type: boolean, default: false }
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Present when deleted=true; null when already_deleted=true.
+
+    DataExportBundle:
+      type: object
+      description: |
+        Full data-subject access bundle streamed as JSON (GET /me/export).
+        Nested profile/subscription/payment objects mirror live DB rows at export time.
+      required:
+        - export_format_version
+        - exported_at
+        - data_controller
+        - rights_basis
+        - profile
+        - preferences
+        - subscriptions
+        - payments
+        - cvs
+        - cv_generations
+        - matches
+        - user_skills
+      properties:
+        export_format_version: { type: string, example: "1.0" }
+        exported_at: { type: string, format: date-time }
+        data_controller: { type: string }
+        rights_basis: { type: string }
+        profile: { type: object, additionalProperties: true }
+        preferences:
+          type: object
+          properties:
+            whatsapp_alerts: { type: boolean, nullable: true }
+            email_notifications_enabled: { type: boolean, nullable: true }
+            language: { type: string, nullable: true }
+        subscriptions:
+          type: array
+          items: { type: object, additionalProperties: true }
+        payments:
+          type: array
+          items: { type: object, additionalProperties: true }
+        cvs:
+          type: array
+          description: CV rows without embedding (internal vector excluded).
+          items: { type: object, additionalProperties: true }
+        cv_generations:
+          type: array
+          items: { type: object, additionalProperties: true }
+        matches:
+          type: array
+          description: Each match includes a job_snapshot object when the job still exists.
+          items: { type: object, additionalProperties: true }
+        user_skills:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              proficiency: { type: string, nullable: true }
+              source: { type: string, nullable: true }
 
     SaveJobResponse:
       type: object
@@ -2727,6 +2885,72 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NotificationPreferences' }
 
+  /me/export:
+    get:
+      operationId: exportMyData
+      summary: Download full personal data bundle (JSON attachment)
+      tags: [DataRights]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Zambia Data Protection Act 2021 / GDPR-aligned right of access. Streams a
+        JSON attachment (`Content-Disposition: attachment`) with profile, CVs (no
+        embedding vector), matches (with job snapshots), subscriptions, and payments.
+        Rate-limited to 1 request per hour per authenticated user.
+      responses:
+        '200':
+          description: JSON attachment with application/json body and Cache-Control no-store.
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: attachment; filename="zedcv-data-export-YYYY-MM-DD.json"
+            X-Export-Format-Version:
+              schema: { type: string, example: "1.0" }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportBundle' }
+        '404': { description: User not found }
+        '429': { description: Rate limited (1 export per hour per user) }
+
+  /me:
+    delete:
+      operationId: deleteMyAccount
+      summary: Hard-delete account after phone confirmation
+      tags: [DataRights]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Irreversible erasure after `confirm_phone` matches the stored phone byte-for-byte.
+        Idempotent: returns `already_deleted=true` when the user row is already gone.
+        Purges CV storage and OTP rows; subscriptions/payments are anonymised per migration 018.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountDeletionRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountDeletionResult' }
+        '400':
+          description: confirm_phone does not match stored phone
+        '422': { description: Missing or invalid confirm_phone }
+        '500': { description: Account missing phone of record }
+
+  /stats/public:
+    get:
+      operationId: getPublicStats
+      summary: Aggregate counters for home-page social proof
+      tags: [Public]
+      security: []
+      description: |
+        Auth-free aggregate metrics (active job count, average skills matched,
+        estimated hours saved). Never exposes per-user or revenue data.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicStats' }
+
   /users/me/preferences:
     get:
       operationId: getUserPreferences
@@ -3721,9 +3945,16 @@ paths:
                 file: { type: string, format: binary }
       responses:
         '200':
+          description: CV parsed and stored synchronously.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CVUploadResponse' }
+        '202':
+          description: |
+            CV accepted into cv_upload_queue when Gemini rate limits defer parse/embed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CVUploadQueuedResponse' }
         '422':
           description: Unsupported file, image-only PDF, or insufficient extractable text
           content:
@@ -3734,6 +3965,8 @@ paths:
                     properties:
                       detail: { type: string }
                   - { $ref: '#/components/schemas/CVUploadProblem' }
+        '503':
+          description: AI busy and queue/storage fallback also failed.
 
   /cv/analyze:
     post:
@@ -3958,6 +4191,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Job' }
+
+  /jobs/sitemap:
+    get:
+      operationId: listJobsForSitemap
+      summary: Active job IDs for sitemap.xml generation
+      tags: [Jobs]
+      security: []
+      description: |
+        Public, auth-free export of up to 50,000 active job IDs with lastmod timestamps.
+        Used by the Next.js `/sitemap.xml` route. Excludes review-required listings.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobSitemapResponse' }
 
   /jobs/{job_id}:
     get:
