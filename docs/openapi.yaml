@@ -4353,6 +4353,11 @@ paths:
   /matches:
     get:
       operationId: getMatches
+      summary: Delivered matches this month (canonical product feed + quota)
+      description: >
+        Returns credited deliveries for the current Africa/Lusaka calendar month.
+        Quota fields (`matches_used`, `remaining_quota`, etc.) use `matches.credited_at`
+        — see docs/MATCH_QUOTA.md. Prefer this over GET /matches/{user_id}.
       tags: [Matching]
       security: [{ bearerAuth: [] }]
       parameters:
@@ -4491,7 +4496,13 @@ paths:
   /matches/{user_id}:
     get:
       operationId: getMatchesForUser
-      summary: Live hybrid match scores (50/20/15/10/5 RPC breakdown)
+      deprecated: true
+      summary: Live hybrid RPC scores (deprecated — use GET /matches)
+      description: >
+        Deprecated. Live `match_jobs_for_user` scores (50% semantic / 20% skills /
+        15% experience / 10% location / 5% recency). Quota enforcement and response
+        fields align with GET /matches (Lusaka month + `credited_at`); does not use
+        `users.matches_viewed_this_month`. See docs/MATCH_QUOTA.md.
       tags: [Matching]
       security: [{ bearerAuth: [] }]
       parameters:

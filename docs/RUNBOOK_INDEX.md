@@ -14,6 +14,7 @@ Single entry point for humans and AI agents. **Read [AGENTS.md](../AGENTS.md) fi
 | Email OTP 503 | [AGENTS.md §3.8](../AGENTS.md) — Resend domain |
 | Payment widget broken | [lenco_production_smoke_test.md](lenco_production_smoke_test.md) |
 | User sees 40+ matches / admin shows 0/7 delivered | Admin → Users → **Repair quota** (or `POST /admin/users/{id}/repair-delivery-quota`) — see § Admin match delivery below |
+| Quota mismatch between routes or dashboard | `docs/MATCH_QUOTA.md` — canonical counter is `credited_at` + Lusaka month on **GET /matches** |
 | Schema 500 after deploy | [migrations.md](migrations.md) + `production_readiness_audit.py` |
 
 ---
