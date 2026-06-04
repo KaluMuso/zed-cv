@@ -1,5 +1,10 @@
 {
   "name": "ZedApply - Nightly Match Batch",
+  "meta": {
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
+    "optionalEnv": ["ADMIN_API_KEY"],
+    "exportNote": "POST /admin/batch-match. Load cron env Code node avoids $env in HTTP when N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=true."
+  },
   "nodes": [
     {
       "parameters": {
@@ -15,12 +20,23 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"],\n    adminKey: $env[\"ADMIN_API_KEY\"] || $env[\"INGEST_API_KEY\"]\n  }\n}];"
+      },
+      "name": "Load cron env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/batch-match",
+        "url": "={{ $json.fastapiUrl }}/api/v1/admin/batch-match",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" }
+            { "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-ADMIN-API-KEY", "value": "={{ $json.adminKey }}" }
           ]
         }
       },
@@ -32,6 +48,9 @@
   ],
   "connections": {
     "Daily 02:00 CAT": {
+      "main": [[{ "node": "Load cron env", "type": "main", "index": 0 }]]
+    },
+    "Load cron env": {
       "main": [[{ "node": "Run Nightly Batch Match", "type": "main", "index": 0 }]]
     }
   }

@@ -58,7 +58,7 @@ Full step-by-step (deactivate legacy IDs, smoke, rollback): **[docs/RUNBOOK_N8N_
   - `POST /api/v1/admin/trigger-daily-digest-email` → `run_email_daily_digest`
   - `POST /api/v1/admin/trigger-daily-digest-whatsapp` → `run_whatsapp_daily_digest`
 - Dedup: `user_notifications` rows per channel (`whatsapp_daily_digest`, `email_digest`).
-- Auth: `INGEST_API_KEY` header (see `admin_ingest.py`).
+- Auth: `INGEST_API_KEY` / `X-ADMIN-API-KEY` (see `admin_ingest.py`). If OCI sets `ADMIN_API_KEY` ≠ `INGEST_API_KEY`, cron returns 401 until [RUNBOOK_N8N_ADMIN_AUTH.md](../../docs/RUNBOOK_N8N_ADMIN_AUTH.md) Option A or B is applied.
 
 ### Legacy notification digest (`MW5KETbBdrAOk04y`) — disable
 
@@ -368,11 +368,23 @@ Two heartbeats were active on 2026-05-30. Keep **`qA4Zi46MAWx3gTTL`** (repo: `he
 
 No API access from this repo — ops performs the toggle in the n8n UI.
 
+## Admin cron auth (`ADMIN_API_KEY` vs `INGEST_API_KEY`)
+
+When `ADMIN_API_KEY` is set on the backend and **differs** from `INGEST_API_KEY`, workflows that only send `INGEST_API_KEY` get **401** on `POST /api/v1/admin/*` (batch-match, digests, review-queue alert, renewal reminders).
+
+| Fix | Doc |
+| --- | --- |
+| **Recommended:** set `ADMIN_API_KEY` === `INGEST_API_KEY` on OCI + n8n | [RUNBOOK_N8N_ADMIN_AUTH.md](../../docs/RUNBOOK_N8N_ADMIN_AUTH.md) Option A |
+| **Separate keys:** set `ADMIN_API_KEY` in n8n; re-import repo exports with `X-ADMIN-API-KEY` | Same runbook Option B |
+
+Repo admin-cron exports use a **Load cron env** Code node (`adminKey: $env.ADMIN_API_KEY \|\| $env.INGEST_API_KEY`) so HTTP nodes avoid `$env` when `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=true`. **Do not publish** to live n8n without maintainer sign-off.
+
 ## Required n8n environment variables
 
 ```
 FASTAPI_URL=https://api.zedapply.com   # or internal docker URL
 INGEST_API_KEY=...
+ADMIN_API_KEY=...   # optional; must match backend resolve_admin_api_key (see runbook)
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 WAHA_API_URL=...
