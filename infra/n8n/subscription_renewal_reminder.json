@@ -1,6 +1,8 @@
 {
   "name": "ZedApply - Subscription Renewal Reminder",
   "meta": {
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
+    "optionalEnv": ["ADMIN_API_KEY"],
     "description": "Calls POST /admin/trigger-renewal-reminders daily. n8n schedule uses server TZ (UTC on OCI); 08:00 UTC = 10:00 CAT.",
     "scheduleNote": "Cron 0 8 * * * is 08:00 UTC, not 09:00 CAT. For 09:00 CAT use 0 7 * * *."
   },
@@ -18,13 +20,23 @@
     },
     {
       "parameters": {
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"],\n    adminKey: $env[\"ADMIN_API_KEY\"] || $env[\"INGEST_API_KEY\"]\n  }\n}];"
+      },
+      "name": "Load cron env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [360, 300]
+    },
+    {
+      "parameters": {
         "method": "POST",
-        "url": "={{ $env.FASTAPI_URL }}/api/v1/admin/trigger-renewal-reminders",
+        "url": "={{ $json.fastapiUrl }}/api/v1/admin/trigger-renewal-reminders",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "INGEST_API_KEY", "value": "={{ $env.INGEST_API_KEY }}" },
-            { "name": "X-INGEST-API-KEY", "value": "={{ $env.INGEST_API_KEY }}" },
+            { "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-ADMIN-API-KEY", "value": "={{ $json.adminKey }}" },
             { "name": "Content-Type", "value": "application/json" }
           ]
         },
@@ -41,6 +53,9 @@
   ],
   "connections": {
     "Daily 08:00 UTC (10:00 CAT)": {
+      "main": [[{ "node": "Load cron env", "type": "main", "index": 0 }]]
+    },
+    "Load cron env": {
       "main": [[{ "node": "Send Renewal Reminder Emails", "type": "main", "index": 0 }]]
     }
   },

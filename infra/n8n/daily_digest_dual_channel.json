@@ -3,7 +3,8 @@
   "meta": {
     "description": "Canonical scheduled digest at 07:00 CAT. Calls admin trigger-daily-digest-email and trigger-daily-digest-whatsapp.",
     "n8nWorkflowId": "j6U2CDRZi0FI5G32",
-    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"]
+    "requiredEnv": ["FASTAPI_URL", "INGEST_API_KEY"],
+    "optionalEnv": ["ADMIN_API_KEY"]
   },
   "settings": { "executionOrder": "v1" },
   "nodes": [
@@ -20,9 +21,9 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"]\n  }\n}];"
+        "jsCode": "return [{\n  json: {\n    fastapiUrl: $env[\"FASTAPI_URL\"],\n    ingestKey: $env[\"INGEST_API_KEY\"],\n    adminKey: $env[\"ADMIN_API_KEY\"] || $env[\"INGEST_API_KEY\"]\n  }\n}];"
       },
-      "name": "ENV script",
+      "name": "Load cron env",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-336, 32]
@@ -33,7 +34,11 @@
         "url": "={{ $json.fastapiUrl }}/api/v1/admin/trigger-daily-digest-email",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" }]
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-ADMIN-API-KEY", "value": "={{ $json.adminKey }}" }
+          ]
         }
       },
       "name": "Send Email Digests",
@@ -47,7 +52,11 @@
         "url": "={{ $json.fastapiUrl }}/api/v1/admin/trigger-daily-digest-whatsapp",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" }]
+          "parameters": [
+            { "name": "INGEST_API_KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-INGEST-API-KEY", "value": "={{ $json.ingestKey }}" },
+            { "name": "X-ADMIN-API-KEY", "value": "={{ $json.adminKey }}" }
+          ]
         }
       },
       "name": "Send WhatsApp Digests",
@@ -58,9 +67,9 @@
   ],
   "connections": {
     "Every Day at 7AM": {
-      "main": [[{ "node": "ENV script", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Load cron env", "type": "main", "index": 0 }]]
     },
-    "ENV script": {
+    "Load cron env": {
       "main": [
         [
           { "node": "Send WhatsApp Digests", "type": "main", "index": 0 },

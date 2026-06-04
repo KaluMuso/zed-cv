@@ -23,6 +23,8 @@ from app.services.description_body_extractor import merge_description_extraction
 from app.services.html_render import render_job_description_html
 from app.services.job_publication import apply_contact_activation
 from app.services.job_quality import (
+    APPLY_PATH_DEACTIVATION_REASONS,
+    has_valid_apply_path,
     apply_ingest_quality_to_job_data,
     extract_sections,
     normalize_contact_phone,
@@ -358,6 +360,10 @@ def _role_to_job_patch(
     )
     apply_review_state_to_row(patch, review)
     apply_contact_activation(patch)
+    if has_valid_apply_path(patch)[0]:
+        reason = str(patch.get("deactivation_reason") or "")
+        if reason in APPLY_PATH_DEACTIVATION_REASONS:
+            patch["deactivation_reason"] = None
     return patch
 
 

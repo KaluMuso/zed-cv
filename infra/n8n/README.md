@@ -58,7 +58,7 @@ Full step-by-step (deactivate legacy IDs, smoke, rollback): **[docs/RUNBOOK_N8N_
   - `POST /api/v1/admin/trigger-daily-digest-email` → `run_email_daily_digest`
   - `POST /api/v1/admin/trigger-daily-digest-whatsapp` → `run_whatsapp_daily_digest`
 - Dedup: `user_notifications` rows per channel (`whatsapp_daily_digest`, `email_digest`).
-- Auth: `INGEST_API_KEY` header (see `admin_ingest.py`).
+- Auth: `INGEST_API_KEY` / `X-ADMIN-API-KEY` (see `admin_ingest.py`). If OCI sets `ADMIN_API_KEY` ≠ `INGEST_API_KEY`, cron returns 401 until [RUNBOOK_N8N_ADMIN_AUTH.md](../../docs/RUNBOOK_N8N_ADMIN_AUTH.md) Option A or B is applied.
 
 ### Legacy notification digest (`MW5KETbBdrAOk04y`) — disable
 
@@ -193,7 +193,15 @@ curl -sS -X POST "http://127.0.0.1:8000/api/v1/jobs/deep-enrich-tick?limit=5&inc
 
 **Fix (backend, master after PR #227):** Title minimum is 3 chars (aligned with LLM extractor), and ingest validates **each row** — bad rows land in `errors[]` without failing the batch.
 
-**Fix (n8n, optional):** Re-paste `infra/n8n/snippets/normalize_and_deduplicate.js` into **Normalize and Deduplicate** (drops titles under 3 chars before send).
+**Fix (n8n, optional):** Re-paste `infra/n8n/snippets/normalize_and_deduplicate.js` into **Normalize and Deduplicate** (drops titles under 3 chars and descriptions under 20 chars before send).
+
+### Send to ZedApply: 422 `description` too short
+
+**Symptom:** HTTP 422 with `String should have at least 20 characters` on `jobs[N].description`.
+
+**Cause:** Live **Normalize and Deduplicate** still used a 10-character floor while FastAPI `JobCreateIngest` requires 20.
+
+**Fix:** Re-import `job_scraper.json` or paste latest `normalize_and_deduplicate.js` (uses `MIN_DESCRIPTION_LEN = 20`), then **Save** → **Publish**.
 
 ### Send to ZedApply: 422 `api_key` Field required
 
@@ -317,24 +325,63 @@ In n8n, use **Loop Over Items** with `limit=1` per iteration (or `limit=5–10` 
 
 Re-import `job_scraper.json` after any change to Prep, Normalize, or Deep Enrich nodes.
 
-## Job Scraper — patch live workflow (`rsgZLi6UAcC3lXvu`)
+## Job Scraper — publish repo export to live n8n (`rsgZLi6UAcC3lXvu`)
+
+Repo files are the source of truth:
+
+| File | Role |
+| --- | --- |
+| `job_scraper.json` | Full workflow export (live ID in `_comment` + `meta.n8nWorkflowId`) |
+| `snippets/normalize_and_deduplicate.js` | **Normalize and Deduplicate** Code node (title ≥ 3, description ≥ 20 — matches `JobCreateIngest`) |
+
+### Export (repo → file, already done in git)
+
+Workflow JSON in git is updated when you merge a PR that touches `infra/n8n/job_scraper.json`. No separate export step is required unless you edited live n8n first — then export from the UI and commit the diff.
+
+### Import / publish (file → `automation.vergeo.company`)
+
+1. Sign in to [https://automation.vergeo.company](https://automation.vergeo.company).
+2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
+3. **⋮** menu → **Import from File** → choose `infra/n8n/job_scraper.json` from the merged branch.
+   - Prefer **Update existing workflow** (same ID) so credentials and schedule stay attached.
+   - If n8n offers a duplicate, cancel and open `rsgZLi6UAcC3lXvu` first, then import again.
+4. **Settings → Variables** (instance): confirm `OPENROUTER_API_KEY`, `INGEST_API_KEY`, `FASTAPI_URL` (and optional `OPENROUTER_MODEL=google/gemini-2.0-flash`).
+5. Map credentials on the four **AI Parse \*** nodes (OpenRouter HTTP Header Auth — not Google AI).
+6. **Save** → **Publish** (workflow must stay **Active** for the 12h schedule).
+7. **Execute workflow** (manual) → **Send to ZedApply** should return HTTP 200 with `{ "ingested": N, ... }` (per-row 422s for thin rows should be rare after Normalize).
+
+**Partial patch (no full re-import):** paste `infra/n8n/snippets/normalize_and_deduplicate.js` into the **Normalize and Deduplicate** Code node only, then Save → Publish.
+
+### Drift checklist (live vs repo)
+
+| Guard | Backend (`JobCreateIngest`) | Repo Normalize node |
+| --- | --- | --- |
+| Title | `min_length=3` | `MIN_TITLE_LEN = 3` |
+| Description | `min_length=20` | `MIN_DESCRIPTION_LEN = 20` |
+| OpenRouter cap | — | `max_tokens: 8192` on all four **AI Parse \*** nodes |
+
+If live still uses description ≥ 10 or title checks missing, re-import or re-paste the snippet before the next scheduled scrape.
+
+---
+
+## Job Scraper — patch live workflow (node-level reference)
 
 Repo export `job_scraper.json` is the source of truth. Live n8n must match it before the next scrape run.
 
 1. Sign in to `https://automation.vergeo.company`.
 2. **Workflows** → open **ZedApply Job Scraper** (ID `rsgZLi6UAcC3lXvu`).
-3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.0-flash` (repo default; lower `max_tokens` than 2.5-flash to cut cost).
+3. **Settings → Variables**: `OPENROUTER_API_KEY` (required), optional `OPENROUTER_MODEL=google/gemini-2.0-flash` (repo default; `max_tokens` 8192 on AI Parse nodes).
 4. Re-import `infra/n8n/job_scraper.json` or update all four **AI Parse \*** nodes to POST `https://openrouter.ai/api/v1/chat/completions` with Bearer auth (remove **Google AI** credential).
-3. Open the **Send to ZedApply** HTTP Request node.
-4. Set **Method** `POST` and URL:
+5. Open the **Send to ZedApply** HTTP Request node.
+6. Set **Method** `POST` and URL:
    `={{ ($json.fastapiUrl || 'http://zedcv-backend:8000') + '/api/v1/jobs/ingest' }}`
-5. **Body** → JSON (expression mode):
+7. **Body** → JSON (expression mode):
    `={{ JSON.stringify({ jobs: $json.jobs, api_key: $json.ingestKey }) }}`
    Use `$json.*` not `$env.*` when `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS` is enabled (see troubleshooting above).
-6. **Settings** → **Variables** (instance): confirm `INGEST_API_KEY` and `FASTAPI_URL` are set (same values as OCI `apps/backend/.env` ingest secret and public API base).
-7. **Save** → **Publish** (activate if the toggle was off).
-8. **Execute workflow** (manual test) → open the execution → **Send to ZedApply** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
-9. If the old ingest key ever appeared in git, n8n execution logs, or Slack: **rotate** `INGEST_API_KEY` on OCI and n8n, then `docker compose up -d --force-recreate zedcv-backend` (not `restart`).
+8. **Settings** → **Variables** (instance): confirm `INGEST_API_KEY` and `FASTAPI_URL` are set (same values as OCI `apps/backend/.env` ingest secret and public API base).
+9. **Save** → **Publish** (activate if the toggle was off).
+10. **Execute workflow** (manual test) → open the execution → **Send to ZedApply** should return HTTP 200 with `{ "ingested": … }` (zeros are OK on an empty scrape).
+11. If the old ingest key ever appeared in git, n8n execution logs, or Slack: **rotate** `INGEST_API_KEY` on OCI and n8n, then `docker compose up -d --force-recreate zedcv-backend` (not `restart`).
 
 Optional: re-import `job_scraper.json` via **Import from File** on a draft copy, diff nodes, then merge credential mappings — do not overwrite live credentials blindly.
 
@@ -357,17 +404,29 @@ Repo: `subscription_renewal_reminder_daily.json` (alias `subscription_renewal_re
 | Cron | `0 8 * * *` |
 | n8n server TZ | **UTC** on OCI (default; confirm **Settings → Timezone** in n8n UI) |
 | Fires at | **08:00 UTC** = **10:00 CAT** (Zambia, UTC+2) |
-| Endpoint | `POST /api/v1/admin/trigger-renewal-reminders` with `INGEST_API_KEY` |
+| Endpoint | `POST /api/v1/admin/trigger-renewal-reminders` via **Load cron env** → `$json.ingestKey` / `$json.adminKey` |
 
 **Common mistake:** a trigger node labeled “Every Day at 9AM” while cron is `0 8 * * *` — that is **not** 09:00 CAT (would need `0 7 * * *` for 07:00 UTC). Rename the node to **Daily 08:00 UTC (10:00 CAT)** after republish.
 
 To target **09:00 CAT** instead, set cron to `0 7 * * *` and rename the trigger accordingly.
+
+## Admin cron auth (`ADMIN_API_KEY` vs `INGEST_API_KEY`)
+
+When `ADMIN_API_KEY` is set on the backend and **differs** from `INGEST_API_KEY`, workflows that only send `INGEST_API_KEY` get **401** on `POST /api/v1/admin/*` (batch-match, digests, review-queue alert, renewal reminders).
+
+| Fix | Doc |
+| --- | --- |
+| **Recommended:** set `ADMIN_API_KEY` === `INGEST_API_KEY` on OCI + n8n | [RUNBOOK_N8N_ADMIN_AUTH.md](../../docs/RUNBOOK_N8N_ADMIN_AUTH.md) Option A |
+| **Separate keys:** set `ADMIN_API_KEY` in n8n; re-import repo exports with `X-ADMIN-API-KEY` | Same runbook Option B |
+
+Repo admin-cron exports use a **Load cron env** Code node (`adminKey: $env.ADMIN_API_KEY \|\| $env.INGEST_API_KEY`) so HTTP nodes avoid `$env` when `N8N_BLOCK_ENV_ACCESS_IN_EXPRESSIONS=true`. **Do not publish** to live n8n without maintainer sign-off.
 
 ## Required n8n environment variables
 
 ```
 FASTAPI_URL=https://api.zedapply.com   # or internal docker URL
 INGEST_API_KEY=...
+ADMIN_API_KEY=...   # optional; must match backend resolve_admin_api_key (see runbook)
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...   # or SUPABASE_SERVICE_KEY / SUPABASE_ZEDCV_SERVICE_KEY (see heartbeat section)
 WAHA_API_URL=...

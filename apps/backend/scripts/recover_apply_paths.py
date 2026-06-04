@@ -26,6 +26,7 @@ from app.services.job_apply_url_heuristics import (  # noqa: E402
     merge_resolved_apply_contacts,
 )
 from app.services.job_quality import (  # noqa: E402
+    APPLY_PATH_DEACTIVATION_REASONS,
     EMAIL_RE,
     ZM_PHONE_RE,
     _apply_url_is_real,
@@ -125,6 +126,13 @@ def _phone_recovered(before: dict[str, Any], after: dict[str, Any]) -> bool:
     return True
 
 
+def _is_stale_apply_path_deactivation(row: dict[str, Any]) -> bool:
+    if row.get("is_active") is True:
+        return False
+    reason = str(row.get("deactivation_reason") or "")
+    return reason in APPLY_PATH_DEACTIVATION_REASONS
+
+
 def _fetch_after_enrich_failures(supabase: Any) -> list[dict[str, Any]]:
     """Jobs where LLM enrich failed — retry with HTML parsers (no OpenRouter spend)."""
     result = (
@@ -152,6 +160,24 @@ def _fetch_pending_enrich(supabase: Any) -> list[dict[str, Any]]:
         .execute()
     )
     return [r for r in (result.data or []) if _needs_enrich_retry(r)]
+
+
+def _fetch_stale_inactive_with_valid_path(supabase: Any) -> list[dict[str, Any]]:
+    """Inactive jobs that already have email/phone/real URL but stale deactivation."""
+    result = (
+        supabase.table("jobs")
+        .select(_JOB_SELECT)
+        .eq("is_active", False)
+        .in_("deactivation_reason", list(APPLY_PATH_DEACTIVATION_REASONS))
+        .order("updated_at", desc=True)
+        .limit(500)
+        .execute()
+    )
+    return [
+        r
+        for r in (result.data or [])
+        if has_valid_apply_path(r)[0] and _is_stale_apply_path_deactivation(r)
+    ]
 
 
 def _fetch_legacy_active_recoverable_broad(supabase: Any) -> list[dict[str, Any]]:
@@ -183,9 +209,10 @@ def _fetch_legacy_active_recoverable_broad(supabase: Any) -> list[dict[str, Any]
 def load_candidates(supabase: Any) -> list[dict[str, Any]]:
     pending = _fetch_pending_enrich(supabase)
     after_fail = _fetch_after_enrich_failures(supabase)
+    stale = _fetch_stale_inactive_with_valid_path(supabase)
     legacy = _fetch_legacy_active_recoverable_broad(supabase)
     by_id: dict[str, dict[str, Any]] = {}
-    for row in pending + after_fail + legacy:
+    for row in pending + after_fail + stale + legacy:
         by_id[str(row["id"])] = row
     return list(by_id.values())
 
@@ -226,9 +253,10 @@ def _apply_recovery_patch(
     before: dict[str, Any],
     patch: dict[str, Any],
     detail: str,
+    outcome_override: str | None = None,
 ) -> str:
     """Persist parser or enrich recovery and return bucket name."""
-    recovery = _recovery_outcome(
+    recovery = outcome_override or _recovery_outcome(
         before,
         {
             "apply_url": patch.get("apply_url"),
@@ -281,25 +309,25 @@ async def process_job(
         )
         return "dry_run"
 
-    try:
-        enrich_outcome = await enrich_job_deep(supabase, row, dry_run=False)
-    except Exception as exc:
-        log.exception("deep_enrich crashed for %s: %s", job_id, exc)
-        _log_outcome(
+    if has_valid_apply_path(row)[0] and _is_stale_apply_path_deactivation(row):
+        return _apply_recovery_patch(
             supabase,
             job_id=job_id,
-            outcome="deactivated_fetch_failed",
-            detail=str(exc)[:500],
+            before=before,
+            patch=row,
+            detail="reconcile_stale",
+            outcome_override="reconciled_stale_apply_path",
         )
-        supabase.table("jobs").update(
-            {
-                "is_active": False,
-                "deactivation_reason": "no_valid_apply_path_after_enrich",
-            }
-        ).eq("id", job_id).execute()
-        return "fetch_failed"
 
-    after = _refetch_job(supabase, job_id) or before
+    parser_patch = await _try_parser_recovery(row)
+    if parser_patch:
+        return _apply_recovery_patch(
+            supabase,
+            job_id=job_id,
+            before=before,
+            patch=parser_patch,
+            detail="parser",
+        )
 
     try:
         enrich_outcome = await enrich_job_deep(supabase, row, dry_run=False)

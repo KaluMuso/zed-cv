@@ -92,6 +92,19 @@ class TestApplyPathIngestGate:
         assert out["is_active"] is False
         assert out["deactivation_reason"] == "no_valid_apply_path_no_source"
 
+    def test_clears_stale_apply_path_deactivation_when_email_present(self):
+        data = {
+            "title": "HR Officer",
+            "description": "x" * 350,
+            "source_url": "https://www.jobwebzambia.com/jobs/hr-officer/",
+            "apply_url": "https://www.jobwebzambia.com/jobs/hr-officer/",
+            "apply_email": "careers@karibaharvest.com",
+            "deactivation_reason": "no_valid_apply_path_after_enrich",
+            "is_active": False,
+        }
+        out = self._run_ingest_quality(data)
+        assert out.get("deactivation_reason") is None
+
     def test_valid_email_not_blocked_by_apply_path_gate(self):
         from app.services.job_publication import apply_contact_activation
 
