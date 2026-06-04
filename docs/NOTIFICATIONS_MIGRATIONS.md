@@ -13,7 +13,7 @@ document alone** — run each file in order via your normal migration process
 | #249 | `cursor/admin-notifications-push-9e6a` | Superseded by migration train PR |
 | #256 | `cursor/admin-review-queue-overview-9e6a` | Stats portion superseded (`102_*`); other UI changes land separately |
 
-## Apply order (master baseline through 107)
+## Apply order (master baseline through 106)
 
 | # | File | Purpose |
 | --- | --- | --- |
@@ -79,7 +79,7 @@ On successful push delivery, the backend inserts an `admin_broadcast` row into
 1. Confirm current ledger: highest applied migration before this train.
 2. If `099_match_dismiss_note` not applied, apply `099` first.
 3. Apply `100` → `101` → `102` → `103` → `104` → `105` in order.
-4. If ledger drift (schema present, missing registry rows): `106` then `107`.
+4. If ledger drift (schema present, missing registry rows): `106` then `scripts/notifications_train_ledger_backfill.sql`.
 5. If `099_admin_stats_job_review_counts` was partially applied in a broken
    deploy, **skip** re-applying it; `102` / `106` replace that function definition.
 6. Smoke:

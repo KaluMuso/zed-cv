@@ -39,7 +39,7 @@ Audited on 2026-06-03. After PR #260 linearization there is **one file per prefi
 | 104 | `104_user_notifications_retention.sql` |
 | 105 | `105_referral_paid_status.sql` (renumbered from duplicate `104_referral_*`) |
 | 106 | `106_notifications_train_schema_guard.sql` |
-| 107 | `107_notifications_train_ledger_backfill.sql` |
+| — | `scripts/notifications_train_ledger_backfill.sql` (manual SQL Editor only; **not** under `migrations/`) |
 
 ---
 
@@ -90,8 +90,16 @@ Conclusion: **only one `099_*` ledger row** on prod (the old admin-stats name). 
 | Scenario | Action |
 | --- | --- |
 | **Both** `099_admin_stats_job_review_counts` **and** `099_match_dismiss_note` in ledger | Add idempotent consolidation only (originally planned as `103_*`; use `106_*` because `103` is skill aliases). |
-| **Prod (actual):** one legacy `099_admin_stats` + schema ahead of ledger | Apply `106` then `107` in SQL Editor (or `supabase db push` after merge). |
-| **Fresh env / CI** | Apply repo chain `099` → `105`, then `106`–`107`. `106` is redundant but safe; `107` aligns ledger if CLI versions differ. |
+| **Prod (actual):** one legacy `099_admin_stats` + schema ahead of ledger | Apply `106` in SQL Editor, then `scripts/notifications_train_ledger_backfill.sql`. |
+| **Fresh env / CI** | `supabase db push` through `106`. Run ledger script only if registry drift appears. |
+
+### Why ledger backfill is not migration `107_*`
+
+Supabase Dashboard / CLI migration runners parse filenames like `107_notifications_train_ledger_backfill.sql` as numeric version `107` plus invalid suffix, causing:
+
+`ERROR: 42601: trailing junk after numeric literal at or near "107_notifications_train_ledger_backfill"`
+
+Registry-only SQL belongs under `scripts/`, not `infra/supabase/migrations/`.
 
 ---
 
@@ -101,8 +109,8 @@ Conclusion: **only one `099_*` ledger row** on prod (the old admin-stats name). 
 
 Run in **Supabase SQL Editor** (project `chnesgmcuxyhwhzomdov`), in order:
 
-1. `106_notifications_train_schema_guard.sql` — idempotent; refreshes `admin_stats()` to `102` definition.
-2. `107_notifications_train_ledger_backfill.sql` — registry only; does not drop `20260603081919`.
+1. `infra/supabase/migrations/106_notifications_train_schema_guard.sql` — idempotent; refreshes `admin_stats()` to `102` definition.
+2. `scripts/notifications_train_ledger_backfill.sql` — registry only; does not drop `20260603081919`.
 3. Optionally run bodies of `103` and `104` if skill aliases or pg_cron prune job still missing (prod already had prune + `paid_at` on audit date).
 
 **Do not** re-apply deleted `099_admin_stats_job_review_counts.sql`.
@@ -133,8 +141,9 @@ Full numeric order:
 104_user_notifications_retention.sql
 105_referral_paid_status.sql
 106_notifications_train_schema_guard.sql
-107_notifications_train_ledger_backfill.sql
 ```
+
+Ledger backfill (prod drift only): `scripts/notifications_train_ledger_backfill.sql`
 
 ### C. OCI backend after DB
 

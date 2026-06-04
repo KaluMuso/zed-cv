@@ -3,7 +3,8 @@
 -- Use when prod applied objects out-of-band or only has ledger row
 -- 099_admin_stats_job_review_counts (20260603081919). Safe on fresh DBs that
 -- already ran 099–105 — all statements are IF NOT EXISTS / CREATE OR REPLACE.
--- Pair with 107_notifications_train_ledger_backfill.sql on drifted prod only.
+-- On drifted prod, after this file run scripts/notifications_train_ledger_backfill.sql
+-- in the SQL Editor (registry only — do not add that script under migrations/).
 
 BEGIN;
 
