@@ -303,7 +303,7 @@ export function JobCard({
       className={cn(
         "group relative w-full rounded-xl border border-border/80",
         "bg-card",
-        "job-card shadow-sm",
+        "job-card shadow-sm native-pressable",
         "hover:border-border",
         "focus-within:ring-2 focus-within:ring-primary/40 focus-within:ring-offset-2 focus-within:ring-offset-background",
       )}

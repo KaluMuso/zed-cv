@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Logo } from "@/components/ui/Logo";
+import { useAuth } from "@/lib/auth";
+import { showMobileAppShell } from "@/lib/mobile-nav";
 
 const columns = [
   {
@@ -34,6 +37,12 @@ const columns = [
 ];
 
 export function Footer() {
+  const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  if (showMobileAppShell(pathname, isAuthenticated)) {
+    return null;
+  }
+
   return (
     <footer style={{ borderTop: "1px solid var(--line)" }}>
       <div className="chevron-strip" />

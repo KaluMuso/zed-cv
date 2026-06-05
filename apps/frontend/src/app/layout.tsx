@@ -13,6 +13,7 @@ import { PWAProvider } from "@/components/PWAProvider";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { BwanaChatWidget } from "@/components/BwanaChatWidget";
+import { MobileAppShell } from "@/components/MobileAppShell";
 import { RouteTransitionShell } from "@/components/shared/RouteTransitionShell";
 import { Toaster } from "@/components/shared/Toaster";
 import { PlausibleAnalytics } from "@/components/PlausibleAnalytics";
@@ -81,17 +82,19 @@ export default function RootLayout({
             <AuthProvider>
               <SavedJobsProvider>
                 <PWAProvider>
-                  <OfflineBanner />
-                  <Navbar />
-                  <main id={MAIN_CONTENT_ID} tabIndex={-1} className="outline-none">
-                    <RouteTransitionShell>{children}</RouteTransitionShell>
-                  </main>
+                  <MobileAppShell>
+                    <OfflineBanner />
+                    <Navbar />
+                    <main id={MAIN_CONTENT_ID} tabIndex={-1} className="outline-none">
+                      <RouteTransitionShell>{children}</RouteTransitionShell>
+                    </main>
                   <PWAInstallPrompt />
                   <Footer />
                   <MobileTabBar />
                   <BwanaChatWidget />
                   <Toaster />
                   <CommandPalette />
+                  </MobileAppShell>
                 </PWAProvider>
               </SavedJobsProvider>
             </AuthProvider>
