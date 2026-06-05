@@ -11,6 +11,7 @@ import { ApplyModal } from "@/components/jobs/ApplyModal";
 import { JobDetailMatchPanel } from "@/components/jobs/JobDetailMatchPanel";
 import { JobDetailSimilarMatches } from "@/components/jobs/JobDetailSimilarMatches";
 import { CoverLetterModal } from "@/components/jobs/CoverLetterModal";
+import { JobDetailPremiumActions } from "@/components/jobs/JobDetailPremiumActions";
 import { stripDescriptionHtml } from "@/components/jobs/jobDetailHtml";
 import { SectionEyebrow } from "@/components/ui/SectionEyebrow";
 import Link from "next/link";
@@ -274,19 +275,13 @@ export function JobDetailBody({
               className="flex-1 sm:flex-none justify-center"
               onChange={(_id, next) => onSavedChange?.(next)}
             />
-            <button
-              type="button"
-              className="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
-              onClick={() => setCoverOpen(true)}
-            >
-              <Icon name="sparkle" size={14} /> Generate cover letter
-            </button>
-            <Link
-              href={`/profile/cv-builder?jobId=${encodeURIComponent(job.id)}&jobTitle=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company || "")}`}
-              className="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
-            >
-              <Icon name="file" size={14} /> Tailored CV
-            </Link>
+            <JobDetailPremiumActions
+              subscriptionTier={subscriptionTier}
+              jobId={job.id}
+              jobTitle={job.title}
+              company={job.company || ""}
+              onCoverLetterClick={() => setCoverOpen(true)}
+            />
           </div>
 
           <section className="mb-8" aria-label="Share this job">

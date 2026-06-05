@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { canTailorCvForMatch, canUseCoverLetterEditor } from "../tier-gating";
+import {
+  canTailorCvForMatch,
+  canUseCoverLetterEditor,
+  canViewMatchScoreBreakdown,
+} from "../tier-gating";
+
+describe("canViewMatchScoreBreakdown", () => {
+  it("allows starter and above", () => {
+    expect(canViewMatchScoreBreakdown("starter")).toBe(true);
+    expect(canViewMatchScoreBreakdown("professional")).toBe(true);
+    expect(canViewMatchScoreBreakdown("super_standard")).toBe(true);
+  });
+
+  it("blocks free and unknown tiers", () => {
+    expect(canViewMatchScoreBreakdown("free")).toBe(false);
+    expect(canViewMatchScoreBreakdown(null)).toBe(false);
+    expect(canViewMatchScoreBreakdown(undefined)).toBe(false);
+  });
+});
 
 describe("canTailorCvForMatch", () => {
   it("allows professional and super_standard", () => {

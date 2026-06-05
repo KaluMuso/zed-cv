@@ -4,19 +4,24 @@ import { useEffect } from "react";
 import type { MatchData } from "@/lib/api";
 import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
 import { MatchSkillsBreakdown } from "@/components/matches/MatchSkillsBreakdown";
+import { MatchBreakdownUpgradePrompt } from "@/components/shared/MatchBreakdownUpgradePrompt";
 import { Icon } from "@/components/ui/Icon";
 import { ModalPortal } from "@/components/shared/ModalPortal";
+import { ScoreRing } from "@/components/ui/ScoreRing";
 import { splitMatchExplanation } from "@/lib/matchExplanationDisplay";
 import { formatRequiredSkillsDetail, countRequiredJobSkills } from "@/lib/matchBreakdown";
+import { canViewMatchScoreBreakdown } from "@/lib/tier-gating";
 
 export function MatchExplanationModal({
   match,
   open,
   onClose,
+  subscriptionTier,
 }: {
   match: MatchData | null;
   open: boolean;
   onClose: () => void;
+  subscriptionTier?: string | null;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -34,6 +39,7 @@ export function MatchExplanationModal({
 
   if (!open || !match) return null;
 
+  const breakdownUnlocked = canViewMatchScoreBreakdown(subscriptionTier);
   const { main, preferencesNote } = splitMatchExplanation(match.explanation);
   const requiredSkillsNote = formatRequiredSkillsDetail(countRequiredJobSkills(match));
 
@@ -83,42 +89,43 @@ export function MatchExplanationModal({
           </header>
 
           <div className="flex-1 overflow-y-auto p-5 sm:p-6">
-            <div className="breakdown-grid grid gap-6 sm:grid-cols-2">
-              <div>
-                <div className="eyebrow mb-4">Score breakdown</div>
-                <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted)" }}>
-                  Each bar shows points out of a fixed weight (total 100).{" "}
-                  {requiredSkillsNote
-                    ? `Required skills: ${requiredSkillsNote} — a full bar means you match every required skill on the listing.`
-                    : "Required skills compares your CV skills to the job’s required skills."}
-                </p>
-                <MatchScoreBreakdown match={match} />
-              </div>
-
-              <div className="min-w-0">
-                <div className="eyebrow mb-4">AI explanation</div>
-
-                {main ? (
-                  <p
-                    className="text-sm leading-relaxed mb-4"
-                    style={{ color: "var(--ink-2)" }}
-                  >
-                    {main}
+            {breakdownUnlocked ? (
+              <div className="breakdown-grid grid gap-6 sm:grid-cols-2">
+                <div>
+                  <div className="eyebrow mb-4">Score breakdown</div>
+                  <p className="text-xs mb-3 leading-relaxed" style={{ color: "var(--muted)" }}>
+                    Each bar shows points out of a fixed weight (total 100).{" "}
+                    {requiredSkillsNote
+                      ? `Required skills: ${requiredSkillsNote} — a full bar means you match every required skill on the listing.`
+                      : "Required skills compares your CV skills to the job’s required skills."}
                   </p>
-                ) : (
-                  <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-                    No detailed explanation yet for this match.
-                  </p>
-                )}
+                  <MatchScoreBreakdown match={match} />
+                </div>
 
-                {preferencesNote && (
-                  <div
-                    className="mb-4 p-3.5 rounded-lg"
-                    style={{
-                      background: "var(--green-100)",
-                      border: "1px solid color-mix(in srgb, var(--green-500) 35%, transparent)",
-                    }}
-                  >
+                <div className="min-w-0">
+                  <div className="eyebrow mb-4">AI explanation</div>
+
+                  {main ? (
+                    <p
+                      className="text-sm leading-relaxed mb-4"
+                      style={{ color: "var(--ink-2)" }}
+                    >
+                      {main}
+                    </p>
+                  ) : (
+                    <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+                      No detailed explanation yet for this match.
+                    </p>
+                  )}
+
+                  {preferencesNote && (
+                    <div
+                      className="mb-4 p-3.5 rounded-lg"
+                      style={{
+                        background: "var(--green-100)",
+                        border: "1px solid color-mix(in srgb, var(--green-500) 35%, transparent)",
+                      }}
+                    >
                       <div
                         className="text-[10px] font-bold uppercase tracking-wider mb-1"
                         style={{ color: "var(--green-700)" }}
@@ -129,15 +136,26 @@ export function MatchExplanationModal({
                         {preferencesNote.replace(/^Preferences match:\s*/i, "")}
                       </p>
                     </div>
-                )}
+                  )}
 
-                <MatchSkillsBreakdown
-                  className="mt-4"
-                  matchedSkills={match.matched_skills}
-                  missingSkills={match.missing_skills}
-                />
+                  <MatchSkillsBreakdown
+                    className="mt-4"
+                    matchedSkills={match.matched_skills}
+                    missingSkills={match.missing_skills}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+                <div className="text-center">
+                  <ScoreRing score={match.score} size={132} stroke={10} />
+                  <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+                    Your overall match score
+                  </p>
+                </div>
+                <MatchBreakdownUpgradePrompt className="w-full" />
+              </div>
+            )}
           </div>
         </div>
       </div>

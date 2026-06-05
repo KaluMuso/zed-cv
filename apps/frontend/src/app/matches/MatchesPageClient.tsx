@@ -829,6 +829,7 @@ export default function MatchesPageClient() {
         match={detailMatch}
         open={detailMatch !== null}
         onClose={() => setDetailMatch(null)}
+        subscriptionTier={sub?.tier}
       />
 
       <MatchDismissModal
