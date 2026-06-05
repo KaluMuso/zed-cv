@@ -65,6 +65,12 @@ describe("Navbar primary navigation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname = "/";
+    // Reset window size to desktop default
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    });
   });
 
   it("shows five task-focused links when signed in", () => {
@@ -92,6 +98,13 @@ describe("Navbar primary navigation", () => {
 
   it("shows centered logo only on mobile app shell routes", () => {
     mockPathname = "/jobs";
+    // Mock mobile viewport
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: 640,
+    });
+
     mockedUseAuth.mockReturnValue({
       isAuthenticated: true,
       token: "tok",
@@ -102,6 +115,8 @@ describe("Navbar primary navigation", () => {
     });
 
     render(<Navbar />);
+
+    // On mobile app shell routes, should show minimal navbar with only logo
     expect(screen.getByTestId("logo")).toBeInTheDocument();
     expect(screen.queryByLabelText("Toggle menu")).not.toBeInTheDocument();
     expect(document.querySelector(".hidden.md\\:flex.items-center.gap-8")).toBeNull();
