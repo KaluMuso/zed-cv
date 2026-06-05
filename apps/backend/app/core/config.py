@@ -143,7 +143,9 @@ class Settings(BaseSettings):
     post_ingest_deep_enrich_enabled: bool = True
     # Cap jobs processed per ingest batch (was hardcoded up to 80).
     post_ingest_deep_enrich_max_limit: int = 15
-    # Pause between jobs in one tick (seconds). 0 = no delay. Use ~1 on OCI to reduce LLM burst.
+    # Post-ingest tick: sequential one-job-at-a-time delay (seconds).
+    post_ingest_deep_enrich_inter_job_delay_sec: float = 1.0
+    # Cron/manual tick delay (seconds). 0 = no delay between jobs.
     deep_enrich_inter_job_delay_sec: float = 0.0
 
     # OTP

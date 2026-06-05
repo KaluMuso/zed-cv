@@ -2,6 +2,7 @@
 from unittest.mock import AsyncMock, patch
 
 from main import app
+from app.services.deep_enrich import DeepEnrichJobResult, DeepEnrichTickResult
 from tests.conftest import FakeSupabaseQuery
 
 INGEST_HEADERS = {"X-INGEST-API-KEY": "test-ingest-key"}
@@ -24,13 +25,7 @@ def test_deep_enrich_tick_route_accepts_post(client):
     with patch(
         "app.api.v1.jobs.run_deep_enrich_tick",
         new_callable=AsyncMock,
-        return_value={
-            "enriched": 0,
-            "split": 0,
-            "failed": 0,
-            "skipped": 0,
-            "attempted": 0,
-        },
+        return_value=DeepEnrichTickResult(),
     ):
         resp = client.post(f"{MOUNTED_PATH}?limit=50", headers=INGEST_HEADERS)
 
@@ -42,6 +37,7 @@ def test_deep_enrich_tick_route_accepts_post(client):
         "failed": 0,
         "skipped": 0,
         "attempted": 0,
+        "results": [],
     }
 
 
@@ -53,13 +49,25 @@ class TestDeepEnrichTick:
     @patch(
         "app.api.v1.jobs.run_deep_enrich_tick",
         new_callable=AsyncMock,
-        return_value={
-            "enriched": 1,
-            "split": 0,
-            "failed": 1,
-            "skipped": 0,
-            "attempted": 2,
-        },
+        return_value=DeepEnrichTickResult(
+            enriched=1,
+            failed=1,
+            attempted=2,
+            results=[
+                DeepEnrichJobResult(
+                    job_id="j1",
+                    title="Engineer",
+                    outcome="enriched",
+                    detail="https://example.com/job",
+                ),
+                DeepEnrichJobResult(
+                    job_id="j2",
+                    title="Intern",
+                    outcome="failed",
+                    detail="HTTP 404",
+                ),
+            ],
+        ),
     )
     def test_deep_enrich_tick_with_ingest_key(self, mock_tick, client, fake_supabase):
         fake_supabase.set_table("jobs", FakeSupabaseQuery(data=[]))
@@ -69,13 +77,11 @@ class TestDeepEnrichTick:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body == {
-            "enriched": 1,
-            "split": 0,
-            "failed": 1,
-            "skipped": 0,
-            "attempted": 2,
-        }
+        assert body["enriched"] == 1
+        assert body["failed"] == 1
+        assert body["attempted"] == 2
+        assert len(body["results"]) == 2
+        assert body["results"][1]["detail"] == "HTTP 404"
         mock_tick.assert_awaited_once_with(
             fake_supabase,
             limit=10,
@@ -85,7 +91,7 @@ class TestDeepEnrichTick:
     @patch(
         "app.api.v1.jobs.run_deep_enrich_tick",
         new_callable=AsyncMock,
-        return_value={"enriched": 0, "split": 0, "failed": 0, "skipped": 0},
+        return_value=DeepEnrichTickResult(),
     )
     def test_deep_enrich_tick_can_exclude_review_queue(self, mock_tick, client):
         resp = client.post(
@@ -99,7 +105,7 @@ class TestDeepEnrichTick:
     @patch(
         "app.api.v1.jobs.run_deep_enrich_tick",
         new_callable=AsyncMock,
-        return_value={"enriched": 0, "split": 0, "failed": 0, "skipped": 0},
+        return_value=DeepEnrichTickResult(),
     )
     def test_deep_enrich_tick_accepts_api_key_query_param(self, mock_tick, client):
         resp = client.post(

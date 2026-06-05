@@ -8,7 +8,9 @@ import {
   matchStrengthHeadline,
 } from "@/components/jobs/jobDetailFormatters";
 import { MatchScoreBreakdown } from "@/components/MatchScoreBreakdown";
+import { MatchBreakdownUpgradePrompt } from "@/components/shared/MatchBreakdownUpgradePrompt";
 import { splitMatchExplanation } from "@/lib/matchExplanationDisplay";
+import { canViewMatchScoreBreakdown } from "@/lib/tier-gating";
 import { TIER_NAV_LABELS } from "@/lib/tier-display";
 import Link from "next/link";
 
@@ -97,6 +99,7 @@ export function JobDetailMatchPanel({
     return <MatchPanelPlaceholder signedIn={signedIn} />;
   }
 
+  const breakdownUnlocked = canViewMatchScoreBreakdown(subscriptionTier);
   const matched = match.matched_skills;
   const missing = match.missing_skills;
   const totalSkills = matched.length + missing.length;
@@ -131,85 +134,95 @@ export function JobDetailMatchPanel({
         </p>
       </div>
 
-      <div className="mb-6 pb-6 border-b" style={{ borderColor: "var(--line)" }}>
-        <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">
-          Score breakdown
-        </div>
-        <MatchScoreBreakdown match={match} />
-      </div>
-
-      <div className="mb-6">
-        <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-2">
-          Skills overlap
-        </div>
-        {totalSkills > 0 ? (
-          <>
-            <SkillsOverlapBar matched={matched.length} total={totalSkills} />
-            <p className="text-sm mb-3" style={{ color: "var(--ink-2)" }}>
-              You have {matched.length} of {totalSkills} listed skills.
-              {missing.length > 0 ? ` Missing ${missing.length}.` : null}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>
-            Strong semantic match — your CV aligns with the role description even without overlapping skill tags.
-          </p>
-        )}
-
-        {matched.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {matched.map((s) => (
-              <SkillBadge key={s} skill={s} matched />
-            ))}
+      {breakdownUnlocked ? (
+        <>
+          <div className="mb-6 pb-6 border-b" style={{ borderColor: "var(--line)" }}>
+            <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3">
+              Score breakdown
+            </div>
+            <MatchScoreBreakdown match={match} />
           </div>
-        )}
 
-        {missing.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {missing.map((s) => (
-              <span
-                key={s}
-                className="tag tag-mono inline-flex items-center gap-1"
-                style={{
-                  background: "color-mix(in srgb, var(--copper-500) 12%, var(--surface))",
-                  color: "var(--copper-600)",
-                  border: "1px solid color-mix(in srgb, var(--copper-500) 30%, var(--line))",
-                }}
+          <div className="mb-6">
+            <div className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-2">
+              Skills overlap
+            </div>
+            {totalSkills > 0 ? (
+              <>
+                <SkillsOverlapBar matched={matched.length} total={totalSkills} />
+                <p className="text-sm mb-3" style={{ color: "var(--ink-2)" }}>
+                  You have {matched.length} of {totalSkills} listed skills.
+                  {missing.length > 0 ? ` Missing ${missing.length}.` : null}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>
+                Strong semantic match — your CV aligns with the role description even without
+                overlapping skill tags.
+              </p>
+            )}
+
+            {matched.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {matched.map((s) => (
+                  <SkillBadge key={s} skill={s} matched />
+                ))}
+              </div>
+            )}
+
+            {missing.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {missing.map((s) => (
+                  <span
+                    key={s}
+                    className="tag tag-mono inline-flex items-center gap-1"
+                    style={{
+                      background: "color-mix(in srgb, var(--copper-500) 12%, var(--surface))",
+                      color: "var(--copper-600)",
+                      border: "1px solid color-mix(in srgb, var(--copper-500) 30%, var(--line))",
+                    }}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {(explanationMain || preferencesNote) && (
+            <div
+              className="rounded-xl p-4 text-sm leading-relaxed"
+              style={{
+                background: "color-mix(in srgb, var(--green-100) 65%, var(--surface))",
+                border: "1px solid color-mix(in srgb, var(--green-500) 25%, var(--line))",
+              }}
+            >
+              <div
+                className="text-xs font-bold tracking-widest uppercase mb-2"
+                style={{ color: "var(--green-700)" }}
               >
-                {s}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {(explanationMain || preferencesNote) && (
-        <div
-          className="rounded-xl p-4 text-sm leading-relaxed"
-          style={{
-            background: "color-mix(in srgb, var(--green-100) 65%, var(--surface))",
-            border: "1px solid color-mix(in srgb, var(--green-500) 25%, var(--line))",
-          }}
-        >
-          <div className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "var(--green-700)" }}>
-            Why this match
-          </div>
-          {explanationMain ? (
-            <p className="mb-2" style={{ color: "var(--ink-2)" }}>
-              {explanationMain}
-            </p>
-          ) : null}
-          {preferencesNote ? (
-            <p className="text-xs" style={{ color: "var(--muted)" }}>
-              {preferencesNote}
-            </p>
-          ) : null}
-          {tierLabel ? (
-            <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
-              Your {tierLabel} plan controls how many matches we surface each month.
-            </p>
-          ) : null}
-        </div>
+                Why this match
+              </div>
+              {explanationMain ? (
+                <p className="mb-2" style={{ color: "var(--ink-2)" }}>
+                  {explanationMain}
+                </p>
+              ) : null}
+              {preferencesNote ? (
+                <p className="text-xs" style={{ color: "var(--muted)" }}>
+                  {preferencesNote}
+                </p>
+              ) : null}
+              {tierLabel ? (
+                <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
+                  Your {tierLabel} plan controls how many matches we surface each month.
+                </p>
+              ) : null}
+            </div>
+          )}
+        </>
+      ) : (
+        <MatchBreakdownUpgradePrompt compact />
       )}
     </div>
   );

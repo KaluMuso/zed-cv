@@ -16,8 +16,6 @@ import { settingsPath } from "@/app/settings/settings-nav";
 import { useTheme } from "@/components/ThemeProvider";
 import { formatTierNavSubtitle } from "@/lib/tier-display";
 import { showMobileAppShell } from "@/lib/mobile-nav";
-import { hapticTap } from "@/lib/haptics";
-import { SheetHandle } from "@/components/ui/SheetHandle";
 
 const MAIN_TABS = [
   { id: "jobs", label: "Jobs", shortLabel: "Jobs", icon: "briefcase", href: "/jobs" },

@@ -30,9 +30,16 @@ const MATCH: MatchData = {
 };
 
 describe("MatchExplanationModal", () => {
-  it("renders solid panel, preferences note, and skill gap callout", () => {
+  it("renders solid panel, preferences note, and skill gap callout for starter+", () => {
     const onClose = vi.fn();
-    render(<MatchExplanationModal match={MATCH} open onClose={onClose} />);
+    render(
+      <MatchExplanationModal
+        match={MATCH}
+        open
+        onClose={onClose}
+        subscriptionTier="starter"
+      />,
+    );
 
     const backdrop = document.body.querySelector(".modal-backdrop");
     expect(backdrop).toBeTruthy();
@@ -47,12 +54,32 @@ describe("MatchExplanationModal", () => {
     expect(screen.getByText("terraform")).toBeInTheDocument();
   });
 
+  it("shows only score and upgrade prompt on free tier", () => {
+    render(
+      <MatchExplanationModal
+        match={MATCH}
+        open
+        onClose={vi.fn()}
+        subscriptionTier="free"
+      />,
+    );
+
+    expect(screen.getByText("Your overall match score")).toBeInTheDocument();
+    expect(screen.getByTestId("match-breakdown-upgrade")).toBeInTheDocument();
+    expect(screen.getByText(/Starter plan and above/i)).toBeInTheDocument();
+    expect(screen.getByText(/Your Free plan shows only the overall match score/i)).toBeInTheDocument();
+    expect(screen.queryByText("Score breakdown")).not.toBeInTheDocument();
+    expect(screen.queryByText("AI explanation")).not.toBeInTheDocument();
+    expect(screen.queryByText("Matched skills")).not.toBeInTheDocument();
+  });
+
   it("omits skill breakdown when both lists are empty", () => {
     render(
       <MatchExplanationModal
         match={{ ...MATCH, matched_skills: [], missing_skills: [] }}
         open
         onClose={vi.fn()}
+        subscriptionTier="professional"
       />,
     );
     expect(screen.queryByTestId("match-skills-breakdown")).not.toBeInTheDocument();
@@ -61,7 +88,14 @@ describe("MatchExplanationModal", () => {
   it("calls onClose when backdrop is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    render(<MatchExplanationModal match={MATCH} open onClose={onClose} />);
+    render(
+      <MatchExplanationModal
+        match={MATCH}
+        open
+        onClose={onClose}
+        subscriptionTier="starter"
+      />,
+    );
 
     const backdrop = document.body.querySelector(".modal-backdrop");
     expect(backdrop).toBeTruthy();

@@ -13,6 +13,8 @@ from app.schemas.admin import (
     AdminJobReviewUpdate,
     AdminReviewQueueOverview,
 )
+from app.schemas.jobs import DeepEnrichTickResponse
+from app.services.deep_enrich import run_deep_enrich_tick
 from app.services.job_activation import can_publish_after_admin_edit
 from app.services.review_queue_cleanup import (
     ACTIVE_NO_DEADLINE_PRESET,
@@ -209,3 +211,31 @@ async def update_review_job(
     if not result.data:
         raise HTTPException(status_code=404, detail="Job not found")
     return {"id": job_id, "is_active": can_publish, "is_review_required": not can_publish}
+
+
+@router.post("/review-jobs/deep-enrich-tick", response_model=DeepEnrichTickResponse)
+async def admin_review_jobs_deep_enrich_tick(
+    limit: int = Query(10, ge=1, le=50, description="Jobs to process sequentially"),
+    dry_run: bool = Query(
+        False,
+        description="When true, log would-fetch URLs without LLM or DB writes",
+    ),
+    include_review_queue: bool = Query(
+        True,
+        description="Include is_review_required jobs even when inactive",
+    ),
+    supabase=Depends(get_supabase),
+):
+    """Run deep-enrich on review-queue candidates one job at a time.
+
+    Returns per-job outcomes with success/failure reasons. Use after
+    ``GET /admin/review-jobs/overview`` to drain backlog; pair with
+    ``POST /admin/review-jobs/bulk-dismiss-safe`` for hidden junk rows.
+    """
+    tick = await run_deep_enrich_tick(
+        supabase,
+        limit=limit,
+        dry_run=dry_run,
+        include_review_queue=include_review_queue,
+    )
+    return DeepEnrichTickResponse(**tick.as_response_dict())

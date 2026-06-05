@@ -605,12 +605,12 @@ async def deep_enrich_tick(
     _require_ingest_header(
         settings, ingest_api_key, x_ingest_api_key, query_api_key=api_key
     )
-    stats = await run_deep_enrich_tick(
+    tick = await run_deep_enrich_tick(
         supabase,
         limit=limit,
         include_review_queue=include_review_queue,
     )
-    return DeepEnrichTickResponse(**stats)
+    return DeepEnrichTickResponse(**tick.as_response_dict())
 
 
 @router.post("/{job_id}/save", response_model=SaveJobResponse)

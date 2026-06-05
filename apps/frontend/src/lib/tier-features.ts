@@ -9,6 +9,7 @@ export type SubscriptionTier =
   | "super_standard";
 
 export type TierFeature =
+  | "match_score_breakdown"
   | "tailor_cv"
   | "cover_letter"
   | "unlock_prep"
@@ -24,6 +25,7 @@ const TIER_ORDER: SubscriptionTier[] = [
 ];
 
 export const FEATURE_TIER_MAP: Record<TierFeature, SubscriptionTier> = {
+  match_score_breakdown: "starter",
   tailor_cv: "professional",
   cover_letter: "professional",
   unlock_prep: "super_standard",
@@ -33,6 +35,7 @@ export const FEATURE_TIER_MAP: Record<TierFeature, SubscriptionTier> = {
 };
 
 export const FEATURE_LABELS: Record<TierFeature, string> = {
+  match_score_breakdown: "Match score breakdown",
   tailor_cv: "Tailored CV per match",
   cover_letter: "AI cover letter",
   unlock_prep: "Interview prep",

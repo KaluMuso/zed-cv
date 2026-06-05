@@ -94,14 +94,14 @@ async def main() -> int:
             stats["enriched"] += 1
             continue
 
-        outcome = await enrich_job_deep(supabase, row, dry_run=False)
-        if outcome == "enriched":
+        result = await enrich_job_deep(supabase, row, dry_run=False)
+        if result.outcome == "enriched":
             stats["enriched"] += 1
-        elif outcome == "split":
+        elif result.outcome == "split":
             stats["split"] += 1
-        elif outcome == "skipped":
+        elif result.outcome == "skipped":
             stats["skipped"] += 1
-        elif outcome == "failed" and not _resolve_fetch_url(row):
+        elif result.outcome == "failed" and not _resolve_fetch_url(row):
             stats["failed_no_url"] += 1
         else:
             stats["failed"] += 1
