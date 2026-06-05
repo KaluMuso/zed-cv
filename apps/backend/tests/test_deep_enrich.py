@@ -118,9 +118,9 @@ async def test_enrich_split_deactivates_parent(parent_row):
         ),
     ):
         mock_llm = MagicMock()
-        outcome = await enrich_job_deep(supabase, parent_row, llm_client=mock_llm)
+        result = await enrich_job_deep(supabase, parent_row, llm_client=mock_llm)
 
-    assert outcome == "split"
+    assert result.outcome == "split"
     update_calls = [c for c in table.update.call_args_list]
     assert any(
         "split_into_children" in str(c)
@@ -156,9 +156,10 @@ async def test_enrich_openrouter_payment_error_returns_failed(parent_row):
             side_effect=err,
         ),
     ):
-        outcome = await enrich_job_deep(supabase, parent_row, llm_client=MagicMock())
+        result = await enrich_job_deep(supabase, parent_row, llm_client=MagicMock())
 
-    assert outcome == "failed"
+    assert result.outcome == "failed"
+    assert result.detail
 
 
 @pytest.mark.asyncio
@@ -170,5 +171,6 @@ async def test_enrich_no_url_logs_failed(parent_row):
         data=[]
     )
 
-    outcome = await enrich_job_deep(supabase, parent_row)
-    assert outcome == "failed"
+    result = await enrich_job_deep(supabase, parent_row)
+    assert result.outcome == "failed"
+    assert "no source_url" in (result.detail or "")

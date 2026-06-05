@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from datetime import date, datetime, timezone
+from dataclasses import dataclass, field
 from typing import Any, Literal
 from urllib.parse import urlparse
 
@@ -428,104 +429,174 @@ async def _insert_child_job(
     return job_id
 
 
+DeepEnrichOutcome = Literal["enriched", "split", "failed", "skipped"]
+
+
+@dataclass
+class DeepEnrichJobResult:
+    """Per-job deep-enrich outcome (sequential tick returns one per attempt)."""
+
+    job_id: str
+    title: str | None
+    outcome: DeepEnrichOutcome
+    detail: str | None = None
+    review_cleared: bool | None = None
+
+
+@dataclass
+class DeepEnrichTickResult:
+    """Aggregate stats plus per-job outcomes from a deep-enrich tick."""
+
+    enriched: int = 0
+    split: int = 0
+    failed: int = 0
+    skipped: int = 0
+    attempted: int = 0
+    results: list[DeepEnrichJobResult] = field(default_factory=list)
+
+    def as_response_dict(self) -> dict[str, Any]:
+        return {
+            "enriched": self.enriched,
+            "split": self.split,
+            "failed": self.failed,
+            "skipped": self.skipped,
+            "attempted": self.attempted,
+            "results": [
+                {
+                    "job_id": r.job_id,
+                    "title": r.title,
+                    "outcome": r.outcome,
+                    "detail": r.detail,
+                    "review_cleared": r.review_cleared,
+                }
+                for r in self.results
+            ],
+        }
+
+
+def _job_result(
+    row: dict[str, Any],
+    outcome: DeepEnrichOutcome,
+    *,
+    detail: str | None = None,
+    review_cleared: bool | None = None,
+) -> DeepEnrichJobResult:
+    return DeepEnrichJobResult(
+        job_id=str(row["id"]),
+        title=row.get("title"),
+        outcome=outcome,
+        detail=detail,
+        review_cleared=review_cleared,
+    )
+
+
 async def enrich_job_deep(
     supabase: Any,
     row: dict[str, Any],
     *,
     llm_client: Any | None = None,
     dry_run: bool = False,
-) -> Literal["enriched", "split", "failed", "skipped"]:
-    """Run deep-enrich on one job row. Returns outcome category."""
+) -> DeepEnrichJobResult:
+    """Run deep-enrich on one job row. Returns structured outcome with reason."""
     job_id = str(row["id"])
     fetch_url = _resolve_fetch_url(row)
     if not fetch_url:
+        detail = "no source_url or employer apply_url"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed_no_url",
-            detail="no source_url or employer apply_url",
+            detail=detail,
             dry_run=dry_run,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     if dry_run:
+        detail = f"would fetch {fetch_url}"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="dry_run",
-            detail=f"would fetch {fetch_url}",
+            detail=detail,
             dry_run=True,
         )
-        return "enriched"
+        return _job_result(row, "enriched", detail=detail)
 
     try:
         status, body = await fetch_source_page(fetch_url)
     except Exception as exc:
+        detail = str(exc)[:500]
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed_fetch",
-            detail=str(exc)[:500],
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     if status >= 400 or not body:
+        detail = f"HTTP {status}"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed_fetch",
-            detail=f"HTTP {status}",
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     page_text = extract_page_text_for_description(body, fetch_url)
     if len(page_text) < 80:
+        detail = "page text too short after strip"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed_fetch",
-            detail="page text too short after strip",
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     settings = get_settings()
     has_llm = bool(settings.gemini_api_key.strip()) or bool(
         settings.openrouter_api_key.strip()
     )
     if not has_llm:
+        detail = "GEMINI_API_KEY and OPENROUTER_API_KEY not set"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed",
-            detail="GEMINI_API_KEY and OPENROUTER_API_KEY not set",
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     try:
         roles = await _call_deep_enrich_llm(page_text, llm_client)
     except (json.JSONDecodeError, ValidationError, ValueError, APIStatusError) as exc:
+        detail = f"llm: {exc}"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed",
-            detail=f"llm: {exc}",
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
     except Exception as exc:
         logger.exception("deep_enrich unexpected failure for %s", job_id)
+        detail = f"llm: {type(exc).__name__}: {exc}"[:500]
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="failed",
-            detail=f"llm: {type(exc).__name__}: {exc}"[:500],
+            detail=detail,
         )
-        return "failed"
+        return _job_result(row, "failed", detail=detail)
 
     if not roles:
         now = datetime.now(timezone.utc).isoformat()
         supabase.table("jobs").update({"deep_enriched_at": now}).eq("id", job_id).execute()
-        _log_enrich(supabase, job_id=job_id, outcome="skipped", detail="empty jobs array")
-        return "skipped"
+        detail = "empty jobs array"
+        _log_enrich(supabase, job_id=job_id, outcome="skipped", detail=detail)
+        return _job_result(row, "skipped", detail=detail)
 
     if len(roles) > 1:
         sig = parent_listing_signature(
@@ -547,16 +618,18 @@ async def enrich_job_deep(
                 "deep_enriched_at": now,
             }
         ).eq("id", job_id).execute()
+        detail = f"children={','.join(child_ids)}"
         _log_enrich(
             supabase,
             job_id=job_id,
             outcome="split",
-            detail=f"children={','.join(child_ids)}",
+            detail=detail,
         )
-        return "split"
+        return _job_result(row, "split", detail=detail)
 
     role = roles[0]
     patch = _role_to_job_patch(role, row)
+    was_review = bool(row.get("is_review_required"))
     skills = patch.pop("skills_required", [])
     description = str(patch.get("description") or "")
     try:
@@ -569,8 +642,14 @@ async def enrich_job_deep(
 
     supabase.table("jobs").update(patch).eq("id", job_id).execute()
     await _attach_job_skills(supabase, job_id, skills)
+    review_cleared = was_review and not patch.get("is_review_required", True)
     _log_enrich(supabase, job_id=job_id, outcome="enriched", detail=fetch_url)
-    return "enriched"
+    return _job_result(
+        row,
+        "enriched",
+        detail=fetch_url,
+        review_cleared=review_cleared if was_review else None,
+    )
 
 
 def _needs_deep_enrich(row: dict[str, Any]) -> bool:
@@ -616,12 +695,16 @@ async def run_deep_enrich_tick(
     limit: int = 25,
     dry_run: bool = False,
     include_review_queue: bool = True,
-) -> dict[str, int]:
-    """Process up to ``limit`` jobs pending deep enrichment.
+    inter_job_delay_sec: float | None = None,
+) -> DeepEnrichTickResult:
+    """Process up to ``limit`` jobs sequentially (one at a time).
 
     When ``include_review_queue`` is true (default), also selects rows with
     ``is_review_required=true`` so scraper ingest can clear the admin queue
     after fetching full listing pages (apply path + deadline).
+
+    Returns aggregate counts plus a per-job ``results`` list with outcome
+    and ``detail`` reason for successes and failures.
     """
     query = (
         supabase.table("jobs")
@@ -636,31 +719,41 @@ async def run_deep_enrich_tick(
     result = query.execute()
     rows = filter_deep_enrich_candidates(result.data or [], limit=limit)
 
-    stats = {"enriched": 0, "split": 0, "failed": 0, "skipped": 0, "attempted": 0}
-    delay = get_settings().deep_enrich_inter_job_delay_sec
+    settings = get_settings()
+    delay = (
+        inter_job_delay_sec
+        if inter_job_delay_sec is not None
+        else settings.deep_enrich_inter_job_delay_sec
+    )
+    tick = DeepEnrichTickResult()
     for idx, row in enumerate(rows):
-        stats["attempted"] += 1
-        outcome = await enrich_job_deep(supabase, row, dry_run=dry_run)
-        if outcome == "enriched":
-            stats["enriched"] += 1
-        elif outcome == "split":
-            stats["split"] += 1
-        elif outcome == "skipped":
-            stats["skipped"] += 1
+        tick.attempted += 1
+        job_result = await enrich_job_deep(supabase, row, dry_run=dry_run)
+        tick.results.append(job_result)
+        if job_result.outcome == "enriched":
+            tick.enriched += 1
+        elif job_result.outcome == "split":
+            tick.split += 1
+        elif job_result.outcome == "skipped":
+            tick.skipped += 1
         else:
-            stats["failed"] += 1
+            tick.failed += 1
         if delay > 0 and idx < len(rows) - 1:
             await asyncio.sleep(delay)
-    return stats
+    return tick
 
 
 async def schedule_post_ingest_deep_enrich(
     supabase: Any,
     *,
     ingested_count: int,
-) -> dict[str, int]:
-    """Fire-and-forget helper after bulk scraper ingest (budget-capped)."""
-    empty = {"enriched": 0, "split": 0, "failed": 0, "skipped": 0, "attempted": 0}
+) -> DeepEnrichTickResult:
+    """Fire-and-forget helper after bulk scraper ingest (budget-capped).
+
+    Jobs are processed one at a time with ``post_ingest_deep_enrich_inter_job_delay_sec``
+    between attempts (default 1s) to avoid LLM/fetch bursts.
+    """
+    empty = DeepEnrichTickResult()
     if ingested_count <= 0:
         return empty
     settings = get_settings()
@@ -672,13 +765,28 @@ async def schedule_post_ingest_deep_enrich(
     cap = max(1, settings.post_ingest_deep_enrich_max_limit)
     limit = min(max(ingested_count, 1), cap)
     try:
-        stats = await run_deep_enrich_tick(
+        tick = await run_deep_enrich_tick(
             supabase,
             limit=limit,
             include_review_queue=True,
+            inter_job_delay_sec=settings.post_ingest_deep_enrich_inter_job_delay_sec,
         )
-        logger.info("post_ingest deep_enrich tick limit=%s stats=%s", limit, stats)
-        return stats
+        logger.info(
+            "post_ingest deep_enrich tick limit=%s enriched=%s failed=%s attempted=%s",
+            limit,
+            tick.enriched,
+            tick.failed,
+            tick.attempted,
+        )
+        for item in tick.results:
+            logger.info(
+                "post_ingest deep_enrich job=%s outcome=%s detail=%s review_cleared=%s",
+                item.job_id,
+                item.outcome,
+                item.detail,
+                item.review_cleared,
+            )
+        return tick
     except Exception:
         logger.warning("post_ingest deep_enrich tick failed", exc_info=True)
         return empty

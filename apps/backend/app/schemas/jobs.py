@@ -575,6 +575,16 @@ class JobIngestResponse(BaseModel):
     errors: list[JobIngestErrorItem] = []
 
 
+class DeepEnrichJobResultItem(BaseModel):
+    """Per-job outcome from a deep-enrich tick (sequential, one at a time)."""
+
+    job_id: str
+    title: str | None = None
+    outcome: Literal["enriched", "split", "failed", "skipped"]
+    detail: str | None = None
+    review_cleared: bool | None = None
+
+
 class DeepEnrichTickResponse(BaseModel):
     """POST /jobs/deep-enrich-tick — deep-enrich batch result."""
 
@@ -583,6 +593,7 @@ class DeepEnrichTickResponse(BaseModel):
     failed: int
     skipped: int = 0
     attempted: int = 0
+    results: list[DeepEnrichJobResultItem] = Field(default_factory=list)
 
 
 # ── Admin CRUD (Wave 4 PR 2) ──────────────────────────────────────────

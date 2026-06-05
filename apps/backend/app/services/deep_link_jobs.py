@@ -9,6 +9,7 @@ from typing import Any
 from app.services.deep_link_parsers import EnrichmentResult
 from app.services.deep_link_router import detect_parser_name
 from app.services.deep_link_telemetry import record_parser_telemetry
+from app.services.job_activation import apply_review_state_to_row, compute_review_state
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,19 @@ def job_needs_enrichment(row: dict) -> bool:
     if row.get("enrichment_attempted_at"):
         return False
     return True
+
+
+def _merge_review_state(row: dict, patch: dict[str, Any]) -> None:
+    """Recompute Track 4e review flags after apply-path enrichment."""
+    merged = {**row, **patch}
+    state = compute_review_state(
+        apply_url=merged.get("apply_url"),
+        apply_email=merged.get("apply_email"),
+        contact_phone=merged.get("contact_phone"),
+        closing_date=merged.get("closing_date"),
+        application_instructions=merged.get("application_instructions"),
+    )
+    apply_review_state_to_row(patch, state)
 
 
 def _apply_enrichment_patch(
@@ -66,6 +80,7 @@ async def enrich_job_row(supabase: Any, job_id: str, row: dict) -> bool:
     if working.get("contact_phone") and not row.get("contact_phone"):
         patch_desc["contact_phone"] = working["contact_phone"]
     if patch_desc:
+        _merge_review_state(row, patch_desc)
         supabase.table("jobs").update(patch_desc).eq("id", job_id).execute()
         row.update(patch_desc)
 
@@ -95,6 +110,8 @@ async def enrich_job_row(supabase: Any, job_id: str, row: dict) -> bool:
         supabase, job_id=job_id, source_url=source_url, result=result
     )
     updated = _apply_enrichment_patch(row, result, patch)
+    if updated or patch.get("enrichment_attempted_at"):
+        _merge_review_state(row, patch)
     supabase.table("jobs").update(patch).eq("id", job_id).execute()
     return updated
 
@@ -141,12 +158,14 @@ async def reparse_job_row(
             patch["contact_phone"] = result.contact_phone
         if not patch:
             return False
+        _merge_review_state(row, patch)
         supabase.table("jobs").update(patch).eq("id", job_id).execute()
         return True
 
     updated = _apply_enrichment_patch(row, result, patch)
     if patch:
         patch["enrichment_attempted_at"] = datetime.now(timezone.utc).isoformat()
+        _merge_review_state(row, patch)
         supabase.table("jobs").update(patch).eq("id", job_id).execute()
     return updated
 

@@ -1557,6 +1557,24 @@ components:
         apply_email: { type: string, format: email }
         is_enriched: { type: boolean, default: true }
 
+    DeepEnrichJobResultItem:
+      type: object
+      required: [job_id, outcome]
+      properties:
+        job_id: { type: string, format: uuid }
+        title: { type: string, nullable: true }
+        outcome:
+          type: string
+          enum: [enriched, split, failed, skipped]
+        detail:
+          type: string
+          nullable: true
+          description: Human-readable success or failure reason
+        review_cleared:
+          type: boolean
+          nullable: true
+          description: True when deep-enrich cleared is_review_required on this job
+
     DeepEnrichTickResponse:
       type: object
       required: [enriched, split, failed]
@@ -1566,6 +1584,10 @@ components:
         failed: { type: integer, minimum: 0 }
         skipped: { type: integer, minimum: 0 }
         attempted: { type: integer, minimum: 0, description: Jobs processed in this tick }
+        results:
+          type: array
+          description: Per-job outcomes processed sequentially (one at a time)
+          items: { $ref: '#/components/schemas/DeepEnrichJobResultItem' }
 
     JobCreate:
       type: object
@@ -3378,6 +3400,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AdminReviewQueueOverview' }
+        '403': { description: Not an admin }
+
+  /admin/review-jobs/deep-enrich-tick:
+    post:
+      operationId: adminReviewJobsDeepEnrichTick
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      description: |
+        Process up to ``limit`` review-queue jobs sequentially (one at a time).
+        Returns per-job outcomes with detail reasons. Use ``dry_run=true`` to
+        preview fetch URLs without LLM spend.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+        - { name: dry_run, in: query, schema: { type: boolean, default: false } }
+        - name: include_review_queue
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeepEnrichTickResponse' }
         '403': { description: Not an admin }
 
   /admin/review-jobs:

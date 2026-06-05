@@ -349,7 +349,7 @@ async def process_job(
 
     after = _refetch_job(supabase, job_id) or before
 
-    if enrich_outcome == "failed":
+    if enrich_outcome.outcome == "failed":
         _log_outcome(
             supabase,
             job_id=job_id,
@@ -370,14 +370,14 @@ async def process_job(
             job_id=job_id,
             before=before,
             patch=after,
-            detail=str(enrich_outcome),
+            detail=enrich_outcome.detail or enrich_outcome.outcome,
         )
 
     _log_outcome(
         supabase,
         job_id=job_id,
         outcome="deactivated_after_enrich_fail",
-        detail=enrich_outcome,
+        detail=enrich_outcome.detail or enrich_outcome.outcome,
     )
     supabase.table("jobs").update(
         {

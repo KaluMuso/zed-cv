@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.services.deep_enrich import DeepEnrichJobResult
 from scripts import recover_apply_paths
 
 
@@ -149,7 +150,11 @@ class TestProcessJob:
                 recover_apply_paths,
                 "enrich_job_deep",
                 new_callable=AsyncMock,
-                return_value="enriched",
+                return_value=DeepEnrichJobResult(
+                    job_id="job-1",
+                    title="Driver",
+                    outcome="enriched",
+                ),
             ),
             patch.object(
                 recover_apply_paths,
@@ -191,7 +196,11 @@ class TestProcessJob:
                 recover_apply_paths,
                 "enrich_job_deep",
                 new_callable=AsyncMock,
-                return_value="enriched",
+                return_value=DeepEnrichJobResult(
+                    job_id="job-2",
+                    title="Clerk",
+                    outcome="enriched",
+                ),
             ),
             patch.object(
                 recover_apply_paths,
@@ -224,7 +233,12 @@ class TestProcessJob:
                 recover_apply_paths,
                 "enrich_job_deep",
                 new_callable=AsyncMock,
-                return_value="failed",
+                return_value=DeepEnrichJobResult(
+                    job_id="job-3",
+                    title="T",
+                    outcome="failed",
+                    detail="HTTP 500",
+                ),
             ),
             patch.object(
                 recover_apply_paths,

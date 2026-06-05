@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.core.config import get_settings
-from app.services.deep_enrich import schedule_post_ingest_deep_enrich
+from app.services.deep_enrich import DeepEnrichTickResult, schedule_post_ingest_deep_enrich
 
 
 @pytest.fixture(autouse=True)
@@ -21,13 +21,7 @@ async def test_schedule_skipped_when_disabled(monkeypatch):
 
     stats = await schedule_post_ingest_deep_enrich(None, ingested_count=40)
 
-    assert stats == {
-        "enriched": 0,
-        "split": 0,
-        "failed": 0,
-        "skipped": 0,
-        "attempted": 0,
-    }
+    assert stats == DeepEnrichTickResult()
 
 
 @pytest.mark.asyncio
@@ -38,15 +32,13 @@ async def test_schedule_respects_max_limit(monkeypatch):
     with patch(
         "app.services.deep_enrich.run_deep_enrich_tick",
         new_callable=AsyncMock,
-        return_value={
-            "enriched": 1,
-            "split": 0,
-            "failed": 0,
-            "skipped": 0,
-            "attempted": 1,
-        },
+        return_value=DeepEnrichTickResult(
+            enriched=1,
+            attempted=1,
+        ),
     ) as mock_tick:
         await schedule_post_ingest_deep_enrich(None, ingested_count=40)
 
     mock_tick.assert_awaited_once()
     assert mock_tick.await_args.kwargs["limit"] == 5
+    assert mock_tick.await_args.kwargs["inter_job_delay_sec"] == 1.0
