@@ -75,7 +75,7 @@ export function MatchCard({
 
   return (
     <article
-      className="card job-card overflow-hidden relative"
+      className="card job-card overflow-hidden relative native-pressable"
       style={{ opacity: greyed ? 0.6 : 1 }}
       data-testid="match-card"
       data-visibility={match.job.visibility_status ?? undefined}

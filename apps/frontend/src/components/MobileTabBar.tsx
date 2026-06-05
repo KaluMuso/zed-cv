@@ -9,6 +9,7 @@ import { profile as profileApi, subscription as subscriptionApi } from "@/lib/ap
 import {
   Sheet,
   SheetContent,
+  SheetHandle,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -16,6 +17,7 @@ import { settingsPath } from "@/app/settings/settings-nav";
 import { useTheme } from "@/components/ThemeProvider";
 import { formatTierNavSubtitle } from "@/lib/tier-display";
 import { showMobileAppShell } from "@/lib/mobile-nav";
+import { hapticTap } from "@/lib/haptics";
 
 const MAIN_TABS = [
   { id: "jobs", label: "Jobs", shortLabel: "Jobs", icon: "briefcase", href: "/jobs" },
@@ -115,7 +117,10 @@ export function MobileTabBar() {
               key={tab.id}
               type="button"
               className={`tab-btn ${isActive ? "active" : ""}`}
-              onClick={() => router.push(tab.href)}
+              onClick={() => {
+                hapticTap();
+                router.push(tab.href);
+              }}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
             >
@@ -130,7 +135,10 @@ export function MobileTabBar() {
         <button
           type="button"
           className={`tab-btn ${moreActive ? "active" : ""}`}
-          onClick={() => setMoreOpen(true)}
+          onClick={() => {
+            hapticTap();
+            setMoreOpen(true);
+          }}
           aria-label="More"
           aria-expanded={moreOpen}
           aria-haspopup="dialog"
@@ -143,7 +151,8 @@ export function MobileTabBar() {
       </nav>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+        <SheetContent side="bottom" className="rounded-t-2xl pb-8 native-sheet-bottom">
+          <SheetHandle />
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
             {tierSubtitle ? (
