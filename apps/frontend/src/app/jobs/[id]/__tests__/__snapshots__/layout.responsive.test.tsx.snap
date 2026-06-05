@@ -185,9 +185,12 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
               Save
             </span>
           </button>
-          <button
-            class="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
-            type="button"
+          <a
+            class="btn flex-1 sm:flex-none justify-center gap-1.5 text-xs sm:text-sm"
+            data-testid="job-detail-upgrade-cover_letter"
+            href="/pricing#professional"
+            style="border-color: color-mix(in srgb, #a855f7 45%, var(--line)); color: rgb(168, 85, 247); background: color-mix(in srgb, #a855f7 8%, var(--surface));"
+            title="Generate cover letter requires Professional"
           >
             <svg
               class=""
@@ -204,11 +207,27 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
                 d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
               />
             </svg>
-             Generate cover letter
-          </button>
+            Generate cover letter
+            <span
+              class="opacity-80"
+            >
+              · 
+              Professional
+            </span>
+            <span
+              class="sr-only"
+            >
+              K
+              250
+               per month
+            </span>
+          </a>
           <a
-            class="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
-            href="/profile/cv-builder?jobId=j1&jobTitle=Software%20Engineer&company=ACME%20Zambia"
+            class="btn flex-1 sm:flex-none justify-center gap-1.5 text-xs sm:text-sm"
+            data-testid="job-detail-upgrade-tailor_cv"
+            href="/pricing#professional"
+            style="border-color: color-mix(in srgb, #a855f7 45%, var(--line)); color: rgb(168, 85, 247); background: color-mix(in srgb, #a855f7 8%, var(--surface));"
+            title="Tailored CV requires Professional"
           >
             <svg
               class=""
@@ -225,7 +244,20 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
                 d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"
               />
             </svg>
-             Tailored CV
+            Tailored CV
+            <span
+              class="opacity-80"
+            >
+              · 
+              Professional
+            </span>
+            <span
+              class="sr-only"
+            >
+              K
+              250
+               per month
+            </span>
           </a>
         </div>
         <section
@@ -606,9 +638,12 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
               Save
             </span>
           </button>
-          <button
-            class="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
-            type="button"
+          <a
+            class="btn flex-1 sm:flex-none justify-center gap-1.5 text-xs sm:text-sm"
+            data-testid="job-detail-upgrade-cover_letter"
+            href="/pricing#professional"
+            style="border-color: color-mix(in srgb, #a855f7 45%, var(--line)); color: rgb(168, 85, 247); background: color-mix(in srgb, #a855f7 8%, var(--surface));"
+            title="Generate cover letter requires Professional"
           >
             <svg
               class=""
@@ -625,11 +660,27 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
                 d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
               />
             </svg>
-             Generate cover letter
-          </button>
+            Generate cover letter
+            <span
+              class="opacity-80"
+            >
+              · 
+              Professional
+            </span>
+            <span
+              class="sr-only"
+            >
+              K
+              250
+               per month
+            </span>
+          </a>
           <a
-            class="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
-            href="/profile/cv-builder?jobId=j1&jobTitle=Software%20Engineer&company=ACME%20Zambia"
+            class="btn flex-1 sm:flex-none justify-center gap-1.5 text-xs sm:text-sm"
+            data-testid="job-detail-upgrade-tailor_cv"
+            href="/pricing#professional"
+            style="border-color: color-mix(in srgb, #a855f7 45%, var(--line)); color: rgb(168, 85, 247); background: color-mix(in srgb, #a855f7 8%, var(--surface));"
+            title="Tailored CV requires Professional"
           >
             <svg
               class=""
@@ -646,7 +697,20 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
                 d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"
               />
             </svg>
-             Tailored CV
+            Tailored CV
+            <span
+              class="opacity-80"
+            >
+              · 
+              Professional
+            </span>
+            <span
+              class="sr-only"
+            >
+              K
+              250
+               per month
+            </span>
           </a>
         </div>
         <section
