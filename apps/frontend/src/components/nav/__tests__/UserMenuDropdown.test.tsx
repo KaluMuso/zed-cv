@@ -57,8 +57,8 @@ describe("UserMenuDropdown", () => {
       "/settings/billing",
     );
     expect(
-      screen.getByText(/web push is a browser permission, not an in-app notification feed/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/web push is a browser permission/i),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /profile \(cv & skills\)/i })).toHaveAttribute(
       "href",
       "/profile",
