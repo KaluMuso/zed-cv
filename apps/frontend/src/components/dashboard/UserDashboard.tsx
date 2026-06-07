@@ -17,6 +17,7 @@ import {
   UpgradeBanner,
 } from "./DashboardWidgets";
 import { DashboardInsights, type ApplicationFunnel } from "./DashboardInsights";
+import { ProfileReferralCard } from "@/app/profile/_tabs/ProfileReferralCard";
 
 export type DashboardLiveData = {
   totalMatches: number;
@@ -43,6 +44,11 @@ export type UserDashboardProps = {
   profileCompleteness?: { percent: number; hints: readonly string[] };
   applicationsCount?: number;
   applicationFunnel?: ApplicationFunnel;
+  /** Referral card — all optional so mock / logged-out mode never crashes. */
+  userId?: string;
+  referralCode?: string;
+  referralSignupsCount?: number;
+  referralQualifiedCount?: number;
 };
 
 function mapMatchToCondensed(m: MatchData) {
@@ -68,6 +74,10 @@ export function UserDashboard({
   profileCompleteness,
   applicationsCount = 0,
   applicationFunnel,
+  userId = "",
+  referralCode = "",
+  referralSignupsCount = 0,
+  referralQualifiedCount = 0,
 }: UserDashboardProps) {
   const data = MOCK_DASHBOARD;
   const displayName = userName ?? data.userName;
@@ -255,6 +265,15 @@ export function UserDashboard({
               </li>
             </ul>
           </div>
+          {referralCode ? (
+            <ProfileReferralCard
+              userId={userId}
+              userName={userName}
+              referralCode={referralCode}
+              referralSignupsCount={referralSignupsCount}
+              referralQualifiedCount={referralQualifiedCount}
+            />
+          ) : null}
           {profileCompleteness ? (
             <ProfileCompletenessRing
               percent={profileCompleteness.percent}

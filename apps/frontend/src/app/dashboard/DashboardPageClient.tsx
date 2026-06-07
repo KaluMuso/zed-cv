@@ -85,6 +85,10 @@ export function DashboardPageClient() {
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [applicationFunnel, setApplicationFunnel] = useState<ApplicationFunnel | undefined>();
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [referralSignupsCount, setReferralSignupsCount] = useState(0);
+  const [referralQualifiedCount, setReferralQualifiedCount] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
@@ -105,6 +109,10 @@ export function DashboardPageClient() {
       .then(([prof, matchRes, savedRes, sub, prefs]) => {
         if (cancelled) return;
         setUserName(prof.full_name ?? undefined);
+        setUserId(prof.id);
+        setReferralCode(prof.referral_code ?? "");
+        setReferralSignupsCount(prof.referral_signups_count ?? 0);
+        setReferralQualifiedCount(prof.referral_qualified_count ?? 0);
         setSubscriptionTier(prof.subscription_tier);
         setSubscription(sub);
         const completeness = computeProfileCompleteness({
@@ -153,6 +161,10 @@ export function DashboardPageClient() {
         avgScore,
         topMatches,
       }}
+      userId={userId}
+      referralCode={referralCode}
+      referralSignupsCount={referralSignupsCount}
+      referralQualifiedCount={referralQualifiedCount}
     />
   );
 }
