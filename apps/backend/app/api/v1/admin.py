@@ -659,6 +659,7 @@ async def hard_delete_job(
     logger.warning("admin_hard_delete_job: user=%s job_id=%s title=%r", current_user["id"], job_id, title)
     return {"deleted": True, "id": job_id, "title": title}
 
+
 @router.post("/re-embed")
 async def re_embed_all(
     target: str = Query("all", description="One of: jobs, cvs, all"),
@@ -1719,9 +1720,28 @@ async def update_admin_job(
     update_payload["updated_by_user_id"] = current_user["id"]
     update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-    result = (
-        supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
-    )
+    try:
+        result = (
+            supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
+        )
+    except Exception as _db_exc:
+        # Belt-and-suspenders: if the DB trigger still recomputes dedupe_key
+        # and hits the partial unique index, surface a 409 instead of letting
+        # Uvicorn emit a bare text/plain 500 (which bypasses CORS middleware
+        # and makes the browser report a misleading "CORS error").
+        # Primary fix: migration 107 restricts the trigger to INSERT-only.
+        _msg = str(_db_exc).lower()
+        if "duplicate key" in _msg or "idx_jobs_dedupe_key_active" in _msg:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This edit would create a duplicate active job listing "
+                    "(dedupe key collision). Another active job already has "
+                    "the same title + company + location combination. "
+                    "Change one of those fields or deactivate the other listing first."
+                ),
+            )
+        raise
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to update job")
     job = result.data[0]

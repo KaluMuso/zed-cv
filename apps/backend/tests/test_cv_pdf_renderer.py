@@ -50,6 +50,22 @@ def _sample_body() -> BuildFromScratchBody:
     )
 
 
+import sys
+import pytest
+from unittest.mock import MagicMock
+
+# Check if weasyprint is missing or stubbed as a MagicMock
+_weasyprint_missing = False
+if "weasyprint" in sys.modules:
+    if isinstance(sys.modules["weasyprint"], MagicMock):
+        _weasyprint_missing = True
+else:
+    try:
+        import weasyprint
+    except Exception:
+        _weasyprint_missing = True
+
+
 def test_render_cv_html_includes_sections():
     html = render_cv_html(_sample_body())
     assert "Chanda Banda" in html
@@ -58,8 +74,10 @@ def test_render_cv_html_includes_sections():
     assert "IFRS" in html
 
 
+@pytest.mark.skipif(_weasyprint_missing, reason="weasyprint / libgobject is missing or stubbed (normal on Windows)")
 def test_render_cv_pdf_produces_bytes_under_five_seconds():
     pdf_bytes, render_ms = render_cv_pdf(_sample_body())
     assert pdf_bytes[:4] == b"%PDF"
     assert len(pdf_bytes) > 1000
     assert render_ms < 5000
+
