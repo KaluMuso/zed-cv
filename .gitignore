@@ -20,6 +20,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 supabase/.temp/
+infra/supabase/.temp/
 .pytest_cache/
 *.pem
 *.key
