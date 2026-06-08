@@ -632,7 +632,7 @@ async def backfill_jobs_html_strip(
 @router.post("/jobs/bulk-deactivate-expired")
 async def bulk_deactivate_expired(
     supabase=Depends(get_supabase),
-    user_id: str = Depends(get_current_admin_user_id),
+    current_user: dict = Depends(require_admin),
 ):
     """Run the existing deactivate_expired_jobs RPC and return count affected."""
     result = supabase.rpc("deactivate_expired_jobs", {}).execute()
@@ -644,7 +644,7 @@ async def bulk_deactivate_expired(
 async def hard_delete_job(
     job_id: str,
     supabase=Depends(get_supabase),
-    user_id: str = Depends(get_current_admin_user_id),
+    current_user: dict = Depends(require_admin),
 ):
     """Permanently delete a job and ALL referencing rows (matches, saved_jobs, etc).
     Destructive — admin only. Use sparingly; prefer soft-deactivate via is_active=false.
@@ -656,8 +656,9 @@ async def hard_delete_job(
         raise HTTPException(status_code=404, detail="Job not found")
     title = existing.data[0].get("title")
     supabase.table("jobs").delete().eq("id", job_id).execute()
-    logger.warning("admin_hard_delete_job: user=%s job_id=%s title=%r", user_id, job_id, title)
+    logger.warning("admin_hard_delete_job: user=%s job_id=%s title=%r", current_user["id"], job_id, title)
     return {"deleted": True, "id": job_id, "title": title}
+
 
 @router.post("/re-embed")
 async def re_embed_all(
@@ -1719,9 +1720,28 @@ async def update_admin_job(
     update_payload["updated_by_user_id"] = current_user["id"]
     update_payload["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-    result = (
-        supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
-    )
+    try:
+        result = (
+            supabase.table("jobs").update(update_payload).eq("id", job_id).execute()
+        )
+    except Exception as _db_exc:
+        # Belt-and-suspenders: if the DB trigger still recomputes dedupe_key
+        # and hits the partial unique index, surface a 409 instead of letting
+        # Uvicorn emit a bare text/plain 500 (which bypasses CORS middleware
+        # and makes the browser report a misleading "CORS error").
+        # Primary fix: migration 107 restricts the trigger to INSERT-only.
+        _msg = str(_db_exc).lower()
+        if "duplicate key" in _msg or "idx_jobs_dedupe_key_active" in _msg:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This edit would create a duplicate active job listing "
+                    "(dedupe key collision). Another active job already has "
+                    "the same title + company + location combination. "
+                    "Change one of those fields or deactivate the other listing first."
+                ),
+            )
+        raise
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to update job")
     job = result.data[0]

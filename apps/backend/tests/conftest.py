@@ -33,6 +33,19 @@ os.environ.setdefault("OPENROUTER_API_KEY", "sk-fake-openrouter")
 # Ensure the app package is importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# ── Windows compatibility: stub weasyprint (requires libgobject unavailable on Windows).
+# Must happen BEFORE any import of `app.services.cv_pdf_renderer` fires the weasyprint import.
+# On Linux CI, weasyprint is fully installed and this stub is never used.
+try:
+    import weasyprint
+except Exception:
+    if "weasyprint" not in sys.modules:
+        _wp_stub = MagicMock()
+        sys.modules["weasyprint"] = _wp_stub
+        sys.modules["weasyprint.CSS"] = _wp_stub
+        sys.modules["weasyprint.HTML"] = _wp_stub
+
+
 
 # -- Mock Supabase client -------------------------------------------------
 class FakeSupabaseQuery:

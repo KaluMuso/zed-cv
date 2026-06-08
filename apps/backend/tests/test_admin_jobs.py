@@ -42,8 +42,13 @@ from fastapi.testclient import TestClient
 
 
 class _Result:
-    def __init__(self, data: list[dict] | None = None, count: int | None = None):
-        self.data = list(data or [])
+    def __init__(self, data: Any = None, count: int | None = None):
+        if isinstance(data, (list, tuple)):
+            self.data = list(data)
+        elif data is None:
+            self.data = []
+        else:
+            self.data = data
         self.count = count
 
 
