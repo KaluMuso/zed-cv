@@ -7,6 +7,15 @@ import os, sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# -- Mock weasyprint for environments missing GTK/GObject (like Windows dev) -
+try:
+    import weasyprint
+except Exception:
+    mock_weasyprint = MagicMock()
+    mock_weasyprint.CSS = MagicMock()
+    mock_weasyprint.HTML = MagicMock()
+    sys.modules["weasyprint"] = mock_weasyprint
+
 import pytest
 from fastapi.testclient import TestClient
 

@@ -698,8 +698,28 @@ class AdminJobUpdate(BaseModel):
     contact_phone: Optional[str] = Field(None, max_length=20)
     contact_whatsapp: Optional[str] = Field(None, max_length=64)
     is_enriched: Optional[bool] = None
+    experience_min_years: Optional[int] = Field(None, ge=0, le=50)
+    seniority_level: Optional[str] = Field(None, max_length=32)
+    qualifications_required: Optional[list[str]] = None
+    parent_listing_signature: Optional[str] = Field(None, max_length=64)
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("seniority_level", mode="before")
+    @classmethod
+    def _normalize_seniority(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        from app.services.seniority import normalize_seniority_level
+        return normalize_seniority_level(v)
+
+    @field_validator("qualifications_required", mode="after")
+    @classmethod
+    def _cap_qualifications(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        if v is None:
+            return None
+        from app.services.seniority import normalize_qualifications
+        return normalize_qualifications(v, max_items=20)
 
     @field_validator("source_platform", mode="before")
     @classmethod
