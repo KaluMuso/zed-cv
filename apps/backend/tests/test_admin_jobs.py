@@ -887,3 +887,37 @@ class TestBulkDeactivateExpired:
             headers=auth_headers,
         )
         assert r.status_code == 422
+
+    def test_admin_jobs_save_accepts_long_requirement(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        long_req = "X" * 250
+        job_id = _seed_job(jobs_fake, requirements=[long_req])
+        
+        emb = _patch_embedding([0.7] * 768)
+        with patch("app.api.v1.admin.generate_embedding", emb), patch(
+            "app.services.skill_resolver.generate_embedding", emb
+        ), patch("app.api.v1.admin.resolve_skill_ids", AsyncMock(return_value=[])):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [long_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 200, r.text
+            
+            max_req = "Y" * 500
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [max_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 200, r.text
+            
+            too_long_req = "Z" * 501
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [too_long_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 422, r.text
+
