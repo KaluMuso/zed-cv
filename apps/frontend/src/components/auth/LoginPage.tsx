@@ -8,6 +8,7 @@ import { StepProgress } from "@/components/shared/StepProgress";
 import type { OtpChannel } from "@/lib/api";
 
 export interface LoginPageProps {
+  fullName: string;
   phoneDigits: string;
   email: string;
   consentChecked: boolean;
@@ -15,6 +16,7 @@ export interface LoginPageProps {
   error: string;
   otpChannel: OtpChannel;
   isFreeTier: boolean;
+  onFullNameChange: (fullName: string) => void;
   onPhoneChange: (digits: string) => void;
   onEmailChange: (email: string) => void;
   onConsentChange: (checked: boolean) => void;
@@ -23,6 +25,7 @@ export interface LoginPageProps {
 }
 
 export function LoginPage({
+  fullName = "",
   phoneDigits,
   email,
   consentChecked,
@@ -30,6 +33,7 @@ export function LoginPage({
   error,
   otpChannel,
   isFreeTier,
+  onFullNameChange = () => {},
   onPhoneChange,
   onEmailChange,
   onConsentChange,
@@ -67,6 +71,24 @@ export function LoginPage({
       </p>
 
       <form onSubmit={onSubmit}>
+        <label htmlFor="auth-fullname" className="mb-2 block text-sm font-medium text-ink-2">
+          Your name
+        </label>
+        <input
+          id="auth-fullname"
+          type="text"
+          required
+          value={fullName}
+          onChange={(e) => onFullNameChange(e.target.value)}
+          disabled={loading}
+          placeholder="e.g. Kaluba Musonda"
+          className="field mb-1"
+          style={{ height: 44 }}
+        />
+        <p className="text-xs text-muted-foreground mb-5">
+          We use this to personalize your match alerts.
+        </p>
+
         <label htmlFor="auth-phone" className="mb-2 block text-sm font-medium text-ink-2">
           Phone number
         </label>
@@ -164,7 +186,7 @@ export function LoginPage({
           size="lg"
           className="mt-6 w-full"
           loading={loading}
-          disabled={!consentChecked || phoneDigits.length < 9 || !email.trim()}
+          disabled={!consentChecked || phoneDigits.length < 9 || !email.trim() || fullName.trim().length < 2}
         >
           Send code <Icon name="arrowRight" size={16} />
         </Button>

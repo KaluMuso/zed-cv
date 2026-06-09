@@ -65,7 +65,7 @@ export function Navbar() {
   useEffect(() => {
     // Check if we're on mobile on initial load
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 1024);
     };
     
     checkMobile();
@@ -139,9 +139,9 @@ export function Navbar() {
   if (mobileAppShell) {
     return (
       <>
-        <div className="chevron-strip hidden md:block" />
+        <div className="chevron-strip hidden lg:block" />
         <nav
-          className="sticky top-0 z-50 md:hidden transition-all duration-200"
+          className="sticky top-0 z-50 lg:hidden transition-all duration-200"
           style={{
             background: navSurface,
             backdropFilter: scrolled ? "blur(16px) saturate(180%)" : "none",
@@ -155,7 +155,7 @@ export function Navbar() {
             </Link>
           </div>
         </nav>
-        <div className="chevron-strip md:hidden" />
+        <div className="chevron-strip lg:hidden" />
       </>
     );
   }
@@ -176,22 +176,24 @@ export function Navbar() {
             <Logo size={28} />
           </Link>
 
-          <div className="hidden md:flex items-center gap-8">
-            {visibleNavLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`nav-link ${linkActive(link.href) ? "active" : ""}`}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <div className="hidden lg:flex items-center gap-8">
+            {visibleNavLinks
+              .filter((link) => link.href !== "/auth" && link.href !== AUTH_GET_STARTED)
+              .map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`nav-link ${linkActive(link.href) ? "active" : ""}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
             {showInterviewPrep ? (
               <InterviewPrepNav subscriptionTier={subscriptionTier} />
             ) : null}
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <button
               onClick={toggle}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
@@ -229,39 +231,66 @@ export function Navbar() {
                   </>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="flex items-center gap-4 ml-2">
+                <Link
+                  href="/auth"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href={AUTH_GET_STARTED}
+                  className={cn(buttonVariants({ variant: "default", size: "sm" }), "px-4")}
+                >
+                  Get started
+                </Link>
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden touch-target flex items-center justify-center"
-            aria-label="Toggle menu"
-            style={{ color: "var(--ink)" }}
-          >
-            <Icon name={menuOpen ? "x" : "menu"} size={24} />
-          </button>
+          <div className="flex items-center gap-3 lg:hidden">
+            {!isAuthenticated ? (
+              <Link
+                href={AUTH_GET_STARTED}
+                className={cn(buttonVariants({ variant: "default", size: "sm" }), "px-3")}
+              >
+                Get started
+              </Link>
+            ) : null}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="touch-target flex items-center justify-center"
+              aria-label="Toggle menu"
+              style={{ color: "var(--ink)" }}
+            >
+              <Icon name={menuOpen ? "x" : "menu"} size={24} />
+            </button>
+          </div>
         </div>
 
         {menuOpen ? (
           <div
-            className="md:hidden fixed inset-0 top-[70px] z-40 overflow-y-auto"
+            className="lg:hidden fixed inset-0 top-[70px] z-40 overflow-y-auto"
             style={{ background: "var(--surface)" }}
           >
             <div className="flex flex-col p-6 gap-2">
-              {visibleNavLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="font-display text-3xl py-3 transition-colors"
-                  style={{
-                    color: linkActive(link.href) ? "var(--green-700)" : "var(--ink)",
-                    borderBottom: "1px solid var(--line)",
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {visibleNavLinks
+                .filter((link) => link.href !== "/auth" && link.href !== AUTH_GET_STARTED)
+                .map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="font-display text-3xl py-3 transition-colors"
+                    style={{
+                      color: linkActive(link.href) ? "var(--green-700)" : "var(--ink)",
+                      borderBottom: "1px solid var(--line)",
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
               {showInterviewPrep ? (
                 <InterviewPrepNav
                   variant="stacked"
@@ -271,6 +300,16 @@ export function Navbar() {
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
+                {!isAuthenticated ? (
+                  <Link
+                    href="/auth"
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center")}
+                  >
+                    Log in
+                  </Link>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={toggle}

@@ -6,6 +6,12 @@ class OTPRequest(BaseModel):
         None,
         description="Override OTP delivery: email, whatsapp, or both",
     )
+    full_name: str | None = Field(
+        None,
+        min_length=2,
+        max_length=128,
+        description="User's full name, required in frontend for personalization",
+    )
 
 class OTPVerify(BaseModel):
     phone: str = Field(..., pattern=r"^\+260[0-9]{9}$")
@@ -20,6 +26,12 @@ class OTPVerify(BaseModel):
         None,
         max_length=64,
         description="Invite ref from link (?ref=) — user id or referral_code.",
+    )
+    full_name: str | None = Field(
+        None,
+        min_length=2,
+        max_length=128,
+        description="User's full name, supplied on verify to set on initial creation",
     )
 
 class LoginRequest(BaseModel):
