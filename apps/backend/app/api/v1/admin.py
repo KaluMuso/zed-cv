@@ -962,7 +962,7 @@ async def list_jobs(
     query = supabase.table("jobs").select(
         "id, title, company, location, source, source_url, apply_url, quality_score, is_active, closing_date, posted_at",
         count="exact",
-    ).order("posted_at", desc=True)
+    ).order("posted_at", desc=True).order("id", desc=True)
     if is_active is not None:
         query = query.eq("is_active", is_active)
     if expired is True:
@@ -1108,6 +1108,21 @@ async def patch_job_contact(
             current_user["id"],
         )
         return {"id": job_id, "is_active": False, "deactivation_reason": reason}
+
+    if body.apply_url and body.apply_url.strip():
+        from app.services.job_quality import sanitize_apply_url
+        if sanitize_apply_url(body.apply_url) is None:
+            raise HTTPException(
+                status_code=422,
+                detail="That URL is an aggregator broadcast channel, not a valid apply route. Enter the employer's own link.",
+            )
+    if body.contact_phone and body.contact_phone.strip():
+        from app.services.job_quality import sanitize_contact_phone
+        if sanitize_contact_phone(body.contact_phone) is None:
+            raise HTTPException(
+                status_code=422,
+                detail="That phone number belongs to the aggregator listing site, not the employer.",
+            )
 
     patch = body.model_dump(
         exclude_unset=True,
@@ -1760,6 +1775,36 @@ async def update_admin_job(
     )
 
     return Job(**job)
+
+
+@router.post("/jobs/{job_id}/re-enrich")
+async def admin_re_enrich_job(
+    job_id: str,
+    supabase=Depends(get_supabase),
+    current_user: dict = Depends(require_admin),
+):
+    """Force-enrich a single job RIGHT NOW. Useful for admin curation
+    when a scraped row has a thin description that didn't pick up
+    via the 6h cron. Calls the same service the cron does, but for
+    one row only (clears deep_enriched_at first so the row is
+    eligible)."""
+    # Verify job exists
+    existing = supabase.table("jobs").select("id, title, is_active").eq("id", job_id).execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Clear deep_enriched_at so run_deep_enrich_tick re-picks it.
+    supabase.table("jobs").update({"deep_enriched_at": None}).eq("id", job_id).execute()
+
+    # Call the existing service helper
+    from app.services.deep_enrich import run_deep_enrich_for_job
+    result = await run_deep_enrich_for_job(supabase, job_id)
+    return {
+        "enriched": result.get("enriched", False),
+        "deep_enriched_at": result.get("deep_enriched_at"),
+        "admin_published": result.get("admin_published"),
+        "description_length": result.get("description_length"),
+    }
 
 
 @router.delete("/jobs/{job_id}")

@@ -244,6 +244,49 @@ def normalize_contact_phone(raw: str | None) -> str | None:
     return None
 
 
+# Apply URLs that are NEVER a real apply route. Aggregator pages
+# carry their own broadcast/social links on every listing; the
+# LLM scraper picks them up and stuffs them into apply_url.
+APPLY_URL_BLOCKED_PATTERNS = (
+    re.compile(r"^https?://(?:www\.)?whatsapp\.com/channel/", re.IGNORECASE),
+    re.compile(r"^https?://(?:www\.)?whatsapp\.com/c/", re.IGNORECASE),
+    re.compile(r"^https?://wa\.me/channel/", re.IGNORECASE),
+    re.compile(r"^https?://(?:www\.)?facebook\.com/(?:pages|groups)/", re.IGNORECASE),
+    re.compile(r"^https?://(?:www\.)?linkedin\.com/company/", re.IGNORECASE),
+)
+
+# Aggregator-owned phone numbers — appear on every job from that source
+# but belong to the aggregator's listing line, not the employer.
+AGGREGATOR_OWNED_PHONES = frozenset({
+    "+260813252760",  # jobwebzambia.com listing line
+})
+
+def sanitize_apply_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    s = url.strip()
+    if not s:
+        return None
+    for pat in APPLY_URL_BLOCKED_PATTERNS:
+        if pat.match(s):
+            return None
+    return s
+
+def sanitize_contact_phone(phone: str | None) -> str | None:
+    if not phone:
+        return None
+    s = phone.strip()
+    if not s:
+        return None
+    # Use normalize_contact_phone first to get canonical +2609xxxxxxxx form
+    canonical = normalize_contact_phone(s)
+    if canonical is None:
+        return None
+    if canonical in AGGREGATOR_OWNED_PHONES:
+        return None
+    return canonical
+
+
 def description_quality_ok(
     description: str, apply_url: str | None
 ) -> tuple[bool, str | None]:
@@ -475,7 +518,7 @@ def apply_ingest_quality_to_job_data(
     if not source_url and apply_url:
         source_url = apply_url
     job_data["source_url"] = source_url
-    job_data["apply_url"] = apply_url
+    job_data["apply_url"] = sanitize_apply_url(apply_url)
     description = str(job_data.get("description") or "")
 
     deactivation_reasons: list[str] = []
@@ -484,7 +527,7 @@ def apply_ingest_quality_to_job_data(
     if not ok and reason:
         deactivation_reasons.append(reason)
 
-    normalized_phone = normalize_contact_phone(job_data.get("contact_phone"))
+    normalized_phone = sanitize_contact_phone(job_data.get("contact_phone"))
     if job_data.get("contact_phone") and not normalized_phone:
         logger.warning(
             "ingest: invalid contact_phone cleared: %r",

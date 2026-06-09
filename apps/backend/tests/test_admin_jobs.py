@@ -66,6 +66,7 @@ class _Query:
         self._not_null: set[str] = set()
         self._negate_is = False
         self._limit: int | None = None
+        self._orders: list[tuple[str, bool]] = []
 
     # ── operation setters ──
     def select(self, *a, **kw):
@@ -138,7 +139,8 @@ class _Query:
     def or_(self, *a, **kw):
         return self
 
-    def order(self, *a, **kw):
+    def order(self, column: str, desc: bool = False):
+        self._orders.append((column, desc))
         return self
 
     def limit(self, n: int):
@@ -180,6 +182,14 @@ class _Query:
     def execute(self):
         if self._op == "select":
             rows = self._matches()
+            if self._orders:
+                for col, desc in reversed(self._orders):
+                    def key_fn(x):
+                        val = x.get(col)
+                        if val is None:
+                            return (1, "") if desc else (-1, "")
+                        return (0, val)
+                    rows.sort(key=key_fn, reverse=desc)
             if self._limit is not None:
                 rows = rows[: self._limit]
             return _Result(data=copy.deepcopy(rows), count=len(rows))

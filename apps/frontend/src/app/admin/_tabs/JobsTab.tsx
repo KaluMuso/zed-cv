@@ -20,6 +20,22 @@ import {
 } from "@/components/admin/AdminTableTools";
 import { AdminJobFormDialog } from "@/features/admin/jobs/AdminJobFormDialog";
 
+// Returns row.posted_at (or row.created_at as a fallback) as an epoch ms
+// number, or 0 if neither field is present. Defensive read because
+// AdminJobRow's exact shape varies depending on how it's serialized.
+function rowTimestamp(row: AdminJobRow): number {
+  const maybe = row as unknown as { posted_at?: string | null; created_at?: string | null };
+  if (maybe.posted_at) {
+    const t = new Date(maybe.posted_at).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  if (maybe.created_at) {
+    const t = new Date(maybe.created_at).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  return 0;
+}
+
 export function JobsTab({ token }: { token: string }) {
   const [data, setData] = useState<AdminJobRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +57,13 @@ export function JobsTab({ token }: { token: string }) {
     admin
       .jobs(token, params)
       .then((r) => {
-        setData(r.jobs);
+        // Pre-sort by posted_at desc so freshly ingested jobs surface
+        // at the top of the current page. Column-header sorts via
+        // useClientTable still override this initial order.
+        // NOTE: this only orders WITHIN the loaded page; cross-page
+        // reverse chronology needs a backend ORDER BY change.
+        const sortedJobs = [...r.jobs].sort((a, b) => rowTimestamp(b) - rowTimestamp(a));
+        setData(sortedJobs);
         setPages(r.pages);
       })
       .catch((e) => notify.error(e instanceof Error ? e.message : "Failed to load jobs"))

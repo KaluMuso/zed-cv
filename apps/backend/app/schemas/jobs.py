@@ -362,6 +362,16 @@ class JobCreate(BaseModel):
             return s or None
         return str(v).strip().lower() or None
 
+    @field_validator("apply_url", mode="before")
+    @classmethod
+    def _sanitize_apply_url_field(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            return None
+        from app.services.job_quality import sanitize_apply_url
+        return sanitize_apply_url(v)
+
     @field_validator("contact_phone", "contact_whatsapp", mode="before")
     @classmethod
     def _normalize_contact_phone_fields(cls, v: Any) -> Optional[str]:
@@ -375,10 +385,10 @@ class JobCreate(BaseModel):
         if s.lower().startswith(("http://", "https://", "wa.me/", "whatsapp.com/")):
             return s[:64]
         from app.services.description_body_extractor import normalize_zambian_phone
-        from app.services.job_quality import normalize_contact_phone
+        from app.services.job_quality import sanitize_contact_phone
 
         candidate = normalize_zambian_phone(s) or s
-        validated = normalize_contact_phone(candidate)
+        validated = sanitize_contact_phone(candidate)
         return validated
 
     @field_validator("contact_email", mode="before")

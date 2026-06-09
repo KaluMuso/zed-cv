@@ -816,5 +816,44 @@ async def schedule_post_ingest_deep_enrich(
             )
         return tick
     except Exception:
-        logger.warning("post_ingest deep_enrich tick failed", exc_info=True)
+        logger.exception("deep_enrich post-ingest failed")
         return empty
+
+
+_enrich_one = enrich_job_deep
+
+
+async def run_deep_enrich_for_job(supabase: Any, job_id: str) -> dict[str, Any]:
+    """Force-enrich a single job by ID.
+    Fetches the row, clears deep_enriched_at, runs _enrich_one,
+    and returns the enrichment metrics."""
+    res = supabase.table("jobs").select(_DEEP_ENRICH_SELECT).eq("id", job_id).execute()
+    if not res.data:
+        return {"enriched": False}
+
+    row = res.data[0]
+    job_result = await _enrich_one(supabase, row)
+
+    if job_result.outcome in ("enriched", "split"):
+        refreshed = (
+            supabase.table("jobs")
+            .select("deep_enriched_at, admin_published, description")
+            .eq("id", job_id)
+            .execute()
+        )
+        if refreshed.data:
+            ref_row = refreshed.data[0]
+            desc = ref_row.get("description") or ""
+            return {
+                "enriched": job_result.outcome == "enriched",
+                "deep_enriched_at": ref_row.get("deep_enriched_at"),
+                "admin_published": ref_row.get("admin_published"),
+                "description_length": len(desc),
+            }
+
+    return {
+        "enriched": False,
+        "deep_enriched_at": None,
+        "admin_published": row.get("admin_published"),
+        "description_length": len(row.get("description") or ""),
+    }

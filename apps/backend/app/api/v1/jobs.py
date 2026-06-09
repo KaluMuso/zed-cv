@@ -855,8 +855,9 @@ async def _ingest_one_job(
 
         from app.services.deep_link_parsers.base import sanitize_listing_source_url
 
+        from app.services.job_quality import sanitize_apply_url
         job.source_url = sanitize_listing_source_url(job.source_url)
-        job.apply_url = sanitize_listing_source_url(job.apply_url)
+        job.apply_url = sanitize_apply_url(sanitize_listing_source_url(job.apply_url))
         if not job.source_url and job.apply_url:
             job.source_url = job.apply_url
 
