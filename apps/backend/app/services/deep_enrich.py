@@ -418,7 +418,21 @@ async def _insert_child_job(
     if existing.data:
         row0 = existing.data[0]
         return str(row0.get("job_id") or row0.get("id"))
-    result = supabase.table("jobs").insert(patch).execute()
+    try:
+        result = supabase.table("jobs").insert(patch).execute()
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate key" in msg or "idx_jobs_dedupe_key_active" in msg:
+            logger.warning(
+                "deep_enrich dedupe collision, skipping row",
+                extra={
+                    "job_id": patch.get("id"),
+                    "title": patch.get("title"),
+                    "company": patch.get("company"),
+                },
+            )
+            return None
+        raise
     if not result.data:
         return None
     job_id = str(result.data[0]["id"])
@@ -640,7 +654,21 @@ async def enrich_job_deep(
     except Exception as exc:
         logger.warning("deep_enrich embedding failed %s: %s", job_id, exc)
 
-    supabase.table("jobs").update(patch).eq("id", job_id).execute()
+    try:
+        supabase.table("jobs").update(patch).eq("id", job_id).execute()
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate key" in msg or "idx_jobs_dedupe_key_active" in msg:
+            logger.warning(
+                "deep_enrich dedupe collision, skipping row",
+                extra={
+                    "job_id": job_id,
+                    "title": patch.get("title"),
+                    "company": patch.get("company"),
+                },
+            )
+            return _job_result(row, "skipped", detail="dedupe collision on update")
+        raise
     await _attach_job_skills(supabase, job_id, skills)
     review_cleared = was_review and not patch.get("is_review_required", True)
     _log_enrich(supabase, job_id=job_id, outcome="enriched", detail=fetch_url)

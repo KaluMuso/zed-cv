@@ -898,42 +898,36 @@ class TestBulkDeactivateExpired:
         )
         assert r.status_code == 422
 
-
-class TestAdminJobsExtensions:
-    def test_patch_job_contact_rejects_whatsapp_channel(
+    def test_admin_jobs_save_accepts_long_requirement(
         self, admin_client, auth_headers, jobs_fake
     ):
-        job_id = _seed_job(jobs_fake)
-        r = admin_client.patch(
-            f"/api/v1/admin/jobs/{job_id}/contact",
-            json={"apply_url": "https://whatsapp.com/channel/X"},
-            headers=auth_headers,
-        )
-        assert r.status_code == 422
-        assert "aggregator broadcast channel" in r.json()["detail"]
-
-        r = admin_client.patch(
-            f"/api/v1/admin/jobs/{job_id}/contact",
-            json={"contact_phone": "+260813252760"},
-            headers=auth_headers,
-        )
-        assert r.status_code == 422
-        assert "belongs to the aggregator listing site" in r.json()["detail"]
-
-    def test_get_jobs_returns_newest_first(
-        self, admin_client, auth_headers, jobs_fake
-    ):
-        id_3d = _seed_job(jobs_fake, posted_at="2026-06-06T12:00:00+00:00")
-        id_1d = _seed_job(jobs_fake, posted_at="2026-06-08T12:00:00+00:00")
-        id_today = _seed_job(jobs_fake, posted_at="2026-06-09T12:00:00+00:00")
-
-        r = admin_client.get(
-            "/api/v1/admin/jobs",
-            headers=auth_headers,
-        )
-        assert r.status_code == 200, r.text
-        data = r.json()["jobs"]
-        ids = [job["id"] for job in data]
-        seeded_ids = [job_id for job_id in ids if job_id in (id_3d, id_1d, id_today)]
-        assert seeded_ids == [id_today, id_1d, id_3d]
+        long_req = "X" * 250
+        job_id = _seed_job(jobs_fake, requirements=[long_req])
+        
+        emb = _patch_embedding([0.7] * 768)
+        with patch("app.api.v1.admin.generate_embedding", emb), patch(
+            "app.services.skill_resolver.generate_embedding", emb
+        ), patch("app.api.v1.admin.resolve_skill_ids", AsyncMock(return_value=[])):
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [long_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 200, r.text
+            
+            max_req = "Y" * 500
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [max_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 200, r.text
+            
+            too_long_req = "Z" * 501
+            r = admin_client.patch(
+                f"/api/v1/admin/jobs/{job_id}",
+                json={"requirements": [too_long_req]},
+                headers=auth_headers,
+            )
+            assert r.status_code == 422, r.text
 

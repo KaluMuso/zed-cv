@@ -632,8 +632,8 @@ class AdminJobCreate(JobCreate):
         if len(v) > 50:
             raise ValueError("max 50 items")
         for item in v:
-            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 100):
-                raise ValueError("each item must be 1-100 chars after trim")
+            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 500):
+                raise ValueError("each item must be 1-500 chars after trim")
         return v
 
     @model_validator(mode="after")
@@ -754,8 +754,8 @@ class AdminJobUpdate(BaseModel):
         if len(v) > 50:
             raise ValueError("max 50 items")
         for item in v:
-            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 100):
-                raise ValueError("each item must be 1-100 chars after trim")
+            if not isinstance(item, str) or not (1 <= len(item.strip()) <= 500):
+                raise ValueError("each item must be 1-500 chars after trim")
         return v
 
     @model_validator(mode="after")
