@@ -95,32 +95,14 @@ export function AdminJobFormDialog({
   const [forcePublish, setForcePublish] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reEnriching, setReEnriching] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setForm(EMPTY_FORM);
-    setEmploymentType("full_time");
-    setWorkArrangement("on_site");
-    setSourceUrl("");
-    setRequirements([]);
-    setSkillsRequired([]);
-    setEditSources([]);
-    setForcePublish(false);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    if (mode === "create") {
-      resetForm();
-      return;
-    }
-    if (!jobId) return;
-
-    let cancelled = false;
+  const fetchJobData = useCallback((id: string, onCancelCheck: () => boolean) => {
     setLoading(true);
     jobsApi
-      .get(jobId)
+      .get(id)
       .then((full) => {
-        if (cancelled) return;
+        if (onCancelCheck()) return;
         setForm({
           title: full.title ?? "",
           company: full.company ?? "",
@@ -146,13 +128,54 @@ export function AdminJobFormDialog({
         onOpenChange(false);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!onCancelCheck()) setLoading(false);
       });
+  }, [onOpenChange]);
+
+  const handleReEnrich = async () => {
+    if (!jobId) return;
+    setReEnriching(true);
+    try {
+      const res = await admin.reEnrichJob(token, jobId);
+      if (res.enriched) {
+        notify.custom.success(`Job re-enriched! New description length: ${res.description_length ?? 0}`);
+      } else {
+        notify.custom.success("Re-enrich completed (no changes).");
+      }
+      fetchJobData(jobId, () => false);
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Re-enrich failed");
+    } finally {
+      setReEnriching(false);
+    }
+  };
+
+  const resetForm = useCallback(() => {
+    setForm(EMPTY_FORM);
+    setEmploymentType("full_time");
+    setWorkArrangement("on_site");
+    setSourceUrl("");
+    setRequirements([]);
+    setSkillsRequired([]);
+    setEditSources([]);
+    setForcePublish(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    if (mode === "create") {
+      resetForm();
+      return;
+    }
+    if (!jobId) return;
+
+    let cancelled = false;
+    fetchJobData(jobId, () => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [open, mode, jobId, onOpenChange, resetForm]);
+  }, [open, mode, jobId, resetForm, fetchJobData]);
 
   const loadSkillSuggestions = async (query: string) => {
     if (!query.trim()) return;
@@ -366,10 +389,28 @@ export function AdminJobFormDialog({
         )}
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          {mode === "edit" && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleReEnrich}
+              disabled={saving || loading || reEnriching}
+              className="mr-auto"
+            >
+              {reEnriching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Enriching…
+                </>
+              ) : (
+                "Re-enrich now"
+              )}
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving || reEnriching}>
             Cancel
           </Button>
-          <Button type="submit" form="admin-job-form" disabled={saving || loading}>
+          <Button type="submit" form="admin-job-form" disabled={saving || loading || reEnriching}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "create" ? "Post job" : "Save changes"}
           </Button>
         </DialogFooter>

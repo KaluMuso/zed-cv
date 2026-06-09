@@ -1188,6 +1188,11 @@ export const admin = {
       `/admin/jobs/${encodeURIComponent(jobId)}`,
       { method: "DELETE", token }
     ),
+  reEnrichJob: (token: string, jobId: string) =>
+    apiFetch<{ enriched: boolean; deep_enriched_at: string | null; admin_published: boolean | null; description_length: number | null }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}/re-enrich`,
+      { method: "POST", token, body: "{}" }
+    ),
 };
 
 export interface TierConfigRow {

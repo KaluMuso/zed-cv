@@ -66,6 +66,7 @@ class _Query:
         self._not_null: set[str] = set()
         self._negate_is = False
         self._limit: int | None = None
+        self._orders: list[tuple[str, bool]] = []
 
     # ── operation setters ──
     def select(self, *a, **kw):
@@ -138,7 +139,8 @@ class _Query:
     def or_(self, *a, **kw):
         return self
 
-    def order(self, *a, **kw):
+    def order(self, column: str, desc: bool = False):
+        self._orders.append((column, desc))
         return self
 
     def limit(self, n: int):
@@ -180,6 +182,14 @@ class _Query:
     def execute(self):
         if self._op == "select":
             rows = self._matches()
+            if self._orders:
+                for col, desc in reversed(self._orders):
+                    def key_fn(x):
+                        val = x.get(col)
+                        if val is None:
+                            return (1, "") if desc else (-1, "")
+                        return (0, val)
+                    rows.sort(key=key_fn, reverse=desc)
             if self._limit is not None:
                 rows = rows[: self._limit]
             return _Result(data=copy.deepcopy(rows), count=len(rows))
@@ -887,3 +897,43 @@ class TestBulkDeactivateExpired:
             headers=auth_headers,
         )
         assert r.status_code == 422
+
+
+class TestAdminJobsExtensions:
+    def test_patch_job_contact_rejects_whatsapp_channel(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        job_id = _seed_job(jobs_fake)
+        r = admin_client.patch(
+            f"/api/v1/admin/jobs/{job_id}/contact",
+            json={"apply_url": "https://whatsapp.com/channel/X"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+        assert "aggregator broadcast channel" in r.json()["detail"]
+
+        r = admin_client.patch(
+            f"/api/v1/admin/jobs/{job_id}/contact",
+            json={"contact_phone": "+260813252760"},
+            headers=auth_headers,
+        )
+        assert r.status_code == 422
+        assert "belongs to the aggregator listing site" in r.json()["detail"]
+
+    def test_get_jobs_returns_newest_first(
+        self, admin_client, auth_headers, jobs_fake
+    ):
+        id_3d = _seed_job(jobs_fake, posted_at="2026-06-06T12:00:00+00:00")
+        id_1d = _seed_job(jobs_fake, posted_at="2026-06-08T12:00:00+00:00")
+        id_today = _seed_job(jobs_fake, posted_at="2026-06-09T12:00:00+00:00")
+
+        r = admin_client.get(
+            "/api/v1/admin/jobs",
+            headers=auth_headers,
+        )
+        assert r.status_code == 200, r.text
+        data = r.json()["jobs"]
+        ids = [job["id"] for job in data]
+        seeded_ids = [job_id for job_id in ids if job_id in (id_3d, id_1d, id_today)]
+        assert seeded_ids == [id_today, id_1d, id_3d]
+
