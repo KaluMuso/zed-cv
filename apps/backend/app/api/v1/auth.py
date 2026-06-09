@@ -309,6 +309,7 @@ async def verify_otp(
             "preferred_notification_channel": "email",
             "otp_channel_preference": otp_pref,
             "referral_code": referral_code,
+            "full_name": body.full_name.strip() if body.full_name else None,
         }).execute()
         user_id = new_user.data[0]["id"]
         attach_referral_on_signup(user_id, body.referral_ref, supabase)
@@ -327,7 +328,7 @@ async def verify_otp(
             }).execute()
         user_row = {
             "email": str(body.email),
-            "full_name": None,
+            "full_name": body.full_name.strip() if body.full_name else None,
             "welcome_email_sent": False,
         }
 

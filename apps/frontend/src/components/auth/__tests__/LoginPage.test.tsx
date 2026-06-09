@@ -15,6 +15,7 @@ vi.mock("next/link", () => ({
 
 describe("LoginPage", () => {
   const baseProps = {
+    fullName: "",
     phoneDigits: "",
     email: "",
     consentChecked: false,
@@ -22,6 +23,7 @@ describe("LoginPage", () => {
     error: "",
     otpChannel: "email" as const,
     isFreeTier: true,
+    onFullNameChange: vi.fn(),
     onPhoneChange: vi.fn(),
     onEmailChange: vi.fn(),
     onConsentChange: vi.fn(),
@@ -34,10 +36,11 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /send code/i })).toBeDisabled();
   });
 
-  it("enables submit when phone has 9 digits, email, and consent", () => {
+  it("enables submit when phone has 9 digits, email, name, and consent", () => {
     render(
       <LoginPage
         {...baseProps}
+        fullName="Test User"
         phoneDigits="971234567"
         email="user@example.com"
         consentChecked
@@ -64,6 +67,7 @@ describe("LoginPage", () => {
     render(
       <LoginPage
         {...baseProps}
+        fullName="Test User"
         phoneDigits="971234567"
         email="user@example.com"
         consentChecked
@@ -87,6 +91,7 @@ describe("LoginPage", () => {
     render(
       <LoginPage
         {...baseProps}
+        fullName="Test User"
         phoneDigits="971234567"
         email="user@example.com"
         consentChecked
@@ -117,6 +122,7 @@ describe("LoginPage", () => {
     render(
       <LoginPage
         {...baseProps}
+        fullName="Test User"
         phoneDigits="971234567"
         email="user@example.com"
         onConsentChange={onConsentChange}
@@ -125,5 +131,18 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /send code/i })).toBeDisabled();
     await user.click(screen.getByRole("checkbox"));
     expect(onConsentChange).toHaveBeenCalledWith(true);
+  });
+
+  it("disables submit when full name is less than 2 characters", () => {
+    render(
+      <LoginPage
+        {...baseProps}
+        fullName="A"
+        phoneDigits="971234567"
+        email="user@example.com"
+        consentChecked
+      />,
+    );
+    expect(screen.getByRole("button", { name: /send code/i })).toBeDisabled();
   });
 });

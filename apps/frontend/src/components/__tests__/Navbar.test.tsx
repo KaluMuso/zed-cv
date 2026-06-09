@@ -56,7 +56,7 @@ import { useAuth } from "@/lib/auth";
 const mockedUseAuth = vi.mocked(useAuth);
 
 function desktopPrimaryNav() {
-  const centerNav = document.querySelector(".hidden.md\\:flex.items-center.gap-8");
+  const centerNav = document.querySelector(".hidden.lg\\:flex.items-center.gap-8");
   if (!centerNav) throw new Error("desktop primary nav not found");
   return centerNav;
 }
@@ -119,10 +119,10 @@ describe("Navbar primary navigation", () => {
     // On mobile app shell routes, should show minimal navbar with only logo
     expect(screen.getByTestId("logo")).toBeInTheDocument();
     expect(screen.queryByLabelText("Toggle menu")).not.toBeInTheDocument();
-    expect(document.querySelector(".hidden.md\\:flex.items-center.gap-8")).toBeNull();
+    expect(document.querySelector(".hidden.lg\\:flex.items-center.gap-8")).toBeNull();
   });
 
-  it("shows five links when signed out", () => {
+  it("shows links when signed out", () => {
     mockPathname = "/jobs";
     mockedUseAuth.mockReturnValue({
       isAuthenticated: false,
@@ -142,9 +142,10 @@ describe("Navbar primary navigation", () => {
       "Jobs",
       "Matches",
       "Pricing",
-      "Log in",
-      "Get started",
     ]);
+
+    expect(screen.getByRole("link", { name: "Log in" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Get started" })).toHaveLength(2);
   });
 
   it("does not show Dashboard or Profile in primary nav when signed in", () => {

@@ -194,13 +194,14 @@ export const auth = {
       headers: authHeaders(),
       body: JSON.stringify({ phone }),
     }),
-  requestOTP: (phone: string, channel?: OtpChannel) =>
+  requestOTP: (phone: string, channel?: OtpChannel, fullName?: string) =>
     apiFetch<OTPResponse>("/auth/otp/request", {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({
         phone,
         ...(channel ? { channel } : {}),
+        ...(fullName?.trim() ? { full_name: fullName.trim() } : {}),
       }),
     }),
   verifyOTP: (
@@ -211,6 +212,7 @@ export const auth = {
       email?: string;
       rememberDevice?: boolean;
       referralRef?: string | null;
+      fullName?: string;
     }
   ) =>
     apiFetch<AuthTokens>("/auth/otp/verify", {
@@ -227,6 +229,7 @@ export const auth = {
         ...(options?.referralRef?.trim()
           ? { referral_ref: options.referralRef.trim() }
           : {}),
+        ...(options?.fullName?.trim() ? { full_name: options.fullName.trim() } : {}),
       }),
     }),
 };

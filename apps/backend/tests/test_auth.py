@@ -75,6 +75,19 @@ class TestOTPRequest:
         resp = client.post("/api/v1/auth/otp/request", json={})
         assert resp.status_code == 422
 
+    @patch("app.api.v1.auth.send_otp", new_callable=AsyncMock)
+    @patch("app.api.v1.auth.lookup_user_auth_context", return_value=None)
+    def test_otp_request_accepts_full_name(self, mock_lookup, mock_send, client, fake_supabase):
+        """OTP request accepts full_name in payload."""
+        fake_supabase.set_table("otp_codes", FakeSupabaseQuery(data=[]))
+        resp = client.post(
+            "/api/v1/auth/otp/request",
+            json={"phone": "+260971234567", "full_name": "Kaluba Musonda"}
+        )
+        assert resp.status_code == 200
+        assert "OTP sent" in resp.json()["message"]
+        mock_send.assert_awaited_once()
+
 
 class TestOTPVerify:
     def test_verify_invalid_code(self, client, fake_supabase):
@@ -245,3 +258,22 @@ class TestOTPVerify:
         body = resp.json()
         assert "access_token" in body
         assert body["user_id"] == "existing-uuid-9"
+
+    def test_verify_otp_persists_full_name(self, client, fake_supabase):
+        """OTP verify persists full_name on new user creation."""
+        self._seed_new_user_verify(fake_supabase)
+        resp = client.post(
+            "/api/v1/auth/otp/verify",
+            json={
+                "phone": "+260971234567",
+                "code": "123456",
+                "consent_accepted": True,
+                "email": "newuser@example.com",
+                "full_name": "Kaluba Musonda",
+            },
+        )
+        assert resp.status_code == 200
+        inserted_user = fake_supabase.table("users").execute().data[0]
+        assert inserted_user["full_name"] == "Kaluba Musonda"
+        assert inserted_user["phone"] == "+260971234567"
+        assert inserted_user["email"] == "newuser@example.com"

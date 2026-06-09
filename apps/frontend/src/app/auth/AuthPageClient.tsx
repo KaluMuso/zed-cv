@@ -24,12 +24,14 @@ const phoneSchema = z
   .regex(/^\+260[0-9]{9}$/, "Enter a valid Zambian number");
 const emailSchema = z.string().email("Enter a valid email address");
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
+const fullNameSchema = z.string().min(2, "Name must be at least 2 characters");
 
 export default function AuthPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const [step, setStep] = useState<"phone" | "otp" | "success">("phone");
+  const [fullName, setFullName] = useState("");
   const [phoneDigits, setPhoneDigits] = useState("");
   const [email, setEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -99,6 +101,11 @@ export default function AuthPageClient() {
     if (!consentChecked) return;
     const phoneResult = phoneSchema.safeParse(fullPhone);
     const emailResult = emailSchema.safeParse(email.trim());
+    const fullNameResult = fullNameSchema.safeParse(fullName.trim());
+    if (!fullNameResult.success) {
+      setError(fullNameResult.error.issues[0]?.message ?? "Enter a valid name");
+      return;
+    }
     if (!phoneResult.success) {
       setError("Enter a valid Zambian number (9 digits after +260)");
       return;
@@ -127,7 +134,7 @@ export default function AuthPageClient() {
       }
 
       const channel = isFreeTier ? otpChannel : "whatsapp";
-      const otpResp = await auth.requestOTP(fullPhone, channel);
+      const otpResp = await auth.requestOTP(fullPhone, channel, fullName.trim());
       if (otpResp.tier) {
         setUserTier(otpResp.tier);
       }
@@ -149,7 +156,7 @@ export default function AuthPageClient() {
     setLoading(true);
     try {
       const channel = isFreeTier ? otpChannel : "whatsapp";
-      await auth.requestOTP(fullPhone, channel);
+      await auth.requestOTP(fullPhone, channel, fullName.trim());
       setResendIn(30);
       setOtpCode("");
     } catch (err) {
@@ -157,7 +164,7 @@ export default function AuthPageClient() {
     } finally {
       setLoading(false);
     }
-  }, [fullPhone, handleOtpRequestError, isFreeTier, loading, otpChannel, resendIn]);
+  }, [fullPhone, fullName, handleOtpRequestError, isFreeTier, loading, otpChannel, resendIn]);
 
   const verifyOtp = useCallback(
     async (code: string) => {
@@ -172,6 +179,7 @@ export default function AuthPageClient() {
           email: email.trim(),
           rememberDevice,
           referralRef: readStoredReferralRef(),
+          fullName: fullName.trim(),
         });
         if (tokens.device_token) {
           localStorage.setItem(DEVICE_TOKEN_KEY, tokens.device_token);
@@ -185,7 +193,7 @@ export default function AuthPageClient() {
         setLoading(false);
       }
     },
-    [consentChecked, email, fullPhone, login, rememberDevice, router, safeNext]
+    [consentChecked, email, fullPhone, fullName, login, rememberDevice, router, safeNext]
   );
 
   useEffect(() => {
@@ -303,6 +311,7 @@ export default function AuthPageClient() {
 
           {step === "phone" && (
             <LoginPage
+              fullName={fullName}
               phoneDigits={phoneDigits}
               email={email}
               consentChecked={consentChecked}
@@ -310,6 +319,7 @@ export default function AuthPageClient() {
               error={error}
               otpChannel={otpChannel}
               isFreeTier={isFreeTier}
+              onFullNameChange={setFullName}
               onPhoneChange={setPhoneDigits}
               onEmailChange={setEmail}
               onConsentChange={setConsentChecked}
