@@ -29,6 +29,7 @@ def activate_subscription_after_payment(
     new_tier: str,
     subscription_row: dict[str, Any] | None,
     lenco_subscription_ref: Optional[str] = None,
+    billing_period_days: int | None = None,
     now: datetime | None = None,
 ) -> dict[str, str]:
     """Apply paid-tier activation via Postgres RPC activate_subscription_after_payment."""
@@ -42,7 +43,7 @@ def activate_subscription_after_payment(
         "p_new_tier": new_tier,
         "p_subscription_id": (subscription_row or {}).get("id"),
         "p_lenco_subscription_ref": lenco_subscription_ref,
-        "p_period_days": settings.subscription_period_days,
+        "p_period_days": billing_period_days or settings.subscription_period_days,
         "p_existing_period_end": existing_iso,
     }
 

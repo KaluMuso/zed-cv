@@ -1206,6 +1206,7 @@ export interface TierConfigRow {
   promotion_active?: boolean | null;
   matches_limit: number;
   sort_order?: number;
+  billing_period_days?: number;
   updated_at?: string | null;
 }
 
@@ -1830,7 +1831,7 @@ export const subscription = {
       "/subscription/pay",
       { method: "POST", token, body: JSON.stringify(data) }
     ),
-  verifyPayment: (token: string, data: { reference: string; tier: string }) =>
+  verifyPayment: (token: string, data: { reference: string; tier: string; billing_period_days?: number }) =>
     apiFetch<PaymentVerifyResult>("/subscription/verify-payment", {
       method: "POST",
       token,
@@ -2513,3 +2514,29 @@ export const employer = {
       { method: "POST", token, body },
     ),
 };
+
+// ── Boosters ──
+export interface BoosterEntitlement {
+  id: string;
+  user_id: string;
+  booster_sku: string;
+  status: "pending" | "paid" | "consumed";
+  payment_id: string;
+  consumed_at?: string;
+}
+
+export const boosters = {
+  list: (token: string) => apiFetch<BoosterEntitlement[]>("/boosters", { token }),
+  purchase: (token: string, sku: string) =>
+    apiFetch<{ message: string; transaction_id: string; reference: string; amount_ngwee: number }>(
+      "/boosters/purchase",
+      { method: "POST", token, body: JSON.stringify({ sku }) },
+    ),
+  consume: (token: string, id: string, target_id?: string) =>
+    apiFetch<{ message: string }>("/boosters/" + id + "/consume", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ target_id }),
+    }),
+};
+

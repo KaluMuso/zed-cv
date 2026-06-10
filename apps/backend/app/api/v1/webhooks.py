@@ -338,6 +338,11 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
             if isinstance(stored, dict)
             else None
         )
+        intended_billing_period_days = (
+            stored.get("intended_billing_period_days", 30)
+            if isinstance(stored, dict)
+            else 30
+        )
         if isinstance(intended, str) and intended in tier_prices and intended != "free":
             new_tier = intended
         else:
@@ -382,16 +387,21 @@ async def dpo_webhook(request: Request, supabase=Depends(get_supabase)):
             )
             return {"status": "already_processed"}
 
-        from app.services.subscription_billing import activate_subscription_after_payment
+        # Booster logic: if subscription_id is NULL, it's a pay-per-use booster
+        if payment.get("subscription_id") is None:
+            supabase.table("user_entitlements").update({"status": "paid"}).eq("payment_id", payment_id).execute()
+        else:
+            from app.services.subscription_billing import activate_subscription_after_payment
 
-        activate_subscription_after_payment(
-            supabase,
-            user_id=user_id,
-            payment_id=payment_id,
-            new_tier=new_tier,
-            subscription_row=payment.get("subscriptions"),
-            now=now,
-        )
+            activate_subscription_after_payment(
+                supabase,
+                user_id=user_id,
+                payment_id=payment_id,
+                new_tier=new_tier,
+                subscription_row=payment.get("subscriptions"),
+                billing_period_days=intended_billing_period_days,
+                now=now,
+            )
 
         # Send WhatsApp + email confirmation
         user = supabase.table("users").select("phone").eq("id", user_id).single().execute()
@@ -591,11 +601,15 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             resolve_paid_tier_from_amount_ngwee,
         )
 
-        stored = payment.get("webhook_data") or {}
         intended = (
             stored.get("intended_tier")
             if isinstance(stored, dict)
             else None
+        )
+        intended_billing_period_days = (
+            stored.get("intended_billing_period_days", 30)
+            if isinstance(stored, dict)
+            else 30
         )
         if isinstance(intended, str) and intended in tier_prices and intended != "free":
             new_tier = intended
@@ -635,17 +649,22 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             )
             return {"status": "already_processed"}
 
-        from app.services.subscription_billing import activate_subscription_after_payment
+        # Booster logic: if subscription_id is NULL, it's a pay-per-use booster
+        if payment.get("subscription_id") is None:
+            supabase.table("user_entitlements").update({"status": "paid"}).eq("payment_id", payment_id).execute()
+        else:
+            from app.services.subscription_billing import activate_subscription_after_payment
 
-        activate_subscription_after_payment(
-            supabase,
-            user_id=user_id,
-            payment_id=payment_id,
-            new_tier=new_tier,
-            subscription_row=payment.get("subscriptions"),
-            lenco_subscription_ref=fields.get("lenco_ref"),
-            now=now,
-        )
+            activate_subscription_after_payment(
+                supabase,
+                user_id=user_id,
+                payment_id=payment_id,
+                new_tier=new_tier,
+                subscription_row=payment.get("subscriptions"),
+                lenco_subscription_ref=fields.get("lenco_ref"),
+                billing_period_days=intended_billing_period_days,
+                now=now,
+            )
 
         # Notify on WhatsApp + email — best-effort, never fail the webhook.
         user = supabase.table("users").select("phone").eq("id", user_id).single().execute()

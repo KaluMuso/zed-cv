@@ -267,6 +267,7 @@ async def verify_payment(
         user_id=user_id,
         reference=body.reference.strip(),
         tier=tier_value,
+        billing_period_days=body.billing_period_days,
     )
 
     if status_code == 422:

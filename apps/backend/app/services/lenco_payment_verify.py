@@ -24,10 +24,11 @@ from app.services.tier_config import get_tier_prices
 logger = logging.getLogger(__name__)
 
 
-def _payment_webhook_data(collection: dict[str, Any], *, tier: str) -> dict[str, Any]:
+def _payment_webhook_data(collection: dict[str, Any], *, tier: str, billing_period_days: int = 30) -> dict[str, Any]:
     """Persist Lenco payload plus checkout tier for webhook tier resolution."""
     data = dict(collection) if isinstance(collection, dict) else {}
     data["intended_tier"] = tier
+    data["intended_billing_period_days"] = billing_period_days
     return data
 
 
@@ -66,14 +67,15 @@ async def verify_lenco_widget_payment(
     user_id: str,
     reference: str,
     tier: str,
+    billing_period_days: int = 30,
 ) -> tuple[int, dict[str, Any]]:
     """Verify widget reference with Lenco and return (http_status, body)."""
-    tier_prices = await get_tier_prices(supabase)
-    if tier not in tier_prices or tier == "free":
-        return 422, {"detail": "Invalid tier. Choose starter, professional, or super_standard."}
+    tier_res = supabase.table("tier_config").select("price_ngwee").eq("tier", tier).eq("billing_period_days", billing_period_days).limit(1).execute()
+    if not tier_res.data or tier == "free":
+        return 422, {"detail": "Invalid tier or billing period. Choose a valid paid plan."}
 
     now = datetime.now(timezone.utc)
-    list_price_ngwee = tier_prices[tier]
+    list_price_ngwee = tier_res.data[0]["price_ngwee"]
     promo_until = await load_user_promotion_until(supabase, user_id)
     expected_ngwee = effective_checkout_price_ngwee(
         list_price_ngwee, promo_until, now=now
@@ -127,13 +129,13 @@ async def verify_lenco_widget_payment(
                 "provider": "lenco",
                 "provider_ref": reference,
                 "status": "pending",
-                "webhook_data": _payment_webhook_data(collection, tier=tier),
+                "webhook_data": _payment_webhook_data(collection, tier=tier, billing_period_days=billing_period_days),
             }).execute()
             payment_id = insert.data[0]["id"] if insert.data else None
         else:
             payment_id = payment["id"]
             supabase.table("payments").update({
-                "webhook_data": _payment_webhook_data(collection, tier=tier),
+                "webhook_data": _payment_webhook_data(collection, tier=tier, billing_period_days=billing_period_days),
             }).eq("id", payment_id).execute()
         return 202, {
             "status": "processing",
@@ -155,7 +157,7 @@ async def verify_lenco_widget_payment(
             "provider": "lenco",
             "provider_ref": reference,
             "status": "pending",
-            "webhook_data": _payment_webhook_data(collection, tier=tier),
+            "webhook_data": _payment_webhook_data(collection, tier=tier, billing_period_days=billing_period_days),
         }).execute()
         if not insert.data:
             return 500, {"detail": "Failed to create payment record"}
@@ -163,7 +165,7 @@ async def verify_lenco_widget_payment(
         payment["subscriptions"] = subscription_row
     else:
         supabase.table("payments").update({
-            "webhook_data": _payment_webhook_data(collection, tier=tier),
+            "webhook_data": _payment_webhook_data(collection, tier=tier, billing_period_days=billing_period_days),
         }).eq("id", payment["id"]).execute()
 
     payment_id = payment["id"]
@@ -183,7 +185,7 @@ async def verify_lenco_widget_payment(
             "amount": amount_ngwee,
             "payment_method": method_label,
             "provider_ref": reference,
-            "webhook_data": _payment_webhook_data(collection, tier=tier),
+            "webhook_data": _payment_webhook_data(collection, tier=tier, billing_period_days=billing_period_days),
             "completed_at": now.isoformat(),
         })
         .eq("id", payment_id)
@@ -209,6 +211,7 @@ async def verify_lenco_widget_payment(
         new_tier=tier,
         subscription_row=payment.get("subscriptions") or subscription_row,
         lenco_subscription_ref=str(lenco_ref) if lenco_ref else None,
+        billing_period_days=billing_period_days,
         now=now,
     )
 

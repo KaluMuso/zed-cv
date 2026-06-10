@@ -35,6 +35,7 @@ from app.api.v1 import (
     analytics,
     employers,
     notifications,
+    boosters,
 )
 
 TRUSTED_HOSTS = [
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     application.include_router(cv.router, prefix="/api/v1")
     application.include_router(profile.router, prefix="/api/v1")
     application.include_router(subscription.router, prefix="/api/v1")
+    application.include_router(boosters.router, prefix="/api/v1")
     application.include_router(cover_letter.router, prefix="/api/v1")
     from app.api.v1 import (
         admin_companies_export,

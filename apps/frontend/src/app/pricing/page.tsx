@@ -116,8 +116,8 @@ const faqs = [
   },
 ];
 
-function applyTierConfig(base: Plan[], config: TierConfigRow[]): Plan[] {
-  const byTier = Object.fromEntries(config.map((t) => [t.tier, t]));
+function applyTierConfig(base: Plan[], config: TierConfigRow[], period: 30 | 365 = 30): Plan[] {
+  const byTier = Object.fromEntries(config.filter((t) => t.billing_period_days === period || (t.tier === "free" && t.billing_period_days === 30)).map((t) => [t.tier, t]));
   return base.map((plan) => {
     const row = byTier[plan.tier];
     if (!row) return plan;
@@ -132,6 +132,7 @@ function applyTierConfig(base: Plan[], config: TierConfigRow[]): Plan[] {
       ...plan,
       name: row.display_name || plan.name,
       price: formatPriceLabel(row.price_ngwee, plan.tier),
+      period: plan.tier === "free" ? "forever" : period === 365 ? "/year" : "/month",
       features,
     };
   });
@@ -155,6 +156,7 @@ export default function PricingPage() {
   );
   const [payingTier, setPayingTier] = useState<string | null>(null);
   const [currentTier, setCurrentTier] = useState<string>("free");
+  const [billingPeriod, setBillingPeriod] = useState<30 | 365>(30);
   const [lencoReady, setLencoReady] = useState(false);
 
   useEffect(() => {
@@ -173,14 +175,14 @@ export default function PricingPage() {
       .list(token ?? undefined)
       .then((r) => {
         setTierRows(r.tiers);
-        setDisplayPlans(applyTierConfig(plans, r.tiers));
+        setDisplayPlans(applyTierConfig(plans, r.tiers, billingPeriod));
         setComparisonFeatures(buildTierComparisonFeatures(r.tiers));
       })
       .catch(() => {
         setDisplayPlans(plans);
         setComparisonFeatures(buildTierComparisonFeatures());
       });
-  }, [token]);
+  }, [token, billingPeriod]);
 
   useEffect(() => {
     if (!token) {
@@ -195,7 +197,7 @@ export default function PricingPage() {
 
   const amountKwacha = useCallback(
     (tier: string): number => {
-      const row = tierRows.find((t) => t.tier === tier);
+      const row = tierRows.find((t) => t.tier === tier && (t.billing_period_days === billingPeriod || tier === "free"));
       if (row) {
         const ngwee = row.checkout_price_ngwee ?? row.price_ngwee;
         return ngwee / 100;
@@ -207,16 +209,16 @@ export default function PricingPage() {
       };
       return fallback[tier] ?? 0;
     },
-    [tierRows],
+    [tierRows, billingPeriod],
   );
 
   const showPromoBadge = useCallback(
     (tier: string): boolean => {
       if (tier === "free") return false;
-      const row = tierRows.find((t) => t.tier === tier);
+      const row = tierRows.find((t) => t.tier === tier && t.billing_period_days === billingPeriod);
       return row?.promotion_active === true;
     },
-    [tierRows],
+    [tierRows, billingPeriod],
   );
 
   const planAction = (
@@ -287,6 +289,7 @@ export default function PricingPage() {
             const result = await subscription.verifyPayment(token, {
               reference: response.reference,
               tier,
+              billing_period_days: billingPeriod,
             });
             if (result.status === "processing") {
               notify.info(
@@ -401,6 +404,22 @@ export default function PricingPage() {
           role="status"
         >
           First month: 50% off for paid tiers, 7 free matches/month for Free
+        </div>
+        <div className="mt-8 flex justify-center">
+          <div className="inline-flex items-center rounded-full border p-1" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+            <button
+              onClick={() => setBillingPeriod(30)}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors ${billingPeriod === 30 ? "bg-[var(--ink)] text-[var(--surface)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--ink)]"}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod(365)}
+              className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${billingPeriod === 365 ? "bg-[var(--ink)] text-[var(--surface)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--ink)]"}`}
+            >
+              Yearly <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: "var(--copper-500)", color: "#fff" }}>Save 20%</span>
+            </button>
+          </div>
         </div>
       </div>
 

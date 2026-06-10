@@ -80,6 +80,10 @@ class PaymentVerifyRequest(BaseModel):
         description="Lenco widget reference (e.g. zedapply-<uuid>).",
     )
     tier: SubscriptionTier
+    billing_period_days: int = Field(
+        30,
+        description="Billing period days (e.g. 30 for monthly, 365 for annual).",
+    )
 
 
 class PaymentVerifyResponse(BaseModel):

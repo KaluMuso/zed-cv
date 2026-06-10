@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-
+import { useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { boosters, profile } from "@/lib/api";
+import { notify } from "@/lib/toast";
+import { getLencoPublicKey, getLencoScriptUrl, isLencoReady, lencoPhone, openLencoCheckout, setLencoMerchantLabel } from "@/lib/lenco";
+import Script from "next/script";
 import { Icon } from "@/components/ui/Icon";
 import { PREMIUM_FEATURE_PURPLE } from "@/lib/premium-nav";
 import {
@@ -87,6 +92,7 @@ export function JobDetailPremiumActions({
 
   return (
     <>
+      <Script src={getLencoScriptUrl()} strategy="afterInteractive" />
       <button
         type="button"
         className="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
@@ -102,6 +108,114 @@ export function JobDetailPremiumActions({
       >
         <Icon name="file" size={14} /> Tailored CV
       </Link>
+      
+      <div className="w-full mt-2 pt-4 border-t border-[var(--line)]">
+        <h4 className="text-sm font-semibold mb-3 text-[var(--ink)]">Boost your application</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <BoosterCard 
+            sku="cv_review_expert" 
+            title="Expert CV Review" 
+            description="Have an expert review your CV before applying." 
+            priceKwacha={250} 
+            icon="fileSearch"
+          />
+          <BoosterCard 
+            sku="priority_match" 
+            title="Priority Match" 
+            description="Jump to the top of the employer's applicant list." 
+            priceKwacha={50} 
+            icon="zap"
+          />
+        </div>
+      </div>
     </>
+  );
+}
+
+function BoosterCard({ sku, title, description, priceKwacha, icon }: { sku: string, title: string, description: string, priceKwacha: number, icon: string }) {
+  const { token, user, isAuthenticated } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handlePurchase = async () => {
+    if (!isAuthenticated || !token || !user) {
+      notify.error("Please sign in to purchase boosters.");
+      return;
+    }
+
+    if (!isLencoReady()) {
+      notify.error("Payment widget is loading — please wait a moment and try again.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await boosters.purchase(token, sku);
+      
+      let prof = null;
+      try {
+        prof = await profile.get(token);
+      } catch (err) {
+        // ignore
+      }
+
+      const email = prof?.email?.trim() || `payments+${user.id.slice(0, 8)}@zedapply.com`;
+      const full = (prof?.full_name || "Zed CV User").trim();
+      const parts = full.split(/\s+/).filter(Boolean);
+      const firstName = parts[0] || "Zed";
+      const lastName = parts.length > 1 ? parts.slice(1).join(" ") : firstName;
+
+      setLencoMerchantLabel("ZedApply Boosters");
+
+      openLencoCheckout({
+        key: getLencoPublicKey() || "",
+        label: "ZedApply Boosters",
+        reference: response.reference,
+        email,
+        amount: response.amount_ngwee / 100,
+        currency: "ZMW",
+        channels: ["card", "mobile-money"],
+        customer: {
+          firstName,
+          lastName,
+          phone: lencoPhone(prof?.phone),
+        },
+        onSuccess: async () => {
+          notify.success("Booster purchased successfully!");
+          setLoading(false);
+        },
+        onClose: () => {
+          notify.info("Payment cancelled");
+          setLoading(false);
+        },
+        onConfirmationPending: () => {
+          notify.info("Payment processing — your booster will be active shortly.");
+        },
+      });
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Could not initiate purchase");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm" style={{ borderColor: "var(--line)" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="p-1.5 rounded-md" style={{ background: "color-mix(in srgb, var(--copper-500) 10%, transparent)", color: "var(--copper-600)" }}>
+          <Icon name={icon as any} size={16} />
+        </span>
+        <h5 className="font-semibold text-sm">{title}</h5>
+      </div>
+      <p className="text-xs text-[var(--muted)] mb-4 flex-1">{description}</p>
+      <div className="flex items-center justify-between mt-auto">
+        <span className="font-display font-medium">K{priceKwacha}</span>
+        <button 
+          onClick={handlePurchase}
+          disabled={loading}
+          className="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+        >
+          {loading ? "..." : "Get Booster"}
+        </button>
+      </div>
+    </div>
   );
 }
