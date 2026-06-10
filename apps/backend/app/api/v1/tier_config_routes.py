@@ -46,6 +46,15 @@ admin_tiers_router = APIRouter(
 
 _TIER_SORT_ORDER = {"free": 0, "starter": 1, "professional": 2, "super_standard": 3}
 
+# Monthly billing cycle in days. Annual rows live in tier_config with
+# billing_period_days=365; we never apply the first-month welcome promo to
+# annual rows because the annual sticker already carries the
+# long-commitment discount (e.g. starter monthly K125×12=K1500 → annual
+# K1050 = ~30% off). Stacking the welcome 50% on top would charge a
+# monthly-half-off amount against an annual commitment and confuse the
+# checkout flow.
+_MONTHLY_PERIOD_DAYS = 30
+
 
 async def _optional_user_id(
     credentials: HTTPAuthorizationCredentials | None = Depends(security_optional),
@@ -73,10 +82,23 @@ def _rows_to_response(
     tiers: list[TierConfigRow] = []
     for r in rows:
         list_price = int(r["price_ngwee"])
+        # Migration 111 added billing_period_days to tier_config. Read it
+        # through to the response so the frontend can distinguish monthly
+        # vs annual rows. Default to 30 for rows that pre-date the
+        # migration (e.g. when running against the schema fallback in
+        # tier_config.py::_default_rows).
+        period_days = int(r.get("billing_period_days") or _MONTHLY_PERIOD_DAYS)
+        # Welcome 50% promo applies to monthly tiers only. Annual sticker
+        # already discounts; don't stack.
+        is_monthly = period_days == _MONTHLY_PERIOD_DAYS
+        promo_eligible = promo_active and list_price > 0 and is_monthly
         checkout = (
             effective_checkout_price_ngwee(list_price, promotion_until)
-            if promo_active and list_price > 0
+            if promo_eligible
             else None
+        )
+        row_promo_active = (
+            promo_active if (list_price > 0 and is_monthly) else None
         )
         tiers.append(
             TierConfigRow(
@@ -85,9 +107,10 @@ def _rows_to_response(
                 price_ngwee=list_price,
                 matches_limit=int(r["matches_limit"]),
                 sort_order=int(r.get("sort_order") or 0),
+                billing_period_days=period_days,
                 updated_at=r.get("updated_at"),
                 checkout_price_ngwee=checkout,
-                promotion_active=promo_active if list_price > 0 else None,
+                promotion_active=row_promo_active,
             )
         )
     return TierConfigList(tiers=tiers)
@@ -156,6 +179,7 @@ async def patch_admin_tier(
         supabase.table("tier_config")
         .select("tier, display_name")
         .eq("tier", tier_name)
+        .eq("billing_period_days", _MONTHLY_PERIOD_DAYS)
         .limit(1)
         .execute()
     )
@@ -170,13 +194,26 @@ async def patch_admin_tier(
         "price_ngwee": body.price_ngwee,
         "matches_limit": body.matches_limit,
         "sort_order": _TIER_SORT_ORDER[tier_name],
+        "billing_period_days": _MONTHLY_PERIOD_DAYS,
         "updated_at": now,
         "updated_by": user_id,
     }
-    supabase.table("tier_config").upsert(row, on_conflict="tier").execute()
+    # PK is composite (tier, billing_period_days) post-migration-111.
+    supabase.table("tier_config").upsert(
+        row, on_conflict="tier,billing_period_days"
+    ).execute()
     clear_tier_config_cache()
     rows = await fetch_tier_config_rows(supabase, force=True)
-    updated = next((r for r in rows if r["tier"] == tier_name), None)
+    updated = next(
+        (
+            r
+            for r in rows
+            if r["tier"] == tier_name
+            and int(r.get("billing_period_days") or _MONTHLY_PERIOD_DAYS)
+            == _MONTHLY_PERIOD_DAYS
+        ),
+        None,
+    )
     if not updated:
         raise HTTPException(status_code=500, detail="Tier update failed")
     return _rows_to_response([updated]).tiers[0]
@@ -222,6 +259,9 @@ async def update_admin_tier_config(
         )
 
     for item in sorted(body.tiers, key=lambda t: _TIER_SORT_ORDER[t.tier]):
+        # Bulk PUT edits only the monthly tier rows; annual rows are
+        # editable separately via a future endpoint. on_conflict matches
+        # the composite PK introduced in migration 111.
         supabase.table("tier_config").upsert(
             {
                 "tier": item.tier,
@@ -229,10 +269,11 @@ async def update_admin_tier_config(
                 "price_ngwee": item.price_ngwee,
                 "matches_limit": item.matches_limit,
                 "sort_order": _TIER_SORT_ORDER[item.tier],
+                "billing_period_days": _MONTHLY_PERIOD_DAYS,
                 "updated_at": now,
                 "updated_by": user_id,
             },
-            on_conflict="tier",
+            on_conflict="tier,billing_period_days",
         ).execute()
 
     clear_tier_config_cache()
