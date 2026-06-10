@@ -394,17 +394,38 @@ export default function PricingPage() {
           Pay with MTN Mobile Money, Airtel Money, or card via our secure
           Lenco checkout. All prices in Zambian Kwacha.
         </p>
-        <div
-          className="mt-6 mx-auto max-w-2xl rounded-lg px-4 py-3 text-sm font-medium"
-          style={{
-            background: "color-mix(in srgb, var(--copper-500) 12%, transparent)",
-            border: "1px solid var(--copper-500)",
-            color: "var(--ink)",
-          }}
-          role="status"
-        >
-          First month: 50% off for paid tiers, 7 free matches/month for Free
-        </div>
+        {/*
+          The first-month 50% welcome promo only applies to MONTHLY tiers
+          (PR #306 deliberately skips it for annual rows so we never stack
+          a second discount on top of the long-commit annual sticker).
+          Hide the banner on the Yearly tab so users aren't misled into
+          expecting K525 at first checkout for an annual plan.
+        */}
+        {billingPeriod === 30 ? (
+          <div
+            className="mt-6 mx-auto max-w-2xl rounded-lg px-4 py-3 text-sm font-medium"
+            style={{
+              background: "color-mix(in srgb, var(--copper-500) 12%, transparent)",
+              border: "1px solid var(--copper-500)",
+              color: "var(--ink)",
+            }}
+            role="status"
+          >
+            First month: 50% off for paid tiers, 7 free matches/month for Free
+          </div>
+        ) : (
+          <div
+            className="mt-6 mx-auto max-w-2xl rounded-lg px-4 py-3 text-sm font-medium"
+            style={{
+              background: "color-mix(in srgb, var(--green-500, #2F7D3A) 10%, transparent)",
+              border: "1px solid var(--green-500, #2F7D3A)",
+              color: "var(--ink)",
+            }}
+            role="status"
+          >
+            Pay annually and save 30% — locks in a full year at today&apos;s price.
+          </div>
+        )}
         <div className="mt-8 flex justify-center">
           <div className="inline-flex items-center rounded-full border p-1" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
             <button
@@ -417,7 +438,7 @@ export default function PricingPage() {
               onClick={() => setBillingPeriod(365)}
               className={`px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${billingPeriod === 365 ? "bg-[var(--ink)] text-[var(--surface)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--ink)]"}`}
             >
-              Yearly <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: "var(--copper-500)", color: "#fff" }}>Save 20%</span>
+              Yearly <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: "var(--copper-500)", color: "#fff" }}>Save 30%</span>
             </button>
           </div>
         </div>
