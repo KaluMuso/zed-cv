@@ -111,20 +111,27 @@ export function JobDetailPremiumActions({
       
       <div className="w-full mt-2 pt-4 border-t border-[var(--line)]">
         <h4 className="text-sm font-semibold mb-3 text-[var(--ink)]">Boost your application</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <BoosterCard 
-            sku="cv_review_expert" 
-            title="Expert CV Review" 
-            description="Have an expert review your CV before applying." 
-            priceKwacha={250} 
-            icon="fileSearch"
+            sku="tailored_cv" 
+            title="Tailored CV" 
+            description="AI-tailor your CV for this exact job in 60 seconds." 
+            priceKwacha={20} 
+            icon="file"
           />
           <BoosterCard 
-            sku="priority_match" 
-            title="Priority Match" 
-            description="Jump to the top of the employer's applicant list." 
-            priceKwacha={50} 
-            icon="zap"
+            sku="cover_letter" 
+            title="Cover Letter" 
+            description="AI-write a cover letter targeted at this role." 
+            priceKwacha={15} 
+            icon="sparkle"
+          />
+          <BoosterCard 
+            sku="interview_prep" 
+            title="Interview Prep" 
+            description="Get 10 likely interview questions + model answers." 
+            priceKwacha={40} 
+            icon="messageCircle"
           />
         </div>
       </div>
