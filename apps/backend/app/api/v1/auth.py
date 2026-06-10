@@ -264,9 +264,14 @@ async def verify_otp(
             detail="Too many attempts. Request a new OTP.",
         )
 
+    # PR #315: include whatsapp_number so we can detect and patch missing
+    # values on existing-user verify. See the defensive UPDATE below.
     user_result = (
         supabase.table("users")
-        .select("id, role, email, full_name, welcome_email_sent")
+        .select(
+            "id, role, email, full_name, welcome_email_sent, "
+            "whatsapp_number, whatsapp_verified"
+        )
         .eq("phone", body.phone)
         .limit(1)
         .execute()
@@ -282,6 +287,22 @@ async def verify_otp(
         if body.email and not user_row.get("email"):
             supabase.table("users").update({"email": str(body.email)}).eq("id", user_id).execute()
             user_row["email"] = str(body.email)
+
+        # PR #315: belt-and-braces — if an existing user has never had their
+        # WhatsApp eligibility flipped on (whatsapp_number IS NULL on the
+        # users row), set it now using the phone they just OTP-verified.
+        # This catches anyone who signed up after the 2026-06-10 SQL backfill
+        # but before this PR deployed. Idempotent: if whatsapp_number is
+        # already set, the WHERE doesn't match and the UPDATE is a no-op.
+        # Always-safe because completing OTP IS the WhatsApp verification in
+        # the Zambian market (phone == WhatsApp universally).
+        if not user_row.get("whatsapp_number"):
+            supabase.table("users").update({
+                "whatsapp_number": body.phone,
+                "whatsapp_verified": True,
+            }).eq("id", user_id).execute()
+            user_row["whatsapp_number"] = body.phone
+            user_row["whatsapp_verified"] = True
     else:
         newly_created = True
         if body.consent_accepted is not True:
@@ -310,6 +331,15 @@ async def verify_otp(
             "otp_channel_preference": otp_pref,
             "referral_code": referral_code,
             "full_name": body.full_name.strip() if body.full_name else None,
+            # PR #315: complete WhatsApp eligibility at signup so the
+            # daily digest sends to every new user from day one. Without
+            # these two fields, 0 of 4 prod users were eligible despite
+            # whatsapp_alerts=true on every row — see the 2026-06-10
+            # WhatsApp-digest investigation. In Zambia, phone == WhatsApp
+            # universally and completing OTP (default channel = WhatsApp
+            # on free tier per resolve_otp_channel) IS the verification.
+            "whatsapp_number": body.phone,
+            "whatsapp_verified": True,
         }).execute()
         user_id = new_user.data[0]["id"]
         attach_referral_on_signup(user_id, body.referral_ref, supabase)
