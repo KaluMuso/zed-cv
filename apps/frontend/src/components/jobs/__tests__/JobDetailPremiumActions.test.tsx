@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { JobDetailPremiumActions } from "@/components/jobs/JobDetailPremiumActions";
 
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ user: { id: "u1" }, isLoaded: true }),
+}));
+
 describe("JobDetailPremiumActions", () => {
   it("shows purple upgrade links for free tier", () => {
     render(

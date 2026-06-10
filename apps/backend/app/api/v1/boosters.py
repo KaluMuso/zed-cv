@@ -33,7 +33,7 @@ async def purchase_booster(
 ):
     """Initiates a Lenco checkout for a booster. Creates a pending payment and entitlement."""
     # Lookup SKU
-    sku_res = supabase.table("booster_skus").select("*").eq("sku", req.sku).execute()
+    sku_res = supabase.table("booster_sku").select("*").eq("sku", req.sku).execute()
     if not sku_res.data:
         raise HTTPException(status_code=404, detail="SKU not found")
     
@@ -56,7 +56,7 @@ async def purchase_booster(
     # Create pending entitlement
     supabase.table("user_entitlements").insert({
         "user_id": user_id,
-        "booster_sku": req.sku,
+        "sku": req.sku,
         "payment_id": payment_id,
         "status": "pending",
     }).execute()

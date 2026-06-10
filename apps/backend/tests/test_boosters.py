@@ -22,7 +22,7 @@ class _InsertSpyQuery(FakeSupabaseQuery):
 
 @pytest.mark.asyncio
 async def test_booster_purchase_creates_pending_entitlement(client, auth_headers, fake_supabase):
-    fake_supabase.set_table("booster_skus", FakeSupabaseQuery(data=[{"sku": "test_sku", "price_ngwee": 5000}]))
+    fake_supabase.set_table("booster_sku", FakeSupabaseQuery(data=[{"sku": "test_sku", "price_ngwee": 5000}]))
     
     payments_spy = _InsertSpyQuery()
     fake_supabase.set_table("payments", payments_spy)
@@ -39,7 +39,7 @@ async def test_booster_purchase_creates_pending_entitlement(client, auth_headers
     
     assert len(entitlements_spy.inserted) == 1
     assert entitlements_spy.inserted[0]["status"] == "pending"
-    assert entitlements_spy.inserted[0]["booster_sku"] == "test_sku"
+    assert entitlements_spy.inserted[0]["sku"] == "test_sku"
 
 @pytest.mark.asyncio
 async def test_booster_webhook_activates_entitlement_to_paid(client, fake_supabase):
@@ -101,7 +101,7 @@ async def test_booster_consume_rejects_pending_or_consumed_entitlements(client, 
 
 @pytest.mark.asyncio
 async def test_booster_purchase_requires_valid_sku(client, auth_headers, fake_supabase):
-    fake_supabase.set_table("booster_skus", FakeSupabaseQuery(data=[]))
+    fake_supabase.set_table("booster_sku", FakeSupabaseQuery(data=[]))
     res = client.post("/api/v1/boosters/purchase", json={"sku": "invalid_sku", "phone": "0971234567"}, headers=auth_headers)
     assert res.status_code == 404
     assert res.json()["detail"] == "SKU not found"

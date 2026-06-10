@@ -18,7 +18,7 @@ class BoosterPurchaseResponse(BaseModel):
 class EntitlementResponse(BaseModel):
     id: str
     user_id: str
-    booster_sku: str
+    sku: str
     payment_id: Optional[str]
     status: str
     created_at: datetime
