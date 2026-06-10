@@ -4,9 +4,15 @@ import { useCallback, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { notify } from "@/lib/toast";
 
-const API_BASE =
+// Strip any trailing slash AND any trailing /api/v1 so we can safely
+// concatenate "/api/v1/..." paths below. On Vercel,
+// NEXT_PUBLIC_API_URL is set to "https://api.zedapply.com/api/v1"
+// (with the prefix included), which double-prefixed every request
+// from this component until 2026-06-10 and 404'd the viral loop.
+const API_BASE = (
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "https://api.zedapply.com";
+  "https://api.zedapply.com"
+).replace(/\/api\/v1$/, "");
 
 interface ShareMatchResponse {
   token: string;
