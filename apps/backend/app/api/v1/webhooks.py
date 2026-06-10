@@ -601,6 +601,7 @@ async def lenco_webhook(request: Request, supabase=Depends(get_supabase)):
             resolve_paid_tier_from_amount_ngwee,
         )
 
+        stored = payment.get("webhook_data")
         intended = (
             stored.get("intended_tier")
             if isinstance(stored, dict)

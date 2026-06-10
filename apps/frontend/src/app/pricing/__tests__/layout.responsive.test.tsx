@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
+import { AuthProvider } from "@/lib/auth";
 
 import PricingPage from "../page";
 import { renderWithProviders } from "@/test/renderWithProviders";
@@ -25,6 +26,15 @@ beforeEach(() => {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => "/pricing",
+}));
+
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({
+    token: "fake-token",
+    user: { id: "user-123", phone: "+260971234567" },
+    isAuthenticated: true,
+  }),
+  AuthProvider: ({ children }: any) => <>{children}</>,
 }));
 
 vi.mock("next/script", () => ({

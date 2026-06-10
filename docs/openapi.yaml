@@ -1337,7 +1337,15 @@ components:
           description: 'True for paid tiers when the authenticated user is within the first-two-months discount.'
         matches_limit: { type: integer, description: 'Monthly match quota; 99999 = unlimited' }
         sort_order: { type: integer }
+        billing_period_days: { type: integer, default: 30 }
         updated_at: { type: string, format: date-time, nullable: true }
+      required:
+        - tier
+        - display_name
+        - price_ngwee
+        - matches_limit
+        - sort_order
+        - billing_period_days
 
     TierConfigList:
       type: object

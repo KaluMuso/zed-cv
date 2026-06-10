@@ -16,6 +16,7 @@ class TierConfigRow(BaseModel):
     price_ngwee: int = Field(ge=0, description="List price in ngwee (1 ZMW = 100 ngwee)")
     matches_limit: int = Field(ge=0, description="Monthly match quota; 99999 = unlimited")
     sort_order: int = 0
+    billing_period_days: int = 30
     updated_at: Optional[datetime] = None
     checkout_price_ngwee: Optional[int] = Field(
         default=None,
