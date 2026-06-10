@@ -23,6 +23,11 @@ from app.services.tier_config import get_tier_prices
 
 logger = logging.getLogger(__name__)
 
+# Monthly billing cycle in days. Welcome 50% promo applies to monthly
+# rows only; annual sticker already carries the long-commit discount
+# (e.g. starter monthly K125×12=K1500 → annual K1050 = ~30% off).
+_MONTHLY_PERIOD_DAYS = 30
+
 
 def _payment_webhook_data(collection: dict[str, Any], *, tier: str, billing_period_days: int = 30) -> dict[str, Any]:
     """Persist Lenco payload plus checkout tier for webhook tier resolution."""
@@ -77,8 +82,14 @@ async def verify_lenco_widget_payment(
     now = datetime.now(timezone.utc)
     list_price_ngwee = tier_res.data[0]["price_ngwee"]
     promo_until = await load_user_promotion_until(supabase, user_id)
-    expected_ngwee = effective_checkout_price_ngwee(
-        list_price_ngwee, promo_until, now=now
+    # Welcome 50% promo only applies to monthly tiers. For annual, the
+    # long-commit discount is already baked into the sticker; do not
+    # stack a second 50% on top. Mirrors PR #306's policy on /tiers.
+    is_monthly = int(billing_period_days) == _MONTHLY_PERIOD_DAYS
+    expected_ngwee = (
+        effective_checkout_price_ngwee(list_price_ngwee, promo_until, now=now)
+        if is_monthly
+        else int(list_price_ngwee)
     )
     payment = _find_payment_by_reference(supabase, user_id, reference)
 
