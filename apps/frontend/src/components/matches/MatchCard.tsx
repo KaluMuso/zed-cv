@@ -21,6 +21,7 @@ import {
 import { Icon } from "@/components/ui/Icon";
 import { SaveJobButton } from "@/components/SaveJobButton";
 import { JobShareButtons } from "@/components/share/JobShareButtons";
+import { ShareMyMatchButton } from "@/components/matches/ShareMyMatchButton";
 import { MatchPremiumActions } from "@/components/matches/MatchPremiumActions";
 import { btnClass } from "@/lib/cn-ui";
 import { stashMatchHandoff } from "@/lib/matchHandoff";
@@ -200,7 +201,19 @@ export function MatchCard({
           </div>
 
           {!closed && (
-            <div className="match-share w-full overflow-x-auto">
+            <div
+              className="match-share w-full overflow-x-auto flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Share this match"
+            >
+              {authToken ? (
+                <ShareMyMatchButton
+                  matchId={match.id}
+                  authToken={authToken}
+                  matchScore={match.score}
+                  jobTitle={match.job.title}
+                />
+              ) : null}
               <JobShareButtons
                 variant="compact"
                 job={{
