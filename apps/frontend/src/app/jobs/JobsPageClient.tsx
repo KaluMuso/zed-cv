@@ -326,7 +326,13 @@ export default function JobsPageClient() {
         work_arrangement: effectiveWorkArrangement ? [effectiveWorkArrangement] : undefined,
         has_salary: listPreset === "with_salary" ? true : undefined,
         saved_only: listPreset === "saved" ? true : undefined,
-        closed_only: showClosed || undefined,
+        // PR #313: was `closed_only: showClosed` which semantically means
+        // "show me ONLY closed (hide open)" — not what the checkbox label
+        // promises. Switch to include_archived which means "show me both
+        // open AND closed." The backend default (no flag) is now strictly
+        // open-only — recently_closed grace listings no longer leak onto
+        // /jobs unless the user explicitly ticks Show closed.
+        include_archived: showClosed || undefined,
       });
       setJobsList(res.jobs);
       setTotalPages(res.pages);

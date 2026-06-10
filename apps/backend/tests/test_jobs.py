@@ -375,6 +375,10 @@ class TestJobList:
     def test_list_jobs_default_feed_filters_visibility_status(
         self, client, fake_supabase
     ):
+        """PR #313: default /jobs feed is strictly {"open"} — the
+        recently_closed grace window from FEED_STATUSES is no longer
+        included by default. Users opt into closed listings via the
+        "Show closed" checkbox which sends include_archived=true."""
         captured_in: list[tuple[str, list[str]]] = []
 
         class _CapturingQuery(FakeSupabaseQuery):
@@ -386,7 +390,7 @@ class TestJobList:
         resp = client.get("/api/v1/jobs")
         assert resp.status_code == 200
         vis_filters = [v for col, v in captured_in if col == "visibility_status"]
-        assert vis_filters and set(vis_filters[0]) == {"open", "recently_closed"}
+        assert vis_filters and set(vis_filters[0]) == {"open"}
 
     def test_list_jobs_include_archived_skips_visibility_filter(
         self, client, fake_supabase

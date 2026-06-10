@@ -390,7 +390,23 @@ async def list_jobs(
     if closed_only:
         query = query.in_("visibility_status", list(CLOSED_FEED_STATUSES))
     elif not show_archived:
-        query = query.in_("visibility_status", list(FEED_STATUSES))
+        # PR #313: strict default — only fully-open listings appear on
+        # the public /jobs feed. Previously this used FEED_STATUSES
+        # which is {"open", "recently_closed"} (the latter being a
+        # 3-day grace window after closing_date). That surfaced jobs
+        # which had closed yesterday with a "CLOSED" badge and a
+        # disabled Apply button on the public /jobs feed — confusing
+        # because users reasonably ask why we're showing roles they
+        # can't apply to. Tightening to {"open"} hides them by
+        # default; the "Show closed" checkbox on JobsPageClient now
+        # passes include_archived=true to bring closed back. Closed
+        # listings remain reachable via direct /jobs/<id> permalinks
+        # (get_job below returns inactive rows unchanged so existing
+        # WhatsApp share links keep rendering with a closure UX) and
+        # on /matches where the grace window still helps users see
+        # their own match history. closed_only=true above is unchanged
+        # so any future "closed-only" view can still opt in.
+        query = query.in_("visibility_status", ["open"])
 
     if sort_mode == "closing":
         # PostgREST does not support NULLS LAST inline; emulate by filtering
