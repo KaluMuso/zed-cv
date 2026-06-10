@@ -76,6 +76,13 @@ _security_optional = HTTPBearer(auto_error=False)
 # visible for three calendar days after closing_date, then drop from feeds.
 _CLOSING_DATE_GRACE_DAYS = 3
 
+# PR #314: default fallback for closing_date when neither the scraper
+# nor the LLM extracts a real deadline at ingest. Zambian job ads run
+# 10-20 days on average; 14 sits in the middle and keeps every new row
+# eligible for "closing soon" sorts and digest counts. Admins can
+# override on a per-row basis from the admin edit modal.
+_DEFAULT_DEADLINE_DAYS = 14
+
 
 def _closing_date_grace_cutoff() -> str:
     return (date.today() - timedelta(days=_CLOSING_DATE_GRACE_DAYS)).isoformat()
@@ -211,7 +218,7 @@ def _strip_html(text: str | None) -> str:
     s = _html.unescape(s)
     # Collapse horizontal whitespace per line; preserve newlines so
     # whitespace-pre-wrap keeps the visual structure.
-    s = _re.sub(r"[ \t ]+", " ", s)
+    s = _re.sub(r"[ \t ]+", " ", s)
     s = _re.sub(r"\n{3,}", "\n\n", s)
     return strip_scraper_metadata(s.strip())
 
@@ -928,6 +935,18 @@ async def _ingest_one_job(
             )
             if extracted_deadline:
                 job_data["closing_date"] = extracted_deadline.isoformat()
+
+        # PR #314: Final fallback — default to today + 14 days when
+        # neither the scraper nor the LLM extracted a real deadline.
+        # Without this, ~85% of active rows have NULL closing_date and
+        # disappear from "closing soon" sorts + digest counts. Admins
+        # can edit the closing_date on a per-row basis in the admin UI
+        # if a different real deadline is known. Applied AFTER the LLM
+        # extraction so any real deadline always wins over the default.
+        if not job_data.get("closing_date"):
+            job_data["closing_date"] = (
+                date.today() + timedelta(days=_DEFAULT_DEADLINE_DAYS)
+            ).isoformat()
 
         apply_ingest_quality_to_job_data(
             job_data,
