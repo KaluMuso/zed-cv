@@ -44,6 +44,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 # -- Mock Supabase client -------------------------------------------------
+@pytest.fixture(autouse=True)
+def _clear_caches():
+    from app.services.tier_config import clear_tier_config_cache
+    clear_tier_config_cache()
+    from app.core.config import get_settings
+    get_settings.cache_clear()
+
+
 class FakeSupabaseQuery:
     """Chainable mock that mimics supabase.table(...).select(...).eq(...) etc."""
 
@@ -138,6 +146,22 @@ class FakeSupabase:
     def table(self, name):
         if name == "jobs_user_facing" and name not in self._tables:
             return self._tables.get("jobs", FakeSupabaseQuery())
+        if name == "tier_config" and name not in self._tables:
+            class TierFakeSupabaseQuery(FakeSupabaseQuery):
+                def eq(self, *a):
+                    if len(a) == 2 and isinstance(self._data, list):
+                        k, v = a
+                        self._data = [d for d in self._data if d.get(k) == v]
+                    return self
+            return TierFakeSupabaseQuery(data=[
+                {"tier": "free", "display_name": "Free", "billing_period_days": 30, "price_ngwee": 0, "matches_limit": 5, "sort_order": 0},
+                {"tier": "starter", "display_name": "Starter", "billing_period_days": 30, "price_ngwee": 12500, "matches_limit": 15, "sort_order": 1},
+                {"tier": "professional", "display_name": "Professional", "billing_period_days": 30, "price_ngwee": 25000, "matches_limit": 35, "sort_order": 2},
+                {"tier": "super_standard", "display_name": "Super Standard", "billing_period_days": 30, "price_ngwee": 50000, "matches_limit": 100, "sort_order": 3},
+                {"tier": "starter", "display_name": "Starter (Annual)", "billing_period_days": 365, "price_ngwee": 125000, "matches_limit": 15, "sort_order": 4},
+                {"tier": "professional", "display_name": "Professional (Annual)", "billing_period_days": 365, "price_ngwee": 250000, "matches_limit": 35, "sort_order": 5},
+                {"tier": "super_standard", "display_name": "Super Standard (Annual)", "billing_period_days": 365, "price_ngwee": 500000, "matches_limit": 100, "sort_order": 6},
+            ])
         return self._tables.get(name, FakeSupabaseQuery())
 
     def set_table(self, name, query: "FakeSupabaseQuery"):

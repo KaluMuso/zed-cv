@@ -308,6 +308,7 @@ class TestLencoWebhookRoute:
                         "amount": 12500,
                         "status": "pending",
                         "provider_ref": "zedapply-bill",
+                        "subscription_id": "sub-1",
                         "subscriptions": {
                             "id": "sub-1",
                             "current_period_end": None,

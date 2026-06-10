@@ -88,6 +88,7 @@ def _payment_row(amount: int, status: str = "pending", existing_end: str | None 
         "user_id": "test-user-id",
         "amount": amount,
         "status": status,
+        "subscription_id": "sub-1",
         "subscriptions": {
             "id": "sub-1",
             "user_id": "test-user-id",
@@ -117,6 +118,7 @@ def test_dpo_webhook_legacy_company_ref_uuid_lookup(client, fake_supabase):
                     "amount": 12500,
                     "status": "pending",
                     "provider_ref": "legacy-provider-ref",
+                    "subscription_id": "sub-1",
                     "subscriptions": {
                         "id": "sub-1",
                         "user_id": "test-user-id",

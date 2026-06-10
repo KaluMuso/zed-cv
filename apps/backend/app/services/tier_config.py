@@ -51,7 +51,7 @@ async def fetch_tier_config_rows(supabase: Client, *, force: bool = False) -> li
     try:
         result = (
             supabase.table("tier_config")
-            .select("tier, display_name, price_ngwee, matches_limit, sort_order, updated_at")
+            .select("tier, display_name, price_ngwee, matches_limit, sort_order, updated_at, billing_period_days")
             .order("sort_order")
             .execute()
         )
@@ -60,29 +60,24 @@ async def fetch_tier_config_rows(supabase: Client, *, force: bool = False) -> li
         logger.warning("tier_config load failed, using defaults: %s", exc)
         rows = []
 
-    if not rows or len(rows) < len(_TIER_ORDER):
+    if not rows:
         _cache_rows = _default_rows()
         return _cache_rows
 
-    by_tier = {row["tier"]: row for row in rows if row.get("tier") in _TIER_ORDER}
-    merged: list[dict[str, Any]] = []
-    for idx, tier in enumerate(_TIER_ORDER):
-        if tier in by_tier:
-            merged.append(by_tier[tier])
-        else:
-            merged.append(_default_rows()[idx])
-    _cache_rows = merged
+    _cache_rows = rows
     return _cache_rows
 
 
 async def get_tier_limits(supabase: Client) -> dict[str, int]:
     rows = await fetch_tier_config_rows(supabase)
-    return {row["tier"]: int(row["matches_limit"]) for row in rows}
+    # Default to 30-day limits for legacy reverse mapping
+    return {row["tier"]: int(row["matches_limit"]) for row in rows if row.get("billing_period_days", 30) == 30}
 
 
 async def get_tier_prices(supabase: Client) -> dict[str, int]:
     rows = await fetch_tier_config_rows(supabase)
-    return {row["tier"]: int(row["price_ngwee"]) for row in rows}
+    # Default reverse-mapping dictionary is based on monthly (30-day) prices
+    return {row["tier"]: int(row["price_ngwee"]) for row in rows if row.get("billing_period_days", 30) == 30}
 
 
 @dataclass(frozen=True)
@@ -94,8 +89,8 @@ class TierPricingSnapshot:
 
     @classmethod
     def from_rows(cls, rows: list[dict[str, Any]]) -> TierPricingSnapshot:
-        prices = {row["tier"]: int(row["price_ngwee"]) for row in rows}
-        limits = {row["tier"]: int(row["matches_limit"]) for row in rows}
+        prices = {row["tier"]: int(row["price_ngwee"]) for row in rows if row.get("billing_period_days", 30) == 30}
+        limits = {row["tier"]: int(row["matches_limit"]) for row in rows if row.get("billing_period_days", 30) == 30}
         return cls(prices=prices, limits=limits)
 
     @classmethod
@@ -147,6 +142,9 @@ async def build_tier_display_names(supabase: Client) -> dict[str, str]:
     rows = await fetch_tier_config_rows(supabase)
     out: dict[str, str] = {}
     for row in rows:
+        # Only use monthly rows for default mapping
+        if row.get("billing_period_days", 30) != 30:
+            continue
         tier = row["tier"]
         if tier == "free":
             out[tier] = f"{row['display_name']} ({price_to_kwacha_label(row['price_ngwee'])})"
@@ -161,6 +159,9 @@ async def build_plan_info_by_tier(supabase: Client) -> dict[str, str]:
     rows = await fetch_tier_config_rows(supabase)
     out: dict[str, str] = {}
     for row in rows:
+        # Only use monthly rows for default mapping
+        if row.get("billing_period_days", 30) != 30:
+            continue
         tier = row["tier"]
         limit = int(row["matches_limit"])
         limit_txt = (

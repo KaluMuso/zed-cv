@@ -44,6 +44,31 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
       >
         First month: 50% off for paid tiers, 7 free matches/month for Free
       </div>
+      <div
+        class="mt-8 flex justify-center"
+      >
+        <div
+          class="inline-flex items-center rounded-full border p-1"
+          style="border-color: var(--line); background: var(--surface);"
+        >
+          <button
+            class="px-6 py-2 rounded-full text-sm font-medium transition-colors bg-[var(--ink)] text-[var(--surface)] shadow-sm"
+          >
+            Monthly
+          </button>
+          <button
+            class="px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 text-[var(--muted)] hover:text-[var(--ink)]"
+          >
+            Yearly 
+            <span
+              class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+              style="background: var(--copper-500); color: rgb(255, 255, 255);"
+            >
+              Save 20%
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
     <div
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16 md:mb-24"
@@ -190,12 +215,29 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
+          <svg
+            class=""
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="14"
+          >
+            <path
+              d="M20 6L9 17l-5-5"
+            />
+          </svg>
            
-          Get Started
+          Current plan
         </button>
       </div>
       <div
@@ -366,12 +408,14 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent-500 text-white hover:bg-accent-600 min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Starter
+          Loading checkout…
         </button>
       </div>
       <div
@@ -568,12 +612,14 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Professional
+          Loading checkout…
         </button>
       </div>
       <div
@@ -744,12 +790,14 @@ exports[`PricingPage responsive layout > matches 380px mobile snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Super Standard
+          Loading checkout…
         </button>
       </div>
     </div>
@@ -1975,6 +2023,31 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
       >
         First month: 50% off for paid tiers, 7 free matches/month for Free
       </div>
+      <div
+        class="mt-8 flex justify-center"
+      >
+        <div
+          class="inline-flex items-center rounded-full border p-1"
+          style="border-color: var(--line); background: var(--surface);"
+        >
+          <button
+            class="px-6 py-2 rounded-full text-sm font-medium transition-colors bg-[var(--ink)] text-[var(--surface)] shadow-sm"
+          >
+            Monthly
+          </button>
+          <button
+            class="px-6 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 text-[var(--muted)] hover:text-[var(--ink)]"
+          >
+            Yearly 
+            <span
+              class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
+              style="background: var(--copper-500); color: rgb(255, 255, 255);"
+            >
+              Save 20%
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
     <div
       class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16 md:mb-24"
@@ -2121,12 +2194,29 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
+          <svg
+            class=""
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.75"
+            viewBox="0 0 24 24"
+            width="14"
+          >
+            <path
+              d="M20 6L9 17l-5-5"
+            />
+          </svg>
            
-          Get Started
+          Current plan
         </button>
       </div>
       <div
@@ -2297,12 +2387,14 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md border border-transparent font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-accent-500 text-white hover:bg-accent-600 min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Starter
+          Loading checkout…
         </button>
       </div>
       <div
@@ -2499,12 +2591,14 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Professional
+          Loading checkout…
         </button>
       </div>
       <div
@@ -2675,12 +2769,14 @@ exports[`PricingPage responsive layout > matches 1024px desktop snapshot 1`] = `
         </ul>
         <button
           class="group/button relative inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all duration-base ease-out-soft outline-none select-none active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-border text-ink hover:bg-surface-elevated dark:border-border-dark dark:text-ink-dark dark:hover:bg-surface-dark-elevated min-h-11 h-12 px-6 text-base sm:min-h-12 w-full"
+          data-disabled=""
           data-slot="button"
+          disabled=""
           tabindex="0"
           type="button"
         >
            
-          Upgrade to Super Standard
+          Loading checkout…
         </button>
       </div>
     </div>

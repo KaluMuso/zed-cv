@@ -1,0 +1,85 @@
+<USER_REQUEST>
+# Task: Apply Boosters (pay-per-use Lenco SKUs) + Annual plan tabs on /pricing
+
+This is the largest single monetization unlock in the backlog. It's also a
+big PR — please be disciplined about the scope listed below and do NOT
+extend it.
+
+## Why both in one PR
+Apply Boosters and annual plans BOTH touch tier_config + the Lenco
+checkout + the /pricing UI. Shipping them together avoids two rounds of
+checkout-flow regression and keeps the migration story coherent.
+
+## Repository
+https://github.com/KaluMuso/ZedApply (master, currently at 46adde2)
+- Backend: apps/backend (FastAPI + Pydantic v2 + Supabase)
+- Frontend: apps/frontend (Next.js 14 + Tailwind + shadcn)
+- Lenco services live in apps/backend/app/services/lenco*.py — DO NOT
+  rewrite them. Add new endpoints that call into them.
+- Subscription billing already accepts a period_days parameter via the
+  Postgres RPC in apps/backend/app/services/subscription_billing.py.
+  USE THAT. Do not bypass it.
+- Migrations: infra/supabase/migrations (highest applied = 110).
+  Use 111+ for new migrations. Verify via Supabase MCP.
+
+## Confirmed live state (queried just now)
+- tier_config: 4 tiers (free K0, starter K125, professional K250,
+  super_standard K500). No billing_period_days column.
+- subscriptions: has tier, current_period_start/end, lenco_subscription_ref.
+- payments: has amount, currency, provider, provider_ref, status,
+  subscription_id, webhook_data.
+- LENCO_VERIFY_SIGNATURES=true is set in prod. A real production
+  payment of K125 has been processed successfully.
+- No entitlements/boosters table exists yet.
+
+## STEP 1 — Investigate before writing code
+
+Read fully and quote into a "Findings" block in the PR body:
+
+1. apps/backend/app/services/subscription_billing.py — quote the RPC call
+   and confirm p_period_days is already a parameter. If yes, the backend
+   period change is just plumbing.
+2. apps/backend/app/services/lenco.py + lenco_webhook.py — find:
+   - how a subscription payment is initiated (widget reference creation)
+   - how the
+<truncated 11587 bytes>
+base MCP after OCI deploy)
+6. SELECT tier, billing_period_days, price_ngwee FROM tier_config
+   ORDER BY billing_period_days, sort_order;
+   Expected: 4 monthly rows + 3 annual rows.
+7. SELECT sku, price_ngwee FROM booster_sku ORDER BY sort_order;
+   Expected: 3 rows (tailored_cv 2000, cover_letter 1500, interview_prep 4000).
+8. After a sandbox-Lenco payment for a booster:
+   SELECT * FROM user_entitlements ORDER BY created_at DESC LIMIT 1;
+   Expected: status flips from 'pending' → 'paid' on webhook.
+
+## Output
+- ONE branch: feat/apply-boosters-and-annual-tabs
+- ONE PR titled: "Apply Boosters (pay-per-use) + Annual plan tabs"
+- PR body MUST include:
+  - Findings block from STEP 1
+  - Migration prefix numbers chosen (111, 112) confirmed against
+    supabase_migrations.schema_migrations
+  - Live DB diagnostic SQL output before AND after the migration
+  - Screenshot of /pricing with Monthly tab default + Yearly tab
+  - Screenshot of /jobs/<id> with the Booster CTA section
+  - Screenshot of the Lenco widget firing for a Booster purchase
+  - The new test names
+
+## What will be rejected
+- Defaulting /pricing to Yearly (Kaluba explicitly wants Monthly default).
+- Hiding Monthly behind a tab/toggle that requires a click to find.
+- Letting boosters auto-consume on payment (must be explicit consume).
+- Routing booster payments through the subscription RPC.
+- Modifying the Lenco widget initialization beyond passing new args.
+- Touching deep_enrich, bulk-fix, ingest, admin job CRUD.
+- "While I was in there" refactors of pricing copy or layout beyond
+  adding the tabs.
+- Charging the booster amount in a currency other than ZMW.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-09T23:34:07+02:00.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (Low). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
