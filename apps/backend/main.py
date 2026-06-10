@@ -36,6 +36,7 @@ from app.api.v1 import (
     employers,
     notifications,
     boosters,
+    match_cards,
 )
 
 TRUSTED_HOSTS = [
@@ -100,6 +101,8 @@ def create_app() -> FastAPI:
 
     application.include_router(job_cover_letter.router, prefix="/api/v1")
     application.include_router(matches.router, prefix="/api/v1")
+    # Forwardable match cards (viral share + referral attribution).
+    application.include_router(match_cards.router, prefix="/api/v1")
     from app.api.v1 import match_cover_letter
 
     application.include_router(match_cover_letter.router, prefix="/api/v1")
