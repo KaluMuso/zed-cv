@@ -471,6 +471,18 @@ async def list_jobs(
         # so any future "closed-only" view can still opt in.
         query = query.in_("visibility_status", ["open"])
 
+        # PR H — Publish gate (Task #20). Hide jobs from the default
+        # /jobs feed until they've been deep-enriched. PUBLIC_JOBS_OR_FILTER
+        # already requires at least one apply route OR admin_published, so
+        # this layer only adds the LLM-validation gate on top.
+        # admin_published=true is the escape hatch: admins can force a
+        # row live without waiting for the every-6h deep-enrich cron.
+        # closed_only and include_archived bypass this gate so admin
+        # review of partially-enriched closed rows still works.
+        query = query.or_(
+            "deep_enriched_at.not.is.null,admin_published.eq.true"
+        )
+
     if sort_mode == "closing":
         # PostgREST does not support NULLS LAST inline; emulate by filtering
         # out null closing_dates for this view. Open-ended jobs aren't
