@@ -4,10 +4,11 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel
 
 from app.core.errors import ProblemHTTPException
 from app.services.email_delivery import EmailDeliveryError
-from jose import jwt
+from jose import JWTError, jwt
 
 from app.core.config import Settings, get_settings
 from app.core.deps import get_supabase
@@ -38,6 +39,18 @@ log = logging.getLogger(__name__)
 
 # Back-compat for tests importing _hash_otp from this module.
 _hash_otp = hash_otp_code
+
+
+class RefreshRequest(BaseModel):
+    """Payload for POST /auth/refresh.
+
+    PR I-back: frontend stores both access_token + refresh_token from
+    /auth/otp/verify (or /auth/login). When the access_token expires,
+    frontend POSTs the refresh_token here to get a new pair without
+    forcing the user to OTP again.
+    """
+
+    refresh_token: str
 
 
 def _client_ip(request: Request) -> str | None:
@@ -116,6 +129,87 @@ async def login(
         refresh_token=refresh,
         user_id=ctx["id"],
         trusted_device_login=True,
+    )
+
+
+@router.post("/refresh", response_model=AuthTokens)
+@limiter.limit("30/minute")
+async def refresh_access_token(
+    request: Request,
+    body: RefreshRequest,
+    settings: Settings = Depends(get_settings),
+    supabase=Depends(get_supabase),
+):
+    """Exchange a valid refresh_token for a fresh access + refresh pair.
+
+    PR I-back: stops the "Invalid token: Signature has expired" toast
+    cascade that every user hits ~jwt_expire_minutes after their last
+    OTP. Frontend interceptor (PR I-front, separate ship) catches the
+    first 401 from an expired access_token, calls this route with the
+    stored refresh_token, swaps in the new access_token, and retries
+    the original request.
+
+    Refresh-token rotation: the response carries a NEW refresh_token
+    too. Frontend MUST overwrite the stored value. This shrinks the
+    useful window of a leaked refresh_token to one round-trip.
+
+    Rate limit: 30/min per IP — high enough that no human normal flow
+    will hit it, but low enough to slow down a refresh-token enumeration
+    attack against a leaked secret.
+    """
+    try:
+        payload = jwt.decode(
+            body.refresh_token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    # The refresh token MUST carry type="refresh". A leaked access_token
+    # used here would otherwise grant a new access_token — catastrophic.
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    # Re-check the user is still active. Catches soft-deletes and admin
+    # tier overrides that should immediately invalidate sessions.
+    user_res = (
+        supabase.table("users")
+        .select("id, phone, is_active, deleted_at")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not user_res.data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+    user = user_res.data[0]
+    if user.get("deleted_at") is not None or user.get("is_active") is False:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account deactivated",
+        )
+
+    access, refresh = _issue_tokens(user["id"], user["phone"], settings)
+    return AuthTokens(
+        access_token=access,
+        refresh_token=refresh,
+        user_id=user["id"],
     )
 
 
