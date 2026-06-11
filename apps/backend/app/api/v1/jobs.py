@@ -131,6 +131,53 @@ _URL_RE = _re.compile(r"\b(?:https?://|www\.)\S+|\b[A-Z0-9.-]+\.[A-Z]{2,}(?:/\S*
 _PHONE_RE = _re.compile(r"(?:\+?260|0)?[79]\d{8}\b")
 
 
+# PR F: Extract the numeric LinkedIn job ID from URLs like:
+#   https://zm.linkedin.com/jobs/view/wash-officer-at-...-4425487790?position=8&pageNum=0&refId=...
+# The same posting appears day after day with different ?position/refId/
+# trackingId query params, and LinkedIn varies the description snippet
+# slightly between scrapes — so our title|company|desc[:200] fingerprint
+# doesn't match and we end up with N copies of the same row. Including
+# the LinkedIn job ID in the fingerprint collapses them all to one.
+_LINKEDIN_JOB_ID_RE = _re.compile(
+    r"linkedin\.com/jobs/view/[^?]*?-(\d{8,})(?:[/?]|$)", _re.IGNORECASE
+)
+
+# PR F: Company names ending in " - <Country>" come from LinkedIn Zambia's
+# leaky geo-search — Action Against Hunger (ACF) - Pakistan, Save the
+# Children Kenya, etc. The Zambian job board shouldn't surface them, but
+# the scraper accepts whatever LinkedIn returns. Reject them at ingest.
+# 25 country suffixes: African neighbors + common foreign HQs.
+_FOREIGN_COUNTRY_RE = _re.compile(
+    r" - (Pakistan|Kenya|Nigeria|Tanzania|Uganda|Ethiopia|Rwanda|Ghana"
+    r"|South Africa|India|Bangladesh|Sudan|Somalia|Congo|Malawi|Mozambique"
+    r"|Zimbabwe|Botswana|Namibia|Egypt|Morocco|Senegal|Cameroon"
+    r"|Ivory Coast|Burkina Faso|Mali|Madagascar)$",
+    _re.IGNORECASE,
+)
+
+
+def _extract_linkedin_job_id(*urls: str | None) -> str | None:
+    """Return the numeric LinkedIn job ID from any of the URLs, or None.
+
+    Tries each URL in order — the source_url is usually richer than
+    apply_url for LinkedIn scrapes. First match wins.
+    """
+    for url in urls:
+        if not url:
+            continue
+        match = _LINKEDIN_JOB_ID_RE.search(url)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _is_foreign_company(company: str | None) -> bool:
+    """True when the company name ends with a non-Zambian country suffix."""
+    if not company:
+        return False
+    return bool(_FOREIGN_COUNTRY_RE.search(company))
+
+
 def _has_text(value: str | None) -> bool:
     return bool(value and value.strip())
 
@@ -223,11 +270,27 @@ def _strip_html(text: str | None) -> str:
     return strip_scraper_metadata(s.strip())
 
 
-def _fingerprint(title: str, company: str | None, description: str) -> str:
-    """Stable dedupe key — lowercase, title + company + first 200 desc chars."""
-    return hashlib.sha256(
-        f"{title}|{company or ''}|{description[:200]}".lower().encode()
-    ).hexdigest()
+def _fingerprint(
+    title: str,
+    company: str | None,
+    description: str,
+    linkedin_id: str | None = None,
+) -> str:
+    """Stable dedupe key for the jobs table.
+
+    PR F: When a LinkedIn job ID is available (extracted from source_url
+    or apply_url), use it as the dominant fingerprint component. LinkedIn
+    serves the same posting day after day with cosmetic description
+    snippet changes that defeat the title|company|desc[:200] approach.
+    The numeric job ID is the only stable identifier we have for that
+    posting. Non-LinkedIn rows fall back to the existing approach
+    unchanged so all earlier dedupe behaviour is preserved.
+    """
+    if linkedin_id:
+        key = f"linkedin:{linkedin_id}"
+    else:
+        key = f"{title}|{company or ''}|{description[:200]}"
+    return hashlib.sha256(key.lower().encode()).hexdigest()
 
 
 async def _attach_job_skills(supabase, job_id: str, skill_names: list[str]) -> None:
@@ -843,7 +906,8 @@ async def _ingest_one_job(
       - "ingested" — row inserted, fingerprint stored, skills linked.
       - "merged" — fingerprint match; provenance/contacts updated on existing row.
       - "duplicate" — reserved for legacy no-op duplicates (unused after merge path).
-      - "skipped" — apply_url/source_url matched the aggregator blacklist.
+      - "skipped" — apply_url/source_url matched the aggregator blacklist,
+        OR the company name ends with a foreign-country suffix (PR F).
       - "error" — anything else; detail carries the short reason.
 
     Shared between the n8n bulk-ingest route and Slice F's WhatsApp
@@ -875,6 +939,19 @@ async def _ingest_one_job(
                 if any_ok:
                     return "ingested", ""
                 return last_status, last_detail
+
+        # PR F: Reject companies whose name ends with a foreign-country
+        # suffix ("Action Against Hunger (ACF) - Pakistan" etc). These
+        # are LinkedIn Zambia search results leaking jobs from neighbour
+        # countries; surfacing them would frustrate Zambian users who
+        # can't apply. Runs early so we skip embedding + LLM costs.
+        if _is_foreign_company(job.company):
+            logger.info(
+                "ingest_one_job: skipped foreign-country company "
+                "(title=%r company=%r)",
+                job.title, job.company,
+            )
+            return "skipped", "foreign_country"
 
         from app.services.deep_link_parsers.base import sanitize_listing_source_url
 
@@ -921,7 +998,19 @@ async def _ingest_one_job(
                 job.salary_min = parsed_min
                 job.salary_max = parsed_max
 
-        fp = _fingerprint(job.title, job.company, job.description)
+        # PR F: When the scraper provides a LinkedIn URL, prefer the job
+        # ID as the fingerprint primary key. Non-LinkedIn rows fall back
+        # to the legacy title|company|desc[:200] approach. Source_url is
+        # tried first since it's usually the original listing URL;
+        # apply_url is the fallback for callbacks that use the same URL
+        # for both fields.
+        linkedin_id = _extract_linkedin_job_id(job.source_url, job.apply_url)
+        fp = _fingerprint(
+            job.title,
+            job.company,
+            job.description,
+            linkedin_id=linkedin_id,
+        )
         existing = (
             supabase.table("job_fingerprints")
             .select("job_id")
@@ -1092,10 +1181,10 @@ async def ingest_jobs(
     the n8n execution view.
 
     Dedup is by SHA-256 fingerprint of title|company|first-200-chars-desc
-    against the `job_fingerprints` table. Skills are linked through
-    `skills` then `skill_aliases` (fuzzy matches silently dropped — the
-    AI parser can emit noisy strings, and that's preferable to 500-ing
-    the row).
+    against the `job_fingerprints` table, or the LinkedIn numeric job ID
+    when the URL exposes one (PR F). Skills are linked through `skills`
+    then `skill_aliases` (fuzzy matches silently dropped — the AI parser
+    can emit noisy strings, and that's preferable to 500-ing the row).
     """
     if not settings.ingest_api_key or body.api_key != settings.ingest_api_key:
         # Same response for missing-config and wrong-key — don't leak
