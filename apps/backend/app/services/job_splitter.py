@@ -287,7 +287,6 @@ def split_items_to_job_creates(
     """Map split items onto shared ingest metadata."""
     out: list[JobCreate] = []
     for idx, item in enumerate(items):
-        wa_id = f"{message_id}:split:{idx}" if len(items) > 1 else message_id
         payload = base.model_dump()
         payload.update({
             "title": item.title[:500],
@@ -295,7 +294,6 @@ def split_items_to_job_creates(
             "skills_required": item.skills,
             "experience_min_years": item.experience_min_years,
             "qualifications_required": item.qualifications_required,
-            "whatsapp_message_id": wa_id,
         })
         if item.seniority_level:
             payload["seniority_level"] = item.seniority_level

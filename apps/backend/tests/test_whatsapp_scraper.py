@@ -138,7 +138,7 @@ class TestWhatsappScraperWebhook:
         fake_supabase.set_table(
             "jobs",
             FakeSupabaseQuery(
-                data=[{"id": "job-wa-1", "whatsapp_message_id": "wa-dedup-1"}]
+                data=[{"id": "job-wa-1", "source_url": "whatsapp://channel/ch/wa-dedup-1"}]
             ),
         )
 
@@ -317,7 +317,6 @@ class TestWhatsappScraperWebhook:
         assert resp.status_code == 200
         assert resp.json()["ingest_result"] == "ingested"
         assert inserted
-        assert inserted[0].get("ocr_source_text") == ocr
         assert (
             inserted[0].get("source")
             == "whatsapp_120363401234567890_at_newsletter"
@@ -381,7 +380,7 @@ def test_classification_to_job_create_uses_whatsapp_source():
         message_id="wa-src-1",
     )
     assert job.source == "whatsapp_120363401234567890_at_newsletter"
-    assert job.whatsapp_message_id == "wa-src-1"
+    assert job.source_url.endswith("wa-src-1")
 
 
 class TestWhatsappScraperWebhookAuth:

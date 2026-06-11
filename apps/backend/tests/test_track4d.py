@@ -45,7 +45,6 @@ def _base_job_create(**kwargs) -> JobCreate:
         "apply_email": "jobs@techco.zm",
         "source": JobSource.scraper,
         "source_url": "whatsapp://channel/ch/msg-1",
-        "whatsapp_message_id": "msg-1",
     }
     defaults.update(kwargs)
     return JobCreate(**defaults)
@@ -108,7 +107,6 @@ class TestJobSplitter:
             )
         assert len(jobs) == 2
         assert jobs[0].title == "Backend Developer"
-        assert jobs[1].whatsapp_message_id == "wa-99:split:1"
         assert jobs[0].apply_email == "jobs@techco.zm"
         assert jobs[1].company == "Tech Co Ltd"
 
@@ -138,8 +136,6 @@ class TestJobSplitter:
             "UX Designer",
             "Account Manager",
         ]
-        assert jobs[0].whatsapp_message_id == "msg-multi:split:0"
-        assert jobs[2].whatsapp_message_id == "msg-multi:split:2"
 
 
 class TestDeepLinkEnricher:

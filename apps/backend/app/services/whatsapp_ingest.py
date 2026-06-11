@@ -23,21 +23,11 @@ def _job_exists_by_whatsapp_id(supabase: Any, message_id: str) -> bool:
         res = (
             supabase.table("jobs")
             .select("id")
-            .eq("whatsapp_message_id", message_id)
+            .like("source_url", f"%/{message_id}")
             .limit(1)
             .execute()
         )
-        if res.data:
-            return True
-        prefix = f"{message_id}:split:"
-        res2 = (
-            supabase.table("jobs")
-            .select("id")
-            .like("whatsapp_message_id", f"{prefix}%")
-            .limit(1)
-            .execute()
-        )
-        return bool(res2.data)
+        return bool(res.data)
     except Exception:
         return False
 
@@ -72,8 +62,6 @@ def classification_to_job_create(
         experience_min_years=extracted.experience_min_years,
         seniority_level=extracted.seniority_level,
         qualifications_required=extracted.qualifications_required or [],
-        whatsapp_message_id=message_id,
-        ocr_source_text=ocr_source_text or extracted.ocr_text,
     )
 
 
