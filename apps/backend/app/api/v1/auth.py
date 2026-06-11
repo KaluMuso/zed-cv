@@ -188,7 +188,7 @@ async def refresh_access_token(
     # tier overrides that should immediately invalidate sessions.
     user_res = (
         supabase.table("users")
-        .select("id, phone, is_active, deleted_at")
+        .select("id, phone, is_active")
         .eq("id", user_id)
         .limit(1)
         .execute()
@@ -199,7 +199,7 @@ async def refresh_access_token(
             detail="Invalid or expired refresh token",
         )
     user = user_res.data[0]
-    if user.get("deleted_at") is not None or user.get("is_active") is False:
+    if user.get("is_active") is False:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account deactivated",

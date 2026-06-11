@@ -172,6 +172,12 @@ components:
       properties:
         phone: { type: string, pattern: '^\+260[0-9]{9}$', example: "+260971234567" }
 
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string }
+
     OTPRequestResponse:
       type: object
       properties:
@@ -2817,6 +2823,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AuthTokens' }
         '401': { description: OTP required (unknown user or untrusted device) }
+
+  /auth/refresh:
+    post:
+      operationId: refreshAccessToken
+      summary: Exchange a valid refresh_token for a fresh access + refresh pair
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '401': { description: Invalid or expired refresh token }
+        '429': { description: Rate limited (30 per minute) }
 
   /auth/otp/request:
     post:
