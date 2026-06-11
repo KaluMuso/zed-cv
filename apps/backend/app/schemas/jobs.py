@@ -242,29 +242,17 @@ class JobCreate(BaseModel):
     # runaway so a misbehaving extractor can't blow up the DB row.
     employment_type: Optional[EmploymentType] = None
     work_arrangement: Optional[WorkArrangement] = None
-    # 1-5 only meaningful when work_arrangement == hybrid; we don't
-    # cross-validate at this layer (the scraper's prompt enforces it).
-    hybrid_days_per_week: Optional[int] = Field(None, ge=1, le=5)
     benefits: list[str] = Field(default_factory=list)
     application_instructions: Optional[str] = Field(None, max_length=2000)
-    reporting_structure: Optional[str] = Field(None, max_length=500)
-    manages_others: Optional[int] = Field(None, ge=0, le=10000)
     interview_process: Optional[str] = Field(None, max_length=1000)
     tools_tech_stack: list[str] = Field(default_factory=list)
-    success_metrics: Optional[str] = Field(None, max_length=1000)
     company_description: Optional[str] = Field(None, max_length=2000)
     reference_number: Optional[str] = Field(None, max_length=100)
     currency: Optional[str] = Field(None, max_length=3, min_length=3)
     pay_frequency: Optional[PayFrequency] = None
-    bonus_structure: Optional[str] = Field(None, max_length=500)
-    equity_offered: Optional[bool] = None
     experience_min_years: Optional[int] = Field(None, ge=0, le=50)
     seniority_level: Optional[str] = Field(None, max_length=32)
     qualifications_required: list[str] = Field(default_factory=list)
-
-    # WhatsApp ingest (Track 4c) — stored on jobs row.
-    whatsapp_message_id: Optional[str] = Field(None, max_length=256)
-    ocr_source_text: Optional[str] = Field(None, max_length=20000)
 
     # Deep-scrape enrichment (migration 045) — optional on create/ingest.
     source_platform: Optional[str] = Field(None, max_length=64)
@@ -456,20 +444,14 @@ class Job(BaseModel):
     # serialize without error. New columns default NULL on insert.
     employment_type: Optional[EmploymentType] = None
     work_arrangement: Optional[WorkArrangement] = None
-    hybrid_days_per_week: Optional[int] = None
     benefits: list[str] = Field(default_factory=list)
     application_instructions: Optional[str] = None
-    reporting_structure: Optional[str] = None
-    manages_others: Optional[int] = None
     interview_process: Optional[str] = None
     tools_tech_stack: list[str] = Field(default_factory=list)
-    success_metrics: Optional[str] = None
     company_description: Optional[str] = None
     reference_number: Optional[str] = None
     currency: Optional[str] = None
     pay_frequency: Optional[PayFrequency] = None
-    bonus_structure: Optional[str] = None
-    equity_offered: Optional[bool] = None
     contact_phone: Optional[str] = None
     admin_published: Optional[bool] = None
     scraping_sources: list[dict[str, str]] = Field(default_factory=list)
@@ -682,20 +664,14 @@ class AdminJobUpdate(BaseModel):
     posted_at: Optional[date] = None
     employment_type: Optional[EmploymentType] = None
     work_arrangement: Optional[WorkArrangement] = None
-    hybrid_days_per_week: Optional[int] = Field(None, ge=1, le=5)
     benefits: Optional[list[str]] = None
     application_instructions: Optional[str] = Field(None, max_length=2000)
-    reporting_structure: Optional[str] = Field(None, max_length=500)
-    manages_others: Optional[int] = Field(None, ge=0, le=10000)
     interview_process: Optional[str] = Field(None, max_length=1000)
     tools_tech_stack: Optional[list[str]] = None
-    success_metrics: Optional[str] = Field(None, max_length=1000)
     company_description: Optional[str] = Field(None, max_length=2000)
     reference_number: Optional[str] = Field(None, max_length=100)
     currency: Optional[str] = Field(None, max_length=3, min_length=3)
     pay_frequency: Optional[PayFrequency] = None
-    bonus_structure: Optional[str] = Field(None, max_length=500)
-    equity_offered: Optional[bool] = None
     salary_text: Optional[str] = Field(None, max_length=500)
     # is_active lets admin re-activate a soft-deleted job without a
     # second endpoint. DELETE handles deactivation; PATCH handles the
