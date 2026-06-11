@@ -115,12 +115,13 @@ Return is_job=false for:
 - Mobile-money scams ('Send K50 to register')
 - Bulk message promotions starting with 'Take advantage of', '🎉 Promotion 🎉', or similar
 - Greetings, memes, channel rules, unrelated chatter
+- Jobs strictly located outside Zambia (e.g., Tanzania, South Africa) with no remote option for Zambians.
 
 If unsure, lean toward is_job=false to keep the platform clean.
 
 - is_multi_job=true when the message lists 2+ distinct roles.
 - Zambian context: MTN, Airtel, ZANACO, ZESCO, Lusaka, Kitwe are normal.
-- apply_url must be http(s). WhatsApp chat links are NOT apply URLs.
+- apply_url must be http(s). WhatsApp chat links are NOT apply URLs. Do NOT extract literal phrases like 'fill out this form' or 'click here to apply' as URLs. Only extract the actual HTTP(s) link.
 - Do not invent salary or requirements; omit when not stated.
 - skills: lowercase short tokens (e.g. python, django).
 - description must be >= 20 chars when is_job=true."""
@@ -133,10 +134,11 @@ Return is_job=true ONLY for a SPECIFIC role at a SPECIFIC employer with at least
 job title, company name, or application instructions (email, URL, phone, office address).
 
 Return is_job=false for CV-writing ads, recruitment-agency promos, motivational posts,
-paid-group promos, affiliate schemes, unrelated service sales, mobile-money scams, and
-bulk promotions ('Take advantage of', '🎉 Promotion 🎉'). If unsure, use is_job=false.
+paid-group promos, affiliate schemes, unrelated service sales, mobile-money scams,
+bulk promotions ('Take advantage of', '🎉 Promotion 🎉'), and jobs strictly outside Zambia.
+If unsure, use is_job=false.
 
-Return JSON only with the same schema as text classification, including ocr_text."""
+Return JSON only with the same schema as text classification, including ocr_text. apply_url must be a valid HTTP(s) link."""
 
 
 def _classifier_decision(result: WhatsappJobClassification) -> ClassifierDecision:
