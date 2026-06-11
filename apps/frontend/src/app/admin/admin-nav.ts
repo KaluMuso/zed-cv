@@ -1,7 +1,6 @@
 export type AdminSection =
   | "overview"
   | "jobs"
-  | "bulk-fix"
   | "users"
   | "subscriptions"
   | "matches"
@@ -27,12 +26,6 @@ export const ADMIN_NAV: {
     label: "Jobs",
     description: "List, create, and deactivate job postings",
     href: "/admin/jobs",
-  },
-  {
-    slug: "bulk-fix",
-    label: "Bulk fix",
-    description: "Enter apply URL, email, and phone for scraped jobs",
-    href: "/admin/bulk-fix",
   },
   {
     slug: "users",
