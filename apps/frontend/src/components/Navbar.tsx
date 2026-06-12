@@ -42,7 +42,6 @@ const SIGNED_OUT_LINKS: NavLink[] = [
   { href: "/jobs", label: "Jobs" },
   { href: "/matches", label: "Matches" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/auth", label: "Log in", guestOnly: true },
   { href: AUTH_GET_STARTED, label: "Get started", guestOnly: true },
 ];
 
@@ -237,14 +236,6 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-4 ml-2">
-                {!isAdminRoute && (
-                  <Link
-                    href="/auth"
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Log in
-                  </Link>
-                )}
                 <Link
                   href={AUTH_GET_STARTED}
                   className={cn(buttonVariants({ variant: "default", size: "sm" }), "px-4")}
@@ -306,16 +297,6 @@ export function Navbar() {
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
-                {(!isAuthenticated && !isAdminRoute) ? (
-                  <Link
-                    href="/auth"
-                    onClick={() => setMenuOpen(false)}
-                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center")}
-                  >
-                    Log in
-                  </Link>
-                ) : null}
-
                 <button
                   type="button"
                   onClick={toggle}

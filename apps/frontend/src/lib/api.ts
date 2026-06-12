@@ -235,7 +235,7 @@ export const auth = {
       headers: authHeaders(),
       body: JSON.stringify({ phone }),
     }),
-  requestOTP: (phone: string, channel?: OtpChannel, fullName?: string) =>
+  requestOTP: (phone: string, channel?: OtpChannel, fullName?: string, email?: string) =>
     apiFetch<OTPResponse>("/auth/otp/request", {
       method: "POST",
       headers: authHeaders(),
@@ -243,6 +243,7 @@ export const auth = {
         phone,
         ...(channel ? { channel } : {}),
         ...(fullName?.trim() ? { full_name: fullName.trim() } : {}),
+        ...(email?.trim() ? { email: email.trim() } : {}),
       }),
     }),
   verifyOTP: (

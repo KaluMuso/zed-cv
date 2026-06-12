@@ -12,6 +12,10 @@ class OTPRequest(BaseModel):
         max_length=128,
         description="User's full name, required in frontend for personalization",
     )
+    email: EmailStr | None = Field(
+        None,
+        description="Optional email provided from the signup form to support email OTP for new users.",
+    )
 
 class OTPVerify(BaseModel):
     phone: str = Field(..., pattern=r"^\+260[0-9]{9}$")

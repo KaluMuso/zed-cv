@@ -144,7 +144,6 @@ describe("Navbar primary navigation", () => {
       "Pricing",
     ]);
 
-    expect(screen.getByRole("link", { name: "Log in" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Get started" })).toHaveLength(2);
   });
 

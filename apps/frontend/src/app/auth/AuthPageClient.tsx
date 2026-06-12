@@ -134,7 +134,7 @@ export default function AuthPageClient() {
       }
 
       const channel = isFreeTier ? otpChannel : "whatsapp";
-      const otpResp = await auth.requestOTP(fullPhone, channel, fullName.trim());
+      const otpResp = await auth.requestOTP(fullPhone, channel, fullName.trim(), email.trim() || undefined);
       if (otpResp.tier) {
         setUserTier(otpResp.tier);
       }
@@ -156,7 +156,7 @@ export default function AuthPageClient() {
     setLoading(true);
     try {
       const channel = isFreeTier ? otpChannel : "whatsapp";
-      await auth.requestOTP(fullPhone, channel, fullName.trim());
+      await auth.requestOTP(fullPhone, channel, fullName.trim(), email.trim() || undefined);
       setResendIn(30);
       setOtpCode("");
     } catch (err) {

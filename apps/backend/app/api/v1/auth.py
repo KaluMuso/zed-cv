@@ -247,7 +247,7 @@ async def request_otp(
         tier=tier,
         requested_channel=body.channel,
     )
-    email = (ctx or {}).get("email")
+    email = (ctx or {}).get("email") or getattr(body, "email", None)
     if channel in ("email", "both") and not email:
         if body.channel == "email":
             raise HTTPException(
