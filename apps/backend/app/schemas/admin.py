@@ -152,6 +152,16 @@ class BulkDeactivateRequest(BaseModel):
     expired_only: bool = False
 
 
+class AdminScrapeLinkRequest(BaseModel):
+    url: str = Field(..., max_length=1000)
+
+
+class AdminScrapeLinkResponse(BaseModel):
+    jobs_found: int
+    jobs_ingested: int
+    details: list[str]
+
+
 class BulkDeactivateResponse(BaseModel):
     deactivated: int
 
@@ -160,6 +170,7 @@ class AdminJobReviewRow(BaseModel):
     id: str
     title: str
     company: Optional[str] = None
+    description: Optional[str] = None
     source: str
     source_url: Optional[str] = None
     reasons: list[str] = []
@@ -188,6 +199,9 @@ class AdminReviewQueueOverview(BaseModel):
 
 
 class AdminJobReviewUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=3, max_length=500)
+    company: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = Field(None, min_length=20)
     apply_url: Optional[str] = None
     apply_email: Optional[str] = None
     closing_date: Optional[date] = None

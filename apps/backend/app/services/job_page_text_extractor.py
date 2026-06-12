@@ -24,6 +24,7 @@ __all__ = [
     "extract_page_text_for_description",
     "extract_real_apply_url",
     "is_aggregator",
+    "is_form_gated_page",
     "merge_resolved_apply_contacts",
     "resolve_apply_contacts_from_aggregator_url",
 ]
@@ -71,6 +72,53 @@ def _collapse_whitespace(text: str) -> str:
     lines = [re.sub(r"[ \t]+", " ", line).strip() for line in text.splitlines()]
     lines = [ln for ln in lines if ln]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+_FORM_HOST_PATTERNS: tuple[str, ...] = (
+    "docs.google.com",
+    "forms.gle",
+    "typeform.com",
+    "jotform.com",
+    "surveymonkey.com",
+    "microsoft.com/forms",
+    "forms.office.com",
+    "airtable.com",
+    "paperform.co",
+    "tally.so",
+    "wufoo.com",
+    "cognito.com",
+    "formstack.com",
+)
+
+_FORM_TEXT_SIGNALS: tuple[str, ...] = (
+    "fill out this form",
+    "fill in this form",
+    "complete this form",
+    "submit this form",
+    "this form is required",
+    "google forms",
+    "survey monkey",
+)
+
+
+def is_form_gated_page(url: str, html: str = "") -> bool:
+    """Return True when a page is primarily a fill-out form (Google Forms etc.).
+
+    Such pages rarely contain enough structured job-description text for the
+    LLM to extract meaningful roles.  Callers should skip or warn the user.
+    """
+    lower_url = (url or "").lower()
+    # Fast-path on URL alone
+    for pattern in _FORM_HOST_PATTERNS:
+        if pattern in lower_url:
+            return True
+    # Slow-path: inspect page text for clear form signals
+    if html:
+        lower_body = html[:4000].lower()
+        matches = sum(1 for sig in _FORM_TEXT_SIGNALS if sig in lower_body)
+        if matches >= 2:
+            return True
+    return False
 
 
 def extract_page_text_for_description(html: str, page_url: str = "") -> str:

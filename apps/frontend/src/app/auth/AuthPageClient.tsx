@@ -122,7 +122,7 @@ export default function AuthPageClient() {
         if (tokens.device_token) {
           localStorage.setItem(DEVICE_TOKEN_KEY, tokens.device_token);
         }
-        login(tokens.access_token, tokens.user_id);
+        login(tokens.access_token, tokens.user_id, tokens.refresh_token);
         setTrustedLogin(!!tokens.trusted_device_login);
         setStep("success");
         setTimeout(() => router.push(safeNext), tokens.trusted_device_login ? 800 : 1400);
@@ -185,7 +185,7 @@ export default function AuthPageClient() {
           localStorage.setItem(DEVICE_TOKEN_KEY, tokens.device_token);
         }
         clearStoredReferralRef();
-        login(tokens.access_token, tokens.user_id);
+        login(tokens.access_token, tokens.user_id, tokens.refresh_token);
         setStep("success");
         setTimeout(() => router.push(safeNext), 1400);
       } catch (err) {

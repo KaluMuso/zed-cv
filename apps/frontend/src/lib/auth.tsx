@@ -12,13 +12,14 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, userId: string) => void;
+  login: (token: string, userId: string, refreshToken?: string) => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 const TOKEN_KEY = "zed_cv_token";
+const REFRESH_TOKEN_KEY = "zed_cv_refresh_token";
 const USER_KEY = "zed_cv_user_id";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -36,8 +37,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback((newToken: string, userId: string) => {
+  const login = useCallback((newToken: string, userId: string, refreshToken?: string) => {
     localStorage.setItem(TOKEN_KEY, newToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
     localStorage.setItem(USER_KEY, userId);
     setToken(newToken);
     setUser({ id: userId, phone: "" });
@@ -45,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);

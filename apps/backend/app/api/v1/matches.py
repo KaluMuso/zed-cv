@@ -63,6 +63,10 @@ from app.services.match_quota import (
     assert_match_delivery_quota,
     build_match_quota_snapshot,
 )
+from app.services.daily_digest import (
+    _fetch_sent_job_ids,
+    record_digest_notifications,
+)
 from app.services.email import send_match_digest_email
 from app.services.notification_channels import wants_email_digest, wants_whatsapp_digest
 from app.services.quiet_hours import user_in_quiet_hours
@@ -241,7 +245,7 @@ async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:
         return False
     rows = (
         supabase.table("matches")
-        .select("score, matched_skills, credited_at, jobs(title, company, apply_url, source_url)")
+        .select("job_id, score, matched_skills, credited_at, jobs(title, company, apply_url, source_url)")
         .eq("user_id", user["id"])
         .gte("credited_at", (now - timedelta(hours=24)).isoformat())
         .order("score", desc=True)
@@ -255,33 +259,57 @@ async def _send_due_digest(user: dict, supabase, now: datetime) -> bool:
     legacy = _channels(user)
     sent = False
     phone = (user.get("whatsapp_number") or user.get("phone") or "").strip()
+
+    whatsapp_sent_ids = await _fetch_sent_job_ids(user["id"], "whatsapp_auto_match", supabase)
+    email_sent_ids = await _fetch_sent_job_ids(user["id"], "email_auto_match", supabase)
+
     if (
         wants_whatsapp_digest(user)
         and phone
         and legacy.get("whatsapp", True)
         and not user_in_quiet_hours(user, now)
     ):
-        try:
-            await send_match_digest(
-                phone,
-                [
-                    {
-                        "title": (m.get("jobs") or {}).get("title"),
-                        "company": (m.get("jobs") or {}).get("company"),
-                        "score": m.get("score", 0),
-                        "matched_skills": m.get("matched_skills", []),
-                    }
-                    for m in matches[:3]
-                ],
-            )
-            sent = True
-        except Exception:
-            logger.warning("auto-match WhatsApp digest failed for user=%s", user["id"], exc_info=True)
+        whatsapp_matches = [m for m in matches if str(m.get("job_id")) not in whatsapp_sent_ids]
+        if whatsapp_matches:
+            try:
+                await send_match_digest(
+                    phone,
+                    [
+                        {
+                            "title": (m.get("jobs") or {}).get("title"),
+                            "company": (m.get("jobs") or {}).get("company"),
+                            "score": m.get("score", 0),
+                            "matched_skills": m.get("matched_skills", []),
+                        }
+                        for m in whatsapp_matches[:3]
+                    ],
+                )
+                await record_digest_notifications(
+                    user["id"],
+                    [str(m["job_id"]) for m in whatsapp_matches[:3] if m.get("job_id")],
+                    "whatsapp_auto_match",
+                    supabase,
+                    now=now,
+                )
+                sent = True
+            except Exception:
+                logger.warning("auto-match WhatsApp digest failed for user=%s", user["id"], exc_info=True)
+
     if wants_email_digest(user) and legacy.get("email", True):
-        try:
-            sent = bool(await send_match_digest_email(user["id"], matches[:5], supabase)) or sent
-        except Exception:
-            logger.warning("auto-match email digest failed for user=%s", user["id"], exc_info=True)
+        email_matches = [m for m in matches if str(m.get("job_id")) not in email_sent_ids]
+        if email_matches:
+            try:
+                if await send_match_digest_email(user["id"], email_matches[:5], supabase):
+                    await record_digest_notifications(
+                        user["id"],
+                        [str(m["job_id"]) for m in email_matches[:5] if m.get("job_id")],
+                        "email_auto_match",
+                        supabase,
+                        now=now,
+                    )
+                    sent = True
+            except Exception:
+                logger.warning("auto-match email digest failed for user=%s", user["id"], exc_info=True)
 
     if sent:
         supabase.table("users").update(
@@ -760,19 +788,29 @@ async def _run_matching_task(user_id: str, cv_id: str, supabase):
         if new_credited:
             digest_rows = (
                 supabase.table("matches")
-                .select("score, jobs(title, company)")
+                .select("job_id, score, jobs(title, company)")
                 .eq("user_id", user_id)
                 .not_.is_("credited_at", "null")
                 .order("score", desc=True)
                 .limit(5)
                 .execute()
             )
-            try:
-                await send_match_digest_email(user_id, digest_rows.data or [], supabase)
-            except Exception:
-                logger.warning(
-                    "match digest email failed for user=%s", user_id, exc_info=True
-                )
+            email_sent_ids = await _fetch_sent_job_ids(user_id, "email_auto_match", supabase)
+            matches_to_send = [m for m in (digest_rows.data or []) if str(m.get("job_id")) not in email_sent_ids]
+            
+            if matches_to_send:
+                try:
+                    if await send_match_digest_email(user_id, matches_to_send, supabase):
+                        await record_digest_notifications(
+                            user_id,
+                            [str(m["job_id"]) for m in matches_to_send if m.get("job_id")],
+                            "email_auto_match",
+                            supabase,
+                        )
+                except Exception:
+                    logger.warning(
+                        "match digest email failed for user=%s", user_id, exc_info=True
+                    )
     except Exception:
         logger.error(
             "matching task failed for user=%s cv=%s", user_id, cv_id, exc_info=True

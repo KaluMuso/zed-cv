@@ -114,6 +114,8 @@ function parseProblemBody(
   return { message, code };
 }
 
+let _refreshPromise: Promise<AuthTokens> | null = null;
+
 export async function apiFetch<T>(
   path: string,
   options: FetchOptions = {}
@@ -146,11 +148,50 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({
+    if (res.status === 401 && token) {
+      const refreshToken = typeof window !== "undefined" ? localStorage.getItem("zed_cv_refresh_token") : null;
+      if (refreshToken) {
+        try {
+          if (!_refreshPromise) {
+            _refreshPromise = auth.refreshTokens(refreshToken).finally(() => {
+              _refreshPromise = null;
+            });
+          }
+          const newTokens = await _refreshPromise;
+          
+          if (typeof window !== "undefined") {
+            localStorage.setItem("zed_cv_token", newTokens.access_token);
+            if (newTokens.refresh_token) {
+               localStorage.setItem("zed_cv_refresh_token", newTokens.refresh_token);
+            }
+          }
+          headers["Authorization"] = `Bearer ${newTokens.access_token}`;
+          res = await fetch(`${API_BASE}${path}`, {
+            ...fetchOptions,
+            headers,
+            body: prepareRequestBody(body),
+          });
+          
+          if (res.ok) {
+            if (res.status === 204) return undefined as T;
+            return res.json() as Promise<T>;
+          }
+        } catch (refreshErr) {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("zed_cv_token");
+            localStorage.removeItem("zed_cv_refresh_token");
+            localStorage.removeItem("zed_cv_user_id");
+            window.location.href = "/auth";
+          }
+        }
+      }
+    }
+
+    const errorBody = (await res.json().catch(() => ({
       detail: res.statusText,
     }))) as Record<string, unknown>;
-    const { message, code } = parseProblemBody(body, res.statusText);
-    reportApi5xxToSentry(res.status, path, body);
+    const { message, code } = parseProblemBody(errorBody, res.statusText);
+    reportApi5xxToSentry(res.status, path, errorBody);
     if (GATEWAY_STATUSES.has(res.status)) {
       throw new ApiError(res.status, API_UNAVAILABLE_MESSAGE, "api_unreachable");
     }
@@ -231,6 +272,12 @@ export const auth = {
           : {}),
         ...(options?.fullName?.trim() ? { full_name: options.fullName.trim() } : {}),
       }),
+    }),
+  refreshTokens: (refreshToken: string) =>
+    apiFetch<AuthTokens>("/auth/refresh", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ refresh_token: refreshToken }),
     }),
 };
 
@@ -701,6 +748,7 @@ export interface AdminJobReviewRow {
   id: string;
   title: string;
   company: string | null;
+  description?: string | null;
   source: string;
   source_url: string | null;
   reasons: string[];
@@ -717,10 +765,23 @@ export interface AdminJobReviewQueue {
 }
 
 export interface AdminJobReviewUpdate {
+  title?: string;
+  company?: string;
+  description?: string;
   apply_url?: string;
   apply_email?: string;
   closing_date?: string;
   application_instructions?: string;
+}
+
+export interface AdminScrapeLinkRequest {
+  url: string;
+}
+
+export interface AdminScrapeLinkResponse {
+  jobs_found: number;
+  jobs_ingested: number;
+  details: string[];
 }
 
 export interface AdminPaymentRow {
@@ -1009,6 +1070,11 @@ export const admin = {
       `/admin/review-jobs/${encodeURIComponent(jobId)}`,
       { method: "PATCH", token, body: JSON.stringify(data) }
     ),
+  dismissTrack4eReviewJob: (token: string, jobId: string) =>
+    apiFetch<{ id: string; is_active: boolean }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}/dismiss`,
+      { method: "POST", token, body: "{}" }
+    ),
   bulkMarkReviewDuplicate: (token: string, jobIds: string[]) =>
     apiFetch<{ updated: number }>("/admin/review-jobs/bulk-mark-duplicate", {
       method: "POST",
@@ -1196,6 +1262,12 @@ export const admin = {
       `/admin/jobs/${encodeURIComponent(jobId)}/re-enrich`,
       { method: "POST", token, body: "{}" }
     ),
+  scrapeLink: (token: string, data: AdminScrapeLinkRequest) =>
+    apiFetch<AdminScrapeLinkResponse>("/admin/scrape-link", {
+      method: "POST",
+      token,
+      body: JSON.stringify(data),
+    }),
 };
 
 export interface TierConfigRow {

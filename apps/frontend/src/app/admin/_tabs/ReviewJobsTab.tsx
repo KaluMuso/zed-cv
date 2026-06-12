@@ -9,6 +9,9 @@ import { notify } from "@/lib/toast";
 import { ReviewQueueOverviewStrip } from "../_components/ReviewQueueOverviewStrip";
 
 type Draft = {
+  title: string;
+  company: string;
+  description: string;
   apply_url: string;
   apply_email: string;
   closing_date: string;
@@ -22,7 +25,7 @@ const PRESET_LABELS: Record<QueuePreset, string> = {
 };
 
 function emptyDraft(): Draft {
-  return { apply_url: "", apply_email: "", closing_date: "" };
+  return { title: "", company: "", description: "", apply_url: "", apply_email: "", closing_date: "" };
 }
 
 export function ReviewJobsTab({ token }: { token: string }) {
@@ -37,6 +40,8 @@ export function ReviewJobsTab({ token }: { token: string }) {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [bulkClearing, setBulkClearing] = useState(false);
   const [bulkActioning, setBulkActioning] = useState(false);
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scraping, setScraping] = useState(false);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -52,7 +57,16 @@ export function ReviewJobsTab({ token }: { token: string }) {
       setDrafts((current) => {
         const next = { ...current };
         for (const job of res.jobs) {
-          next[job.id] = next[job.id] ?? emptyDraft();
+          if (!next[job.id]) {
+            next[job.id] = {
+              title: job.title || "",
+              company: job.company || "",
+              description: job.description || "",
+              apply_url: "",
+              apply_email: "",
+              closing_date: "",
+            };
+          }
         }
         return next;
       });
@@ -82,7 +96,7 @@ export function ReviewJobsTab({ token }: { token: string }) {
   const saveJob = async (jobId: string) => {
     const draft = drafts[jobId] ?? emptyDraft();
     const payload = Object.fromEntries(
-      Object.entries(draft).filter(([, v]) => v.trim())
+      Object.entries(draft).filter(([, v]) => typeof v === "string" && v.trim() !== "")
     );
     setSavingId(jobId);
     try {
@@ -96,6 +110,24 @@ export function ReviewJobsTab({ token }: { token: string }) {
       await loadQueue();
     } catch (e) {
       notify.error(e instanceof Error ? e.message : "Could not save job");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const dismissJob = async (jobId: string) => {
+    setSavingId(jobId);
+    try {
+      await admin.dismissTrack4eReviewJob(token, jobId);
+      notify.custom.success("Job dismissed.");
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(jobId);
+        return next;
+      });
+      await loadQueue();
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Could not dismiss job");
     } finally {
       setSavingId(null);
     }
@@ -141,6 +173,22 @@ export function ReviewJobsTab({ token }: { token: string }) {
     }
   };
 
+  const handleScrapeLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scrapeUrl.trim()) return;
+    setScraping(true);
+    try {
+      const res = await admin.scrapeLink(token, { url: scrapeUrl.trim() });
+      notify.custom.success(`Ingested ${res.jobs_ingested}/${res.jobs_found} jobs.`);
+      setScrapeUrl("");
+      await loadQueue();
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Scrape failed");
+    } finally {
+      setScraping(false);
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -170,6 +218,28 @@ export function ReviewJobsTab({ token }: { token: string }) {
 
   return (
     <div className="space-y-4">
+      <Card className="bg-muted/50 border-dashed">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Manual Ingest</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleScrapeLink} className="flex gap-2 max-w-xl">
+            <Input
+              type="url"
+              placeholder="https://..."
+              value={scrapeUrl}
+              onChange={(e) => setScrapeUrl(e.target.value)}
+              className="bg-background flex-1"
+              disabled={scraping}
+              required
+            />
+            <Button type="submit" size="sm" disabled={scraping}>
+              {scraping ? "Scraping…" : "Scrape & Ingest"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <ReviewQueueOverviewStrip token={token} onChanged={() => void loadQueue()} />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -299,30 +369,74 @@ export function ReviewJobsTab({ token }: { token: string }) {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-3">
-                  <Input
-                    placeholder="Apply URL"
-                    value={draft.apply_url}
-                    onChange={(e) => updateDraft(job.id, "apply_url", e.target.value)}
-                  />
-                  <Input
-                    placeholder="Apply email"
-                    value={draft.apply_email}
-                    onChange={(e) => updateDraft(job.id, "apply_email", e.target.value)}
-                  />
-                  <Input
-                    type="date"
-                    value={draft.closing_date}
-                    onChange={(e) => updateDraft(job.id, "closing_date", e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="sm:col-span-3 w-fit"
-                    disabled={savingId === job.id}
-                    onClick={() => saveJob(job.id)}
-                  >
-                    {savingId === job.id ? "Saving…" : "Save & publish"}
-                  </Button>
+                  <div className="sm:col-span-3">
+                    <label className="text-xs text-muted-foreground">Title</label>
+                    <Input
+                      value={draft.title}
+                      onChange={(e) => updateDraft(job.id, "title", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="text-xs text-muted-foreground">Company</label>
+                    <Input
+                      value={draft.company}
+                      onChange={(e) => updateDraft(job.id, "company", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-3">
+                    <label className="text-xs text-muted-foreground">Description</label>
+                    <textarea
+                      className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      rows={6}
+                      value={draft.description}
+                      onChange={(e) => updateDraft(job.id, "description", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-1">
+                    <label className="text-xs text-muted-foreground">Apply URL</label>
+                    <Input
+                      placeholder="https://..."
+                      value={draft.apply_url}
+                      onChange={(e) => updateDraft(job.id, "apply_url", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-1">
+                    <label className="text-xs text-muted-foreground">Apply Email</label>
+                    <Input
+                      placeholder="jobs@..."
+                      value={draft.apply_email}
+                      onChange={(e) => updateDraft(job.id, "apply_email", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-1">
+                    <label className="text-xs text-muted-foreground">Closing Date</label>
+                    <Input
+                      type="date"
+                      value={draft.closing_date}
+                      onChange={(e) => updateDraft(job.id, "closing_date", e.target.value)}
+                    />
+                  </div>
+                  <div className="sm:col-span-3 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-fit"
+                      disabled={savingId === job.id}
+                      onClick={() => saveJob(job.id)}
+                    >
+                      {savingId === job.id ? "Saving…" : "Save & publish"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="w-fit"
+                      disabled={savingId === job.id}
+                      onClick={() => dismissJob(job.id)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );

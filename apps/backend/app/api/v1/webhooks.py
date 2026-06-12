@@ -195,8 +195,31 @@ async def whatsapp_webhook(request: Request, supabase=Depends(get_supabase)):
                 phone,
                 f"*Your Plan:* {plan_info.get(tier, tier)}\n\nVisit zedcv.com/pricing to upgrade.",
             )
+    elif command == "more_matches":
+        user = supabase.table("users").select("id").eq("phone", phone).limit(1).execute()
+        if not user.data:
+            await send_whatsapp_message(phone, "You haven't signed up yet! Visit zedcv.com to create your account.")
+        else:
+            mr = supabase.table("matches").select("*, jobs(title, company)").eq("user_id", user.data[0]["id"]).order("score", desc=True).range(5, 9).execute()
+            if mr.data:
+                await send_match_digest(phone, [{"title": m.get("jobs", {}).get("title", "?"), "company": m.get("jobs", {}).get("company", "?"), "score": m["score"], "matched_skills": m.get("matched_skills", [])} for m in mr.data])
+            else:
+                await send_whatsapp_message(phone, "No more matches right now. We'll keep looking!")
     elif message_body.isdigit() and 1 <= int(message_body) <= get_settings().whatsapp_reply_max_index:
-        await send_whatsapp_message(phone, f"Opening job #{message_body} details...\nVisit zedcv.com/matches for full details.")
+        idx = int(message_body) - 1
+        user = supabase.table("users").select("id").eq("phone", phone).limit(1).execute()
+        if not user.data:
+            await send_whatsapp_message(phone, "You haven't signed up yet! Visit zedcv.com to create your account.")
+        else:
+            mr = supabase.table("matches").select("job_id, jobs(title, company)").eq("user_id", user.data[0]["id"]).order("score", desc=True).limit(10).execute()
+            if mr.data and idx < len(mr.data):
+                m = mr.data[idx]
+                job_id = m.get("job_id")
+                title = m.get("jobs", {}).get("title", "Unknown")
+                company = m.get("jobs", {}).get("company", "Unknown")
+                await send_whatsapp_message(phone, f"Here is the link to apply for *{title}* at {company}:\n\nhttps://zedcv.com/jobs/{job_id}")
+            else:
+                await send_whatsapp_message(phone, f"Could not find job #{message_body}. Try sending 'matches' again.")
     else:
         await send_whatsapp_message(phone, "I didn't understand that. Reply *help* to see available commands.")
     return {"status": "ok"}

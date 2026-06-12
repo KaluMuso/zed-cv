@@ -51,6 +51,8 @@ from app.schemas.admin import (
     AdminJobReviewRow,
     AdminJobReviewQueue,
     AdminJobReviewUpdate,
+    AdminScrapeLinkRequest,
+    AdminScrapeLinkResponse,
 )
 from app.schemas.jobs import AdminJobCreate, AdminJobUpdate, Job
 from app.core.tier_gating import get_effective_match_limit
@@ -2135,3 +2137,93 @@ async def canonicalize_skills(
         )
         out.append(_CanonicalizeResult(input=name, skill_id=sid))
     return _CanonicalizeResponse(resolved=out)
+
+
+@router.post("/scrape-link", response_model=AdminScrapeLinkResponse)
+async def admin_scrape_link(
+    body: AdminScrapeLinkRequest,
+    supabase=Depends(get_supabase),
+    current_user: dict = Depends(require_admin),
+):
+    """Manually fetch and ingest jobs from a URL."""
+    from app.services.deep_enrich import (
+        fetch_source_page,
+        _call_deep_enrich_llm,
+        _insert_child_job,
+    )
+    from app.services.job_quality import parent_listing_signature
+    from app.services.job_page_text_extractor import extract_page_text_for_description, is_form_gated_page
+
+    url = body.url.strip()
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid URL scheme.")
+
+    try:
+        status, html = await fetch_source_page(url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch URL: {str(e)[:200]}")
+
+    if status >= 400 or not html:
+        raise HTTPException(status_code=400, detail=f"HTTP {status} fetching URL.")
+
+    # Detect form-gated pages (Google Forms, Typeform, etc.) — these rarely
+    # contain extractable job-description text.
+    if is_form_gated_page(url, html):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "This URL appears to be a form-only page (e.g. Google Forms, Typeform). "
+                "These cannot be scraped automatically — the job description lives on the "
+                "page that *links* to this form. Please paste the source job posting URL instead."
+            ),
+        )
+
+    page_text = extract_page_text_for_description(html, url)
+    if len(page_text) < 80:
+        raise HTTPException(status_code=400, detail="Not enough content extracted from page.")
+
+    try:
+        roles = await _call_deep_enrich_llm(page_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM extraction failed: {str(e)}")
+
+    if not roles:
+        return AdminScrapeLinkResponse(jobs_found=0, jobs_ingested=0, details=["No roles found."])
+
+    # Parent stub for insert logic
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    parent_stub = {
+        "source_url": url,
+        "source": "manual_ingest",
+        "posted_at": now,
+        "created_at": now,
+        "is_review_required": True, # Always put manual ingest into review queue
+    }
+
+    sig = parent_listing_signature(roles[0].title, roles[0].company)
+    details = []
+    ingested = 0
+    for i, role in enumerate(roles):
+        try:
+            job_id = await _insert_child_job(supabase, parent_stub, role, parent_sig=sig)
+            if job_id:
+                ingested += 1
+                details.append(f"Role {i+1} ('{role.title}'): ingested as {job_id}")
+                
+                # Make sure the manual ingest forces review queue state
+                supabase.table("jobs").update({
+                    "is_review_required": True,
+                    "review_reason": "manual_ingest",
+                    "admin_review_reason": "pending_admin",
+                }).eq("id", job_id).execute()
+            else:
+                details.append(f"Role {i+1} ('{role.title}'): deduplicated/skipped")
+        except Exception as e:
+            details.append(f"Role {i+1} ('{role.title}'): failed ({e})")
+
+    return AdminScrapeLinkResponse(
+        jobs_found=len(roles),
+        jobs_ingested=ingested,
+        details=details,
+    )

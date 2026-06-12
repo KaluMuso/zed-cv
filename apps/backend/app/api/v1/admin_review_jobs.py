@@ -13,8 +13,10 @@ from app.schemas.admin import (
     AdminJobReviewUpdate,
     AdminReviewQueueOverview,
 )
+from app.api.v1.jobs import _fingerprint, _strip_html
 from app.schemas.jobs import DeepEnrichTickResponse
 from app.services.deep_enrich import run_deep_enrich_tick
+from app.services.embedding import generate_embedding
 from app.services.job_activation import can_publish_after_admin_edit
 from app.services.review_queue_cleanup import (
     ACTIVE_NO_DEADLINE_PRESET,
@@ -132,7 +134,7 @@ async def list_review_jobs(
     query = (
         supabase.table("jobs")
         .select(
-            "id, title, company, source, source_url, review_reason, "
+            "id, title, company, description, application_instructions, source, source_url, review_reason, "
             "admin_review_reason, is_active, created_at",
             count="exact",
         )
@@ -153,6 +155,7 @@ async def list_review_jobs(
             id=j["id"],
             title=j["title"],
             company=j.get("company"),
+            description=j.get("description"),
             source=j["source"],
             source_url=j.get("source_url"),
             reasons=_split_reasons(j.get("review_reason") or j.get("admin_review_reason")),
@@ -175,10 +178,14 @@ async def update_review_job(
 ):
     """Fill apply fields / deadline and promote when complete."""
     patch = body.model_dump(exclude_unset=True, exclude_none=True, mode="json")
+
+    if "description" in patch and patch["description"]:
+        patch["description"] = _strip_html(patch["description"])
+
     existing = (
         supabase.table("jobs")
         .select(
-            "apply_url, apply_email, contact_phone, closing_date, review_reason"
+            "apply_url, apply_email, contact_phone, closing_date, review_reason, title, company, description"
         )
         .eq("id", job_id)
         .single()
@@ -187,7 +194,33 @@ async def update_review_job(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    merged = {**existing.data, **patch}
+    existing_data = existing.data
+    changed_fields = [k for k, v in patch.items() if existing_data.get(k) != v]
+    changed_set = set(changed_fields)
+
+    # Invariants for embeddings and dedupe (see admin.py)
+    _EMBEDDING_TRIGGER_FIELDS = {"title", "company", "description"}
+    _FINGERPRINT_TRIGGER_FIELDS = {"title", "company", "description"}
+
+    new_title = patch.get("title", existing_data.get("title"))
+    new_company = patch.get("company", existing_data.get("company"))
+    new_description = patch.get("description", existing_data.get("description") or "")
+
+    if changed_set & _EMBEDDING_TRIGGER_FIELDS:
+        try:
+            patch["embedding"] = await generate_embedding(
+                f"{new_title} {new_company or ''} {new_description}"
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+
+    if changed_set & _FINGERPRINT_TRIGGER_FIELDS:
+        new_fp = _fingerprint(new_title, new_company, new_description)
+        # Note: We update job_fingerprints inline here. If it collides, it might 500,
+        # but admin review updates should generally just resolve or accept collisions.
+        supabase.table("job_fingerprints").update({"fingerprint": new_fp}).eq("job_id", job_id).execute()
+
+    merged = {**existing_data, **patch}
     now = datetime.now(timezone.utc).isoformat()
     can_publish = can_publish_after_admin_edit(
         merged.get("apply_url"),
