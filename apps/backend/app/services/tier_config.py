@@ -36,6 +36,8 @@ def _default_rows() -> list[dict[str, Any]]:
             "price_ngwee": TIER_PRICES[tier],
             "matches_limit": TIER_LIMITS[tier],
             "sort_order": idx,
+            "marketing_blurb": None,
+            "is_highlighted": False,
             "updated_at": None,
         }
         for idx, tier in enumerate(_TIER_ORDER)
@@ -51,7 +53,7 @@ async def fetch_tier_config_rows(supabase: Client, *, force: bool = False) -> li
     try:
         result = (
             supabase.table("tier_config")
-            .select("tier, display_name, price_ngwee, matches_limit, sort_order, updated_at, billing_period_days")
+            .select("tier, display_name, price_ngwee, matches_limit, sort_order, updated_at, billing_period_days, marketing_blurb, is_highlighted")
             .order("sort_order")
             .execute()
         )

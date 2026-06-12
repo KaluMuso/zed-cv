@@ -11,6 +11,8 @@ import { UNLIMITED_MATCHES } from "@/lib/tier-config";
 type EditableTier = TierConfigRow & {
   price_kwacha: string;
   matches_input: string;
+  marketing_blurb_input: string;
+  is_highlighted_input: boolean;
 };
 
 function toEditable(row: TierConfigRow): EditableTier {
@@ -18,15 +20,19 @@ function toEditable(row: TierConfigRow): EditableTier {
     ...row,
     price_kwacha: String(row.price_ngwee / 100),
     matches_input: String(row.matches_limit),
+    marketing_blurb_input: row.marketing_blurb || "",
+    is_highlighted_input: row.is_highlighted || false,
   };
 }
 
-function toPatchBody(row: EditableTier): { price_ngwee: number; matches_limit: number } {
+function toPatchBody(row: EditableTier): { price_ngwee: number; matches_limit: number; marketing_blurb?: string; is_highlighted?: boolean } {
   const priceKwacha = Math.max(0, parseInt(row.price_kwacha, 10) || 0);
   const matches = Math.max(0, parseInt(row.matches_input, 10) || 0);
   return {
     price_ngwee: row.tier === "free" ? 0 : priceKwacha * 100,
     matches_limit: matches,
+    marketing_blurb: row.marketing_blurb_input,
+    is_highlighted: row.is_highlighted_input,
   };
 }
 
@@ -135,6 +141,8 @@ export function TierConfigEditor({ token }: { token: string }) {
                   <th className="py-2 pr-3 font-medium">Tier</th>
                   <th className="py-2 pr-3 font-medium">Matches Limit</th>
                   <th className="py-2 pr-3 font-medium">Price (ZMW)</th>
+                  <th className="py-2 pr-3 font-medium">Marketing Blurb</th>
+                  <th className="py-2 pr-3 font-medium">Highlight?</th>
                   <th className="py-2 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -167,6 +175,29 @@ export function TierConfigEditor({ token }: { token: string }) {
                         }
                         className="min-h-9 w-32"
                         aria-label={`Price for ${row.tier}`}
+                      />
+                    </td>
+                    <td className="py-3 pr-3">
+                      <Input
+                        type="text"
+                        value={row.marketing_blurb_input}
+                        onChange={(e) =>
+                          updateRow(row.tier, { marketing_blurb_input: e.target.value })
+                        }
+                        className="min-h-9 w-48"
+                        aria-label={`Marketing blurb for ${row.tier}`}
+                        placeholder="e.g. Most Popular"
+                      />
+                    </td>
+                    <td className="py-3 pr-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={row.is_highlighted_input}
+                        onChange={(e) =>
+                          updateRow(row.tier, { is_highlighted_input: e.target.checked })
+                        }
+                        className="h-4 w-4"
+                        aria-label={`Highlight ${row.tier}`}
                       />
                     </td>
                     <td className="py-3 text-right">

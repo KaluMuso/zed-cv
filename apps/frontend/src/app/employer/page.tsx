@@ -46,6 +46,30 @@ export default function EmployerLandingPage() {
         ))}
       </div>
 
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold tracking-tight">Recruiter / CV Database Access</h2>
+        <p className="text-muted-foreground mt-2 mb-6">
+          Packages to download or access candidate CVs with varying access periods and filters.
+        </p>
+        <div className="grid sm:grid-cols-3 gap-6">
+          <div className="rounded-xl border p-6">
+            <h3 className="font-semibold text-lg">Starter</h3>
+            <p className="text-2xl font-bold mt-2">ZMW 2,200</p>
+            <p className="text-sm text-muted-foreground mt-2">Access to 20 CVs</p>
+          </div>
+          <div className="rounded-xl border p-6 border-primary shadow-sm">
+            <h3 className="font-semibold text-lg">Standard</h3>
+            <p className="text-2xl font-bold mt-2">ZMW 4,500</p>
+            <p className="text-sm text-muted-foreground mt-2">Access to 50 CVs</p>
+          </div>
+          <div className="rounded-xl border p-6">
+            <h3 className="font-semibold text-lg">Enterprise</h3>
+            <p className="text-2xl font-bold mt-2">ZMW 6,500</p>
+            <p className="text-sm text-muted-foreground mt-2">Access to 100 CVs</p>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-10 flex flex-wrap gap-4">
         <Link
           href="/employer/signup"

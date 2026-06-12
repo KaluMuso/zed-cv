@@ -1607,232 +1607,248 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
       <div
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Free
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K0
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              forever
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            3 matches/mo (7 welcome bonus first 1 months) + WhatsApp alerts
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Free
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K0
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                forever
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              3 matches/mo (7 welcome bonus first 1 months) + WhatsApp alerts
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <span
-            class="absolute mono text-[10px] font-semibold px-2 py-1 rounded-full"
-            style="top: -10px; left: 16px; background: var(--copper-500); color: rgb(255, 255, 255); letter-spacing: 0.05em;"
-          >
-            POPULAR
-          </span>
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
-          >
-            Starter
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid var(--copper-400); background: rgba(255, 255, 255, 0.05); position: relative; height: 100%;"
           >
             <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              class="absolute mono text-[10px] font-semibold px-2 py-1 rounded-full"
+              style="top: -10px; left: 16px; background: var(--copper-500); color: rgb(255, 255, 255); letter-spacing: 0.05em;"
             >
-              K125
+              POPULAR
             </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            50 matches + score breakdowns
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Starter
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K125
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              50 matches + score breakdowns
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Professional
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K250
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            125 matches + cover letters
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Professional
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K250
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              125 matches + cover letters
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Super Standard
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K500
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            Unlimited matches + interview prep
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Super Standard
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K500
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              Unlimited matches + interview prep
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
       </div>
     </section>
     <section
@@ -2106,318 +2122,189 @@ exports[`HomePage responsive layout > matches 380px mobile snapshot 1`] = `
           Questions, answered.
         </h2>
         <div
-          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y"
-          style="border-color: var(--line);"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y overflow-hidden"
+          data-orientation="vertical"
+          style="border-color: rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02);"
         >
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="true"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:r0:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                What's the matching score?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--green-100); color: var(--green-700); transition: all 200ms ease; transform: rotate(45deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  What's the matching score?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
+                >
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
             <div
-              class="px-5 sm:px-6 pb-5 text-sm leading-relaxed"
-              style="color: var(--ink-2);"
-            >
-              Every job gets a 0–100 score from your CV. It's a blend of five signals: semantic similarity between your CV and the job description (50%), how your skills overlap with what the role asks for (20%), experience fit (15%), location (10%), and how fresh the listing is (5%). Each match shows you the full breakdown.
-            </div>
+              aria-labelledby="radix-:r0:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:r1:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:r2:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                Do you send my CV anywhere?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  Is it free?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
+                >
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
+            <div
+              aria-labelledby="radix-:r2:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:r3:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:r4:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                Can I cancel anytime?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Is it free?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                  Where do the jobs come from?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Where do the jobs come from?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                When are matches sent?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                How is my data protected?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Do I need to be in Lusaka?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
+            <div
+              aria-labelledby="radix-:r4:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:r5:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
         </div>
       </div>
@@ -5380,232 +5267,248 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
       <div
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 0ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Free
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K0
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              forever
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            3 matches/mo (7 welcome bonus first 1 months) + WhatsApp alerts
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Free
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 75ms; border: 1px solid var(--copper-400); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K0
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                forever
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              3 matches/mo (7 welcome bonus first 1 months) + WhatsApp alerts
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <span
-            class="absolute mono text-[10px] font-semibold px-2 py-1 rounded-full"
-            style="top: -10px; left: 16px; background: var(--copper-500); color: rgb(255, 255, 255); letter-spacing: 0.05em;"
-          >
-            POPULAR
-          </span>
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
-          >
-            Starter
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid var(--copper-400); background: rgba(255, 255, 255, 0.05); position: relative; height: 100%;"
           >
             <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              class="absolute mono text-[10px] font-semibold px-2 py-1 rounded-full"
+              style="top: -10px; left: 16px; background: var(--copper-500); color: rgb(255, 255, 255); letter-spacing: 0.05em;"
             >
-              K125
+              POPULAR
             </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            50 matches + score breakdowns
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Starter
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 150ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K125
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              50 matches + score breakdowns
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Professional
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K250
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            125 matches + cover letters
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Professional
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
-        <a
-          class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 reveal block"
-          href="/pricing"
-          style="transition-delay: 225ms; border: 1px solid var(--line); background: var(--surface); position: relative;"
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K250
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              125 matches + cover letters
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
+        <div
+          style="opacity: 0; transform: translateY(20px);"
         >
-          <div
-            class="eyebrow mb-2"
-            style="color: var(--muted);"
+          <a
+            class="rounded-md border border-border bg-card text-foreground shadow-soft card-hover job-card p-5 sm:p-6 block"
+            href="/pricing"
+            style="border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02); position: relative; height: 100%;"
           >
-            Super Standard
-          </div>
-          <div
-            class="flex items-baseline gap-1 mb-3"
-          >
-            <span
-              class="font-display"
-              style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
-            >
-              K500
-            </span>
-            <span
-              class="text-xs"
+            <div
+              class="eyebrow mb-2"
               style="color: var(--muted);"
             >
-              /month
-            </span>
-          </div>
-          <p
-            class="text-sm leading-relaxed m-0"
-            style="color: var(--ink-2);"
-          >
-            Unlimited matches + interview prep
-          </p>
-          <div
-            class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
-            style="color: var(--green-700);"
-          >
-            See details 
-            <svg
-              class=""
-              fill="none"
-              height="12"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.75"
-              viewBox="0 0 24 24"
-              width="12"
+              Super Standard
+            </div>
+            <div
+              class="flex items-baseline gap-1 mb-3"
             >
-              <path
-                d="M5 12h14M12 5l7 7-7 7"
-              />
-            </svg>
-          </div>
-        </a>
+              <span
+                class="font-display"
+                style="font-size: 36px; line-height: 1; letter-spacing: -0.02em; color: var(--ink);"
+              >
+                K500
+              </span>
+              <span
+                class="text-xs"
+                style="color: var(--muted);"
+              >
+                /month
+              </span>
+            </div>
+            <p
+              class="text-sm leading-relaxed m-0"
+              style="color: var(--ink-2);"
+            >
+              Unlimited matches + interview prep
+            </p>
+            <div
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium"
+              style="color: var(--green-700);"
+            >
+              See details 
+              <svg
+                class=""
+                fill="none"
+                height="12"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.75"
+                viewBox="0 0 24 24"
+                width="12"
+              >
+                <path
+                  d="M5 12h14M12 5l7 7-7 7"
+                />
+              </svg>
+            </div>
+          </a>
+        </div>
       </div>
     </section>
     <section
@@ -5879,318 +5782,189 @@ exports[`HomePage responsive layout > matches 1024px desktop snapshot 1`] = `
           Questions, answered.
         </h2>
         <div
-          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y"
-          style="border-color: var(--line);"
+          class="rounded-md border border-border bg-card text-foreground shadow-soft divide-y overflow-hidden"
+          data-orientation="vertical"
+          style="border-color: rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.02);"
         >
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="true"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:r6:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                What's the matching score?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--green-100); color: var(--green-700); transition: all 200ms ease; transform: rotate(45deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  What's the matching score?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
+                >
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
             <div
-              class="px-5 sm:px-6 pb-5 text-sm leading-relaxed"
-              style="color: var(--ink-2);"
-            >
-              Every job gets a 0–100 score from your CV. It's a blend of five signals: semantic similarity between your CV and the job description (50%), how your skills overlap with what the role asks for (20%), experience fit (15%), location (10%), and how fresh the listing is (5%). Each match shows you the full breakdown.
-            </div>
+              aria-labelledby="radix-:r6:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:r7:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:r8:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                Do you send my CV anywhere?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  Is it free?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
+                >
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
+            <div
+              aria-labelledby="radix-:r8:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:r9:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
           <div
-            style="border-color: var(--line);"
+            class="border-b last:border-b-0"
+            data-orientation="vertical"
+            data-state="closed"
+            style="border-color: rgba(255, 255, 255, 0.1);"
           >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
+            <h3
+              class="flex"
+              data-orientation="vertical"
+              data-state="closed"
             >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
+              <button
+                aria-expanded="false"
+                class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
+                data-orientation="vertical"
+                data-radix-collection-item=""
+                data-state="closed"
+                id="radix-:ra:"
+                style="background: transparent; cursor: pointer; color: var(--ink);"
+                type="button"
               >
-                Can I cancel anytime?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                <span
+                  class="font-medium text-sm sm:text-base"
+                  style="line-height: 1.4;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Is it free?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
+                  Where do the jobs come from?
+                </span>
+                <span
+                  class="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
+                  style="width: 28px; height: 28px; border-radius: 999px;"
                 >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Where do the jobs come from?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                When are matches sent?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                How is my data protected?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
-          </div>
-          <div
-            style="border-color: var(--line);"
-          >
-            <button
-              aria-expanded="false"
-              class="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
-              style="background: none; cursor: pointer; color: var(--ink);"
-              type="button"
-            >
-              <span
-                class="font-medium text-sm sm:text-base"
-                style="line-height: 1.4;"
-              >
-                Do I need to be in Lusaka?
-              </span>
-              <span
-                aria-hidden="true"
-                class="shrink-0 inline-flex items-center justify-center"
-                style="width: 28px; height: 28px; border-radius: 999px; background: var(--bg-2); color: var(--muted); transition: all 200ms ease; transform: rotate(0deg);"
-              >
-                <svg
-                  class=""
-                  fill="none"
-                  height="14"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.75"
-                  viewBox="0 0 24 24"
-                  width="14"
-                >
-                  <path
-                    d="M12 5v14M5 12h14"
-                  />
-                </svg>
-              </span>
-            </button>
+                  <svg
+                    class=""
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.75"
+                    viewBox="0 0 24 24"
+                    width="14"
+                  >
+                    <path
+                      d="M12 5v14M5 12h14"
+                    />
+                  </svg>
+                </span>
+              </button>
+            </h3>
+            <div
+              aria-labelledby="radix-:ra:"
+              class="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+              data-orientation="vertical"
+              data-state="closed"
+              hidden=""
+              id="radix-:rb:"
+              role="region"
+              style="--radix-accordion-content-height: var(--radix-collapsible-content-height); --radix-accordion-content-width: var(--radix-collapsible-content-width);"
+            />
           </div>
         </div>
       </div>

@@ -555,6 +555,8 @@ def apply_ingest_quality_to_job_data(
         job_data["is_active"] = False
         if job_data.get("source_url"):
             job_data["deactivation_reason"] = "no_valid_apply_path_pending_enrich"
+            job_data["is_review_required"] = False
+            job_data["review_reason"] = "pending_enrich"
         else:
             job_data["deactivation_reason"] = "no_valid_apply_path_no_source"
     else:

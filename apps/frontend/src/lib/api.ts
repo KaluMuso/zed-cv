@@ -1274,12 +1274,20 @@ export interface TierConfigRow {
   tier: string;
   display_name: string;
   price_ngwee: number;
+  matches_limit: number;
+  sort_order: number;
+  billing_period_days?: number;
   checkout_price_ngwee?: number | null;
   promotion_active?: boolean | null;
+  marketing_blurb?: string | null;
+  is_highlighted?: boolean;
+}
+
+export interface TierConfigPatch {
+  price_ngwee: number;
   matches_limit: number;
-  sort_order?: number;
-  billing_period_days?: number;
-  updated_at?: string | null;
+  marketing_blurb?: string | null;
+  is_highlighted?: boolean;
 }
 
 export interface TierConfigList {
@@ -1313,13 +1321,66 @@ export const adminTiers = {
   patch: (
     token: string,
     tierName: string,
-    body: { price_ngwee: number; matches_limit: number },
+    body: TierConfigPatch,
   ) =>
     apiFetch<TierConfigRow>(`/admin/tiers/${encodeURIComponent(tierName)}`, {
       method: "PATCH",
       token,
       body: JSON.stringify(body),
     }),
+};
+
+export interface FaqRow {
+  id: string;
+  question: string;
+  answer: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FaqList {
+  faqs: FaqRow[];
+}
+
+export interface FaqCreate {
+  question: string;
+  answer: string;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export interface FaqUpdate {
+  question?: string;
+  answer?: string;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
+export const adminFaqs = {
+  list: (token: string) => apiFetch<FaqList>("/admin/faqs", { token }),
+  create: (token: string, body: FaqCreate) =>
+    apiFetch<FaqRow>("/admin/faqs", {
+      method: "POST",
+      token,
+      body: JSON.stringify(body),
+    }),
+  patch: (token: string, id: string, body: FaqUpdate) =>
+    apiFetch<FaqRow>(`/admin/faqs/${id}`, {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(body),
+    }),
+  delete: (token: string, id: string) =>
+    apiFetch<{ success: boolean }>(`/admin/faqs/${id}`, {
+      method: "DELETE",
+      token,
+    }),
+};
+
+export const publicFaqs = {
+  list: () => apiFetch<FaqList>("/faqs"),
 };
 
 // ── CV ──

@@ -131,6 +131,57 @@ export function WorkArrangementField({
   );
 }
 
+export function EmploymentTypeField({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (value: string[]) => void;
+}) {
+  const options = [
+    { value: "full_time", label: "Full-time" },
+    { value: "part_time", label: "Part-time" },
+    { value: "contract", label: "Contract" },
+    { value: "freelance", label: "Freelance" },
+    { value: "internship", label: "Internship" },
+    { value: "temporary", label: "Temporary" },
+  ];
+
+  const handleToggle = (optValue: string) => {
+    if (value.includes(optValue)) {
+      onChange(value.filter((v) => v !== optValue));
+    } else {
+      onChange([...value, optValue]);
+    }
+  };
+
+  return (
+    <div className="text-xs flex flex-col gap-2" style={{ color: "var(--muted)" }}>
+      <span>Preferred employment types</span>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => {
+          const checked = value.includes(opt.value);
+          return (
+            <label
+              key={opt.value}
+              className="inline-flex items-center gap-1 cursor-pointer"
+              style={{ color: "var(--ink)" }}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => handleToggle(opt.value)}
+                style={{ width: 16, height: 16 }}
+              />
+              {opt.label}
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function RelocateField({
   checked,
   onChange,

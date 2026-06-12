@@ -648,6 +648,8 @@ async def enrich_job_deep(
         supabase.table("jobs").update(
             {
                 "is_active": False,
+                "is_review_required": False,
+                "admin_reviewed_at": now,
                 "deactivation_reason": "split_into_children",
                 "closure_reason": "Replaced by separate role listings",
                 "closed_at": now,
@@ -763,7 +765,7 @@ async def run_deep_enrich_tick(
         .limit(max(limit * 5, limit))
     )
     if include_review_queue:
-        query = query.or_("is_active.eq.true,is_review_required.eq.true")
+        query = query.or_("is_active.eq.true,is_review_required.eq.true,deactivation_reason.eq.no_valid_apply_path_pending_enrich")
     else:
         query = query.eq("is_active", True)
     result = query.execute()

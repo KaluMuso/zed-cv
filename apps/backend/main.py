@@ -31,6 +31,7 @@ from app.api.v1 import (
     preferences,
     users,
     tier_config_routes,
+    faqs_routes,
     whatsapp_scraper_webhook,
     analytics,
     employers,
@@ -151,6 +152,8 @@ def create_app() -> FastAPI:
     application.include_router(tier_config_routes.public_router, prefix="/api/v1")
     application.include_router(tier_config_routes.admin_router, prefix="/api/v1")
     application.include_router(tier_config_routes.admin_tiers_router, prefix="/api/v1")
+    application.include_router(faqs_routes.public_router, prefix="/api/v1")
+    application.include_router(faqs_routes.admin_router, prefix="/api/v1")
     from app.api.v1 import health
 
     application.include_router(health.router, prefix="/api/v1")

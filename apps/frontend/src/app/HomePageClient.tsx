@@ -17,6 +17,8 @@ import { publicStats, type PublicStats } from "@/lib/api";
 import { MATCH_SCORE_FAQ_ANSWER } from "@/lib/matching-weights-copy";
 import { freeTierMatchesBlurb, freeTierFaqMatchExplanation } from "@/lib/tier-marketing";
 import { AUTH_GET_STARTED } from "@/lib/auth-paths";
+import * as Accordion from "@radix-ui/react-accordion";
+import { motion } from "framer-motion";
 
 interface Plan {
   name: string;
@@ -26,102 +28,15 @@ interface Plan {
   highlight: boolean;
 }
 
-const plans: Plan[] = [
-  {
-    name: "Free",
-    price: "K0",
-    period: "forever",
-    blurb: `${freeTierMatchesBlurb()} + WhatsApp alerts`,
-    highlight: false,
-  },
-  {
-    name: "Starter",
-    price: "K125",
-    period: "/month",
-    blurb: "50 matches + score breakdowns",
-    highlight: true,
-  },
-  {
-    name: "Professional",
-    price: "K250",
-    period: "/month",
-    blurb: "125 matches + cover letters",
-    highlight: false,
-  },
-  {
-    name: "Super Standard",
-    price: "K500",
-    period: "/month",
-    blurb: "Unlimited matches + interview prep",
-    highlight: false,
-  },
-];
-
-const faqs: { q: string; a: React.ReactNode }[] = [
-  {
-    q: "What's the matching score?",
-    a: MATCH_SCORE_FAQ_ANSWER,
-  },
-  {
-    q: "Do you send my CV anywhere?",
-    a: (
-      <>
-        No. Your CV stays on our servers and is only used to score matches and
-        generate tailored CVs <em>for you</em>. We never share it with employers
-        or third parties without your explicit consent. See our{" "}
-        <Link
-          href="/legal/privacy"
-          style={{ color: "var(--green-700)", textDecoration: "underline" }}
-        >
-          Privacy Policy
-        </Link>{" "}
-        for the full notice.
-      </>
-    ),
-  },
-  {
-    q: "Can I cancel anytime?",
-    a: "Yes. Cancel from your account settings — your paid features stay active until the end of your current billing period, and no further charges are made. New paid subscriptions also include a 7-day money-back guarantee if you have not used AI document generation — see our Refund Policy.",
-  },
-  {
-    q: "Is it free?",
-    a: `Yes. ${freeTierFaqMatchExplanation()} WhatsApp alerts and full job browsing are included on the Free tier. Paid tiers (K125–K500/month) unlock more matches and AI features like tailored CVs and cover letters.`,
-  },
-  {
-    q: "Where do the jobs come from?",
-    a: "We aggregate roles from every active jobs board in Zambia plus direct postings from partner employers. Roles are deduplicated and quality-scored before they ever reach a match, so you don't see the same listing three times or pad your inbox with low-quality posts.",
-  },
-  {
-    q: "When are matches sent?",
-    a: "WhatsApp digests go out once per day (typically 07:30 CAT) with your top three new matches. Anything urgent — a high-score match on a fresh listing — pings the same day. You can also see every match the moment it's scored in your dashboard.",
-  },
-  {
-    q: "How is my data protected?",
-    a: (
-      <>
-        TLS in transit, encryption at rest, WhatsApp OTP sign-in (no password to
-        leak or phish), and strict access controls inside our team. We comply
-        with the Zambia Data Protection Act 2021. You can export or delete your
-        data at any time — see the{" "}
-        <Link
-          href="/legal/privacy"
-          style={{ color: "var(--green-700)", textDecoration: "underline" }}
-        >
-          Privacy Policy
-        </Link>
-        .
-      </>
-    ),
-  },
-  {
-    q: "Do I need to be in Lusaka?",
-    a: "No. We carry roles from across Zambia — Lusaka, Kitwe, Ndola, Solwezi, Livingstone, Chingola and more — plus remote roles open to Zambian residents. Your location is one signal in the score, not a hard filter.",
-  },
-];
-
 // ── Page ──
 
-export default function HomePageClient() {
+export default function HomePageClient({ 
+  initialFaqs = [], 
+  initialTiers = [] 
+}: { 
+  initialFaqs?: any[]; 
+  initialTiers?: any[] 
+}) {
   useScrollReveal();
   const { isAuthenticated } = useAuth();
   const [stats, setStats] = useState<PublicStats | null>(null);
@@ -137,6 +52,72 @@ export default function HomePageClient() {
 
   const primaryHref = isAuthenticated ? "/matches" : "/auth";
   const primaryLabel = isAuthenticated ? "Go to dashboard" : "Get matched";
+
+  // Map backend tiers to Plan shape
+  const plans: Plan[] = initialTiers.map((t) => ({
+    name: t.display_name,
+    price: `K${Math.floor(t.price_ngwee / 100)}`,
+    period: t.tier === "free" ? "forever" : "/month",
+    blurb: t.marketing_blurb || "",
+    highlight: !!t.is_highlighted,
+  }));
+
+  // Fallback plans if empty
+  if (plans.length === 0) {
+    plans.push(
+      {
+        name: "Free",
+        price: "K0",
+        period: "forever",
+        blurb: `${freeTierMatchesBlurb()} + WhatsApp alerts`,
+        highlight: false,
+      },
+      {
+        name: "Starter",
+        price: "K125",
+        period: "/month",
+        blurb: "50 matches + score breakdowns",
+        highlight: true,
+      },
+      {
+        name: "Professional",
+        price: "K250",
+        period: "/month",
+        blurb: "125 matches + cover letters",
+        highlight: false,
+      },
+      {
+        name: "Super Standard",
+        price: "K500",
+        period: "/month",
+        blurb: "Unlimited matches + interview prep",
+        highlight: false,
+      }
+    );
+  }
+
+  // Map backend FAQs to { q, a }
+  let mappedFaqs = initialFaqs.map((f) => ({
+    q: f.question,
+    a: f.answer,
+  }));
+
+  if (mappedFaqs.length === 0) {
+    mappedFaqs = [
+      {
+        q: "What's the matching score?",
+        a: MATCH_SCORE_FAQ_ANSWER,
+      },
+      {
+        q: "Is it free?",
+        a: `Yes. ${freeTierFaqMatchExplanation()} WhatsApp alerts and full job browsing are included on the Free tier. Paid tiers (K125–K500/month) unlock more matches and AI features like tailored CVs and cover letters.`,
+      },
+      {
+        q: "Where do the jobs come from?",
+        a: "We aggregate roles from every active jobs board in Zambia plus direct postings from partner employers. Roles are deduplicated and quality-scored before they ever reach a match, so you don't see the same listing three times or pad your inbox with low-quality posts.",
+      },
+    ];
+  }
 
   return (
     <div>
@@ -305,20 +286,31 @@ export default function HomePageClient() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((p, i) => (
-            <Link
+            <motion.div
               key={p.name}
-              href="/pricing"
-              className={cn(surfaceCardClass, "card-hover job-card p-5 sm:p-6 reveal block")}
-              style={{
-                transitionDelay: `${i * 75}ms`,
-                border: p.highlight
-                  ? "1px solid var(--copper-400)"
-                  : "1px solid var(--line)",
-                background: p.highlight ? "var(--surface)" : "var(--surface)",
-                position: "relative",
-              }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+              whileHover={{ y: -4, scale: 1.01 }}
             >
-              {p.highlight && (
+              <Link
+                href="/pricing"
+                className={cn(surfaceCardClass, "card-hover job-card p-5 sm:p-6 block")}
+                style={{
+                  border: p.highlight
+                    ? "1px solid var(--copper-400)"
+                    : "1px solid rgba(255, 255, 255, 0.1)",
+                  background: p.highlight 
+                    ? "rgba(255, 255, 255, 0.05)" 
+                    : "rgba(255, 255, 255, 0.02)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  position: "relative",
+                  height: "100%",
+                }}
+              >
+                {p.highlight && (
                 <span
                   className="absolute mono text-[10px] font-semibold px-2 py-1 rounded-full"
                   style={{
@@ -369,7 +361,8 @@ export default function HomePageClient() {
               >
                 See details <Icon name="arrowRight" size={12} />
               </div>
-            </Link>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -398,7 +391,7 @@ export default function HomePageClient() {
             Questions, answered.
           </h2>
 
-          <FaqList items={faqs} />
+          <FaqList items={mappedFaqs} />
         </div>
       </section>
 
@@ -486,59 +479,59 @@ function FaqList({
 }: {
   items: { q: string; a: React.ReactNode }[];
 }) {
-  const [open, setOpen] = useState<number | null>(0);
-
   return (
-    <div className={cn(surfaceCardClass, "divide-y")} style={{ borderColor: "var(--line)" }}>
-      {items.map((item, i) => {
-        const isOpen = open === i;
-        return (
-          <div key={item.q} style={{ borderColor: "var(--line)" }}>
-            <button
-              type="button"
-              onClick={() => setOpen(isOpen ? null : i)}
-              aria-expanded={isOpen}
-              className="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5"
+    <Accordion.Root 
+      type="single" 
+      collapsible 
+      className={cn(surfaceCardClass, "divide-y overflow-hidden")} 
+      style={{ 
+        borderColor: "rgba(255, 255, 255, 0.1)",
+        background: "rgba(255, 255, 255, 0.02)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+      }}
+    >
+      {items.map((item, i) => (
+        <Accordion.Item 
+          key={item.q} 
+          value={`item-${i}`}
+          className="border-b last:border-b-0"
+          style={{ borderColor: "rgba(255, 255, 255, 0.1)" }}
+        >
+          <Accordion.Header className="flex">
+            <Accordion.Trigger 
+              className="w-full flex items-center justify-between gap-4 text-left px-5 sm:px-6 py-4 sm:py-5 group"
               style={{
-                background: "none",
+                background: "transparent",
                 border: "none",
                 cursor: "pointer",
                 color: "var(--ink)",
               }}
             >
-              <span
-                className="font-medium text-sm sm:text-base"
-                style={{ lineHeight: 1.4 }}
-              >
+              <span className="font-medium text-sm sm:text-base" style={{ lineHeight: 1.4 }}>
                 {item.q}
               </span>
-              <span
-                className="shrink-0 inline-flex items-center justify-center"
+              <span 
+                className="shrink-0 inline-flex items-center justify-center transition-transform duration-200 ease-in-out group-data-[state=open]:rotate-45 group-data-[state=open]:bg-[var(--green-100)] group-data-[state=open]:text-[var(--green-700)] group-data-[state=closed]:bg-[var(--bg-2)] group-data-[state=closed]:text-[var(--muted)]"
                 style={{
                   width: 28,
                   height: 28,
                   borderRadius: 999,
-                  background: isOpen ? "var(--green-100)" : "var(--bg-2)",
-                  color: isOpen ? "var(--green-700)" : "var(--muted)",
-                  transition: "all 200ms ease",
-                  transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
                 }}
-                aria-hidden
               >
                 <Icon name="plus" size={14} />
               </span>
-            </button>
-            {isOpen && (
-              <div
-                className="px-5 sm:px-6 pb-5 text-sm leading-relaxed"
-                style={{ color: "var(--ink-2)" }}
-              >
-                {item.a}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content 
+            className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
+          >
+            <div className="px-5 sm:px-6 pb-5 text-sm leading-relaxed" style={{ color: "var(--ink-2)" }}>
+              {item.a}
+            </div>
+          </Accordion.Content>
+        </Accordion.Item>
+      ))}
+    </Accordion.Root>
   );
 }

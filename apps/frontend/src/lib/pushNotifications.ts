@@ -56,7 +56,7 @@ export function isEligibleForPushPrompt(creditedMatchCount: number): boolean {
   if (!hasVisitedMatchesPage()) return false;
   if (declinedWithinCooldown()) return false;
   const perm = Notification.permission;
-  return perm === "default" || perm === "granted";
+  return perm === "default";
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

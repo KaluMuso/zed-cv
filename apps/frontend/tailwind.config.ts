@@ -171,6 +171,14 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
       },
       animation: {
         float: `float ${HERO_FLOAT_DURATIONS.primary}s ease-in-out infinite`,
@@ -180,6 +188,8 @@ const config: Config = {
         "fade-in": "fade-in 200ms ease-out",
         "scale-in": "scale-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         shimmer: "shimmer 2s linear infinite",
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up": "accordion-up 0.2s ease-out",
       },
     },
   },

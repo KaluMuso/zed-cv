@@ -1344,6 +1344,8 @@ components:
         matches_limit: { type: integer, description: 'Monthly match quota; 99999 = unlimited' }
         sort_order: { type: integer }
         billing_period_days: { type: integer, default: 30 }
+        marketing_blurb: { type: string, nullable: true }
+        is_highlighted: { type: boolean, default: false }
         updated_at: { type: string, format: date-time, nullable: true }
       required:
         - tier
@@ -1380,6 +1382,8 @@ components:
         display_name: { type: string }
         price_ngwee: { type: integer, minimum: 0 }
         matches_limit: { type: integer, minimum: 0, maximum: 999999 }
+        marketing_blurb: { type: string, nullable: true }
+        is_highlighted: { type: boolean, default: false }
 
     TierConfigBulkUpdate:
       type: object
@@ -1397,12 +1401,49 @@ components:
       properties:
         price_ngwee: { type: integer, minimum: 0, description: 'Monthly price in ngwee (K125 = 12500)' }
         matches_limit: { type: integer, minimum: 0, maximum: 999999, description: 'Monthly match quota; 99999 = unlimited' }
+        marketing_blurb: { type: string, nullable: true }
+        is_highlighted: { type: boolean }
 
     AdminSubscriptionUpdate:
       type: object
       required: [tier]
       properties:
         tier: { type: string, enum: [free, starter, professional, super_standard] }
+
+    FaqRow:
+      type: object
+      required: [id, question, answer, is_active, sort_order, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        question: { type: string }
+        answer: { type: string }
+        is_active: { type: boolean }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    FaqList:
+      type: object
+      required: [faqs]
+      properties:
+        faqs: { type: array, items: { $ref: '#/components/schemas/FaqRow' } }
+
+    FaqCreate:
+      type: object
+      required: [question, answer]
+      properties:
+        question: { type: string, minLength: 1 }
+        answer: { type: string, minLength: 1 }
+        is_active: { type: boolean, default: true }
+        sort_order: { type: integer, default: 0 }
+
+    FaqUpdate:
+      type: object
+      properties:
+        question: { type: string, minLength: 1, nullable: true }
+        answer: { type: string, minLength: 1, nullable: true }
+        is_active: { type: boolean, nullable: true }
+        sort_order: { type: integer, nullable: true }
 
     Job:
       type: object
@@ -3902,6 +3943,92 @@ paths:
               schema: { $ref: '#/components/schemas/TierConfigList' }
         '403': { description: Superadmin only }
         '422': { description: Validation error }
+
+  /faqs:
+    get:
+      operationId: listPublicFaqs
+      tags: [FAQs]
+      summary: Public FAQ catalog
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FaqList' }
+
+  /admin/faqs:
+    get:
+      operationId: listAdminFaqs
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Admin FAQ catalog
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FaqList' }
+        '403': { description: Superadmin only }
+    post:
+      operationId: createAdminFaq
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Admin create FAQ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FaqCreate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FaqRow' }
+        '403': { description: Superadmin only }
+        '422': { description: Validation error }
+
+  /admin/faqs/{faq_id}:
+    patch:
+      operationId: updateAdminFaq
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Admin update FAQ
+      parameters:
+        - name: faq_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FaqUpdate' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FaqRow' }
+        '403': { description: Superadmin only }
+        '404': { description: FAQ not found }
+        '422': { description: Validation error }
+    delete:
+      operationId: deleteAdminFaq
+      tags: [Admin]
+      security: [{ bearerAuth: [] }]
+      summary: Admin delete FAQ
+      parameters:
+        - name: faq_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '403': { description: Superadmin only }
+        '404': { description: FAQ not found }
 
   /admin/billing/health:
     get:

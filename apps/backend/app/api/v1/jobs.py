@@ -1080,6 +1080,67 @@ async def _ingest_one_job(
                 job_data,
             )
 
+        # Fallback 1: Source URL exact match (strongest signal for same listing)
+        if job.source_url:
+            existing_by_url = (
+                supabase.table("jobs")
+                .select("id")
+                .eq("source_url", job.source_url)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if existing_by_url.data:
+                job_id = existing_by_url.data[0]["id"]
+                try:
+                    supabase.table("job_fingerprints").upsert(
+                        {"fingerprint": fp, "job_id": job_id},
+                        on_conflict="fingerprint"
+                    ).execute()
+                except Exception:
+                    pass
+                return await _merge_duplicate_ingest(
+                    supabase,
+                    job_id,
+                    job,
+                    job_data,
+                )
+
+        # Fallback 2: If fingerprint and URL missed (e.g. description changed slightly, URL missing), 
+        # check dedupe_key (title|company|location) to prevent inactive duplicates.
+        # Merge if there is a recent job (within 60 days) with the same dedupe_key.
+        from datetime import datetime, timezone
+        dedupe_key = f"{job.title}|{job.company or ''}|{job.location or ''}".lower()
+        recent_threshold = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+        
+        existing_by_dedupe = (
+            supabase.table("jobs")
+            .select("id")
+            .eq("dedupe_key", dedupe_key)
+            .gte("created_at", recent_threshold)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        
+        if existing_by_dedupe.data:
+            job_id = existing_by_dedupe.data[0]["id"]
+            # Save the new fingerprint so future scrapes hit the fast path
+            try:
+                supabase.table("job_fingerprints").upsert(
+                    {"fingerprint": fp, "job_id": job_id},
+                    on_conflict="fingerprint"
+                ).execute()
+            except Exception:
+                pass
+            
+            return await _merge_duplicate_ingest(
+                supabase,
+                job_id,
+                job,
+                job_data,
+            )
+
         try:
             embedding = await generate_embedding(
                 f"{job.title} {job.company or ''} {job.description}"

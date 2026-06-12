@@ -2,7 +2,9 @@
 
 import type { CVSections } from "@/lib/api";
 import type { ParsedCV } from "../parseCv";
-import { splitBullets } from "../parseCv";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 
 /**
  * Single-column, no-decoration layout optimised for ATS parsing.
@@ -53,20 +55,14 @@ export function AtsTemplate({
 }
 
 function LegacySection({ title, body }: { title: string; body: string }) {
-  const { bullets, paragraphs } = splitBullets(body);
   return (
     <section>
       <h2>{title}</h2>
-      {paragraphs.map((p, i) => (
-        <p key={`p-${i}`}>{p}</p>
-      ))}
-      {bullets.length > 0 && (
-        <ul>
-          {bullets.map((b, i) => (
-            <li key={`b-${i}`}>{b}</li>
-          ))}
-        </ul>
-      )}
+      <div className="prose prose-sm max-w-none text-inherit leading-snug prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+          {body}
+        </ReactMarkdown>
+      </div>
     </section>
   );
 }

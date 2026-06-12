@@ -13,6 +13,7 @@ import {
   countWords,
 } from "./countWords";
 import { printCoverLetter } from "./printCoverLetter";
+import { MarkdownTextarea } from "@/components/ui/MarkdownTextarea";
 import "./coverLetterPrint.css";
 
 export type CoverLetterEditorProps = {
@@ -132,12 +133,12 @@ export function CoverLetterEditor({
         <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted)" }}>
           Edit letter
         </label>
-        <textarea
+        <MarkdownTextarea
           value={draft}
-          onChange={(e) => handleDraftChange(e.target.value)}
+          onChangeValue={(val) => handleDraftChange(val)}
           disabled={!editorEnabled}
           rows={14}
-          className="flex-1 w-full rounded-lg border p-3 text-sm leading-relaxed resize-y min-h-[240px] font-sans"
+          className="flex-1 w-full text-sm font-sans min-h-[240px]"
           style={{
             borderColor: "var(--line)",
             color: "var(--ink-2)",

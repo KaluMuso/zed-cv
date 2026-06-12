@@ -399,7 +399,7 @@ def test_whatsapp_channel_branch_routes_to_extractor(
     # Fresh fingerprint table → first ingest goes through.
     fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
     fake_supabase.set_table(
-        "jobs", FakeSupabaseQuery(data=[{"id": "job-from-channel-1"}])
+        "jobs", FakeSupabaseQuery(data=[])
     )
 
     payload = {

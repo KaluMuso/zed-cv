@@ -111,6 +111,8 @@ def _rows_to_response(
                 updated_at=r.get("updated_at"),
                 checkout_price_ngwee=checkout,
                 promotion_active=row_promo_active,
+                marketing_blurb=r.get("marketing_blurb"),
+                is_highlighted=r.get("is_highlighted") or False,
             )
         )
     return TierConfigList(tiers=tiers)
@@ -198,6 +200,10 @@ async def patch_admin_tier(
         "updated_at": now,
         "updated_by": user_id,
     }
+    if body.marketing_blurb is not None:
+        row["marketing_blurb"] = body.marketing_blurb
+    if body.is_highlighted is not None:
+        row["is_highlighted"] = body.is_highlighted
     # PK is composite (tier, billing_period_days) post-migration-111.
     supabase.table("tier_config").upsert(
         row, on_conflict="tier,billing_period_days"

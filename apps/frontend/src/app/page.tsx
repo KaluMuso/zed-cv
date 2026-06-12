@@ -28,11 +28,43 @@ export const metadata: Metadata = {
   },
 };
 
+import { Suspense } from "react";
+
+async function DynamicHomeContent() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  
+  let faqsData = [];
+  let tiersData = [];
+  
+  try {
+    const [faqsRes, tiersRes] = await Promise.all([
+      fetch(`${API_URL}/faqs`, { next: { revalidate: 300 } }),
+      fetch(`${API_URL}/tiers`, { next: { revalidate: 300 } }),
+    ]);
+    
+    if (faqsRes.ok) {
+      const data = await faqsRes.json();
+      faqsData = data.faqs || [];
+    }
+    
+    if (tiersRes.ok) {
+      const data = await tiersRes.json();
+      tiersData = data.tiers || [];
+    }
+  } catch (error) {
+    console.error("Failed to fetch dynamic content for home page:", error);
+  }
+
+  return <HomePageClient initialFaqs={faqsData} initialTiers={tiersData} />;
+}
+
 export default function HomePage() {
   return (
     <>
       <HomeStructuredData />
-      <HomePageClient />
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+        <DynamicHomeContent />
+      </Suspense>
     </>
   );
 }

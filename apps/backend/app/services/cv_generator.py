@@ -75,7 +75,7 @@ Rewrite the candidate's CV tailored to the target role. Keep it truthful — do 
 
 Output rules:
   - Plain text only. No markdown. No JSON.
-  - Use clear section headings: SUMMARY, SKILLS, EXPERIENCE, EDUCATION, CERTIFICATIONS (omit empty sections).
+  - Use clear section headings: SUMMARY, SKILLS, EXPERIENCE, EDUCATION, CERTIFICATIONS, REFERENCES (omit empty sections).
   - Lead each experience bullet with an action verb and, where present in the source, a quantified result.
   - Keep it to one page of content (~400-600 words).
   - Use Zambian conventions: phone +260, ZMW currency, local institutions named accurately.
@@ -111,7 +111,7 @@ Avoid flowery language, generic adjectives, and common AI buzzwords (like 'seaso
 Focus on concrete achievements, clear skills, and standard professional formatting.
 
 Return a complete tailored CV in markdown only — no preamble, no code fences.
-Use clear headings (##) for sections. Keep every claim faithful to the source CV.
+Use clear headings (##) for sections including SUMMARY, SKILLS, EXPERIENCE, EDUCATION, CERTIFICATIONS, REFERENCES. Keep every claim faithful to the source CV.
 Stay under 800 words. Use Zambian conventions: +260 phones, local institutions, ZMW where relevant.
 """
 

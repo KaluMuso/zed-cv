@@ -571,7 +571,7 @@ class TestJobIngest:
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
             "jobs",
-            FakeSupabaseQuery(data=[{"id": "job-ingested-1"}]),
+            FakeSupabaseQuery(data=[]),
         )
         fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
 
@@ -594,7 +594,7 @@ class TestJobIngest:
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
             "jobs",
-            FakeSupabaseQuery(data=[{"id": "job-chef-1"}]),
+            FakeSupabaseQuery(data=[]),
         )
         fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
 
@@ -625,7 +625,7 @@ class TestJobIngest:
         mock_embed.return_value = [0.1] * 768
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
-            "jobs", FakeSupabaseQuery(data=[{"id": "job-valid-1"}])
+            "jobs", FakeSupabaseQuery(data=[])
         )
         fake_supabase.set_table("skills", FakeSupabaseQuery(data=[]))
 
@@ -889,7 +889,7 @@ class TestJobIngestRicherFields:
         mock_embed.return_value = [0.1] * 768
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
-            "jobs", FakeSupabaseQuery(data=[{"id": "job-rich-1"}])
+            "jobs", FakeSupabaseQuery(data=[])
         )
 
         full = {
@@ -929,7 +929,7 @@ class TestJobIngestRicherFields:
         mock_embed.return_value = [0.1] * 768
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
-            "jobs", FakeSupabaseQuery(data=[{"id": "job-legacy-1"}])
+            "jobs", FakeSupabaseQuery(data=[])
         )
 
         resp = client.post(

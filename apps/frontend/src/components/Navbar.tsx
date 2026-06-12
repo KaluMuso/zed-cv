@@ -56,6 +56,7 @@ export function Navbar() {
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
   const { dark, toggle } = useTheme();
   const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
   
   // Only show mobile app shell on actual mobile devices, not desktop
   const mobileAppShell = isMobile && showMobileAppShell(pathname, isAuthenticated);
@@ -172,8 +173,11 @@ export function Navbar() {
         }}
       >
         <div className="max-w-[1280px] mx-auto px-6 h-[64px] flex items-center justify-between">
-          <Link href="/" className="shrink-0">
+          <Link href={isAdminRoute ? "/admin/overview" : "/"} className="shrink-0 flex items-center gap-2">
             <Logo size={28} />
+            {isAdminRoute && (
+              <span className="font-display font-medium text-lg hidden sm:inline-block">Admin</span>
+            )}
           </Link>
 
           <div className="hidden lg:flex items-center gap-8">
@@ -233,12 +237,14 @@ export function Navbar() {
               </div>
             ) : (
               <div className="flex items-center gap-4 ml-2">
-                <Link
-                  href="/auth"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Log in
-                </Link>
+                {!isAdminRoute && (
+                  <Link
+                    href="/auth"
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Log in
+                  </Link>
+                )}
                 <Link
                   href={AUTH_GET_STARTED}
                   className={cn(buttonVariants({ variant: "default", size: "sm" }), "px-4")}
@@ -300,7 +306,7 @@ export function Navbar() {
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
-                {!isAuthenticated ? (
+                {(!isAuthenticated && !isAdminRoute) ? (
                   <Link
                     href="/auth"
                     onClick={() => setMenuOpen(false)}

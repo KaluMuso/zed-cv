@@ -334,7 +334,7 @@ class TestWave25IngestSkills:
 
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
-            "jobs", FakeSupabaseQuery(data=[{"id": "job-ingest-skills"}])
+            "jobs", FakeSupabaseQuery(data=[])
         )
 
         job = {

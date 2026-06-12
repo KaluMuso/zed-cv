@@ -132,7 +132,7 @@ class TestJobIngestEnrichment:
 
         fake_supabase.set_table("job_fingerprints", FakeSupabaseQuery(data=[]))
         fake_supabase.set_table(
-            "jobs", FakeSupabaseQuery(data=[{"id": "job-enrich-1"}])
+            "jobs", FakeSupabaseQuery(data=[])
         )
 
         job = {
@@ -151,7 +151,7 @@ class TestJobIngestEnrichment:
         mock_enrich.assert_awaited_once()
         mock_apply.assert_awaited_once()
         call_kw = mock_apply.await_args.kwargs
-        assert call_kw["job_id"] == "job-enrich-1"
+        assert call_kw["job_id"] == "fake-uuid-001"
         assert call_kw["source"] == "ingest"
 
 

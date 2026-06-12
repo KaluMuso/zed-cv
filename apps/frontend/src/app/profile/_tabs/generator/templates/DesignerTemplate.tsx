@@ -2,7 +2,9 @@
 
 import type { CVSections } from "@/lib/api";
 import type { ParsedCV, ParsedSection } from "../parseCv";
-import { splitBullets } from "../parseCv";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 
 /**
  * Two-column layout: copper sidebar holds identity + scannable sections
@@ -93,35 +95,27 @@ export function DesignerTemplate({
 }
 
 function LegacySection({ section, variant }: { section: ParsedSection; variant: "sidebar" | "main" }) {
-  const { bullets, paragraphs } = splitBullets(section.body);
   // SKILLS in the sidebar reads better as comma-separated tags than as a
-  // bullet list — and SKILLS bodies often arrive as a single comma line
-  // anyway. Detect this and flatten.
+  // bullet list.
   const isSkillsTags =
     variant === "sidebar" &&
     section.title.includes("SKILLS") &&
-    paragraphs.length === 1 &&
-    bullets.length === 0 &&
-    paragraphs[0].includes(",");
+    !section.body.includes("\n") &&
+    !section.body.includes("- ") &&
+    !section.body.includes("* ") &&
+    section.body.includes(",");
 
   return (
     <section>
       <h2>{section.title}</h2>
       {isSkillsTags ? (
-        <p>{paragraphs[0]}</p>
+        <p>{section.body}</p>
       ) : (
-        <>
-          {paragraphs.map((p, i) => (
-            <p key={`p-${i}`}>{p}</p>
-          ))}
-          {bullets.length > 0 && (
-            <ul>
-              {bullets.map((b, i) => (
-                <li key={`b-${i}`}>{b}</li>
-              ))}
-            </ul>
-          )}
-        </>
+        <div className="prose prose-sm max-w-none text-inherit leading-snug prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+            {section.body}
+          </ReactMarkdown>
+        </div>
       )}
     </section>
   );

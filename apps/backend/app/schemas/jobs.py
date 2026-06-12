@@ -401,6 +401,13 @@ class JobCreate(BaseModel):
             return s or None
         return v
 
+    @model_validator(mode="after")
+    def _inject_internship_skill(self) -> "JobCreate":
+        if self.employment_type == EmploymentType.internship:
+            if "Internship" not in self.skills_required:
+                self.skills_required.append("Internship")
+        return self
+
 class Job(BaseModel):
     id: str
     title: str

@@ -81,7 +81,8 @@ export function LoginPage({
           value={fullName}
           onChange={(e) => onFullNameChange(e.target.value)}
           disabled={loading}
-          placeholder="e.g. Kaluba Musonda"
+          placeholder="e.g. Chanda Mwape"
+          autoComplete="name"
           className="field mb-1"
           style={{ height: 44 }}
         />

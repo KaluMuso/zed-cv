@@ -7,6 +7,7 @@ export type AdminSection =
   | "notifications"
   | "tier-config"
   | "bwana"
+  | "faqs"
   | "legal";
 
 export const ADMIN_NAV: {
@@ -62,6 +63,12 @@ export const ADMIN_NAV: {
     label: "Bwana",
     description: "Chatbot analytics, transcripts, config, and knowledge",
     href: "/admin/bwana",
+  },
+  {
+    slug: "faqs",
+    label: "FAQs",
+    description: "Manage frequently asked questions",
+    href: "/admin/faqs",
   },
   {
     slug: "legal",

@@ -2,6 +2,7 @@
 
 import { Icon } from "@/components/ui/Icon";
 import type { ParsedCV, ParsedHeader, ParsedSection } from "./parseCv";
+import { MarkdownTextarea } from "@/components/ui/MarkdownTextarea";
 
 /**
  * Section-by-section editor for the parsed CV. Lifts state up to the
@@ -30,6 +31,15 @@ export function EditStep({
   const removeSection = (idx: number) => {
     if (!confirm("Remove this section?")) return;
     onChange({ ...parsed, sections: parsed.sections.filter((_, i) => i !== idx) });
+  };
+
+  const addSection = () => {
+    const title = prompt("Enter section title (e.g. REFERENCES, PROJECTS):");
+    if (!title) return;
+    onChange({
+      ...parsed,
+      sections: [...parsed.sections, { title: title.toUpperCase(), body: "" }],
+    });
   };
 
   const inputStyle = {
@@ -84,18 +94,24 @@ export function EditStep({
               <Icon name="x" size={14} />
             </button>
           </div>
-          <textarea
+          <MarkdownTextarea
             value={section.body}
-            onChange={(e) => setSection(idx, { body: e.target.value })}
+            onChangeValue={(val) => setSection(idx, { body: val })}
             rows={Math.max(4, Math.min(14, section.body.split("\n").length + 1))}
-            className="w-full p-3 rounded-md text-sm leading-relaxed"
-            style={{ ...inputStyle, fontFamily: "inherit" }}
+            className="w-full text-sm"
+            style={{ ...inputStyle }}
           />
           <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>
-            Start a line with <code>• </code> or <code>- </code> to add a bullet.
+            Start a line with <code>• </code> or <code>- </code> to add a bullet. Use the toolbar for bold/italics.
           </p>
         </div>
       ))}
+
+      <div className="flex justify-center mt-4">
+        <button onClick={addSection} className="btn btn-outline btn-sm">
+          <Icon name="plus" size={14} /> Add missing section
+        </button>
+      </div>
     </div>
   );
 }

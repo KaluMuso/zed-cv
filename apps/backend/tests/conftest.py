@@ -50,6 +50,8 @@ def _clear_caches():
     clear_tier_config_cache()
     from app.core.config import get_settings
     get_settings.cache_clear()
+    from app.lib.retry import reset_llm_circuit_for_tests
+    reset_llm_circuit_for_tests()
 
 
 class FakeSupabaseQuery:

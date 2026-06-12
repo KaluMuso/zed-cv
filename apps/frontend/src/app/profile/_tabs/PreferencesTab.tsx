@@ -37,6 +37,7 @@ import {
   SalaryExpectationsFields,
   validateSalaryRange,
   WorkArrangementField,
+  EmploymentTypeField,
   YearsExperienceField,
 } from "@/components/profile/preferences/PreferenceFields";
 
@@ -371,6 +372,17 @@ export function PreferencesTab({
           <RelocateField
             checked={data.willing_to_relocate}
             onChange={(checked) => update({ willing_to_relocate: checked })}
+          />
+        </div>
+        <div className="mt-3">
+          <EmploymentTypeField
+            value={(data.extras?.employment_types as string[]) || []}
+            onChange={(types) => {
+              const extras = { ...(data.extras || {}) };
+              if (types.length > 0) extras.employment_types = types;
+              else delete extras.employment_types;
+              update({ extras });
+            }}
           />
         </div>
         <div className="mt-3">
