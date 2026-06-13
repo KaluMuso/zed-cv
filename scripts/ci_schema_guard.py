@@ -318,9 +318,9 @@ def _file_is_generated(text: str) -> bool:
 def extract_refs(backend_root: Path) -> ExtractionResult:
     result = ExtractionResult()
     for path in sorted(backend_root.rglob("*.py")):
-        # Skip caches and venvs
+        # Skip caches, venvs, and scratch directories
         parts = set(path.parts)
-        if any(p in parts for p in ("__pycache__", ".venv", "venv", "site-packages")):
+        if any(p in parts for p in ("__pycache__", ".venv", "venv", "site-packages", "scratch")):
             continue
         try:
             rel = path.relative_to(REPO_ROOT).as_posix()

@@ -12,10 +12,10 @@ async def get_referral_config(supabase=Depends(get_supabase)):
 async def get_pending_payouts(supabase=Depends(get_supabase)):
     res = (
         supabase.table("referral_rewards")
-        .select("id, user_id, reward_value, created_at, status, users(phone)")
+        .select("id, user_id, reward_value, earned_at, status, users(phone)")
         .eq("reward_type", "cash")
         .eq("status", "pending_payout")
-        .order("created_at")
+        .order("earned_at")
         .execute()
     )
     
@@ -27,7 +27,7 @@ async def get_pending_payouts(supabase=Depends(get_supabase)):
             "user_id": r["user_id"],
             "phone": phone,
             "amount_ngwee": r["reward_value"],
-            "created_at": r["created_at"]
+            "created_at": r["earned_at"]
         })
     return {"payouts": payouts}
 
