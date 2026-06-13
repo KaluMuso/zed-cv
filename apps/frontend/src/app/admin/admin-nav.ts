@@ -9,7 +9,8 @@ export type AdminSection =
   | "bwana"
   | "faqs"
   | "legal"
-  | "scrape-targets";
+  | "scrape-targets"
+  | "referrals";
 
 export const ADMIN_NAV: {
   slug: AdminSection;
@@ -82,6 +83,12 @@ export const ADMIN_NAV: {
     label: "Scrape Targets",
     description: "Manage dynamic scraping targets",
     href: "/admin/scrape-targets",
+  },
+  {
+    slug: "referrals",
+    label: "Referrals",
+    description: "Manage referral rewards, payouts, and milestones",
+    href: "/admin/referrals",
   },
 ];
 

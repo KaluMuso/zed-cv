@@ -21,7 +21,7 @@ from app.schemas.auth import (
     OTPVerify,
 )
 from app.services.email import send_welcome_email
-from app.services.referral import attach_referral_on_signup, generate_referral_code
+from app.services.referral import attach_referral_on_signup, generate_referral_code, evaluate_referral_milestones
 from app.services.otp import (
     default_otp_channel_for_tier,
     generate_otp_code,
@@ -436,7 +436,9 @@ async def verify_otp(
             "whatsapp_verified": True,
         }).execute()
         user_id = new_user.data[0]["id"]
-        attach_referral_on_signup(user_id, body.referral_ref, supabase)
+        referrer_id = attach_referral_on_signup(user_id, body.referral_ref, supabase)
+        if referrer_id:
+            evaluate_referral_milestones(referrer_id, supabase)
 
         if role == "superadmin":
             supabase.table("subscriptions").insert({

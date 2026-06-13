@@ -281,3 +281,64 @@ def is_valid_referral_ref(ref: str | None) -> bool:
         except ValueError:
             return False
     return 1 <= len(trimmed) <= 36
+
+def evaluate_referral_milestones(referrer_id: str, supabase: Any) -> None:
+    """Evaluate complex referral milestones (e.g. 10 signups -> matches, 5 paid -> cash)."""
+    # 1. Count total referred users
+    res = supabase.table("referral_events").select("referred_user_id", count="exact").eq("referrer_user_id", referrer_id).execute()
+    total_referred = res.count if res.count is not None else len(res.data or [])
+
+    # 2. Count total paid referred users
+    paid_res = (
+        supabase.table("referral_events")
+        .select("referred_user_id, users!inner(first_payment_at)")
+        .eq("referrer_user_id", referrer_id)
+        .not_.is_("users.first_payment_at", "null")
+        .execute()
+    )
+    total_paid_referred = len(paid_res.data or [])
+
+    # 3. Load active config
+    config_res = supabase.table("referral_config").select("*").eq("is_active", True).execute()
+    
+    for conf in (config_res.data or []):
+        r_type = conf["reward_type"]
+        req_count = conf["required_count"]
+        val = conf["reward_value"]
+        
+        milestones_hit = total_paid_referred // req_count if r_type == "cash" else total_referred // req_count
+        
+        for m_idx in range(1, milestones_hit + 1):
+            try:
+                supabase.table("referral_rewards").insert({
+                    "user_id": referrer_id,
+                    "reward_type": r_type,
+                    "reward_value": val,
+                    "milestone_count": m_idx,
+                    "status": "pending_payout" if r_type == "cash" else "credited"
+                }).execute()
+                
+                # Apply instantaneous rewards
+                if r_type == "matches":
+                    user_res = supabase.table("users").select("referral_match_bonus").eq("id", referrer_id).limit(1).execute()
+                    if user_res.data:
+                        current_bonus = int(user_res.data[0].get("referral_match_bonus") or 0)
+                        supabase.table("users").update({
+                            "referral_match_bonus": min(current_bonus + val, UNLIMITED_MATCHES)
+                        }).eq("id", referrer_id).execute()
+                elif r_type == "tier_promo":
+                    from dateutil.relativedelta import relativedelta
+                    user_res = supabase.table("users").select("subscription_tier, promotion_applied_until").eq("id", referrer_id).limit(1).execute()
+                    if user_res.data:
+                        tier = user_res.data[0].get("subscription_tier")
+                        if tier == "free" or tier is None:
+                            until = user_res.data[0].get("promotion_applied_until")
+                            base_date = datetime.fromisoformat(until.replace('Z', '+00:00')) if until else datetime.now(timezone.utc)
+                            new_until = (base_date + relativedelta(months=val)).isoformat()
+                            supabase.table("users").update({
+                                "subscription_tier": "starter",
+                                "promotion_applied_until": new_until
+                            }).eq("id", referrer_id).execute()
+            except Exception as e:
+                # Likely a unique constraint violation meaning already rewarded
+                pass

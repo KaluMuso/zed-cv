@@ -26,7 +26,8 @@ UPCOMING_INTERVIEW_HOURS = 48
 _USER_SELECT = (
     "id, phone, email, full_name, whatsapp_number, whatsapp_verified, "
     "alert_frequency, email_notifications_enabled, preferred_notification_channel, "
-    "subscription_tier, quiet_hours_start, quiet_hours_end, display_timezone"
+    "subscription_tier, quiet_hours_start, quiet_hours_end, display_timezone, "
+    "referral_code"
 )
 
 
@@ -50,6 +51,7 @@ def format_daily_digest_message(
     matches: list[dict[str, Any]],
     *,
     upcoming_interviews: list[dict[str, Any]] | None = None,
+    referral_code: str | None = None,
 ) -> str:
     """WhatsApp-friendly digest text."""
     lines: list[str] = [f"Good morning {name}!"]
@@ -75,6 +77,10 @@ def format_daily_digest_message(
         )
     elif interviews:
         lines.append("\nOpen ZedApply to review your application board.")
+
+    if referral_code:
+        lines.append(f"\nForward this job to a friend to get more matches! Your link: https://zedcv.com/m/invite?ref={referral_code}")
+
     return "\n".join(lines)
 
 
@@ -331,6 +337,7 @@ async def run_whatsapp_daily_digest(supabase: Client) -> dict[str, int]:
             _display_name(user),
             matches,
             upcoming_interviews=upcoming,
+            referral_code=user.get("referral_code"),
         )
         try:
             await send_whatsapp_message(phone, message)
