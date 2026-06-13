@@ -1076,6 +1076,11 @@ export const admin = {
       `/admin/jobs/${encodeURIComponent(jobId)}/dismiss`,
       { method: "POST", token, body: "{}" }
     ),
+  forceDeepEnrich: (token: string, jobId: string) =>
+    apiFetch<{ enriched: boolean; deep_enriched_at: string | null }>(
+      `/admin/jobs/${encodeURIComponent(jobId)}/re-enrich`,
+      { method: "POST", token, body: "{}" }
+    ),
   bulkMarkReviewDuplicate: (token: string, jobIds: string[]) =>
     apiFetch<{ updated: number }>("/admin/review-jobs/bulk-mark-duplicate", {
       method: "POST",

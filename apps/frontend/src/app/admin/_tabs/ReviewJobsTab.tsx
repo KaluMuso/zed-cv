@@ -133,6 +133,23 @@ export function ReviewJobsTab({ token }: { token: string }) {
     }
   };
 
+  const deepEnrichJob = async (jobId: string) => {
+    setSavingId(jobId);
+    try {
+      const res = await admin.forceDeepEnrich(token, jobId);
+      if (res.enriched) {
+        notify.custom.success("Job successfully deep-enriched.");
+        await loadQueue();
+      } else {
+        notify.custom.info("Deep enrich ran, but returned no new data.");
+      }
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Deep enrich failed");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const autoDismissHidden = async (dryRun: boolean) => {
     setBulkClearing(true);
     try {
@@ -435,6 +452,16 @@ export function ReviewJobsTab({ token }: { token: string }) {
                       onClick={() => dismissJob(job.id)}
                     >
                       Dismiss
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-fit"
+                      disabled={savingId === job.id}
+                      onClick={() => deepEnrichJob(job.id)}
+                    >
+                      Deep Enrich
                     </Button>
                   </div>
                 </CardContent>
