@@ -17,12 +17,7 @@ export default function AdminJobsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 text-sm">
-        <Link
-          href="/admin/bulk-fix"
-          className="rounded-md border border-border px-3 py-1.5 hover:bg-muted"
-        >
-          Bulk contact fix →
-        </Link>
+
         <Link
           href="/admin/jobs/review"
           className="rounded-md border border-border px-3 py-1.5 hover:bg-muted"

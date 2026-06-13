@@ -79,11 +79,21 @@ export function AdminTablePagination({
         size="sm"
         className="min-h-9"
         disabled={page <= 1}
+        onClick={() => onPageChange(1)}
+      >
+        First
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-h-9"
+        disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
         Previous
       </Button>
-      <span className="text-sm text-muted-foreground tabular-nums">
+      <span className="text-sm text-muted-foreground tabular-nums px-2">
         Page {page} of {pages}
       </span>
       <Button
@@ -95,6 +105,16 @@ export function AdminTablePagination({
         onClick={() => onPageChange(page + 1)}
       >
         Next
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="min-h-9"
+        disabled={page >= pages}
+        onClick={() => onPageChange(pages)}
+      >
+        Last
       </Button>
     </div>
   );

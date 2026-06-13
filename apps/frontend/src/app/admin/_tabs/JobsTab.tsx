@@ -147,6 +147,27 @@ export function JobsTab({ token }: { token: string }) {
     }
   };
 
+  const onDeepEnrich = async (jobId: string) => {
+    setBusyId(jobId);
+    try {
+      const res = await admin.forceDeepEnrich(token, jobId);
+      if (res.enriched) {
+        if (res.outcome === "split") {
+          notify.custom.success("Job was split into multiple individual roles.");
+        } else {
+          notify.custom.success("Job successfully deep-enriched.");
+        }
+        load();
+      } else {
+        notify.custom.info("Deep enrich ran, but returned no new data.");
+      }
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : "Deep enrich failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const openCreate = () => {
     setEditingJobId(null);
     setDialogMode("create");
@@ -329,6 +350,15 @@ export function JobsTab({ token }: { token: string }) {
                             onClick={() => openEdit(j)}
                           >
                             Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-h-8 h-8 px-2 text-xs"
+                            disabled={busyId === j.id}
+                            onClick={() => onDeepEnrich(j.id)}
+                          >
+                            Re-enrich
                           </Button>
                           <Button
                             size="sm"
