@@ -636,3 +636,49 @@ describe("referral storage helpers", () => {
     expect(sessionStorage.getItem(REFERRAL_STORAGE_KEY)).toBeNull();
   });
 });
+
+describe("admin API", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("admin.scrapeTargets.list calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse([{ id: "1" }]));
+    await admin.scrapeTargets.list("tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/list`, expect.objectContaining({ method: "GET" }));
+  });
+
+  it("admin.scrapeTargets.add calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    await admin.scrapeTargets.add({ url: "x", company_name: "y", cron_interval_hours: 24 }, "tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/add`, expect.objectContaining({ method: "POST" }));
+  });
+
+  it("admin.scrapeTargets.toggle calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    await admin.scrapeTargets.toggle("1", false, "tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/toggle/1`, expect.objectContaining({ method: "PATCH" }));
+  });
+
+  it("admin.scrapeTargets.delete calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+    await admin.scrapeTargets.delete("1", "tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/1`, expect.objectContaining({ method: "DELETE" }));
+  });
+
+  it("admin.scrapeTargets.trigger calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ processed: 1 }));
+    await admin.scrapeTargets.trigger("tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/trigger`, expect.objectContaining({ method: "POST" }));
+  });
+
+  it("admin.scrapeTargets.force calls correctly", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ jobs_found: 1 }));
+    await admin.scrapeTargets.force("1", "tok");
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE}/admin/scrape-targets/force`, expect.objectContaining({ method: "POST" }));
+  });
+});

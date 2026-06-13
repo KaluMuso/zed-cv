@@ -141,6 +141,7 @@ describe("JobCreateWizard", () => {
 
     await user.type(salaryMinField(), "1000");
     await user.type(salaryMaxField(), "500");
+    await user.click(nextButton());
 
     expect(
       await screen.findByText(/maximum must be greater than or equal/i),
