@@ -13,6 +13,7 @@ async def test_re_enrich_clears_and_runs(admin_client, auth_headers, jobs_fake):
 
     mock_result = {
         "enriched": True,
+        "outcome": "enriched",
         "deep_enriched_at": "2026-06-09T13:00:00+00:00",
         "admin_published": True,
         "description_length": 500,
