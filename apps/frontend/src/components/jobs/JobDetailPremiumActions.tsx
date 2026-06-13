@@ -77,40 +77,40 @@ export function JobDetailPremiumActions({
   const requiredTier = FEATURE_TIER_MAP.cover_letter;
   const unlocked = tierAtLeast(subscriptionTier, requiredTier);
 
-  if (!unlocked) {
-    return (
-      <>
-        <PremiumLockedButton
-          label="Generate cover letter"
-          icon="sparkle"
-          feature="cover_letter"
-        />
-        <PremiumLockedButton label="Tailored CV" icon="file" feature="tailor_cv" />
-      </>
-    );
-  }
-
   return (
     <>
       <Script src={getLencoScriptUrl()} strategy="afterInteractive" />
-      <button
-        type="button"
-        className="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
-        onClick={onCoverLetterClick}
-        data-testid="job-detail-cover-letter"
-      >
-        <Icon name="sparkle" size={14} /> Generate cover letter
-      </button>
-      <Link
-        href={`/profile/cv-builder?jobId=${encodeURIComponent(jobId)}&jobTitle=${encodeURIComponent(jobTitle)}&company=${encodeURIComponent(company)}`}
-        className="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
-        data-testid="job-detail-tailored-cv"
-      >
-        <Icon name="file" size={14} /> Tailored CV
-      </Link>
+      {unlocked ? (
+        <>
+          <button
+            type="button"
+            className="btn btn-outline flex-1 sm:flex-none justify-center gap-1.5"
+            onClick={onCoverLetterClick}
+            data-testid="job-detail-cover-letter"
+          >
+            <Icon name="sparkle" size={14} /> Generate cover letter
+          </button>
+          <Link
+            href={`/profile/cv-builder?jobId=${encodeURIComponent(jobId)}&jobTitle=${encodeURIComponent(jobTitle)}&company=${encodeURIComponent(company)}`}
+            className="btn btn-ghost flex-1 sm:flex-none justify-center gap-1.5"
+            data-testid="job-detail-tailored-cv"
+          >
+            <Icon name="file" size={14} /> Tailored CV
+          </Link>
+        </>
+      ) : (
+        <>
+          <PremiumLockedButton
+            label="Generate cover letter"
+            icon="sparkle"
+            feature="cover_letter"
+          />
+          <PremiumLockedButton label="Tailored CV" icon="file" feature="tailor_cv" />
+        </>
+      )}
       
       <div className="w-full mt-2 pt-4 border-t border-[var(--line)]">
-        <h4 className="text-sm font-semibold mb-3 text-[var(--ink)]">Boost your application</h4>
+        <h4 className="text-sm font-semibold mb-3 text-[var(--ink)]">Or pay per use (Boosters)</h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <BoosterCard 
             sku="tailored_cv" 
