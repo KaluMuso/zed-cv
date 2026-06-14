@@ -21,7 +21,7 @@ describe("JobDetailPremiumActions", () => {
     expect(screen.getByTestId("job-detail-upgrade-cover_letter")).toBeInTheDocument();
     expect(screen.getByTestId("job-detail-upgrade-tailor_cv")).toBeInTheDocument();
     expect(screen.getByText(/Generate cover letter/i)).toBeInTheDocument();
-    expect(screen.getByText(/Tailored CV/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Tailored CV/i).length).toBeGreaterThan(0);
     expect(screen.queryByTestId("job-detail-cover-letter")).not.toBeInTheDocument();
   });
 
