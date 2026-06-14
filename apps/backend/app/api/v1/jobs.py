@@ -148,13 +148,12 @@ _LINKEDIN_JOB_ID_RE = _re.compile(
 # the scraper accepts whatever LinkedIn returns. Reject them at ingest.
 # 25 country suffixes: African neighbors + common foreign HQs.
 _FOREIGN_COUNTRY_RE = _re.compile(
-    r" - (Pakistan|Kenya|Nigeria|Tanzania|Uganda|Ethiopia|Rwanda|Ghana"
-    r"|South Africa|India|Bangladesh|Sudan|Somalia|Congo|Malawi|Mozambique"
+    r"\b(Pakistan|Kenya|Nigeria|Tanzania|Uganda|Ethiopia|Rwanda|Ghana"
+    r"|South\s+Africa|India|Bangladesh|Sudan|Somalia|Congo|Malawi|Mozambique"
     r"|Zimbabwe|Botswana|Namibia|Egypt|Morocco|Senegal|Cameroon"
-    r"|Ivory Coast|Burkina Faso|Mali|Madagascar)$",
+    r"|Ivory\s+Coast|Burkina\s+Faso|Mali|Madagascar)\b",
     _re.IGNORECASE,
 )
-
 
 def _extract_linkedin_job_id(*urls: str | None) -> str | None:
     """Return the numeric LinkedIn job ID from any of the URLs, or None.
