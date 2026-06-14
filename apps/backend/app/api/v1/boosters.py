@@ -45,7 +45,7 @@ async def purchase_booster(
         "user_id": user_id,
         "amount": amount_ngwee,
         "currency": "ZMW",
-        "payment_method": "lenco",
+        "payment_method": "card",
         "provider": "lenco",
         "provider_ref": reference,
         "status": "pending",
