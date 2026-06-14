@@ -21,6 +21,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenders", tags=["Tenders"])
 
+# Similarity floor for the match_tenders RPC. Lower → more recall,
+# higher → more precision. Extracted from the hardcoded 0.40 so we can
+# A/B as the corpus grows. Will move to Settings once we have a few
+# weeks of telemetry on what users actually click through.
+_TENDER_MATCH_SIMILARITY_FLOOR = 0.40
+
+# Cap on how many matched tenders the RPC returns. Frontend dashboard
+# is paginated so a higher number doesn't hurt UX; 25 was clipping
+# legitimate matches for users with broad industry_tags.
+_TENDER_MATCH_COUNT_CAP = 50
+
 
 @router.get("/matches")
 async def get_tender_matches(
@@ -51,10 +62,14 @@ async def get_tender_matches(
 
     profile = profile_res.data[0]
 
-    # 2. Build semantic text context to embed
+    # 2. Build semantic text context to embed.
+    # PR R: use .get() with defaults for ALL profile fields so a partial
+    # business_profile row (missing company_name etc. via direct insert or
+    # future setup-wizard step) doesn't 500 with a KeyError.
+    company_name = profile.get("company_name") or "Unnamed company"
     bio = profile.get("company_bio") or ""
     tags = ", ".join(profile.get("industry_tags") or [])
-    embed_text = f"Company: {profile['company_name']}. Description: {bio}. Industries: {tags}."
+    embed_text = f"Company: {company_name}. Description: {bio}. Industries: {tags}."
 
     # 3. Generate embedding vector via gemini-embedding-001 (768 dimensions)
     try:
@@ -72,8 +87,8 @@ async def get_tender_matches(
             "match_tenders",
             {
                 "p_query_embedding": query_embedding,
-                "p_match_threshold": 0.40,  # 40% similarity floor
-                "p_match_count": 25,
+                "p_match_threshold": _TENDER_MATCH_SIMILARITY_FLOOR,
+                "p_match_count": _TENDER_MATCH_COUNT_CAP,
                 "p_industry_tags": profile.get("industry_tags") or [],
                 "p_provinces": profile.get("operating_provinces") or [],
             },
@@ -191,4 +206,3 @@ async def ingest_tenders(
         duplicates=duplicates,
         errors=errors
     )
-
