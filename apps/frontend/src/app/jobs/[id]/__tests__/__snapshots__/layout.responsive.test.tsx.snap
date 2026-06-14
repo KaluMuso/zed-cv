@@ -259,6 +259,165 @@ exports[`Job detail responsive layout > matches 380px mobile snapshot 1`] = `
                per month
             </span>
           </a>
+          <div
+            class="w-full mt-2 pt-4 border-t border-[var(--line)]"
+          >
+            <h4
+              class="text-sm font-semibold mb-3 text-[var(--ink)]"
+            >
+              Or pay per use (Boosters)
+            </h4>
+            <div
+              class="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            >
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  >
+                    <svg
+                      class=""
+                      fill="none"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.75"
+                      viewBox="0 0 24 24"
+                      width="16"
+                    >
+                      <path
+                        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"
+                      />
+                    </svg>
+                  </span>
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Tailored CV
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  AI-tailor your CV for this exact job in 60 seconds.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    20
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  >
+                    <svg
+                      class=""
+                      fill="none"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.75"
+                      viewBox="0 0 24 24"
+                      width="16"
+                    >
+                      <path
+                        d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
+                      />
+                    </svg>
+                  </span>
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Cover Letter
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  AI-write a cover letter targeted at this role.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    15
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  />
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Interview Prep
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  Get 10 likely interview questions + model answers.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    40
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <section
           aria-label="Share this job"
@@ -712,6 +871,165 @@ exports[`Job detail responsive layout > matches 1024px desktop snapshot 1`] = `
                per month
             </span>
           </a>
+          <div
+            class="w-full mt-2 pt-4 border-t border-[var(--line)]"
+          >
+            <h4
+              class="text-sm font-semibold mb-3 text-[var(--ink)]"
+            >
+              Or pay per use (Boosters)
+            </h4>
+            <div
+              class="grid grid-cols-1 sm:grid-cols-3 gap-3"
+            >
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  >
+                    <svg
+                      class=""
+                      fill="none"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.75"
+                      viewBox="0 0 24 24"
+                      width="16"
+                    >
+                      <path
+                        d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6"
+                      />
+                    </svg>
+                  </span>
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Tailored CV
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  AI-tailor your CV for this exact job in 60 seconds.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    20
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  >
+                    <svg
+                      class=""
+                      fill="none"
+                      height="16"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.75"
+                      viewBox="0 0 24 24"
+                      width="16"
+                    >
+                      <path
+                        d="M12 3v1m0 16v1m-8-9H3m18 0h-1m-2.636-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m11.314 11.314l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
+                      />
+                    </svg>
+                  </span>
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Cover Letter
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  AI-write a cover letter targeted at this role.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    15
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+              <div
+                class="flex flex-col p-4 rounded-xl border bg-[var(--surface)] shadow-sm"
+                style="border-color: var(--line);"
+              >
+                <div
+                  class="flex items-center gap-2 mb-2"
+                >
+                  <span
+                    class="p-1.5 rounded-md"
+                    style="background: color-mix(in srgb, var(--copper-500) 10%, transparent); color: var(--copper-600);"
+                  />
+                  <h5
+                    class="font-semibold text-sm"
+                  >
+                    Interview Prep
+                  </h5>
+                </div>
+                <p
+                  class="text-xs text-[var(--muted)] mb-4 flex-1"
+                >
+                  Get 10 likely interview questions + model answers.
+                </p>
+                <div
+                  class="flex items-center justify-between mt-auto"
+                >
+                  <span
+                    class="font-display font-medium"
+                  >
+                    K
+                    40
+                  </span>
+                  <button
+                    class="btn btn-primary btn-sm px-4 py-1.5 h-auto text-xs"
+                  >
+                    Get Booster
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <section
           aria-label="Share this job"
