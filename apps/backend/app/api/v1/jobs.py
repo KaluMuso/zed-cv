@@ -171,7 +171,12 @@ def _extract_linkedin_job_id(*urls: str | None) -> str | None:
 
 
 def _is_foreign_company(company: str | None) -> bool:
-    """True when the company name ends with a non-Zambian country suffix."""
+    """True when the company name mentions a non-Zambian country (PR L).
+
+    Catches: "Stanbic Bank Tanzania", "ITM Tanzania Limited",
+    "Action Against Hunger (ACF) - Pakistan", "Save the Children Kenya".
+    Admins force-publish exceptions via admin_published=true.
+    """
     if not company:
         return False
     return bool(_FOREIGN_COUNTRY_RE.search(company))
